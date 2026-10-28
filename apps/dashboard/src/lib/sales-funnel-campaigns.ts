@@ -31,6 +31,14 @@ export const SalesFunnelCampaignSchema = z
     salesFunnelName: z.string(),
     status: z.string(),
     stopReason: z.string().nullable(),
+    // GTM Factory step 1 (campaign-service #804/#806, FACTORY-P1-DASH): what the campaign aims at (a catalogue step
+    // key), its strategy in the owner's words, and its type. Nullish: a body cached before them carries none.
+    target: z.string().nullish(),
+    brief: z.string().nullish(),
+    briefUpdatedAt: z.string().nullish(),
+    briefUpdatedByUserId: z.string().nullish(),
+    mode: z.string().nullish(),
+    triggerId: z.string().nullish(),
     createdAt: z.string(),
     updatedAt: z.string(),
     units: z.array(SalesFunnelUnitSchema),

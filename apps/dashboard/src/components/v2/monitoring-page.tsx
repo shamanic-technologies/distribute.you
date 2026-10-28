@@ -47,6 +47,9 @@ import { redTriggers, watchedTriggers } from "@/lib/monitoring/trigger-health";
 import { PlugsConnectedIcon } from "@phosphor-icons/react/dist/csr/PlugsConnected";
 import { ConnectorIntakePage, ConnectorIntakeTile, useConnectorIntake } from "@/components/v2/monitoring-connectors";
 import { connectionName, redConnections } from "@/lib/monitoring/connector-intake";
+import { StrategyIcon } from "@phosphor-icons/react/dist/csr/Strategy";
+import { FactoryShadowPage, FactoryShadowTile, useFactoryShadowMonitoring } from "@/components/v2/monitoring-factory";
+import { verdictReasonWords } from "@/lib/factory-shadow";
 import { loadLabel, memLabel } from "@/lib/monitoring/box-health";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, ReconciliationPage, ReconciliationTile, useLedgerCheck, useLedgerReconciliation, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
@@ -115,7 +118,7 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "chat";
+type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "chat";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
@@ -130,6 +133,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   box: { name: "Box", color: "var(--data-sky)", Icon: CpuIcon, sub: "Whether the production server is overloaded, and which containers eat it" },
   triggers: { name: "Triggers", color: "var(--data-amber)", Icon: LightningIcon, sub: "Whether every trigger still fires, reaches its campaign, and gets its answer" },
   tools: { name: "Connected tools", color: "var(--data-sky)", Icon: PlugsConnectedIcon, sub: "Whether every tool a client connected still brings records in" },
+  factory: { name: "Factory plan", color: "var(--data-violet)", Icon: StrategyIcon, sub: "Which client campaigns would run differently if they followed their plan" },
   chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
 };
 
@@ -167,6 +171,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "triggers/waiting": { section: "triggers", title: "Prospects waiting", question: "Is any prospect waiting on a blocked campaign answer?" },
   "triggers/firing": { section: "triggers", title: "Firing", question: "Is any trigger our campaigns wait on broken?" },
   "tools/intake": { section: "tools", title: "Records taken in", question: "Does every tool a client connected still bring records in?" },
+  "factory/plan": { section: "factory", title: "Would change", question: "Which client campaigns would change if they followed their plan?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -256,7 +261,7 @@ export function V2Monitoring() {
           ? "Every repo running in prod, audited once a day. Read live from production. Days are UTC."
           : meta.section === "box"
           ? "The production server (every service and Postgres), sampled every 5 minutes. Before 2026-10-26, history comes from sysstat every 10 minutes, without containers. Times are UTC."
-          : meta.section === "triggers" || meta.section === "tools"
+          : meta.section === "triggers" || meta.section === "tools" || meta.section === "factory"
           ? "Every org, read live from production. Days are UTC."
           : meta.section === "chat"
           ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
@@ -320,6 +325,7 @@ export function V2Monitoring() {
         {view.page === "triggers/waiting" && <ProspectsWaitingPage />}
         {view.page === "triggers/firing" && <TriggerHealthPage />}
         {view.page === "tools/intake" && <ConnectorIntakePage />}
+        {view.page === "factory/plan" && <FactoryShadowPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -416,6 +422,7 @@ function Hub({ base }: { base: string }) {
   const waiting = useStuckOccurrences();
   const firing = useTriggerHealth();
   const tools = useConnectorIntake();
+  const factory = useFactoryShadowMonitoring();
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
@@ -454,6 +461,8 @@ function Hub({ base }: { base: string }) {
         <TriggerHealthTile href={href("triggers/firing")} />
         {/* A tool a client connected that syncs "fine" but takes in nothing for longer than its habit, or whose sync fails (CONNECTOR-INTAKE-MONITORING-1028): red here IS the alert, never an email. */}
         <ConnectorIntakeTile href={href("tools/intake")} />
+        {/* The GTM Factory shadow pass failed to judge or plan a live campaign, or stopped running (FACTORY-P1-DASH): red here IS the alert, never an email. */}
+        <FactoryShadowTile href={href("factory/plan")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -780,6 +789,37 @@ function Hub({ base }: { base: string }) {
               note: "quiet, failing or late",
             },
             { label: "Connected", value: tools.data?.connections.length, note: "every org" },
+          ]}
+        />
+        </div>
+      </Section>
+      </div>
+
+      <div>
+      <SectionTitle count={1}>Factory plan</SectionTitle>
+      <Section section="factory" count={1} grid={false}>
+        <HubChips>
+          <HubChip href={href("factory/plan")} color={factory.data?.verdict.red ? "var(--data-rose)" : "var(--data-violet)"} label="Would change" />
+        </HubChips>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Card
+          href={href("factory/plan")}
+          page="factory/plan"
+          error={factory.isError && !factory.data}
+          cells={[
+            {
+              label: "Would change",
+              value: factory.data && (factory.data.series[factory.data.series.length - 1]?.differs ?? 0),
+              note: "live campaigns, last day",
+              bars: factory.data?.series.map((d) => d.differs),
+            },
+            {
+              label: "Verdict",
+              value: factory.data && (
+                <span style={{ color: factory.data.verdict.red ? "var(--data-rose)" : undefined }}>{factory.data.verdict.red ? "Red" : "OK"}</span>
+              ),
+              note: factory.data?.verdict.red ? factory.data.verdict.reasons.map(verdictReasonWords).join(", ") : "judge and plan ran",
+            },
           ]}
         />
         </div>
