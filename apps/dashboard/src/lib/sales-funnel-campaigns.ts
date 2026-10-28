@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 import { ExpectedReturnSchema } from "./expected-return";
+import { PlanCheckSchema } from "./plan-following";
 
 export const SalesFunnelUnitSchema = z
   .object({
@@ -18,6 +19,10 @@ export const SalesFunnelUnitSchema = z
     status: z.string(),
     workflowSlug: z.string().nullable(),
     name: z.string(),
+    // FACTORY-P1-PLAN-FOLLOWING (campaign-service #808): the funnel this part runs on now, and "draining" when its pipe
+    // left the plan (it answers the people it already owes, takes no new people). Nullish: older bodies carry neither.
+    salesFunnelId: z.string().nullish(),
+    planRole: z.string().nullish(),
   })
   .passthrough();
 export type SalesFunnelUnit = z.infer<typeof SalesFunnelUnitSchema>;
@@ -39,6 +44,11 @@ export const SalesFunnelCampaignSchema = z
     briefUpdatedByUserId: z.string().nullish(),
     mode: z.string().nullish(),
     triggerId: z.string().nullish(),
+    // FACTORY-P1-PLAN-FOLLOWING (campaign-service #808): the switch (off = a fixed funnel), the funnel it runs now, and
+    // the plan follower's last check (null = never checked). Nullish until every cached body carries them.
+    followsPlan: z.boolean().nullish(),
+    runningSalesFunnelId: z.string().nullish(),
+    planCheck: PlanCheckSchema.nullish(),
     createdAt: z.string(),
     updatedAt: z.string(),
     units: z.array(SalesFunnelUnitSchema),

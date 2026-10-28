@@ -48,7 +48,8 @@ import { PlugsConnectedIcon } from "@phosphor-icons/react/dist/csr/PlugsConnecte
 import { ConnectorIntakePage, ConnectorIntakeTile, useConnectorIntake } from "@/components/v2/monitoring-connectors";
 import { connectionName, redConnections } from "@/lib/monitoring/connector-intake";
 import { StrategyIcon } from "@phosphor-icons/react/dist/csr/Strategy";
-import { FactoryShadowPage, FactoryShadowTile, useFactoryShadowMonitoring } from "@/components/v2/monitoring-factory";
+import { FactoryShadowPage, FactoryShadowTile, PlanFollowingPage, PlanFollowingTile, useFactoryShadowMonitoring, usePlanFollowing } from "@/components/v2/monitoring-factory";
+import { planStateWords } from "@/lib/plan-following";
 import { verdictReasonWords } from "@/lib/factory-shadow";
 import { loadLabel, memLabel } from "@/lib/monitoring/box-health";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
@@ -172,6 +173,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "triggers/firing": { section: "triggers", title: "Firing", question: "Is any trigger our campaigns wait on broken?" },
   "tools/intake": { section: "tools", title: "Records taken in", question: "Does every tool a client connected still bring records in?" },
   "factory/plan": { section: "factory", title: "Would change", question: "Which client campaigns would change if they followed their plan?" },
+  "factory/following": { section: "factory", title: "Following its plan", question: "Does every campaign switched to its plan actually run it?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -326,6 +328,7 @@ export function V2Monitoring() {
         {view.page === "triggers/firing" && <TriggerHealthPage />}
         {view.page === "tools/intake" && <ConnectorIntakePage />}
         {view.page === "factory/plan" && <FactoryShadowPage />}
+        {view.page === "factory/following" && <PlanFollowingPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -423,6 +426,7 @@ function Hub({ base }: { base: string }) {
   const firing = useTriggerHealth();
   const tools = useConnectorIntake();
   const factory = useFactoryShadowMonitoring();
+  const following = usePlanFollowing();
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
@@ -463,6 +467,8 @@ function Hub({ base }: { base: string }) {
         <ConnectorIntakeTile href={href("tools/intake")} />
         {/* The GTM Factory shadow pass failed to judge or plan a live campaign, or stopped running (FACTORY-P1-DASH): red here IS the alert, never an email. */}
         <FactoryShadowTile href={href("factory/plan")} />
+        {/* A campaign switched to follow its plan that cannot apply it, or the follower went silent (FACTORY-P1-PLAN-FOLLOWING-DASH): red here IS the alert, never an email. */}
+        <PlanFollowingTile href={href("factory/following")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -796,10 +802,11 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={1}>Factory plan</SectionTitle>
-      <Section section="factory" count={1} grid={false}>
+      <SectionTitle count={2}>Factory plan</SectionTitle>
+      <Section section="factory" count={2} grid={false}>
         <HubChips>
           <HubChip href={href("factory/plan")} color={factory.data?.verdict.red ? "var(--data-rose)" : "var(--data-violet)"} label="Would change" />
+          <HubChip href={href("factory/following")} color={following.data?.status === "red" ? "var(--data-rose)" : "var(--data-violet)"} label="Following its plan" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -819,6 +826,28 @@ function Hub({ base }: { base: string }) {
                 <span style={{ color: factory.data.verdict.red ? "var(--data-rose)" : undefined }}>{factory.data.verdict.red ? "Red" : "OK"}</span>
               ),
               note: factory.data?.verdict.red ? factory.data.verdict.reasons.map(verdictReasonWords).join(", ") : "judge and plan ran",
+            },
+          ]}
+        />
+        <Card
+          href={href("factory/following")}
+          page="factory/following"
+          error={following.isError && !following.data}
+          cells={[
+            {
+              label: "Cannot follow",
+              value: following.data && (
+                <span style={{ color: following.data.status === "red" ? "var(--data-rose)" : undefined }}>{following.data.red.length}</span>
+              ),
+              note: following.data
+                ? following.data.staleReason ?? (following.data.red.map((c) => `${c.salesFunnelName}: ${planStateWords(c.state).words}`).join("; ") || "none")
+                : undefined,
+            },
+            {
+              label: "Following",
+              value: following.data?.following,
+              note: "switched campaigns",
+              bars: following.data?.byDay.map((d) => d.following),
             },
           ]}
         />

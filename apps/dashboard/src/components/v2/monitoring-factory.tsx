@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getStaffBrands, getStaffFactoryShadowMonitoring } from "@/lib/api";
+import { getStaffBrands, getStaffFactoryShadowMonitoring, getStaffPlanFollowing } from "@/lib/api";
+import { planStateWords, type PlanFollowing } from "@/lib/plan-following";
 import type { StaffBrand } from "@/lib/monitoring/monitoring";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { PeriodBars, SERIES_COLORS, dayLabel } from "@/components/v2/monitoring-charts";
@@ -214,6 +215,120 @@ export function FactoryShadowTile({ href }: { href: string }) {
           )
         }
         sub={!data ? undefined : data.verdict.red ? data.verdict.reasons.map(verdictReasonWords).join(", ") : "judge and plan ran on every campaign"}
+      />
+    </StatTile>
+  );
+}
+
+// ─── Following its plan (campaign-service #808, FACTORY-P1-PLAN-FOLLOWING-DASH) ───
+
+export function usePlanFollowing() {
+  return useAuthQuery(["staffPlanFollowing", FACTORY_DAYS], () => getStaffPlanFollowing(FACTORY_DAYS), { ...pollOptions, retry: false });
+}
+
+/**
+ * Campaigns switched to follow their plan: how many each day, how many were red, how many plan changes were applied,
+ * then each red campaign with its served state in plain words. Red = the served status (a red state, or the follower
+ * silent for 30 min). No sort, no sum.
+ */
+export function PlanFollowingView({ data }: { data: PlanFollowing }) {
+  const names = useClientNames();
+  const red = data.status === "red";
+  const periods = data.byDay.map((d) => ({ ...d, period: d.day }));
+  const short = (d: string, s?: boolean) => dayLabel(d, s ? { month: "short", day: "numeric" } : undefined);
+  return (
+    <div className="space-y-8">
+      <div className="k-card flex items-start gap-3 px-4 py-3">
+        <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: red ? RED : OK }} aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="text-[14px] font-medium" style={red ? { color: RED } : undefined}>
+            {red
+              ? data.staleReason ?? `${data.red.length} campaign${data.red.length === 1 ? "" : "s"} cannot follow ${data.red.length === 1 ? "its" : "their"} plan.`
+              : data.following === 0
+                ? "No campaign follows its plan yet."
+                : `${data.following} campaign${data.following === 1 ? " follows its" : "s follow their"} plan, none in trouble.`}
+          </p>
+          <p className="k-fg3 mt-0.5 text-[12px]">Checked every 10 minutes. A campaign that cannot apply its plan keeps running what it ran.</p>
+        </div>
+      </div>
+
+      <section>
+        <SectionTitle count={data.red.length}>Cannot follow its plan</SectionTitle>
+        <div className="k-card overflow-hidden">
+          {data.red.length === 0 ? (
+            <EmptyNote>None.</EmptyNote>
+          ) : (
+            <table className="w-full table-fixed text-[13px]">
+              <thead>
+                <tr className="k-line-subtle border-b">
+                  <th className="k-label w-[28%] px-3 py-2.5 pl-4 text-left font-medium">Campaign</th>
+                  <th className="k-label w-[20%] px-3 py-2.5 text-left font-medium">Client</th>
+                  <th className="k-label px-3 py-2.5 text-left font-medium">Why</th>
+                  <th className="k-label w-[130px] px-3 py-2.5 pr-4 text-right font-medium">Checked</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.red.map((c) => (
+                  <tr key={c.salesFunnelCampaignId} className="k-line-subtle border-b last:border-b-0">
+                    <td className="truncate px-3 py-2 pl-4">{c.salesFunnelName}</td>
+                    <td className="k-fg2 truncate px-3 py-2">{names.brand(c.brandId)}</td>
+                    <td className="px-3 py-2" title={c.detail}>
+                      <span style={{ color: RED }}>{planStateWords(c.state).words}</span>
+                      {c.detail && <span className="k-fg3 block truncate text-[12px]">{c.detail}</span>}
+                    </td>
+                    <td className="k-mono k-fg2 px-3 py-2 pr-4 text-right text-[12px]">{utcTime(c.checkedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <SectionTitle right={<span>per day</span>}>Following its plan</SectionTitle>
+        <PeriodBars
+          periods={periods}
+          grouped
+          series={[
+            { key: "following", label: "Following", color: "var(--data-violet)", get: (d) => d.following },
+            { key: "red", label: "Red", color: RED, get: (d) => d.red },
+            { key: "changes", label: "Plan changes applied", color: "var(--data-teal)", get: (d) => d.changesApplied },
+          ]}
+          caption={(d) => `checked ${utcTime(d.checkedAt)} UTC`}
+          format={(v) => v.toLocaleString("en-US")}
+          label={short}
+          empty={`No campaign followed its plan in the last ${FACTORY_DAYS} days.`}
+        />
+      </section>
+    </div>
+  );
+}
+
+export function PlanFollowingPage() {
+  const q = usePlanFollowing();
+  if (q.isError && !q.data) return <Failed what="the campaigns following their plan" />;
+  if (!q.data) return <Loading />;
+  return <PlanFollowingView data={q.data} />;
+}
+
+/** The hub's one-second read: campaigns that cannot follow their plan, red on the served status. */
+export function PlanFollowingTile({ href }: { href: string }) {
+  const q = usePlanFollowing();
+  const data = q.data;
+  return (
+    <StatTile label="Plan not followed" note={data ? `of ${data.following} following` : undefined} href={href}>
+      <Figure
+        value={
+          q.isError && !data ? (
+            <span className="k-fg3 text-[13px]">not readable</span>
+          ) : !data ? (
+            <Shimmer className="h-6 w-16" />
+          ) : (
+            <span style={{ color: data.status === "red" ? RED : undefined }}>{data.red.length}</span>
+          )
+        }
+        sub={!data ? undefined : data.staleReason ?? (data.red.length ? data.red.map((c) => c.salesFunnelName).join(", ") : "every switched campaign runs its plan")}
       />
     </StatTile>
   );
