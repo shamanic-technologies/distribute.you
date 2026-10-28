@@ -34,7 +34,7 @@ import { AccountTypeSelect } from "@/components/v2/account-type-select";
  * the browser back here with `code` + `state`, and this card finishes the link under
  * the page's own org. No cap on accounts or per type.
  */
-export function ThreadsAccountsCard() {
+export function ThreadsAccountsCard({ bare = false }: { bare?: boolean }) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -107,7 +107,7 @@ export function ThreadsAccountsCard() {
   const busy = start.isPending || finish.isPending;
 
   return (
-    <div className="k-card p-4">
+    <div className={bare ? "p-5" : "k-card p-4"}>
       <div className="flex flex-wrap items-start gap-3">
         <span className="k-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px]">
           <ProviderLogo domain="threads.net" size={20} className="rounded-[4px]" />
