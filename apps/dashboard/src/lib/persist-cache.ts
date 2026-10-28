@@ -135,6 +135,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffFactoryShadow",
   "factoryShadowPlan",
   "staffPlanFollowing",
+  "salesFunnelPlanChanges",
   "staffOpsThreads",
   "staffOpsThreadMessages",
   "staffOpsInfra",

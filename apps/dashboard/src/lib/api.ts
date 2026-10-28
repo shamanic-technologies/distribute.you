@@ -2227,7 +2227,7 @@ import {
   type FactoryShadowPlan,
   type FactoryShadowMonitoring,
 } from "./factory-shadow";
-import { PlanFollowingSchema, type PlanFollowing } from "./plan-following";
+import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 
 /**
  * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
@@ -2249,6 +2249,15 @@ export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunne
 /** Monitoring > Factory plan > Following its plan: status, the red campaigns with their served state, one row per UTC day. */
 export async function getStaffPlanFollowing(days: number): Promise<PlanFollowing> {
   return parseStaff("getStaffPlanFollowing", PlanFollowingSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.planFollowing}?days=${days}`));
+}
+
+/** A funnel campaign's plan changes, newest first: when, from which sales funnel to which (campaign-service #808, api-service #1411). */
+export async function getSalesFunnelCampaignPlanChanges(id: string): Promise<PlanChanges> {
+  return parseStaff(
+    "getSalesFunnelCampaignPlanChanges",
+    PlanChangesSchema,
+    await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}/plan-changes`),
+  );
 }
 
 /** Monitoring > Factory plan: the served verdict, the last pass, one row per UTC day x org, the last pass's campaigns. */

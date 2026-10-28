@@ -4,7 +4,7 @@ import { Fragment, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getFunnelCampaignFactoryShadow, setSalesFunnelCampaignBrief } from "@/lib/api";
+import { getFunnelCampaignFactoryShadow, getSalesFunnelCampaignPlanChanges, setSalesFunnelCampaignBrief } from "@/lib/api";
 import {
   confidenceWords,
   isLowConfidence,
@@ -27,7 +27,8 @@ import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
-import { DRAINING_WORDS, followsPlanWords, isDraining, planStateWords } from "@/lib/plan-following";
+import { DRAINING_WORDS, followsPlanWords, isDraining, planStateWords, type PlanChange } from "@/lib/plan-following";
+import { useStaffCatalogueObject } from "@/components/v2/staff-catalogue-data";
 
 /**
  * GTM FACTORY STEP 1 on the campaign page, STAFF MODE ONLY (owner 2026-10-28, FACTORY-P1-DASH): what the campaign
@@ -91,6 +92,7 @@ function FactoryPlanBody({ campaign, type }: { campaign: SalesFunnelCampaign; ty
           </div>
         </div>
         {campaign.followsPlan != null && <PlanSwitchRow campaign={campaign} />}
+        <PlanChangesRow campaignId={campaign.id} />
         {!settled ? (
           <div className="space-y-2 px-4 py-3.5">
             <Shimmer className="h-5 w-2/3" />
@@ -158,6 +160,69 @@ function PlanSwitchRow({ campaign }: { campaign: SalesFunnelCampaign }) {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Plan changes (campaign-service #808 via api-service #1411), read only ───
+
+/** Shown only once the read answers with at least one change: no row while loading, failed or empty. */
+function PlanChangesRow({ campaignId }: { campaignId: string }) {
+  const q = useAuthQuery(["salesFunnelPlanChanges", campaignId], () => getSalesFunnelCampaignPlanChanges(campaignId), { ...pollOptions, retry: false });
+  const changes = q.data?.changes ?? [];
+  if (changes.length === 0) return null;
+  return (
+    <div className="grid gap-4 px-4 py-3.5 md:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="min-w-0">
+        <p className="k-label">Plan changes</p>
+        <p className="mt-1.5 text-[14px] font-medium tabular-nums">{changes.length}</p>
+      </div>
+      <ul className="min-w-0 space-y-2">
+        {changes.map((c) => (
+          <PlanChangeLine key={c.id} change={c} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function PlanChangeLine({ change }: { change: PlanChange }) {
+  return (
+    <li className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-2 text-[12px]">
+      <span className="k-mono k-fg2 pt-0.5">{utcTime(change.appliedAt)} UTC</span>
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <FunnelPipes salesFunnelId={change.fromSalesFunnelId} />
+        <span className="k-fg3" aria-label="to">
+          →
+        </span>
+        <FunnelPipes salesFunnelId={change.toSalesFunnelId} />
+      </span>
+    </li>
+  );
+}
+
+/** A sales funnel as its pipes, each by its served mark and name (features-service catalogue). */
+function FunnelPipes({ salesFunnelId }: { salesFunnelId: string }) {
+  const q = useStaffCatalogueObject("sales-funnels", salesFunnelId);
+  const funnel = q.data;
+  if (!funnel) {
+    if (q.isError) return <span className="k-mono k-fg3 text-[11px]">{salesFunnelId}</span>;
+    return <Shimmer className="h-5 w-40" />;
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {funnel.legs.map((l, i) =>
+        l.pipe ? (
+          <span key={`${l.legKey}-${i}`} className="k-chip inline-flex items-center gap-1">
+            <ServedPipeMark pipeId={l.pipe.id} size={14} />
+            {l.pipe.name ?? <span className="k-mono">{l.pipe.id}</span>}
+          </span>
+        ) : (
+          <span key={`${l.legKey}-${i}`} className="k-chip k-fg3 k-mono">
+            {l.legKey}
+          </span>
+        ),
+      )}
+    </span>
   );
 }
 
