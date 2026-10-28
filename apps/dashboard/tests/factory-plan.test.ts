@@ -65,7 +65,7 @@ describe("factory shadow: features-service's per-campaign read parses as served"
     expect(isLowConfidence(0.31)).toBe(true);
     expect(isLowConfidence(0.9)).toBe(false);
     expect(isLowConfidence(null)).toBe(false);
-    expect(pickSourceWords("empty_brief")).toBe("no brief: the default play");
+    expect(pickSourceWords("empty_brief")).toBe("default, no brief");
     expect(pickSourceWords("jev")).toBeNull();
   });
 

@@ -196,24 +196,24 @@ export function FactoryShadowPage() {
   return <FactoryShadowView data={q.data} />;
 }
 
-/** The hub's one-second read: red when the served verdict is, the reasons under it. */
+/** The hub's one-second read: the campaigns the last pass failed on, red when the served verdict is, the reasons under it. */
 export function FactoryShadowTile({ href }: { href: string }) {
   const q = useFactoryShadowMonitoring();
   const data = q.data;
-  const latest = data?.series[data.series.length - 1];
+  const failed = data ? failedCampaigns(data) : undefined;
   return (
-    <StatTile label="Factory plan" note={latest ? `of ${latest.campaigns} live` : undefined} href={href}>
+    <StatTile label="Factory plan failed" note={data?.lastPass ? `of ${data.lastPass.campaigns} live` : undefined} href={href}>
       <Figure
         value={
           q.isError && !data ? (
             <span className="k-fg3 text-[13px]">not readable</span>
-          ) : !data ? (
+          ) : !data || failed === undefined ? (
             <Shimmer className="h-6 w-16" />
           ) : (
-            <span style={{ color: data.verdict.red ? RED : undefined }}>{latest ? latest.differs : 0}</span>
+            <span style={{ color: data.verdict.red ? RED : undefined }}>{failed.length}</span>
           )
         }
-        sub={!data ? undefined : data.verdict.red ? data.verdict.reasons.map(verdictReasonWords).join(", ") : "would change if they followed their plan"}
+        sub={!data ? undefined : data.verdict.red ? data.verdict.reasons.map(verdictReasonWords).join(", ") : "judge and plan ran on every campaign"}
       />
     </StatTile>
   );

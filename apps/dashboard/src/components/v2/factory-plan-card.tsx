@@ -342,7 +342,9 @@ function PipeLine({ line, catalogue, startStep }: { line: FactoryPlanLine; catal
 
 function PicksTable({ picks }: { picks: FactoryShadowPick[] }) {
   return (
-    <div className="k-card mt-3 overflow-hidden">
+    <div className="mt-6">
+    <SectionTitle count={picks.length}>Play per pipe</SectionTitle>
+    <div className="k-card overflow-hidden">
       <div className="k-scroll overflow-x-auto">
         <table className="w-full min-w-[640px] text-[13px]">
           <thead>
@@ -350,7 +352,7 @@ function PicksTable({ picks }: { picks: FactoryShadowPick[] }) {
               <th className="k-label px-3 py-2.5 pl-4 text-left font-medium">Pipe</th>
               <th className="k-label px-3 py-2.5 text-left font-medium">Play running</th>
               <th className="k-label px-3 py-2.5 text-left font-medium">Jev&apos;s pick from the brief</th>
-              <th className="k-label w-[120px] px-3 py-2.5 pr-4 text-right font-medium">Confidence</th>
+              <th className="k-label w-[150px] px-3 py-2.5 pr-4 text-right font-medium">Confidence</th>
             </tr>
           </thead>
           <tbody>
@@ -380,7 +382,7 @@ function PicksTable({ picks }: { picks: FactoryShadowPick[] }) {
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2 pr-4 text-right tabular-nums">
+                <td className="whitespace-nowrap px-3 py-2 pr-4 text-right tabular-nums">
                   {confidenceWords(p.confidence) ? (
                     <span style={isLowConfidence(p.confidence) ? { color: ROSE } : undefined}>{confidenceWords(p.confidence)}</span>
                   ) : (
@@ -392,6 +394,7 @@ function PicksTable({ picks }: { picks: FactoryShadowPick[] }) {
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   );
 }

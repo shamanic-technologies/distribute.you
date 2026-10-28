@@ -226,7 +226,7 @@ export function confidenceWords(confidence: number | null): string | null {
 }
 
 const PICK_SOURCE_WORDS: Record<string, string> = {
-  empty_brief: "no brief: the default play",
+  empty_brief: "default, no brief",
   single_play: "only one play",
 };
 
