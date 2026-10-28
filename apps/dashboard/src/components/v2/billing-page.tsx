@@ -27,7 +27,8 @@ import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner";
 import { CardChangeConfirmModal } from "@/components/billing/card-change-confirm-modal";
 import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm-modal";
-import { EmptyNote, Figure, Meter, Shimmer, TopBar } from "@/components/v2/ui";
+import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
+import { CreditBalanceCard, PostpaidOwedCard } from "@/components/v2/balance-hero";
 import { MonthlyLimitCard } from "@/components/v2/monthly-limit-card";
 
 /**
@@ -138,6 +139,8 @@ export function V2BillingPage() {
   const balanceFigure = formatBillingCents(onCredit ? Math.abs(available) : account?.balance_cents ?? "0");
   const expiry = cardExpiryLabel(account?.card_exp_month, account?.card_exp_year);
   const owed = postpaidOwed(account);
+  const cardName =
+    account?.card_brand && account?.card_last4 ? `${cardBrandLabel(account.card_brand)} ending ${account.card_last4}` : null;
   const customCents = c.customAmount ? Math.round(parseFloat(c.customAmount) * 100) || 0 : c.topupSelected;
 
   const sub = c.accountPending
@@ -237,11 +240,6 @@ export function V2BillingPage() {
         )}
         {c.showSuccess && <Note tone="teal">Payment received. Your credit has been added.</Note>}
         {c.error && <Note tone="rose">{c.error}</Note>}
-        {c.hasUsageDiscount && (
-          <Note tone="teal">
-            You have {c.usageDiscountPct}% off all usage. It comes off every charge automatically.
-          </Note>
-        )}
         {mode === "prepaid" && c.isDepleted && (
           <Note tone="amber">Your credit has run out. Add credit to keep your campaigns running.</Note>
         )}
@@ -249,51 +247,45 @@ export function V2BillingPage() {
           <Note tone="amber">Add a card so your campaigns can run on credit.</Note>
         )}
 
-        {/* Balance: one card split into cells, the Keel KPI strip. */}
+        {/* Balance: ONE figure answering the mode's question, its parts as a stacked bar
+            (owner 2026-10-29: four equal KPI cells read « le moins clair du monde »). Postpaid
+            reads like Google Ads, prepaid like the OpenAI / Anthropic consoles, a plan like Vercel. */}
         <Section
           id="balance"
           first
           title="Balance"
-          description="What you can spend now, and how it adds up: every credit added, minus what was billed and what is set aside for follow-ups already scheduled."
+          description={
+            mode === "postpaid"
+              ? "What you have spent so far, and when your card is charged."
+              : "What you can still spend, and where your credit went."
+          }
         >
-          <div className="k-card grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-4 md:divide-x">
-            {c.accountPending
-              ? [0, 1, 2, 3].map((i) => (
-                  <div key={i} className="space-y-2 p-4">
-                    <Shimmer className="h-3 w-20" />
-                    <Shimmer className="h-6 w-24" />
-                  </div>
-                ))
-              : [
-                  mode === "postpaid" && owed.owedCents !== null
-                    ? { label: "Current balance", value: formatCentsAsUsd(owed.owedCents, 2), strong: true }
-                    : { label: onCredit ? "Spent on credit" : "Available", value: balanceFigure, strong: true },
-                  { label: "Total credits", value: formatBillingCents(account?.credited_cents ?? "0") },
-                  ...(c.confirmedChargesCents !== null && c.provisionedChargesCents !== null
-                    ? [
-                        { label: "Billed", value: formatBillingCents(c.confirmedChargesCents) },
-                        { label: "Set aside", value: formatBillingCents(c.provisionedChargesCents) },
-                      ]
-                    : [{ label: "Charges", value: formatBillingCents(c.totalChargesCents) }]),
-                ].map((cell) => (
-                  <div key={cell.label} className="p-4">
-                    <p className="k-label">{cell.label}</p>
-                    <div className="mt-1.5">
-                      <Figure value={cell.value} />
-                    </div>
-                  </div>
-                ))}
-          </div>
+          {c.accountPending ? (
+            <div className="k-card space-y-3 p-5">
+              <Shimmer className="h-3 w-24" />
+              <Shimmer className="h-8 w-32" />
+              <Shimmer className="h-2 w-full" />
+            </div>
+          ) : mode === "postpaid" ? (
+            <PostpaidOwedCard
+              owed={owed}
+              nextChargeDate={c.nextChargeDate}
+              charging={!!account?.has_payment_method && c.autoReloadSupported}
+              cardName={cardName}
+              provisionedCents={c.provisionedChargesCents}
+              discountPct={c.hasUsageDiscount ? c.usageDiscountPct : null}
+            />
+          ) : (
+            <CreditBalanceCard
+              availableCents={c.availableCents}
+              creditedCents={parseFloat(account?.credited_cents ?? "0")}
+              spentCents={c.confirmedChargesCents}
+              provisionedCents={c.provisionedChargesCents}
+              chargesCents={c.totalChargesCents}
+              discountPct={c.hasUsageDiscount ? c.usageDiscountPct : null}
+            />
+          )}
         </Section>
-
-        {/* Postpaid works like Google Ads (owner 2026-10-21: « postpaid est censé être le plus
-            simple, invisible, transparent, non topic »): the card is charged automatically, no
-            Pay now, no top-up, no Add credit. One line says when the next payment happens. */}
-        {mode === "postpaid" && account?.has_payment_method && c.autoReloadSupported && (
-          <Section id="owed" title="Next automatic payment" description="Charged automatically to your card.">
-            <PostpaidOwedCard owed={owed} nextChargeDate={c.nextChargeDate} />
-          </Section>
-        )}
 
         {/* The monthly plan, for an org on one: its own row, the Balance strip's anatomy. */}
         {mode === "subscription" && (
@@ -633,35 +625,6 @@ export function V2BillingPage() {
   );
 }
 
-/** The postpaid card, Google Ads style: when the next automatic payment happens. No button. */
-function PostpaidOwedCard({ owed, nextChargeDate }: { owed: ReturnType<typeof postpaidOwed>; nextChargeDate: string }) {
-  if (owed.owedCents === null) {
-    return (
-      <div className="k-card p-4">
-        <p className="k-fg3 text-[12px]">We could not read your balance right now.</p>
-      </div>
-    );
-  }
-  const line = owed.creditLineCents !== null && owed.creditLineCents > 0 ? owed.creditLineCents : null;
-  return (
-    <div className="k-card p-4">
-      <p className="k-fg2 text-[13px] leading-5">
-        {line !== null
-          ? `Your next automatic payment is when your costs reach ${formatCentsAsUsd(line, 0)} or on ${nextChargeDate}, whichever comes first.`
-          : `Your next automatic payment is on ${nextChargeDate}.`}
-      </p>
-      {line !== null && (
-        <div className="mt-3">
-          <Meter value={Math.min(owed.owedCents, line)} max={line} />
-          <p className="k-fg3 mt-1.5 text-[12px] tabular-nums">
-            {formatCentsAsUsd(owed.owedCents, 2)} of {formatCentsAsUsd(line, 0)}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** Dollars to cents without float noise (0.1 * 100 would ceil to 11). */
 function usdToCents(usd: number): number {
   return Math.round(usd * 1e6) / 1e4;
@@ -728,7 +691,7 @@ function UsageSection({ billedCents, setAsideCents }: { billedCents: number | nu
                 <p className="text-[13px] font-semibold">Total</p>
                 {setAsideCentsServed >= 0.5 && (
                   <p className="k-fg3 text-[12px]">
-                    Plus {formatBillingCents(setAsideCentsServed)} set aside for emails already scheduled.
+                    Plus {formatBillingCents(setAsideCentsServed)} provisioned for emails already scheduled.
                   </p>
                 )}
                 {coveredCents >= 0.5 && (
