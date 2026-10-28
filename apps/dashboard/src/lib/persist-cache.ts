@@ -129,6 +129,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffTriggerReports",
   "staffStuckOccurrences",
   "staffTriggerHealth",
+  // Monitoring > Connected tools: records each client tool takes in per day (CONNECTOR-INTAKE-MONITORING-1028).
+  "staffConnectorIntake",
   "staffOpsThreads",
   "staffOpsThreadMessages",
   "staffOpsInfra",

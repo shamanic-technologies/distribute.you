@@ -2060,6 +2060,8 @@ export const STAFF_MONITORING_PATHS = {
   stuckOccurrences: "/campaigns/ops/stuck-occurrences",
   // Whether each trigger a live campaign waits on still fires, per day + the served verdict (campaign-service, TRIGGER-HEALTH-1028).
   triggerHealth: "/campaigns/ops/trigger-health",
+  // Per tool a client connected (GoHighLevel, PostHog, Stripe, Clerk): records taken in per day + the served verdict (crm-service, CONNECTOR-INTAKE-MONITORING-1028).
+  connectorIntake: "/crm/ops/connector-intake",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -13113,6 +13115,14 @@ import { TriggerReportsSchema as StaffTriggerReportsSchema, type TriggerReports 
 /** Every crm-service trigger report over the last `days` UTC days, with crm-service's served verdict (api-service #1386). */
 export async function getStaffTriggerReports(days: number): Promise<StaffTriggerReports> {
   return parseStaff("getStaffTriggerReports", StaffTriggerReportsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.triggerReports}?days=${days}`));
+}
+
+// ─── Monitoring > Connected tools (CONNECTOR-INTAKE-MONITORING-1028) ───
+import { ConnectorIntakeSchema as StaffConnectorIntakeSchema, type ConnectorIntake as StaffConnectorIntake } from "./monitoring/connector-intake";
+
+/** Every tool a client connected, its records per day over the last `days` UTC days and crm-service's served verdict (api-service gateway). */
+export async function getStaffConnectorIntake(days: number): Promise<StaffConnectorIntake> {
+  return parseStaff("getStaffConnectorIntake", StaffConnectorIntakeSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.connectorIntake}?days=${days}`));
 }
 
 // ─── Monitoring > Triggers > Prospects waiting (REACTIVE-THROUGHPUT-1028) ───
