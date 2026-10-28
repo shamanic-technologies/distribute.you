@@ -276,10 +276,10 @@ export function volumeUnitWords(unit: string | null, type: FunnelType | null, co
       return count === 1 ? "new person" : "new people";
     case "prospects_handled":
       return count === 1 ? "lead handled" : "leads handled";
-    // billing counts an organic posting pipe in the posts it published (Threads posts, the industry video):
-    // its `post_published` / `industry_update_video` outcomes (THREADS-CAMPAIGN-1028).
+    // billing counts such a pipe in the results its own step produced (a Threads post, the industry video, any
+    // outcome its campaign runs declare): one word for every channel (THREADS-CAMPAIGN-1028).
     case "outcomes_produced":
-      return count === 1 ? "post" : "posts";
+      return count === 1 ? "result" : "results";
     case null:
       return count === 1 ? "person" : "people";
     default:
