@@ -1,0 +1,699 @@
+{
+ "proactive": {
+  "plan": {
+   "mode": "proactive",
+   "shadow": {
+    "legs": [
+     {
+      "legKey": "start_to_lead_found",
+      "pipeId": "sourcing-crm-contacts|start_to_lead_found",
+      "playId": "sourcing-crm-contacts|start_to_lead_found",
+      "channelName": "Your CRM Contacts",
+      "channelSlug": "sourcing-crm-contacts",
+      "strategyName": "Everyone in the source"
+     },
+     {
+      "legKey": "lead_found_to_conversation",
+      "pipeId": "ai-follow-up-email|lead_found_to_conversation",
+      "playId": null,
+      "channelName": "AI Follow-up Email",
+      "channelSlug": "ai-follow-up-email",
+      "strategyName": null
+     },
+     {
+      "legKey": "conversation_to_paid_client",
+      "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+      "playId": null,
+      "channelName": "Your Team Reply Closing",
+      "channelSlug": "your-team-reply-closing",
+      "strategyName": null
+     }
+    ],
+    "line": "Start \u2192 [Your CRM Contacts] \u2192 Lead \u2192 [AI Follow-up Email] \u2192 Positive reply \u2192 [Your Team Reply Closing] \u2192 Paid client",
+    "figures": {
+     "roi": 0.15,
+     "legs": [
+      {
+       "legKey": "start_to_lead_found",
+       "pipeId": "sourcing-crm-contacts|start_to_lead_found",
+       "ratePct": null,
+       "costBasis": "measured",
+       "rateBasis": null,
+       "costSource": "workflow",
+       "rateSource": null,
+       "costPerOutcomeUsd": 0.03,
+       "outcomesNeededPerPayingClient": 11427.91
+      },
+      {
+       "legKey": "lead_found_to_conversation",
+       "pipeId": "ai-follow-up-email|lead_found_to_conversation",
+       "ratePct": 0.17501017501017502,
+       "costBasis": "fleet",
+       "rateBasis": "measured",
+       "costSource": "same_leg_fleet",
+       "rateSource": "measured_pipe",
+       "costPerOutcomeUsd": 151.9,
+       "outcomesNeededPerPayingClient": 20
+      },
+      {
+       "legKey": "conversation_to_paid_client",
+       "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+       "ratePct": 5,
+       "costBasis": null,
+       "rateBasis": "default",
+       "costSource": "customer_team",
+       "rateSource": "default",
+       "costPerOutcomeUsd": 0,
+       "outcomesNeededPerPayingClient": 1
+      }
+     ],
+     "basis": "default",
+     "targetValueUsd": 500,
+     "costPerTargetUsd": 3369.3,
+     "unavailableReason": null
+    },
+    "funnelId": "start_to_lead_found@sourcing-crm-contacts+lead_found_to_conversation@ai-follow-up-email+conversation_to_paid_client"
+   },
+   "target": "paid_client",
+   "running": {
+    "legs": [
+     {
+      "legKey": "start_to_lead_found",
+      "pipeId": "lead-sourcing|start_to_lead_found~lead-follow-up-due",
+      "playId": "lead-sourcing|start_to_lead_found~lead-follow-up-due",
+      "channelName": "Lead Sourcing",
+      "channelSlug": "lead-sourcing",
+      "strategyName": "Lead follow-up due"
+     },
+     {
+      "legKey": "lead_found_to_conversation",
+      "pipeId": "ai-follow-up-email|lead_found_to_conversation",
+      "playId": null,
+      "channelName": "AI Follow-up Email",
+      "channelSlug": "ai-follow-up-email",
+      "strategyName": null
+     },
+     {
+      "legKey": "conversation_to_paid_client",
+      "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+      "playId": null,
+      "channelName": "Your Team Reply Closing",
+      "channelSlug": "your-team-reply-closing",
+      "strategyName": null
+     }
+    ],
+    "line": "Start \u2192 [Lead Sourcing] \u2192 Lead \u2192 [AI Follow-up Email] \u2192 Positive reply \u2192 [Your Team Reply Closing] \u2192 Paid client",
+    "figures": {
+     "roi": 0.14,
+     "legs": [
+      {
+       "legKey": "start_to_lead_found",
+       "pipeId": "lead-sourcing|start_to_lead_found~lead-follow-up-due",
+       "ratePct": null,
+       "costBasis": "measured",
+       "rateBasis": null,
+       "costSource": "workflow",
+       "rateSource": null,
+       "costPerOutcomeUsd": 0.04,
+       "outcomesNeededPerPayingClient": 11427.91
+      },
+      {
+       "legKey": "lead_found_to_conversation",
+       "pipeId": "ai-follow-up-email|lead_found_to_conversation",
+       "ratePct": 0.17501017501017502,
+       "costBasis": "fleet",
+       "rateBasis": "measured",
+       "costSource": "same_leg_fleet",
+       "rateSource": "measured_pipe",
+       "costPerOutcomeUsd": 151.9,
+       "outcomesNeededPerPayingClient": 20
+      },
+      {
+       "legKey": "conversation_to_paid_client",
+       "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+       "ratePct": 5,
+       "costBasis": null,
+       "rateBasis": "default",
+       "costSource": "customer_team",
+       "rateSource": "default",
+       "costPerOutcomeUsd": 0,
+       "outcomesNeededPerPayingClient": 1
+      }
+     ],
+     "basis": "default",
+     "targetValueUsd": 500,
+     "costPerTargetUsd": 3473.72,
+     "unavailableReason": null
+    },
+    "funnelId": "start_to_lead_found@lead-sourcing~lead-follow-up-due+lead_found_to_conversation@ai-follow-up-email+conversation_to_paid_client",
+    "reachesTarget": true
+   },
+   "startStep": null,
+   "triggerId": null,
+   "planDiffers": true,
+   "targetSource": "campaign",
+   "candidatesPriced": 69,
+   "candidatesSetAside": 11,
+   "shadowUnavailableReason": null
+  },
+  "brief": null,
+  "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+  "picks": [
+   {
+    "source": "empty_brief",
+    "differs": true,
+    "failure": null,
+    "basePipeId": "lead-sourcing|start_to_lead_found",
+    "confidence": null,
+    "channelName": "Lead Sourcing",
+    "pickedPipeId": "lead-sourcing|start_to_lead_found",
+    "runningPipeId": "lead-sourcing|start_to_lead_found~lead-follow-up-due",
+    "pickedPlayName": "Valid only",
+    "inRunningFunnel": true,
+    "runningPlayName": "Lead follow-up due"
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "ai-follow-up-email|start_to_paid_client",
+    "confidence": null,
+    "channelName": "AI Follow-up Email",
+    "pickedPipeId": "ai-follow-up-email|start_to_paid_client",
+    "runningPipeId": null,
+    "pickedPlayName": "Leads only, written by GLM",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "ai-instant-call|conversation_to_booking_call",
+    "confidence": null,
+    "channelName": "AI Instant Call",
+    "pickedPipeId": "ai-instant-call|conversation_to_booking_call",
+    "runningPipeId": null,
+    "pickedPlayName": "Default",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "ai-meeting-booking|conversation_to_meeting_booked",
+    "confidence": null,
+    "channelName": "AI Meeting Booking",
+    "pickedPipeId": "ai-meeting-booking|conversation_to_meeting_booked",
+    "runningPipeId": null,
+    "pickedPlayName": "Leads only",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "sales-cold-email-outreach|lead_found_to_conversation",
+    "confidence": null,
+    "channelName": "Sales Cold Email Outreach",
+    "pickedPipeId": "sales-cold-email-outreach|lead_found_to_conversation",
+    "runningPipeId": null,
+    "pickedPlayName": "Default",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "sourcing-crm-contacts|start_to_lead_found",
+    "confidence": null,
+    "channelName": "Your CRM Contacts",
+    "pickedPipeId": "sourcing-crm-contacts|start_to_lead_found",
+    "runningPipeId": null,
+    "pickedPlayName": "Everyone in the source",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   }
+  ],
+  "status": "ok",
+  "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+  "failure": null,
+  "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+  "campaignId": "891cc349-622c-461c-b7d5-97fcdd440949",
+  "computedAt": "2026-10-28T19:12:59.644Z",
+  "pickDiffers": true,
+  "salesFunnelId": "start_to_lead_found@lead-sourcing~lead-follow-up-due+lead_found_to_conversation@ai-follow-up-email+conversation_to_paid_client",
+  "briefUpdatedAt": null,
+  "salesFunnelName": "Active Follow-up Replies"
+ },
+ "reactive": {
+  "plan": {
+   "mode": "reactive",
+   "shadow": {
+    "legs": [
+     {
+      "legKey": "start_to_lead_found",
+      "pipeId": "sourcing-crm-contacts|start_to_lead_found",
+      "playId": "sourcing-crm-contacts|start_to_lead_found",
+      "channelName": "Your CRM Contacts",
+      "channelSlug": "sourcing-crm-contacts",
+      "strategyName": "Everyone in the source"
+     },
+     {
+      "legKey": "lead_found_to_conversation",
+      "pipeId": "ai-follow-up-email|lead_found_to_conversation",
+      "playId": null,
+      "channelName": "AI Follow-up Email",
+      "channelSlug": "ai-follow-up-email",
+      "strategyName": null
+     },
+     {
+      "legKey": "conversation_to_paid_client",
+      "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+      "playId": null,
+      "channelName": "Your Team Reply Closing",
+      "channelSlug": "your-team-reply-closing",
+      "strategyName": null
+     }
+    ],
+    "line": "Start \u2192 [Your CRM Contacts] \u2192 Lead \u2192 [AI Follow-up Email] \u2192 Positive reply \u2192 [Your Team Reply Closing] \u2192 Paid client",
+    "figures": {
+     "roi": 0.15,
+     "legs": [
+      {
+       "legKey": "start_to_lead_found",
+       "pipeId": "sourcing-crm-contacts|start_to_lead_found",
+       "ratePct": null,
+       "costBasis": "measured",
+       "rateBasis": null,
+       "costSource": "workflow",
+       "rateSource": null,
+       "costPerOutcomeUsd": 0.03,
+       "outcomesNeededPerPayingClient": 11427.91
+      },
+      {
+       "legKey": "lead_found_to_conversation",
+       "pipeId": "ai-follow-up-email|lead_found_to_conversation",
+       "ratePct": 0.17501017501017502,
+       "costBasis": "fleet",
+       "rateBasis": "measured",
+       "costSource": "same_leg_fleet",
+       "rateSource": "measured_pipe",
+       "costPerOutcomeUsd": 151.9,
+       "outcomesNeededPerPayingClient": 20
+      },
+      {
+       "legKey": "conversation_to_paid_client",
+       "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+       "ratePct": 5,
+       "costBasis": null,
+       "rateBasis": "default",
+       "costSource": "customer_team",
+       "rateSource": "default",
+       "costPerOutcomeUsd": 0,
+       "outcomesNeededPerPayingClient": 1
+      }
+     ],
+     "basis": "default",
+     "targetValueUsd": 500,
+     "costPerTargetUsd": 3369.3,
+     "unavailableReason": null
+    },
+    "funnelId": "trigger:lead_event+start_to_lead_found@sourcing-crm-contacts+lead_found_to_conversation@ai-follow-up-email+conversation_to_paid_client"
+   },
+   "target": "paid_client",
+   "running": {
+    "legs": [
+     {
+      "legKey": "start_to_paid_client",
+      "pipeId": "ai-follow-up-email|start_to_paid_client",
+      "playId": "ai-follow-up-email|start_to_paid_client",
+      "channelName": "AI Follow-up Email",
+      "channelSlug": "ai-follow-up-email",
+      "strategyName": "Leads only, written by GLM"
+     }
+    ],
+    "line": "Start \u2192 [AI Follow-up Email] \u2192 Paid client",
+    "figures": {
+     "roi": null,
+     "legs": [
+      {
+       "legKey": "start_to_paid_client",
+       "pipeId": "ai-follow-up-email|start_to_paid_client",
+       "ratePct": null,
+       "costBasis": null,
+       "rateBasis": null,
+       "costSource": null,
+       "rateSource": null,
+       "costPerOutcomeUsd": null,
+       "outcomesNeededPerPayingClient": 1
+      }
+     ],
+     "basis": null,
+     "targetValueUsd": 500,
+     "costPerTargetUsd": null,
+     "unavailableReason": "pipe_unpriced:ai-follow-up-email|start_to_paid_client"
+    },
+    "funnelId": "trigger:lead_event+start_to_paid_client@ai-follow-up-email",
+    "reachesTarget": true
+   },
+   "startStep": null,
+   "triggerId": "lead_event",
+   "planDiffers": true,
+   "targetSource": "campaign",
+   "candidatesPriced": 124,
+   "candidatesSetAside": 11,
+   "shadowUnavailableReason": null
+  },
+  "brief": null,
+  "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+  "picks": [
+   {
+    "source": "empty_brief",
+    "differs": false,
+    "failure": null,
+    "basePipeId": "ai-follow-up-email|start_to_paid_client",
+    "confidence": null,
+    "channelName": "AI Follow-up Email",
+    "pickedPipeId": "ai-follow-up-email|start_to_paid_client",
+    "runningPipeId": "ai-follow-up-email|start_to_paid_client",
+    "pickedPlayName": "Leads only, written by GLM",
+    "inRunningFunnel": true,
+    "runningPlayName": "Leads only, written by GLM"
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "ai-instant-call|conversation_to_booking_call",
+    "confidence": null,
+    "channelName": "AI Instant Call",
+    "pickedPipeId": "ai-instant-call|conversation_to_booking_call",
+    "runningPipeId": null,
+    "pickedPlayName": "Default",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "ai-meeting-booking|conversation_to_meeting_booked",
+    "confidence": null,
+    "channelName": "AI Meeting Booking",
+    "pickedPipeId": "ai-meeting-booking|conversation_to_meeting_booked",
+    "runningPipeId": null,
+    "pickedPlayName": "Leads only",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "lead-sourcing|start_to_lead_found",
+    "confidence": null,
+    "channelName": "Lead Sourcing",
+    "pickedPipeId": "lead-sourcing|start_to_lead_found",
+    "runningPipeId": null,
+    "pickedPlayName": "Valid only",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "sales-cold-email-outreach|lead_found_to_conversation",
+    "confidence": null,
+    "channelName": "Sales Cold Email Outreach",
+    "pickedPipeId": "sales-cold-email-outreach|lead_found_to_conversation",
+    "runningPipeId": null,
+    "pickedPlayName": "Default",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "sourcing-crm-contacts|start_to_lead_found",
+    "confidence": null,
+    "channelName": "Your CRM Contacts",
+    "pickedPipeId": "sourcing-crm-contacts|start_to_lead_found",
+    "runningPipeId": null,
+    "pickedPlayName": "Everyone in the source",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   }
+  ],
+  "status": "ok",
+  "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+  "failure": null,
+  "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+  "campaignId": "f1ab54e3-dcad-4f3c-a175-3dca59833173",
+  "computedAt": "2026-10-28T19:12:59.644Z",
+  "pickDiffers": false,
+  "salesFunnelId": "trigger:lead_event+start_to_paid_client@ai-follow-up-email",
+  "briefUpdatedAt": null,
+  "salesFunnelName": "Lead Follow-up"
+ },
+ "planFailed": {
+  "plan": {
+   "mode": "reactive",
+   "shadow": null,
+   "target": "client_satisfied",
+   "running": {
+    "legs": [
+     {
+      "legKey": "paid_client_to_client_satisfied",
+      "pipeId": "cold-whatsapp-outreach|paid_client_to_client_satisfied",
+      "playId": null,
+      "channelName": "Cold WhatsApp Outreach",
+      "channelSlug": "cold-whatsapp-outreach",
+      "strategyName": null
+     }
+    ],
+    "line": "Paid client \u2192 [Cold WhatsApp Outreach] \u2192 Client Satisfied",
+    "figures": {
+     "roi": null,
+     "legs": [
+      {
+       "legKey": "paid_client_to_client_satisfied",
+       "pipeId": "cold-whatsapp-outreach|paid_client_to_client_satisfied",
+       "ratePct": null,
+       "costBasis": null,
+       "rateBasis": null,
+       "costSource": null,
+       "rateSource": null,
+       "costPerOutcomeUsd": null,
+       "outcomesNeededPerPayingClient": 1
+      }
+     ],
+     "basis": null,
+     "targetValueUsd": null,
+     "costPerTargetUsd": null,
+     "unavailableReason": "target_unvalued"
+    },
+    "funnelId": "paid_client_to_client_satisfied@cold-whatsapp-outreach",
+    "reachesTarget": true
+   },
+   "startStep": "paid_client",
+   "triggerId": "lead_event",
+   "planDiffers": null,
+   "targetSource": "campaign",
+   "candidatesPriced": 1,
+   "candidatesSetAside": 0,
+   "shadowUnavailableReason": "no_priced_line_to_target"
+  },
+  "brief": null,
+  "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+  "picks": [],
+  "status": "plan_failed",
+  "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+  "failure": "no_priced_line_to_target",
+  "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+  "campaignId": "6c4735da-b6c4-4b28-a6b5-25b7b17bc0a1",
+  "computedAt": "2026-10-28T19:12:59.644Z",
+  "pickDiffers": false,
+  "salesFunnelId": "paid_client_to_client_satisfied@cold-whatsapp-outreach",
+  "briefUpdatedAt": null,
+  "salesFunnelName": "Client WhatsApp"
+ },
+ "other": {
+  "plan": {
+   "mode": "reactive",
+   "shadow": {
+    "legs": [
+     {
+      "legKey": "lead_found_to_conversation",
+      "pipeId": "ai-follow-up-email|lead_found_to_conversation",
+      "playId": null,
+      "channelName": "AI Follow-up Email",
+      "channelSlug": "ai-follow-up-email",
+      "strategyName": null
+     },
+     {
+      "legKey": "conversation_to_paid_client",
+      "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+      "playId": null,
+      "channelName": "Your Team Reply Closing",
+      "channelSlug": "your-team-reply-closing",
+      "strategyName": null
+     }
+    ],
+    "line": "Lead \u2192 [AI Follow-up Email] \u2192 Positive reply \u2192 [Your Team Reply Closing] \u2192 Paid client",
+    "figures": {
+     "roi": 0.16,
+     "legs": [
+      {
+       "legKey": "lead_found_to_conversation",
+       "pipeId": "ai-follow-up-email|lead_found_to_conversation",
+       "ratePct": null,
+       "costBasis": "fleet",
+       "rateBasis": null,
+       "costSource": "same_leg_fleet",
+       "rateSource": null,
+       "costPerOutcomeUsd": 151.9,
+       "outcomesNeededPerPayingClient": 20
+      },
+      {
+       "legKey": "conversation_to_paid_client",
+       "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+       "ratePct": 5,
+       "costBasis": null,
+       "rateBasis": "default",
+       "costSource": "customer_team",
+       "rateSource": "default",
+       "costPerOutcomeUsd": 0,
+       "outcomesNeededPerPayingClient": 1
+      }
+     ],
+     "basis": "default",
+     "targetValueUsd": 500,
+     "costPerTargetUsd": 3038.07,
+     "unavailableReason": null
+    },
+    "funnelId": "trigger:whatsapp_number_given+lead_found_to_conversation@ai-follow-up-email+conversation_to_paid_client"
+   },
+   "target": "paid_client",
+   "running": {
+    "legs": [
+     {
+      "legKey": "start_to_conversation",
+      "pipeId": "founder-hello|start_to_conversation",
+      "playId": null,
+      "channelName": "Founder Hello",
+      "channelSlug": "founder-hello",
+      "strategyName": null
+     },
+     {
+      "legKey": "conversation_to_paid_client",
+      "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+      "playId": null,
+      "channelName": "Your Team Reply Closing",
+      "channelSlug": "your-team-reply-closing",
+      "strategyName": null
+     }
+    ],
+    "line": "Start \u2192 [Founder Hello] \u2192 Positive reply \u2192 [Your Team Reply Closing] \u2192 Paid client",
+    "figures": {
+     "roi": null,
+     "legs": [
+      {
+       "legKey": "start_to_conversation",
+       "pipeId": "founder-hello|start_to_conversation",
+       "ratePct": null,
+       "costBasis": null,
+       "rateBasis": null,
+       "costSource": null,
+       "rateSource": null,
+       "costPerOutcomeUsd": null,
+       "outcomesNeededPerPayingClient": 20
+      },
+      {
+       "legKey": "conversation_to_paid_client",
+       "pipeId": "your-team-reply-closing|conversation_to_paid_client",
+       "ratePct": 5,
+       "costBasis": null,
+       "rateBasis": "default",
+       "costSource": "customer_team",
+       "rateSource": "default",
+       "costPerOutcomeUsd": 0,
+       "outcomesNeededPerPayingClient": 1
+      }
+     ],
+     "basis": null,
+     "targetValueUsd": 500,
+     "costPerTargetUsd": null,
+     "unavailableReason": "pipe_unpriced:founder-hello|start_to_conversation"
+    },
+    "funnelId": "start_to_conversation@founder-hello+conversation_to_paid_client",
+    "reachesTarget": true
+   },
+   "startStep": "lead_found",
+   "triggerId": "whatsapp_number_given",
+   "planDiffers": true,
+   "targetSource": "campaign",
+   "candidatesPriced": 35,
+   "candidatesSetAside": 4,
+   "shadowUnavailableReason": null
+  },
+  "brief": null,
+  "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+  "picks": [
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "ai-instant-call|conversation_to_booking_call",
+    "confidence": null,
+    "channelName": "AI Instant Call",
+    "pickedPipeId": "ai-instant-call|conversation_to_booking_call",
+    "runningPipeId": null,
+    "pickedPlayName": "Default",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "ai-meeting-booking|conversation_to_meeting_booked",
+    "confidence": null,
+    "channelName": "AI Meeting Booking",
+    "pickedPipeId": "ai-meeting-booking|conversation_to_meeting_booked",
+    "runningPipeId": null,
+    "pickedPlayName": "Leads only",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   },
+   {
+    "source": "empty_brief",
+    "differs": null,
+    "failure": null,
+    "basePipeId": "sales-cold-email-outreach|lead_found_to_conversation",
+    "confidence": null,
+    "channelName": "Sales Cold Email Outreach",
+    "pickedPipeId": "sales-cold-email-outreach|lead_found_to_conversation",
+    "runningPipeId": null,
+    "pickedPlayName": "Default",
+    "inRunningFunnel": false,
+    "runningPlayName": null
+   }
+  ],
+  "status": "ok",
+  "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+  "failure": null,
+  "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+  "campaignId": "cde03d0f-fff0-4c96-9b3f-78f4e2adc8d5",
+  "computedAt": "2026-10-28T19:12:59.644Z",
+  "pickDiffers": false,
+  "salesFunnelId": "start_to_conversation@founder-hello+conversation_to_paid_client",
+  "briefUpdatedAt": null,
+  "salesFunnelName": "Founder Hello Replies"
+ }
+}

@@ -80,6 +80,7 @@ import { roiToShow } from "@/lib/expected-return";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview } from "@/lib/v2/campaign-layout-preview";
 import { FunnelCampaignPageNext } from "@/components/v2/campaign-page-next";
+import { FactoryPlanSection } from "@/components/v2/factory-plan-card";
 
 /**
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
@@ -753,7 +754,8 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   const rowsSettled = funnelRowSettled(row !== null, rowsQ, campaign.createdAt);
   // Its path on the fast copy read when the cached rows predate it (owner 2026-10-13: instant).
   const copyQ = useAuthQuery(["funnelCampaignCopies", campaign.brandId, campaign.offerId], () => listFunnelCampaignCopies(campaign.brandId, campaign.offerId), pollOptions);
-  const path = row?.path ?? copyQ.data?.find((r) => r.id === campaign.id)?.path ?? null;
+  const copyRow = copyQ.data?.find((r) => r.id === campaign.id) ?? null;
+  const path = row?.path ?? copyRow?.path ?? null;
   const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
   // The part that emails people is where its people live (Inbox, Sent, Targeting read its scope).
   // The pipes in the order the funnel runs them (sourcing, then cold email, then closing).
@@ -842,6 +844,12 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
               billingHref={v2Href(orgId, campaign.brandId, "billing")}
             />
           ))}
+
+        {/* GTM Factory step 1 (FACTORY-P1-DASH): staff mode only, renders nothing for a customer. */}
+        <FactoryPlanSection
+          campaign={campaign}
+          type={(row ?? copyRow) ? <TypeTag row={(row ?? copyRow)!} /> : copyQ.isFetchedAfterMount ? DASH : <Shimmer className="h-5 w-24" />}
+        />
 
         <section>
           <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>

@@ -2062,6 +2062,8 @@ export const STAFF_MONITORING_PATHS = {
   triggerHealth: "/campaigns/ops/trigger-health",
   // Per tool a client connected (GoHighLevel, PostHog, Stripe, Clerk): records taken in per day + the served verdict (crm-service, CONNECTOR-INTAKE-MONITORING-1028).
   connectorIntake: "/crm/ops/connector-intake",
+  // Per client org and day, the funnel campaigns whose shadow plan or Jev pick differs from what runs + the verdict (features-service, FACTORY-P1-DASH).
+  factoryShadow: "/features/audit/factory-shadow/monitoring",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -2214,6 +2216,50 @@ export async function getOfferOutcomeCostSeries(offerId: string, brandId: string
     if (err instanceof ApiError && err.status === 404 && err.body?.reason === "offer_has_no_campaigns") return null;
     throw err;
   }
+}
+
+// ─── GTM Factory shadow (features-service #2123, api-service #1406; FACTORY-P1-DASH), staff surfaces only ───
+import {
+  FactoryShadowPlanSchema,
+  FactoryShadowMonitoringSchema,
+  type FactoryShadowPlan,
+  type FactoryShadowMonitoring,
+} from "./factory-shadow";
+
+/**
+ * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
+ * and the running line vs the best line to the Target, each priced. Null = no pass has covered it yet (the producer's
+ * 404 `factory_shadow_not_computed`).
+ */
+export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunnelCampaignId: string): Promise<FactoryShadowPlan | null> {
+  try {
+    const raw = await apiCall<unknown>(
+      `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/factory-shadow`,
+    );
+    return parseStaff("getFunnelCampaignFactoryShadow", FactoryShadowPlanSchema, raw);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && err.body?.error === "factory_shadow_not_computed") return null;
+    throw err;
+  }
+}
+
+/** Monitoring > Factory plan: the served verdict, the last pass, one row per UTC day x org, the last pass's campaigns. */
+export async function getStaffFactoryShadowMonitoring(days: number): Promise<FactoryShadowMonitoring> {
+  return parseStaff("getStaffFactoryShadowMonitoring", FactoryShadowMonitoringSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.factoryShadow}?days=${days}`));
+}
+
+/**
+ * States (or clears, null) a funnel campaign's BRIEF, the strategy in the owner's words (campaign-service #804, PATCH
+ * `{brief}` through the gateway's verbatim relay). Changes nothing that runs: the factory's judge reads it on its next pass.
+ */
+export async function setSalesFunnelCampaignBrief(id: string, brief: string | null, brandId: string, token?: string): Promise<SalesFunnelCampaign> {
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}`, {
+    token,
+    method: "PATCH",
+    body: { brief },
+    headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": brandId },
+  });
+  return parseStaff("setSalesFunnelCampaignBrief", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
 }
 
 /** One funnel campaign with its units. */
