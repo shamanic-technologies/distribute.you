@@ -1956,6 +1956,8 @@ export const STAFF_MONITORING_PATHS = {
   boxHealth: "/features/audit/box-health",
   // Every crm-service trigger report (form, WhatsApp number, positive reply, account event): sent, skipped or stuck + the served verdict (crm-service, TRIGGER-REPORTS-MONITORING-1027).
   triggerReports: "/crm/ops/trigger-reports",
+  // Prospects waiting on a blocked campaign answer, queued ones, and a daily answer series + the served verdict (campaign-service, REACTIVE-THROUGHPUT-1028).
+  stuckOccurrences: "/campaigns/ops/stuck-occurrences",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -13009,6 +13011,14 @@ import { TriggerReportsSchema as StaffTriggerReportsSchema, type TriggerReports 
 /** Every crm-service trigger report over the last `days` UTC days, with crm-service's served verdict (api-service #1386). */
 export async function getStaffTriggerReports(days: number): Promise<StaffTriggerReports> {
   return parseStaff("getStaffTriggerReports", StaffTriggerReportsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.triggerReports}?days=${days}`));
+}
+
+// ─── Monitoring > Triggers > Prospects waiting (REACTIVE-THROUGHPUT-1028) ───
+import { StuckOccurrencesSchema as StaffStuckOccurrencesSchema, type StuckOccurrences as StaffStuckOccurrences } from "./monitoring/stuck-occurrences";
+
+/** Prospects waiting on a blocked campaign answer over the last `days` UTC days, with campaign-service's served verdict. */
+export async function getStaffStuckOccurrences(days: number): Promise<StaffStuckOccurrences> {
+  return parseStaff("getStaffStuckOccurrences", StaffStuckOccurrencesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.stuckOccurrences}?days=${days}`));
 }
 
 // ─── Monitoring > Cost ledger (COST-ACCOUNTING-1023-MONITOR) ───

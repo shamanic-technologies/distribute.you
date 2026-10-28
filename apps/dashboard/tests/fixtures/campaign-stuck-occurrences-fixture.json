@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-10-28T10:40:00.000Z",
+  "days": 30,
+  "stuckAfterMinutes": 30,
+  "status": "red",
+  "stuck": 2,
+  "queued": 5,
+  "stuckByReason": [
+    { "reason": "failure_backoff", "count": 1, "oldestWaitingSince": "2026-10-28T08:12:00.000Z" },
+    { "reason": "unnamed", "count": 1, "oldestWaitingSince": "2026-10-28T09:41:00.000Z" }
+  ],
+  "stuckOccurrences": [
+    {
+      "occurrenceId": "0b6c2a8e-1d55-4c1e-9a0e-5f3c7d8e9a01",
+      "orgId": "06ffd332-6a3c-4f0b-8f43-2a8e5b6c7d10",
+      "brandId": "3f1e2d4c-5b6a-4789-8a1b-2c3d4e5f6a70",
+      "offerId": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c60",
+      "triggerId": "positive_reply_received",
+      "campaignId": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+      "campaignName": "AI Meeting Booking",
+      "person": { "name": "Jane Doe", "email": "jane@example.com", "phone": null },
+      "reasons": ["failure_backoff"],
+      "lastError": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f failure_backoff: Jane Doe, retried in 10 min",
+      "attempts": 7,
+      "waitingSince": "2026-10-28T08:12:00.000Z"
+    },
+    {
+      "occurrenceId": "1c7d3b9f-2e66-4d2f-8b1f-6a4d8e9f0b12",
+      "orgId": "06ffd332-6a3c-4f0b-8f43-2a8e5b6c7d10",
+      "brandId": "3f1e2d4c-5b6a-4789-8a1b-2c3d4e5f6a70",
+      "offerId": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c60",
+      "triggerId": null,
+      "campaignId": null,
+      "campaignName": null,
+      "person": null,
+      "reasons": [],
+      "lastError": "dispatch_refused",
+      "attempts": 4,
+      "waitingSince": "2026-10-28T09:41:00.000Z"
+    }
+  ],
+  "byDay": [
+    { "day": "2026-10-27", "answered": 41, "answeredLate": 3, "skipped": 120, "failed": 0, "waiting": 0 },
+    { "day": "2026-10-28", "answered": 58, "answeredLate": 48, "skipped": 96, "failed": 1, "waiting": 7 }
+  ]
+}
