@@ -306,7 +306,7 @@ function setterHtml(): string {
 // Proof: the same live cards as the homepage, keyed per client
 // ---------------------------------------------------------------------------
 
-function proofHtml(): string {
+export function proofHtml(): string {
   return `<section class="framed" id="proof">
   <div class="wrap">
     <div class="section-head center rv">
@@ -412,7 +412,7 @@ const QUOTES = [
   { text: "Everybody wants to get new leads. That's the solution everyone wants to buy.", name: "Christopher Lafay", role: "Founder, taap.bio", img: "christopher-lafay.jpg" },
 ];
 
-function quotesHtml(): string {
+export function quotesHtml(): string {
   const fig = (q: (typeof QUOTES)[number], hidden: boolean) => `<figure class="quote"${hidden ? ' aria-hidden="true"' : ""}>
         <div class="stars" aria-hidden="true">★★★★★</div>
         <blockquote>${q.text}</blockquote>
