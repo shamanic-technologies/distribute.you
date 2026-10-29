@@ -1,8 +1,8 @@
-# Builds the two statically-exportable sites and uploads them to Cloudflare Pages.
+# Builds the statically-exportable docs site and uploads it to Cloudflare Pages.
 #
-# These left Vercel because neither needs a server: `docs` is 28 MDX routes and
-# `sales-cold-emails-landing` is one page, and both emit plain files under
-# `output: "export"`. Cloudflare Pages serves them for nothing, and the repo is
+# It left Vercel because it needs no server: `docs` is 28 MDX routes emitted as
+# plain files under `output: "export"`. (`sales-cold-emails-landing` was deleted
+# 2026-10-29: its host had no DNS left.) Cloudflare Pages serves them for nothing, and the repo is
 # public so the Actions minutes that build them are free too.
 #
 # Requires two repository secrets. Without them the deploy step fails loudly
@@ -17,7 +17,6 @@ on:
     branches: [main]
     paths:
       - "apps/docs/**"
-      - "apps/sales-cold-emails-landing/**"
       - "shared/content/**"
       - ".github/workflows/deploy-static-sites.yml"
   # Both sites bake values at build time (`sales` reads its hero stats through
@@ -35,9 +34,6 @@ jobs:
           - workspace: "@distribute/docs"
             path: apps/docs
             project: distribute-docs
-          - workspace: "@distribute/sales-cold-emails-landing"
-            path: apps/sales-cold-emails-landing
-            project: distribute-salescoldemails
 
     steps:
       - uses: actions/checkout@v4

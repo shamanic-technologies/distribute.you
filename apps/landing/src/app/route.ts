@@ -5,6 +5,7 @@ import { renderAssistantPage } from "@/lib/pages/assistant";
 import { renderConciergePage } from "@/lib/pages/concierge";
 import { renderInstinctPage } from "@/lib/pages/instinct";
 import { withPromoUntil } from "@/lib/promo-banner";
+import { withSiteChrome } from "@/lib/site-chrome";
 import {
   AB_TEST_ENABLED,
   decideVariant,
@@ -56,9 +57,12 @@ export async function GET(request: Request) {
         : decision.variant === "instinct"
           ? renderInstinctPage()
           : homepage();
+  // The hand-written pages carry `<!--site-nav-->` / `<!--site-footer-->`: the nav and
+  // footer are drawn from the page catalogue, like every other page's.
+  const chromed = withSiteChrome(page, "/");
   const html = decision.inTest
-    ? withBeforeBodyEnd(page, variantTrackingScript(decision.variant))
-    : page;
+    ? withBeforeBodyEnd(chromed, variantTrackingScript(decision.variant))
+    : chromed;
 
   const res = await renderedResponse(html, request);
   const headers = new Headers(res.headers);

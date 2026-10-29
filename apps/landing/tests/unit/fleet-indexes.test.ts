@@ -18,6 +18,7 @@ import {
 } from "../../src/lib/fleet-indexes";
 import { basisLegendHtml, chartDomain, chartHtml, historyTableHtml, renderIndexListPage, renderIndexPage, ribbonHtml } from "../../src/lib/pages/indexes";
 import { footer } from "../../src/lib/v2-shell";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
  * The public fleet indexes (owner 2026-10-18): one page per served index, its value
@@ -131,7 +132,7 @@ describe("the pages", () => {
 
   it("the hero is the index: value, unit, status, chart", () => {
     const hero = page.slice(page.indexOf('class="ix-hero"'), page.indexOf('id="measures"'));
-    expect(hero).toContain('<div class="ix-value">$4.35</div>');
+    expect(hero).toContain('<div class="ix-value" data-motion="count-up">$4.35</div>');
     expect(hero).toContain("per website visit");
     expect(hero).toContain("Robust");
     expect(hero).toContain("ix-chart");
@@ -177,7 +178,11 @@ describe("the pages", () => {
 
 describe("the footer links every index on all three footers", () => {
   it("rendered footer and homepage carry the column and its live slot", () => {
-    for (const html of [footer(), read("public/landing/index-v2.html"), read("public/landing/index-v2-subscription.html")]) {
+    for (const html of [
+      footer(),
+      withSiteChrome(read("public/landing/index-v2.html"), "/"),
+      withSiteChrome(read("public/landing/index-v2-subscription.html"), "/"),
+    ]) {
       expect(html).toContain(`<h4>Indexes</h4><ul>${INDEX_LINKS_TOKEN}<li><a href="/indexes">All indexes</a></li></ul>`);
     }
   });
@@ -192,7 +197,7 @@ describe("the footer links every index on all three footers", () => {
   it("the React footer reads the same list", () => {
     const src = read("src/components/footer.tsx");
     expect(src).toContain("fetchIndexList(");
-    expect(src).toContain('title="Indexes"');
+    expect(src).toContain("c.indexLinks");
   });
 });
 
@@ -293,7 +298,7 @@ describe("a return index reads like the hero ROI (cold-email-roi, 2026-10-19)", 
     expect(formatIndexValue(3.62, "multiple")).toBe("3.6x");
     expect(formatIndexValue(18.3, "multiple")).toBe("18x");
     const page = renderIndexPage("cold-email-roi", { statusRule: RULE, index: roi, points: [point("2026-10-18", 3.4), point("2026-10-19", 3.62)] }, LIST);
-    expect(page).toContain('<div class="ix-value">3.6x</div>');
+    expect(page).toContain('<div class="ix-value" data-motion="count-up">3.6x</div>');
     expect(page).toContain("<td>3.4x</td>");
     expect(page).not.toMatch(/\$3\.6/);
     const ds = [...page.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1])).find((n) => n["@type"] === "Dataset");
@@ -319,7 +324,7 @@ describe("an expected value says so wherever it prints (MEETING-INDEX-EXPECTED-L
 
   it("the index page labels the value, its title, the chart and every day of the table", () => {
     const page = renderIndexPage(meeting.slug, { statusRule: RULE, index: meeting, points }, LIST);
-    expect(page).toContain('<div class="ix-value">$794.12</div>');
+    expect(page).toContain('<div class="ix-value" data-motion="count-up">$794.12</div>');
     expect(page).toContain('<span class="ix-expected">Expected</span>');
     expect(page).toContain("<title>Cold Email Cost Per Meeting Index: $794.12 expected per meeting booked");
     expect(page).toContain("<td>$794.12 expected</td>");

@@ -2,7 +2,6 @@ export const URLS = {
   landing: "https://distribute.you",
   dashboard: "https://dashboard.distribute.you",
   docs: "https://docs.distribute.you",
-  salesLanding: "https://salescoldemail.distribute.you",
   api: "https://api.distribute.you",
   apiDocs: "https://api.distribute.you/docs",
   mcp: "https://docs.distribute.you/mcp",

@@ -9,6 +9,7 @@ import { renderDevelopersPage } from "@/lib/pages/developers";
 import { renderAboutPage } from "@/lib/pages/about";
 import { renderContactPage } from "@/lib/pages/contact";
 import { renderNotFoundPage } from "@/lib/pages/not-found";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 function read(relative: string): string {
   return readFileSync(join(process.cwd(), relative), "utf8");
@@ -111,8 +112,9 @@ describe("a crawler that runs no JavaScript can find it", () => {
   it("is linked from the raw HTML of the served homepage", () => {
     // The homepage's nav is JS-injected; its footer is not. A JS-injected link
     // is invisible to the link graph, which is how a new page is born orphaned.
-    const home = read("public/landing/index-v2.html");
-    expect(home).toContain('href="https://distribute.you/developers"');
+    // The footer is resolved at serve time from the page catalogue, still in raw HTML.
+    const home = withSiteChrome(read("public/landing/index-v2.html"), "/");
+    expect(home).toContain('href="/developers"');
   });
 
   it("is linked from the raw HTML of the trust pages and the 404", () => {

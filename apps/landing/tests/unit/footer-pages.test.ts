@@ -12,6 +12,7 @@ import { renderNotFoundPage } from "../../src/lib/pages/not-found";
 import { renderComparePage } from "../../src/lib/compare-page";
 import { COMPETITORS } from "../../src/lib/competitors";
 import { V2_STYLES_VERSION } from "../../src/lib/v2-shell";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
  * The pages the homepage footer links (minus the comparison cluster, which has its own
@@ -26,7 +27,8 @@ import { V2_STYLES_VERSION } from "../../src/lib/v2-shell";
  */
 const ROOT = path.resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8");
-const home = read("public/landing/index-v2.html");
+// As served: the chrome tokens resolved from the page catalogue (site-chrome.ts).
+const home = withSiteChrome(read("public/landing/index-v2.html"), "/");
 
 const RENDERED = {
   about: renderAboutPage(),
@@ -97,21 +99,20 @@ describe("the React pages wear the same chrome", () => {
   const navbar = read("src/components/navbar.tsx");
   const footer = read("src/components/footer.tsx");
 
-  it("the navbar carries the homepage links and actions, and no beta chip", () => {
-    for (const href of ['href: "/#how"', 'href: "/#pricing"', 'href: "/compare"', 'href: "/#faq"']) {
-      expect(navbar).toContain(href);
-    }
-    expect(navbar).toContain("Start free");
-    expect(navbar).toContain("Log in");
+  // Both React components hold no link of their own: they draw the model the static
+  // pages render (site-chrome.ts), so they cannot drift from the homepage.
+  it("the navbar draws the shared nav model, and no beta chip", () => {
+    expect(navbar).toContain("navModel(");
+    expect(navbar).toContain("m.signIn");
+    // The brand mark's `/` is the only path either component spells.
+    expect(navbar).not.toMatch(/href="\/[^"]/);
     expect(navbar).not.toMatch(/beta/i);
     expect(navbar).not.toContain("/how-it-works");
   });
 
-  it("the footer reads its Compare column from the catalogue and states no retired offer", () => {
-    expect(footer).toContain("COMPETITORS.map(");
-    expect(footer).toContain('href: "/about"');
-    expect(footer).toContain('href: "/investors"');
-    expect(footer).toContain('href: "/developers"');
+  it("the footer draws the shared footer model and states no retired offer", () => {
+    expect(footer).toContain("footerModel(");
+    expect(footer).not.toMatch(/href="\/[^"]/);
     expect(footer).not.toMatch(/\$400|cold email outreach|beta|Gmail|\/pricing"|\/performance"/);
   });
 
@@ -142,6 +143,8 @@ describe("the copy behind the footer states the current positioning", () => {
     "src/components/footer.tsx",
     "src/components/navbar.tsx",
     "src/lib/v2-shell.ts",
+    "src/lib/site-chrome.ts",
+    "src/lib/site-pages.ts",
     "src/lib/pages/about.ts",
     "src/lib/pages/contact.ts",
     "src/lib/pages/developers.ts",

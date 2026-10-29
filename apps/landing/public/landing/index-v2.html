@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/landing/v2/styles.css?v=18">
+<link rel="stylesheet" href="/landing/v2/styles.css?v=19">
 <style>
 .promo-bar { display: block; padding: 10px 16px; text-align: center; font-size: 14px; color: var(--text); background: var(--accent-50); border-bottom: 1px solid var(--accent-100); text-decoration: none; }
 .promo-bar b { margin-left: 6px; font-weight: 500; color: var(--accent); }
@@ -30,22 +30,8 @@
 <body>
 <a class="promo-bar" href="https://dashboard.distribute.you/get-started">Until <span data-promo-until>October 31</span>, we match your first $100. That's $100 free. <b>Start free</b></a>
 
-<!-- Nav: gojiberry floating pill -->
-<div class="nav" id="nav">
-  <div class="nav-pill">
-    <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
-    <nav class="nav-links">
-      <a href="#how">How it works</a>
-      <a href="#features">Features</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">FAQ</a>
-    </nav>
-    <div class="nav-right">
-      <a class="btn btn-ghost" href="https://dashboard.distribute.you/sign-in">Log in</a>
-      <a class="btn btn-primary" href="https://dashboard.distribute.you/get-started">Start free</a>
-    </div>
-  </div>
-</div>
+<!-- Nav: gojiberry floating pill, links from the page catalogue (src/lib/site-chrome.ts) -->
+<!--site-nav-->
 
 <!-- Hero: explee -->
 <section class="hero">
@@ -595,17 +581,7 @@
       </div>
       <div class="faces-text"><span class="stars">★★★★★</span><span data-founder-count>Loved by 70+ founders</span></div>
     </div>
-    <div class="foot">
-      <div>
-        <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
-        <p class="tag">Revenue made easy.</p>
-      </div>
-      <div><h4>Product</h4><ul><li><a href="#how">How it works</a></li><li><a href="#features">Features</a></li><li><a href="#pricing">Pricing</a></li><li><a href="/catalog">Price catalog</a></li><li><a href="#faq">FAQ</a></li></ul></div>
-      <div><h4>Compare</h4><ul><li><a href="/compare/instantly">distribute.you vs Instantly</a></li><li><a href="/compare/gojiberry">distribute.you vs Gojiberry</a></li><li><a href="/compare/explee">distribute.you vs Explee</a></li><li><a href="/compare/apollo">distribute.you vs Apollo.io</a></li><li><a href="/compare/salesforge">distribute.you vs Salesforge</a></li><li><a href="/compare/11x">distribute.you vs 11x</a></li><li><a href="/compare/smartlead">distribute.you vs Smartlead</a></li><li><a href="/compare/lemlist">distribute.you vs Lemlist</a></li><li><a href="/compare/clay">distribute.you vs Clay</a></li><li><a href="/compare/artisan">distribute.you vs Artisan</a></li><li><a href="/compare/aisdr">distribute.you vs AiSDR</a></li><li><a href="/compare/parcellab">distribute.you vs parcelLab</a></li><li><a href="/compare/postbeyond">distribute.you vs PostBeyond</a></li><li><a href="/compare/leadrebel">distribute.you vs LeadRebel</a></li><li><a href="/compare/reply-io">distribute.you vs Reply.io</a></li><li><a href="/compare/saleshandy">distribute.you vs Saleshandy</a></li><li><a href="/compare/woodpecker">distribute.you vs Woodpecker</a></li><li><a href="/compare/mailshake">distribute.you vs Mailshake</a></li><li><a href="/compare/zoominfo">distribute.you vs ZoomInfo</a></li><li><a href="/compare/seamless-ai">distribute.you vs Seamless.AI</a></li><li><a href="/compare/hunter">distribute.you vs Hunter</a></li><li><a href="/compare/snov-io">distribute.you vs Snov.io</a></li><li><a href="/compare/rb2b">distribute.you vs RB2B</a></li><li><a href="/compare/warmly">distribute.you vs Warmly</a></li><li><a href="/compare/salesloft">distribute.you vs Salesloft</a></li><li><a href="/compare/outreach">distribute.you vs Outreach</a></li><li><a href="/compare/heyreach">distribute.you vs HeyReach</a></li><li><a href="/compare/waalaxy">distribute.you vs Waalaxy</a></li><li><a href="/compare/chili-piper">distribute.you vs Chili Piper</a></li><li><a href="/compare/default">distribute.you vs Default</a></li><li><a href="/compare/frontrunner">distribute.you vs Frontrunner</a></li><li><a href="/compare">All comparisons</a></li><li><a href="/alternatives">Alternatives</a></li></ul></div><div><h4>Best for</h4><ul><li><a href="/best/cold-email-agency-for-saas-founders">Best cold email agency for SaaS founders</a></li><li><a href="/best/ai-sdr-for-agencies">Best AI SDR for agencies</a></li><li><a href="/best/lead-generation-agency-for-consulting-firms">Best lead generation agency for consulting firms</a></li><li><a href="/best/outbound-agency-for-startups">Best outbound agency for early-stage startups</a></li><li><a href="/best/cold-email-agency-for-solo-founders">Best cold email agency for solo founders</a></li><li><a href="/best/lead-generation-agency-for-b2b-service-businesses">Best lead generation agency for B2B service businesses</a></li><li><a href="/best">All rankings</a></li></ul></div><div><h4>Indexes</h4><ul><!--fleet-index-links--><li><a href="/indexes">All indexes</a></li></ul></div>
-      <div><h4>Company</h4><ul><li><a href="https://distribute.you/about">About</a></li><li><a href="https://distribute.you/investors">Investors</a></li><li><a href="https://distribute.you/contact">Contact</a></li><li><a href="https://distribute.you/blog">Blog</a></li></ul></div>
-      <div><h4>Legal</h4><ul><li><a href="https://distribute.you/terms">Terms</a></li><li><a href="https://distribute.you/privacy">Privacy</a></li><li><a href="https://distribute.you/developers">Developers</a></li></ul></div>
-    </div>
-    <div class="foot-bottom"><span>© 2026 distribute.you</span></div>
+    <!--site-footer-->
   </div>
 </footer>
 

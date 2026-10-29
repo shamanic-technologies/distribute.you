@@ -399,7 +399,7 @@ ${otherIndexes(list, slug)}`,
   const figure =
     value !== null
       ? `<div class="ix-figure">
-  <div class="ix-value">${esc(shown ?? "")}</div>
+  <div class="ix-value" data-motion="count-up">${esc(shown ?? "")}</div>
   <div class="ix-side">
     <div class="ix-per">${esc(i.valuePer)}</div>
     ${expectedTag(i)}${badge(i.status)}
@@ -435,7 +435,7 @@ ${historyTableHtml(points, i.unit, i.valuePer)}
 <section class="framed" id="why">
   <div class="wrap">
     <div class="section-head"><h2>Why we publish it</h2></div>
-    <div class="doc">
+    <div class="doc" data-motion="reveal" data-motion-stagger>
       <p>Anyone can quote a good number once. We record ours every day and keep every day on this page, early ones included.</p>
       <p>Each value carries a status, so you know how far to lean on it. The same series is public as JSON at <a href="https://api.distribute.you/v1/public/indexes/${esc(i.slug)}">api.distribute.you/v1/public/indexes/${esc(i.slug)}</a>.</p>
     </div>
