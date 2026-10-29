@@ -17,6 +17,7 @@
 import { agencyCompareLinks } from "./agencies";
 import { AI_SDR_PATH, aiSdrCompareLinks } from "./competitors";
 import { leadgenCompareLinks } from "./lead-generation-agencies";
+import { ppcCompareLinks } from "./ppc-agencies";
 
 export type Buyer = "agent" | "agency";
 
@@ -75,12 +76,18 @@ function agentPath(slug: OutcomeSlug): string {
   return AGENT_PATH[slug] ?? `/${slug}-automation`;
 }
 
+/**
+ * An Agency page served at the path its buyers search for, not `/<slug>-agency`:
+ * Paid Acquisition is "ppc agency" (5,400 US searches a month, PAGE-PPC-AGENCY-1029).
+ */
+const AGENCY_PATH: Partial<Record<OutcomeSlug, string>> = { "paid-acquisition": "/ppc-agency" };
+
 function agencyPath(slug: OutcomeSlug): string {
-  return `/${slug}-agency`;
+  return AGENCY_PATH[slug] ?? `/${slug}-agency`;
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH]);
+const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, "/ppc-agency"]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
 const GTM_AGENCY_SECTIONS = [
@@ -97,6 +104,15 @@ const LEADGEN_AGENCY_SECTIONS = [
   { label: "Our data", href: "/lead-generation-agency#data" },
   { label: "Price", href: "/lead-generation-agency#price" },
   { label: "FAQ", href: "/lead-generation-agency#faq" },
+];
+
+/** The sections of the PPC Agency page (PAGE-PPC-AGENCY-1029). */
+const PPC_AGENCY_SECTIONS = [
+  { label: "Where your budget goes", href: "/ppc-agency#how" },
+  { label: "Every click", href: "/ppc-agency#clicks" },
+  { label: "Our data", href: "/ppc-agency#data" },
+  { label: "Price", href: "/ppc-agency#price" },
+  { label: "FAQ", href: "/ppc-agency#faq" },
 ];
 
 /** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
@@ -152,6 +168,7 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           live: LIVE_PATHS.has(agencyPath(o.slug)),
           ...(o.slug === "gtm" ? { sections: GTM_AGENCY_SECTIONS, compare: agencyCompareLinks() } : {}),
           ...(o.slug === "lead-generation" ? { sections: LEADGEN_AGENCY_SECTIONS, compare: leadgenCompareLinks() } : {}),
+          ...(o.slug === "paid-acquisition" ? { navLabel: "PPC Agency", sections: PPC_AGENCY_SECTIONS, compare: ppcCompareLinks() } : {}),
         },
       ]),
 ]);

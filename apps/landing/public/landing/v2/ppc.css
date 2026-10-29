@@ -1,0 +1,119 @@
+/*
+  PPC Agency (PAGE-PPC-AGENCY-1029, /ppc-agency), layered on agency.css.
+  - hero chart (outrank month-by-month results bars, refs #14): the spend our agents put to
+    work each month, bars grow from the baseline (motion.js `bar-grow`), the month in progress
+    is drawn lighter and labelled "so far";
+  - darker sticky story (the Agency story on a deeper slab);
+  - a click card: who clicked, from which message, judged human.
+  The HTML is the FINAL state; reduced motion plays nothing.
+*/
+
+/* ---------- Hero chart ---------- */
+.pp-hero .ag-hero-grid { grid-template-columns: 1fr 1.02fr; }
+.pp-hero.solo .ag-hero-grid { grid-template-columns: 1fr; max-width: 760px; }
+.pp-hero h1 { font-size: clamp(40px, 4.8vw, 62px); }
+.pp-chart {
+  position: relative; margin: 0; border-radius: 24px; overflow: hidden; padding: 0 0 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)), #070b16;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 40px 90px -40px rgba(37, 99, 235, 0.55), 0 0 0 1px rgba(110, 160, 255, 0.06) inset;
+}
+.pp-chart::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 90% 45% at 50% 100%, rgba(37, 99, 235, 0.24), transparent 75%); pointer-events: none; }
+.pp-chart-h { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; font-size: 13px; color: rgba(255, 255, 255, 0.6); border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.pp-chart-h .live { display: inline-flex; align-items: center; gap: 8px; color: #fff; font-weight: 500; }
+.pp-chart-h .live i { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18); }
+.pp-chart-big { position: relative; display: flex; align-items: baseline; gap: 12px; padding: 22px 22px 6px; }
+.pp-chart-big b { font-family: var(--font-display); font-weight: 400; font-size: 44px; letter-spacing: -0.03em; color: #fff; font-variant-numeric: tabular-nums; }
+.pp-chart-big span { font-size: 14px; color: var(--soft); }
+.pp-bars {
+  position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px;
+  align-items: end; height: 300px; margin: 8px 20px 0; padding-bottom: 26px;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 100% 25%; background-position: 0 -1px;
+}
+.pp-bars::after { content: ""; position: absolute; left: 0; right: 0; bottom: 26px; height: 1px; background: rgba(255, 255, 255, 0.16); }
+.pp-bar { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+.pp-bar b { margin-bottom: 8px; font-weight: 500; font-size: 12px; color: #c6d6ff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pp-bar i {
+  position: relative; display: block; width: 100%; max-width: 44px; height: var(--h); min-height: 3px; overflow: hidden;
+  border-radius: 8px 8px 2px 2px; background: linear-gradient(180deg, #8fb5ff, #2563eb 70%, #1e40af);
+  box-shadow: 0 0 24px -6px rgba(96, 140, 255, 0.7);
+}
+.pp-bar.now i { background: repeating-linear-gradient(135deg, rgba(143, 181, 255, 0.55) 0 6px, rgba(37, 99, 235, 0.45) 6px 12px); box-shadow: 0 0 0 1px rgba(143, 181, 255, 0.5) inset; }
+.pp-bar span { position: absolute; bottom: -24px; font-size: 12px; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
+.pp-bar:last-child b { color: #fff; }
+.pp-chart figcaption { position: relative; padding: 18px 22px 0; font-size: 13px; color: rgba(255, 255, 255, 0.55); }
+@media (prefers-reduced-motion: no-preference) {
+  .pp-chart-h .live i { animation: pp-live 1.8s ease-in-out infinite; }
+  .pp-bar:not(.now) i::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 40%; top: 100%;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    animation: pp-sheen 4.5s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 0.15s + 1.2s);
+  }
+}
+@keyframes pp-live { 50% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0.06); } }
+@keyframes pp-sheen { 0% { top: 100%; } 40%, 100% { top: -40%; } }
+
+/* ---------- Darker sticky story ---------- */
+.pp-story { background: radial-gradient(ellipse 60% 50% at 85% 50%, rgba(37, 99, 235, 0.16), transparent 70%), #04060b; }
+.pp-stage { background: radial-gradient(ellipse 80% 70% at 50% 0%, rgba(37, 99, 235, 0.22), transparent 70%), #03050a; }
+.pp-icp { display: grid; gap: 14px; padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.pp-icp div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pp-icp label { width: 86px; font-size: 12px; color: rgba(255, 255, 255, 0.55); }
+.pp-icp .chip { padding: 4px 10px; border-radius: 100px; font-size: 12px; color: #fff; background: rgba(110, 160, 255, 0.14); border: 1px solid rgba(110, 160, 255, 0.28); }
+.pp-wa { align-self: flex-end; max-width: 82%; padding: 10px 14px; border-radius: 14px 14px 4px 14px; font-size: 14px; color: #fff; background: #0f5132; border: 1px solid rgba(34, 197, 94, 0.35); }
+.pp-wa span { display: block; font-size: 11px; color: #b9f5d8; margin-bottom: 2px; }
+.pp-click { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); font-size: 14px; color: #fff; }
+.pp-click b { font-weight: 500; }
+.pp-click span { grid-column: 1; font-size: 13px; color: var(--soft); }
+.pp-click em { grid-column: 2; grid-row: 1 / 3; align-self: center; font-style: normal; font-size: 12px; padding: 4px 11px; border-radius: 100px; }
+.pp-click.yes { border-color: rgba(34, 197, 94, 0.3); }
+.pp-click.yes em { color: #b9f5d8; background: rgba(34, 197, 94, 0.16); }
+.pp-click.no { opacity: 0.5; }
+.pp-click.no em { color: rgba(255, 255, 255, 0.7); background: rgba(255, 255, 255, 0.08); }
+.pp-thread { display: grid; gap: 10px; }
+.pp-thread p { max-width: 82%; padding: 10px 14px; font-size: 14px; color: #fff; }
+.pp-thread .in { justify-self: start; border-radius: 14px 14px 14px 4px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); }
+.pp-thread .out { justify-self: end; border-radius: 14px 14px 4px 14px; background: #0f5132; border: 1px solid rgba(34, 197, 94, 0.35); }
+.pp-thread .done { justify-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 100px; font-size: 13px; color: #b9f5d8; background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(34, 197, 94, 0.35); }
+.pp-thread .done i { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+
+/* ---------- Every click ---------- */
+.pp-clicks { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+.pp-clicks > div > p { margin-top: 14px; max-width: 480px; }
+.pp-parts { list-style: none; display: grid; gap: 18px; margin-top: 30px; }
+.pp-parts li { display: flex; gap: 14px; }
+.pp-parts .k { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: var(--accent-text); background: var(--accent-50); border: 1px solid var(--accent-100); }
+.pp-parts h3 { font-size: 18px; }
+.pp-parts p { margin-top: 2px; font-size: 15px; }
+.pp-card { padding: 26px; border-radius: 24px; background: #fff; border: 1px solid var(--hair); box-shadow: 0 0 0 4px var(--accent-50), 0 40px 80px -40px rgba(37, 99, 235, 0.45); }
+.pp-card-h { display: flex; align-items: center; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--hair); }
+.pp-card-h .av { flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-weight: 600; color: #fff; background: linear-gradient(135deg, #2b5be0, #7c3aed); }
+.pp-card-h b { display: block; font-weight: 500; color: var(--text); }
+.pp-card-h small { display: block; font-size: 13px; color: var(--muted); }
+.pp-card-h em { margin-left: auto; font-style: normal; font-size: 12px; font-weight: 500; padding: 4px 11px; border-radius: 100px; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; }
+.pp-card dl { display: grid; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--hair); }
+.pp-card dt { font-size: 12px; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.pp-card dd { margin-top: 3px; font-size: 15px; color: var(--text); }
+.pp-trail { list-style: none; display: grid; grid-auto-flow: column; gap: 8px; padding-top: 18px; }
+.pp-trail li { position: relative; padding-top: 18px; font-size: 13px; color: var(--muted); text-align: center; }
+.pp-trail li::before { content: ""; position: absolute; left: 50%; top: 2px; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: var(--hair-2); }
+.pp-trail li:not(:last-child)::after { content: ""; position: absolute; left: calc(50% + 8px); right: calc(-50% + 4px); top: 6px; height: 1px; background: var(--hair-2); }
+.pp-trail li.hot { color: var(--text); font-weight: 500; }
+.pp-trail li.hot::before { background: #22c55e; box-shadow: 0 0 0 4px #dcfce7; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .pp-hero .ag-hero-grid, .pp-clicks { grid-template-columns: 1fr; }
+  .pp-chart { max-width: 560px; width: 100%; margin: 0 auto; }
+}
+@media (max-width: 640px) {
+  .pp-bars { height: 220px; gap: 5px; margin: 6px 12px 0; }
+  .pp-bar b { font-size: 10px; }
+  .pp-bar span { font-size: 10px; }
+  .pp-bar.now span { font-size: 0; }
+  .pp-bar.now span::before { content: "Now"; font-size: 10px; }
+  .pp-chart-big { padding: 18px 16px 4px; flex-direction: column; gap: 2px; }
+  .pp-chart-big b { font-size: 36px; }
+  .pp-chart-h span:last-child { display: none; }
+}
