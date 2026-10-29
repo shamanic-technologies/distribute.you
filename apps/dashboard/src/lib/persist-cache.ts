@@ -122,6 +122,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffLeadSourceYield",
   // Monitoring > WhatsApp > Lines: every client's line number and state (WA-LINE-MONITOR-1023).
   "staffWhatsappLines",
+  // Monitoring > WhatsApp > Sophie's replies delivered or not per day (SOPHIE-WA-DELIVERY-CHART-1029).
+  "staffSophieReplies",
   // Monitoring > Cost ledger: fleet spend per service and per org-day (COST-ACCOUNTING-1023-MONITOR).
   "staffOutcomeCoverage",
   "staffLedgerCheck",

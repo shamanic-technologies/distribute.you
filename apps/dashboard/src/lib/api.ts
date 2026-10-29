@@ -13156,6 +13156,17 @@ export async function runStaffWhatsappLineCheck(): Promise<void> {
   await apiCall<unknown>(STAFF_WHATSAPP_LINE_PATHS.check, { method: "POST" });
 }
 
+// ─── Monitoring > WhatsApp > Sophie's replies (SOPHIE-WA-DELIVERY-CHART-1029) ───
+import { SophieReplyDaysSchema as StaffSophieReplyDaysSchema, type SophieReplyDays as StaffSophieReplyDays } from "./monitoring/sophie-replies";
+
+/** chat-service's per-day count of Sophie's WhatsApp replies delivered or not, through api-service's staff passthrough. */
+export const STAFF_SOPHIE_REPLIES_PATH = "/chat/ops/channel-replies/daily";
+
+/** One row per UTC day over the last `days` (oldest first, quiet days with zeros). */
+export async function getStaffSophieReplies(days: number): Promise<StaffSophieReplyDays> {
+  return parseStaff("getStaffSophieReplies", StaffSophieReplyDaysSchema, await apiCall<unknown>(`${STAFF_SOPHIE_REPLIES_PATH}?days=${days}`));
+}
+
 // ─── Monitoring > Security (SEC-ADVISORIES-MONITORING-1025) ───
 import { SecurityAdvisoriesSchema as StaffSecurityAdvisoriesSchema, type SecurityAdvisories as StaffSecurityAdvisories } from "./monitoring/security-advisories";
 
