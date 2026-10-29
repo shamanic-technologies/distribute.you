@@ -39,23 +39,23 @@ vi.mock("@/lib/site-pages", async (orig) => {
 });
 
 describe("the catalogue starts with the pages served today", () => {
-  it("`/` and `/revenue-agency` are live; 20 entries, one per outcome and buyer", () => {
-    expect(SITE_PAGES).toHaveLength(20);
-    expect(livePages().map((p) => p.path)).toEqual(["/", "/revenue-agency"]);
-    expect(new Set(SITE_PAGES.map((p) => p.path)).size).toBe(20);
+  it("`/` and `/gtm-agency` are live; 19 entries, one per outcome and buyer (Revenue has no Agency page)", () => {
+    expect(SITE_PAGES).toHaveLength(19);
+    expect(livePages().map((p) => p.path)).toEqual(["/", "/gtm-agency"]);
+    expect(new Set(SITE_PAGES.map((p) => p.path)).size).toBe(19);
   });
 
   it("a page that is not live is linked from nowhere", () => {
     const html = navHtml("/") + footerHtml("/");
     for (const p of SITE_PAGES.filter((x) => !x.live)) expect(html).not.toContain(`href="${p.path}"`);
-    // The Revenue Agency page is served (PAGE-REVENUE-AGENCY-1029): the Agency menu and
+    // The GTM Agency page is served (PAGE-REVENUE-AGENCY-1029): the Agency menu and
     // the Book a call button appear, Start free stays first on `/`.
     expect(navModel("/").groups.map((g) => g.label)).toContain("Agency");
     expect(navModel("/").ctas).toEqual([
       { label: "Start free", href: SIGN_UP },
       { label: "Book a call", href: BOOK_A_CALL },
     ]);
-    expect(navModel("/revenue-agency").ctas[0]).toEqual({ label: "Book a call", href: BOOK_A_CALL });
+    expect(navModel("/gtm-agency").ctas[0]).toEqual({ label: "Book a call", href: BOOK_A_CALL });
   });
 });
 
@@ -89,7 +89,7 @@ describe("adding a catalogue entry adds it everywhere", () => {
   });
 
   it("the sitemap lists it", async () => {
-    expect(sitePagePaths(FIXTURE)).toEqual(["/", "/revenue-agency", AGENT, AGENCY]);
+    expect(sitePagePaths(FIXTURE)).toEqual(["/", "/gtm-agency", AGENT, AGENCY]);
     pagesRef.pages = FIXTURE;
     const { default: sitemap } = await import("@/app/sitemap");
     const urls = (await sitemap()).map((e) => e.url);

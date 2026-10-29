@@ -1,6 +1,6 @@
 /**
- * The Revenue Agency page's own comparison cluster (PAGE-REVENUE-AGENCY-1029):
- * `/revenue-agency/alternatives` and one `/revenue-agency/vs/<slug>` per agency in
+ * The GTM Agency page's own comparison cluster (PAGE-REVENUE-AGENCY-1029):
+ * `/gtm-agency/alternatives` and one `/gtm-agency/vs/<slug>` per agency in
  * `agencies.ts`. Every figure about an agency is read from its own site, shown with its
  * source link and the day it was read; our column is `OUR_AGENCY_ROW`, stated once.
  *
@@ -9,7 +9,7 @@
 import { AGENCIES, ALTERNATIVES_PATH, AGENCY_PAGE_PATH, OUR_AGENCY_ROW, agencyVsPath, type Agency, type AgencyFact } from "../agencies";
 import { esc } from "../fleet-indexes";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
-import { agencyHead, callHtml } from "./revenue-agency";
+import { agencyHead, callHtml } from "./gtm-agency";
 
 function verifiedLabel(day: string): string {
   const [y, m, d] = day.split("-").map(Number);
@@ -70,7 +70,7 @@ export function renderAgencyVsPage(a: Agency): string {
   const body = `${heroHtml(
     "Agency comparison",
     `distribute.you vs ${a.name}`,
-    `${a.oneLiner.text} Here is how the two compare, for a company that wants its growth run for it.`,
+    `${a.oneLiner.text} Here is how the two compare, for a company that wants its GTM run for it.`,
   )}
 <section class="framed">
   <div class="wrap">
@@ -93,19 +93,19 @@ export function renderAgencyVsPage(a: Agency): string {
       <li><span>You want the best growth on the market, run with data from every campaign we run.</span></li>
       <li><span>You want your team to see every lead, email and reply.</span></li>
       <li><span>You want to be live in 5 days, from one call.</span></li>
-    </ul><a class="btn btn-accent btn-lg" href="${AGENCY_PAGE_PATH}">See the Revenue Agency</a></div>
+    </ul><a class="btn btn-accent btn-lg" href="${AGENCY_PAGE_PATH}">See the GTM Agency</a></div>
   </div>
 </section>
 <section class="framed">
   <div class="wrap">
     <div class="section-head center"><h2>Questions</h2></div>
     <div class="ag-faq">${faq.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join("")}</div>
-    <nav class="ag-links" aria-label="Other agency comparisons">${others}<a href="${ALTERNATIVES_PATH}">Agency alternatives</a></nav>
+    <nav class="ag-links" aria-label="Other agency comparisons">${others}<a href="${ALTERNATIVES_PATH}">GTM agency alternatives</a></nav>
   </div>
 </section>
 ${callHtml()}`;
   return shell({
-    title: `distribute.you vs ${a.name}: agency price, contract and results compared`,
+    title: `distribute.you vs ${a.name}: GTM agency price, contract and results compared`,
     description,
     path,
     head: agencyHead(),
@@ -120,7 +120,7 @@ ${callHtml()}`;
       },
       breadcrumb([
         { name: "distribute.you", path: "/" },
-        { name: "Revenue Agency", path: AGENCY_PAGE_PATH },
+        { name: "GTM Agency", path: AGENCY_PAGE_PATH },
         { name: `vs ${a.name}`, path },
       ]),
     ],
@@ -134,10 +134,10 @@ export function renderAgencyAlternativesPage(): string {
   const cards = AGENCIES.map(
     (a) => `<div class="ag-card"><h3><a href="${agencyVsPath(a)}">${esc(a.name)}</a></h3><p>${esc(a.oneLiner.text)}</p><p><b>Entry price:</b> ${esc(a.entryPrice)}</p><a class="btn btn-outline" href="${agencyVsPath(a)}">distribute.you vs ${esc(a.name)}</a></div>`,
   ).join("");
-  const description = `The best revenue and growth agency alternatives: ${AGENCIES.map((a) => a.name).join(", ")} and distribute.you, with prices read from each agency's own site.`;
+  const description = `The best GTM agency alternatives: ${AGENCIES.map((a) => a.name).join(", ")} and distribute.you, with prices read from each agency's own site.`;
   const body = `${heroHtml(
     "Agency alternatives",
-    "Revenue agency alternatives, side by side",
+    "GTM agency alternatives, side by side",
     "Price, contract and channels for each agency, read from their own sites. Ours is first.",
   )}
 <section class="framed">
@@ -159,7 +159,7 @@ export function renderAgencyAlternativesPage(): string {
 </section>
 ${callHtml()}`;
   return shell({
-    title: `Revenue agency alternatives: ${AGENCIES.map((a) => a.name).join(", ")} and distribute.you`,
+    title: `GTM agency alternatives: ${AGENCIES.map((a) => a.name).join(", ")} and distribute.you`,
     description,
     path: ALTERNATIVES_PATH,
     head: agencyHead(),
@@ -170,7 +170,7 @@ ${callHtml()}`;
       {
         "@context": "https://schema.org",
         "@type": "ItemList",
-        name: "Revenue agency alternatives",
+        name: "GTM agency alternatives",
         url: `${SITE}${ALTERNATIVES_PATH}`,
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "distribute.you", url: `${SITE}${AGENCY_PAGE_PATH}` },
@@ -179,7 +179,7 @@ ${callHtml()}`;
       },
       breadcrumb([
         { name: "distribute.you", path: "/" },
-        { name: "Revenue Agency", path: AGENCY_PAGE_PATH },
+        { name: "GTM Agency", path: AGENCY_PAGE_PATH },
         { name: "Alternatives", path: ALTERNATIVES_PATH },
       ]),
     ],

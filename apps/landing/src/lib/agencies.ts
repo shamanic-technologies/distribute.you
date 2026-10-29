@@ -1,6 +1,6 @@
 /**
- * The agencies the Revenue Agency page is compared with (PAGE-REVENUE-AGENCY-1029):
- * one entry per `/revenue-agency/vs/<slug>` page, the `/revenue-agency/alternatives`
+ * The agencies the GTM Agency page is compared with (PAGE-REVENUE-AGENCY-1029):
+ * one entry per `/gtm-agency/vs/<slug>` page, the `/gtm-agency/alternatives`
  * list, the sitemap and the Agency footer all read it.
  *
  * Every figure is READ from the agency's own site, with the URL it came from and the
@@ -225,7 +225,7 @@ export const AGENCIES: readonly Agency[] = [
   },
 ];
 
-export const AGENCY_PAGE_PATH = "/revenue-agency";
+export const AGENCY_PAGE_PATH = "/gtm-agency";
 export const ALTERNATIVES_PATH = `${AGENCY_PAGE_PATH}/alternatives`;
 
 export function agencyVsPath(a: Pick<Agency, "slug">): string {
@@ -245,6 +245,6 @@ export function agencyClusterPaths(): string[] {
 export function agencyCompareLinks(): { label: string; href: string }[] {
   return [
     ...AGENCIES.map((a) => ({ label: `distribute.you vs ${a.name}`, href: agencyVsPath(a) })),
-    { label: "Agency alternatives", href: ALTERNATIVES_PATH },
+    { label: "GTM agency alternatives", href: ALTERNATIVES_PATH },
   ];
 }

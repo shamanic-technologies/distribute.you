@@ -1,5 +1,7 @@
 /**
- * `/revenue-agency`: the first Agency page (PAGE-REVENUE-AGENCY-1029, owner 2026-10-29).
+ * `/gtm-agency`: the first Agency page (PAGE-REVENUE-AGENCY-1029, owner 2026-10-29;
+ * shipped at `/revenue-agency`, moved here the same day: "revenue agency" searches are
+ * people looking for a tax office, "gtm agency" carries the buyer's intent).
  *
  * Buyer: a company that already makes cash and wants its GTM department run for it.
  * Promise (owner): the best growth on the market right now, from our own data and the
@@ -123,7 +125,7 @@ function heroHtml(): string {
   return `<section class="ag-hero ag-dark">
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
-      <span class="eyebrow">Revenue Agency</span>
+      <span class="eyebrow">GTM Agency</span>
       <h1 style="margin-top:18px">The best growth on the market, run for you.</h1>
       <p class="lead">We run your go-to-market with data from every campaign we run. Your team stays on top of every lead, with agents that do the work.</p>
       <p class="why">${WHY}</p>
@@ -311,7 +313,7 @@ function priceHtml(): string {
     </div>
     <div class="ag-price">
       <div class="ag-card feat">
-        <h3>Revenue Agency</h3>
+        <h3>GTM Agency</h3>
         <p class="big">From $1K<small>/month + 10% of budget</small></p>
         <ul>${INCLUDED.map((l) => `<li>${CHECK}<span>${esc(l)}</span></li>`).join("")}</ul>
         <a class="btn btn-accent btn-lg" ${BOOK_ATTRS}>Book a call</a>
@@ -381,7 +383,7 @@ function faqHtml(): string {
   const items = AGENCY_FAQ.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join("");
   const links = [
     ...AGENCIES.map((a) => `<a href="${agencyVsPath(a)}">distribute.you vs ${esc(a.name)}</a>`),
-    `<a href="${ALTERNATIVES_PATH}">Agency alternatives</a>`,
+    `<a href="${ALTERNATIVES_PATH}">GTM agency alternatives</a>`,
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
@@ -393,12 +395,12 @@ function faqHtml(): string {
 }
 
 const DESCRIPTION =
-  "Revenue made easy. The best growth on the market, run for you with data from every campaign we run. From $1K/month + 10% of budget. Book a call.";
+  "Revenue made easy. A GTM agency that runs your go-to-market with data from every campaign we run. From $1K/month + 10% of budget. Book a call.";
 
-export function renderRevenueAgencyPage(list: IndexList | null, monthly: MonthlyRuns | null, now: Date = new Date()): string {
+export function renderGtmAgencyPage(list: IndexList | null, monthly: MonthlyRuns | null, now: Date = new Date()): string {
   const url = `${SITE}${AGENCY_PAGE_PATH}`;
   return shell({
-    title: "Revenue Agency: the best growth on the market, run for you | distribute.you",
+    title: "GTM Agency: the best growth on the market, run for you | distribute.you",
     description: DESCRIPTION,
     path: AGENCY_PAGE_PATH,
     head: agencyHead(),
@@ -409,7 +411,7 @@ export function renderRevenueAgencyPage(list: IndexList | null, monthly: Monthly
       {
         "@context": "https://schema.org",
         "@type": "Service",
-        name: "distribute.you Revenue Agency",
+        name: "distribute.you GTM Agency",
         url,
         description: DESCRIPTION,
         provider: { "@type": "Organization", name: "distribute.you", url: SITE },
@@ -426,7 +428,7 @@ export function renderRevenueAgencyPage(list: IndexList | null, monthly: Monthly
       },
       breadcrumb([
         { name: "distribute.you", path: "/" },
-        { name: "Revenue Agency", path: AGENCY_PAGE_PATH },
+        { name: "GTM Agency", path: AGENCY_PAGE_PATH },
       ]),
     ],
   });
