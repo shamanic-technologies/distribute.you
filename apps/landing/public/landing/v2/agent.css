@@ -178,6 +178,7 @@
 
 /* ---------- Open source (n8n / PostHog / Cal.com self-host) ---------- */
 section.os .section-head p a { color: #9ec0ff; }
+section.os .eyebrow { color: #9ec0ff; background: rgba(110, 160, 255, 0.14); }
 .os-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 980px; margin: 0 auto; }
 .os-card { display: flex; flex-direction: column; padding: 30px; border-radius: 22px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); }
 .os-card.hosted { background: linear-gradient(180deg, rgba(37, 99, 235, 0.22), rgba(37, 99, 235, 0.06)); border-color: rgba(110, 160, 255, 0.35); }
@@ -229,8 +230,15 @@ section.os .os-card p { margin-top: 10px; font-size: 15px; }
   .strip li { padding: 18px; }
   .price-list li { grid-template-columns: 32px minmax(0, 1fr); padding: 14px 16px; }
   .price-list .price { grid-column: 2; text-align: left; }
-  .stack-table { font-size: 14px; }
-  .stack-table th, .stack-table td { padding: 12px 14px; }
+  /* Each row becomes a card: the job on top, the tool and ours side by side. */
+  .stack-table, .stack-table tbody, .stack-table tfoot { display: block; }
+  .stack-table thead { display: none; }
+  .stack-table tr { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--hair); }
+  .stack-table tfoot tr { border-bottom: 0; }
+  .stack-table td { border-bottom: 0; padding: 10px 14px; font-size: 14px; }
+  .stack-table td:first-child { grid-column: 1 / -1; padding-bottom: 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .stack-table tfoot td:first-child { color: var(--muted); }
+  .stack-table td b { white-space: normal; }
   .agency-bridge { flex-direction: column; align-items: flex-start; padding: 22px; }
   .os-card { padding: 22px; }
 }

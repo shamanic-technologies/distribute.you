@@ -214,10 +214,13 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).not.toMatch(/operates on post-paid billing|platform fee|Delaware/);
   });
 
-  it("the homepage FAQ states the managed guarantee of the plan card", () => {
+  it("the homepage sells no managed plan and promises no refund: the managed plan is the GTM Agency", () => {
+    // PAGE-REVENUE-AGENT-1029 (owner 2026-10-29): `/` is the AI Agent page. The managed
+    // plan (and its 60-day guarantee in the terms) is sold by the Agency page, which the
+    // homepage links instead of restating.
     const home = read("public/landing/index-v2.html");
-    expect(home).toContain("<b>100% refunded</b> if not satisfied with the outcome after 60 days. Service fees excluded.");
-    expect(home).toContain("refunded in full if you are not satisfied with the outcome after 60 days");
+    expect(home).not.toMatch(/refund/i);
+    expect(home).toContain('href="/gtm-agency"');
     expect(home).not.toContain("6 meetings after 3 months");
   });
 

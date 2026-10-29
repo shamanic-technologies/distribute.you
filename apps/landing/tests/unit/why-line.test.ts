@@ -31,7 +31,8 @@ describe("the why", () => {
     const whyAt = html.indexOf('<span class="eyebrow why-eyebrow">Revenue made easy.</span>');
     expect(whyAt).toBeGreaterThan(-1);
     expect(whyAt).toBeLessThan(h1At);
-    expect(html).toContain("<h1>Get <span class=\"accent\">revenue in 24h</span><br>With B2B Sales Meetings");
+    // The H1 is the Revenue AI Agent page's (PAGE-REVENUE-AGENT-1029, owner 2026-10-29).
+    expect(html).toContain("<h1>Revenue Automation<br><span class=\"accent\">Done For You</span>");
     // Footer tag, closing CTA box and the meta description.
     expect(html).toContain('<p class="tag">Revenue made easy.</p>');
     expect(html).toContain('<p class="why">Revenue made easy.</p>');

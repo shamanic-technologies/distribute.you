@@ -132,7 +132,7 @@ describe("GET / with the test on", () => {
     // Built from the prepaid page; a later homepage edit must land on both.
     const sub = readFileSync(path.join(__dirname, "../../public/landing/index-v2-subscription.html"), "utf8");
     // The footer is a token both pages resolve from the page catalogue.
-    for (const shared of ["<!--site-footer-->", "<!--site-nav-->", "main.js?v=", "Get <span class=\"accent\">revenue in 24h</span>"]) {
+    for (const shared of ["<!--site-footer-->", "<!--site-nav-->", "main.js?v="]) {
       expect(sub, shared).toContain(shared);
     }
     expect(sub).toContain("lp_plan=(\\d+)");
@@ -144,11 +144,14 @@ describe("GET / with the test on", () => {
     expect(HOMEPAGE_SRC).not.toContain("lp_plan=");
   });
 
-  it("serves the postpaid arm the prepaid homepage, banner included, tagged postpaid", async () => {
+  it("serves the postpaid arm the homepage, tagged postpaid, with no match banner", async () => {
     // Owner 2026-10-13: same landing as control, only the dashboard onboarding differs.
+    // OFFER-RESET-1029: the first-$100 match ended, so its banner is gone; the page is
+    // the Revenue AI Agent page (the onboarding sells prepaid to every new org).
     const { res, html } = await get({ qs: "?variant=postpaid" });
-    expect(html).toContain("The platform is free");
-    expect(html).toContain("promo-bar");
+    expect(html).toContain("Revenue Automation");
+    expect(html).toContain("0% markup");
+    expect(html).not.toContain("promo-bar");
     expect(html).not.toContain("From $99/month");
     expect(html).toContain('lp_variant:"postpaid"');
     expect(res.headers.get("set-cookie")).toContain("lp_variant=postpaid");
@@ -156,13 +159,13 @@ describe("GET / with the test on", () => {
 
   it("serves the homepage to the control arm when forced, tagged", async () => {
     const { html } = await get({ qs: "?variant=control" });
-    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span>");
+    expect(html).toContain("Revenue Automation<br><span class=\"accent\">Done For You</span>");
     expect(html).toContain('lp_variant:"control"');
   });
 
   it("gives a crawler the homepage, untagged, with no cookie", async () => {
     const { res, html } = await get({ ua: "Googlebot/2.1", qs: "?variant=instinct" });
-    expect(html).toContain("The platform is free");
+    expect(html).toContain("Revenue Automation");
     expect(html).not.toContain("$1/day");
     expect(html).not.toContain("Text distribute.you to get started");
     expect(html).not.toContain("landing_variant_viewed");
