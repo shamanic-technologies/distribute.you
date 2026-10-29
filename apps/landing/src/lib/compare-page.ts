@@ -16,8 +16,13 @@
 import {
   CATEGORY_LABEL,
   COMPARE_VERIFIED_LABEL,
+  AI_SDR_ALTERNATIVES_PATH,
+  AI_SDR_PATH,
   COMPETITORS,
   DISTRIBUTE_ROW,
+  aiSdrCompetitors,
+  competitorPath,
+  isAiSdrCluster,
   monthLabel,
   type Category,
   type Competitor,
@@ -31,6 +36,7 @@ import {
   shell,
   whyLine,
 } from "./v2-shell";
+import { AI_SDR_CSS_VERSION } from "./pages/ai-sdr";
 
 export { V2_STYLES_VERSION };
 
@@ -93,11 +99,22 @@ export function comparePageTitle(c: Competitor, now: Date = new Date()): string 
 }
 
 export function comparePageDescription(c: Competitor): string {
+  if (isAiSdrCluster(c)) {
+    return `Looking at ${c.name} alternatives? distribute.you is the AI SDR that books your meetings, free for one user. Compare price, contract and channels.`;
+  }
   return `Looking at ${c.name} alternatives? distribute.you's AI agent runs your cold email, free for one user. Compare price and cost per positive reply.`;
 }
 
+/** What distribute.you is, said for the reader of this page: an AI SDR page names the job. */
+function ourLine(c: Competitor): string {
+  return isAiSdrCluster(c)
+    ? "distribute.you is the AI SDR that books your meetings: you paste a website, our agent finds your buyers, writes from domains we own, answers the replies and books the meeting."
+    : "distribute.you runs your cold email for you: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.";
+}
+
 export function renderComparePage(c: Competitor): string {
-  const path = `/compare/${c.slug}`;
+  const path = competitorPath(c);
+  const aiSdr = isAiSdrCluster(c);
   const verified = new Date(c.verifiedOn).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -136,7 +153,7 @@ export function renderComparePage(c: Competitor): string {
     <span class="eyebrow">${esc(CATEGORY_LABEL[c.category])} · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${logo(c.domain)}</span></div>
     <h1>distribute.you <span class="accent">vs</span> ${esc(c.name)}</h1>
-    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} distribute.you runs your cold email for you: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.</p>
+    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} ${ourLine(c)}</p>
     ${whyLine()}
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
   </div>
@@ -194,8 +211,8 @@ ${liveBand()}
     <div class="section-head center rv"><h2>Questions people ask about ${esc(c.name)} and distribute.you</h2></div>
     <div class="faq-list rv">${faqList(c.faq)}</div>
     <p class="cmp-more rv">More comparisons: ${COMPETITORS.filter((o) => o.slug !== c.slug)
-      .map((o) => `<a href="/compare/${o.slug}">distribute.you vs ${esc(o.name)}</a>`)
-      .join(" · ")} · <a href="/alternatives">all alternatives</a></p>
+      .map((o) => `<a href="${competitorPath(o)}">distribute.you vs ${esc(o.name)}</a>`)
+      .join(" · ")} · ${aiSdr ? `<a href="${AI_SDR_ALTERNATIVES_PATH}">AI SDR alternatives</a> · <a href="/compare">every comparison</a> · ` : ""}<a href="/alternatives">all alternatives</a></p>
   </div>
 </section>`;
 
@@ -205,10 +222,17 @@ ${liveBand()}
     path,
     body,
     jsonLd: [
-      breadcrumb([
-        { name: "Compare", path: "/compare" },
-        { name: `distribute.you vs ${c.name}`, path },
-      ]),
+      breadcrumb(
+        aiSdr
+          ? [
+              { name: "AI SDR", path: AI_SDR_PATH },
+              { name: `distribute.you vs ${c.name}`, path },
+            ]
+          : [
+              { name: "Compare", path: "/compare" },
+              { name: `distribute.you vs ${c.name}`, path },
+            ],
+      ),
       faqJsonLd(c.faq),
     ],
   });
@@ -232,7 +256,7 @@ function categoryGroups(): { category: Category; items: Competitor[] }[] {
 }
 
 function competitorCard(c: Competitor, verb: "vs" | "alternative"): string {
-  const href = `/compare/${c.slug}`;
+  const href = competitorPath(c);
   const label = verb === "vs" ? `distribute.you vs ${esc(c.name)}` : `${esc(c.name)} alternative`;
   return `<a class="cmp-card rv" href="${href}">
     <div class="cmp-card-top">${logo(c.domain, 32)}<div><b>${label}</b><small>${esc(c.entryPrice)}</small></div></div>
@@ -297,5 +321,99 @@ ${liveBand()}`;
     path: "/alternatives",
     body,
     jsonLd: [breadcrumb([{ name: "Alternatives", path: "/alternatives" }])],
+  });
+}
+
+const AI_SDR_ALTERNATIVES_FAQ = [
+  {
+    q: "What is the best AI SDR alternative for a founder?",
+    a: "distribute.you, if you want meetings without a demo or a contract: our AI agent finds your buyers, writes to them, answers the replies and books the meeting, free for one user at the API price with 0% markup.",
+  },
+  {
+    q: "Which AI SDRs publish their price?",
+    a: "Of the four here, only AiSDR prints a figure: $1.50 per person prospected on pay as you go. 11x, Artisan and Qualified ask for a demo first. distribute.you prints every action's price on its catalog.",
+  },
+  {
+    q: "Is there an open source AI SDR?",
+    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free for one user.",
+  },
+];
+
+/** `/ai-sdr/alternatives`: the AI SDR agents side by side, every figure read from their own site. */
+export function renderAiSdrAlternativesPage(): string {
+  const list = aiSdrCompetitors();
+  const verified = new Date(`${list.map((c) => c.verifiedOn).sort().at(-1)}T12:00:00Z`).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const rows = list
+    .map(
+      (c) =>
+        `<tr><th scope="row"><a href="${competitorPath(c)}">${esc(c.name)}</a></th><td>${esc(c.entryPrice)}</td><td>${esc(c.freeTier)}</td><td>${esc(c.channels)}</td><td><a href="${esc(c.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(c.domain)}</a></td></tr>`,
+    )
+    .join("");
+  const table = `<table class="cmp-table cmp-alt-table">
+    <thead><tr><th scope="col">AI SDR</th><th scope="col">Entry price</th><th scope="col">Free to start</th><th scope="col">Channels</th><th scope="col">Source</th></tr></thead>
+    <tbody>
+      <tr class="us-row"><th scope="row"><a href="${AI_SDR_PATH}">distribute.you</a></th><td class="us">${esc(DISTRIBUTE_ROW.entryPrice)}</td><td class="us">Yes, for one user. Open source too.</td><td class="us">${esc(DISTRIBUTE_ROW.channels)}</td><td class="us"><a href="/catalog">Our catalog</a></td></tr>
+      ${rows}
+    </tbody>
+  </table>`;
+  const body = `<section class="hero cmp-hero">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <span class="eyebrow">AI SDR alternatives · Verified ${esc(verified)}</span>
+    <h1>AI SDR alternatives, <span class="accent">side by side</span></h1>
+    <p class="hero-sub">${list.map((c) => esc(c.name)).join(", ")} and distribute.you all sell an AI that books sales meetings. Here is what each one costs and how you start, read from their own sites.</p>
+    ${whyLine()}
+    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="${AI_SDR_PATH}">See our AI SDR</a></div>
+  </div>
+</section>
+<section class="framed tint" id="table">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Side by side</span><h2>Price, start and channels for each AI SDR</h2><p>Ours is first. Each other row links the page we read it on.</p></div>
+    <div class="cmp-table-wrap rv">${table}</div>
+    <p class="cmp-source">Every competitor figure was read on its own site on ${esc(verified)}. Prices change; each link is the authority.</p>
+  </div>
+</section>
+<section class="framed">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">One page each</span><h2>Pick the one you are weighing</h2></div>
+    <div class="cmp-grid">${list.map((c) => competitorCard(c, "vs")).join("")}</div>
+  </div>
+</section>
+${liveBand()}
+<section class="framed" id="faq">
+  <div class="wrap">
+    <div class="section-head center rv"><h2>Questions about AI SDR alternatives</h2></div>
+    <div class="faq-list rv">${faqList(AI_SDR_ALTERNATIVES_FAQ)}</div>
+    <p class="cmp-more rv">More: <a href="${AI_SDR_PATH}">distribute.you AI SDR</a> · <a href="/compare">every comparison</a> · <a href="/alternatives">all alternatives</a></p>
+  </div>
+</section>`;
+  return shell({
+    title: `AI SDR alternatives: ${list.map((c) => c.name).join(", ")} compared (${monthLabel(new Date())})`,
+    description: `The best AI SDR alternatives: ${list.map((c) => c.name).join(", ")} and distribute.you, with prices read from each one's own site.`,
+    path: AI_SDR_ALTERNATIVES_PATH,
+    head: `<link rel="stylesheet" href="/landing/v2/ai-sdr.css?v=${AI_SDR_CSS_VERSION}">`,
+    body,
+    jsonLd: [
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: "AI SDR alternatives",
+        url: `${SITE}${AI_SDR_ALTERNATIVES_PATH}`,
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "distribute.you", url: `${SITE}${AI_SDR_PATH}` },
+          ...list.map((c, i) => ({ "@type": "ListItem", position: i + 2, name: c.name, url: `${SITE}${competitorPath(c)}` })),
+        ],
+      },
+      faqJsonLd(AI_SDR_ALTERNATIVES_FAQ),
+      breadcrumb([
+        { name: "AI SDR", path: AI_SDR_PATH },
+        { name: "Alternatives", path: AI_SDR_ALTERNATIVES_PATH },
+      ]),
+    ],
   });
 }

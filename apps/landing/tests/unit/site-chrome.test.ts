@@ -39,9 +39,9 @@ vi.mock("@/lib/site-pages", async (orig) => {
 });
 
 describe("the catalogue starts with the pages served today", () => {
-  it("`/` and `/gtm-agency` are live; 19 entries, one per outcome and buyer (Revenue has no Agency page)", () => {
+  it("`/`, `/gtm-agency` and `/ai-sdr` are live; 19 entries, one per outcome and buyer (Revenue has no Agency page)", () => {
     expect(SITE_PAGES).toHaveLength(19);
-    expect(livePages().map((p) => p.path)).toEqual(["/", "/gtm-agency"]);
+    expect(livePages().map((p) => p.path)).toEqual(["/", "/gtm-agency", "/ai-sdr"]);
     expect(new Set(SITE_PAGES.map((p) => p.path)).size).toBe(19);
   });
 
@@ -89,7 +89,7 @@ describe("adding a catalogue entry adds it everywhere", () => {
   });
 
   it("the sitemap lists it", async () => {
-    expect(sitePagePaths(FIXTURE)).toEqual(["/", "/gtm-agency", AGENT, AGENCY]);
+    expect(sitePagePaths(FIXTURE)).toEqual(["/", "/gtm-agency", AGENT, AGENCY, "/ai-sdr"]);
     pagesRef.pages = FIXTURE;
     const { default: sitemap } = await import("@/app/sitemap");
     const urls = (await sitemap()).map((e) => e.url);
@@ -97,6 +97,26 @@ describe("adding a catalogue entry adds it everywhere", () => {
     expect(urls).toContain(`https://distribute.you${AGENT}`);
     expect(urls).toContain(`https://distribute.you${AGENCY}`);
     expect(urls).toContain("https://distribute.you");
+  });
+});
+
+describe("an AI Agent page served at its search path (PAGE-AI-SDR-1029)", () => {
+  it("Meetings Booked is `/ai-sdr`, never `/meetings-automation`, and wears the agent footer", () => {
+    const page = SITE_PAGES.find((p) => p.outcome === "meetings" && p.buyer === "agent")!;
+    expect(page.path).toBe("/ai-sdr");
+    expect(page.live).toBe(true);
+    expect(SITE_PAGES.some((p) => p.path === "/meetings-automation")).toBe(false);
+    const model = footerModel("/ai-sdr/vs/11x");
+    expect(model.variant).toBe("agent");
+    const compare = model.columns.find((c) => c.title === "Compare AI SDRs")!;
+    expect(compare.links.map((l) => l.href)).toEqual([
+      "/ai-sdr/vs/11x",
+      "/ai-sdr/vs/artisan",
+      "/ai-sdr/vs/aisdr",
+      "/ai-sdr/vs/qualified",
+      "/ai-sdr/alternatives",
+    ]);
+    expect(navHtml("/")).toContain('href="/ai-sdr"><b>Meetings Booked Automation</b>');
   });
 });
 

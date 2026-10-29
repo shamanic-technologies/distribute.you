@@ -13,7 +13,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import { COMPETITORS } from "./competitors";
+import { AI_SDR_ALTERNATIVES_PATH, COMPETITORS, competitorPath } from "./competitors";
 import { BEST_FOR_PAGES, bestForLinkLabel } from "./best-for";
 import { INDEX_LINKS_TOKEN } from "./fleet-indexes";
 import { OUTCOMES, SITE_PAGES, livePages, ownerPage, pageAt, type SitePage } from "./site-pages";
@@ -123,7 +123,8 @@ function compareColumn(): FooterColumn {
   return {
     title: "Compare",
     links: [
-      ...COMPETITORS.map((c) => ({ label: `distribute.you vs ${c.name}`, href: `/compare/${c.slug}` })),
+      ...COMPETITORS.map((c) => ({ label: `distribute.you vs ${c.name}`, href: competitorPath(c) })),
+      { label: "AI SDR alternatives", href: AI_SDR_ALTERNATIVES_PATH },
       { label: "All comparisons", href: "/compare" },
       { label: "Alternatives", href: "/alternatives" },
     ],
@@ -200,6 +201,8 @@ export function footerModel(path: string, pages: SitePage[] = SITE_PAGES): Foote
 
   const product: FooterColumn = { title: "Product", links: [...sections, CATALOG, DOCS] };
   const columns: FooterColumn[] = [product, { title: "AI Agent", links: agents }];
+  // An AI Agent page with its own vs/alternatives cluster lists it next (the AI SDR page).
+  if (variant === "agent" && page?.compare?.length) columns.push({ title: page.compareTitle ?? "Compare", links: page.compare });
   if (variant === "home" && agencies.length) columns.push({ title: "Agency", links: [BOOK, ...agencies] });
   columns.push(...tail, FOR_AGENTS_COLUMN, COMPANY_COLUMN, LEGAL_COLUMN);
 

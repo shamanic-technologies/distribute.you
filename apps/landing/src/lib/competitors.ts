@@ -331,51 +331,6 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
   },
   {
-    slug: "11x",
-    name: "11x",
-    domain: "11x.ai",
-    category: "ai-sdr",
-    oneLiner: "Enterprise AI digital workers: Alice for outbound, Julian for inbound calls, sold through a sales team.",
-    sourceUrl: "https://www.11x.ai/",
-    verifiedOn: "2026-09-07",
-    pricingModel: "Not published. Demo and contract through their sales team.",
-    entryPrice: "On request",
-    prices: [
-      { plan: "Alice and Julian", price: "On request", note: "Annual contracts through a demo; no price on the site" },
-    ],
-    operatedBy: "their AI agent",
-    sendingDomains: "Configured with their team during onboarding.",
-    leads: "Sourced by the agent from their data partners.",
-    replies: "Handled by the agent across channels, escalated to your team.",
-    channels: "Email, phone, LinkedIn, SMS, WhatsApp, chat.",
-    costPerMeetingPublished: false,
-    freeTier: "None.",
-    contract: "Annual, enterprise.",
-    whereTheyWin: [
-      "Breadth of channels, phone included.",
-      "Enterprise controls: SOC 2, security reviews, dedicated onboarding.",
-      "Backed by a16z and Benchmark with $70M+ raised.",
-    ],
-    whereWeWin: [
-      "You can start today for free, without a demo or an annual contract.",
-      "A price you can see, and a cost per positive reply measured on your account.",
-      "Built for founders and small teams, not procurement.",
-    ],
-    chooseThemIf: [
-      "You are an enterprise sales org with a procurement process and a multi-channel motion.",
-      "Inbound phone handling matters as much as outbound email.",
-    ],
-    chooseUsIf: [
-      "You want to start this week with a website and a small budget.",
-      "You want to know the price before the call.",
-    ],
-    faq: [
-      { q: "How much does 11x cost?", a: "They do not publish it. Pricing comes after a demo, on an annual contract. distribute.you publishes its prices: one user is free, and every action is billed at the vendor's API price with 0% markup." },
-      { q: "Is distribute.you enterprise-ready?", a: "We serve founders and small B2B teams. If you need SOC 2 paperwork and a security review before a pilot, 11x is built for that buyer." },
-      { q: "Can a small company use 11x?", a: "Their site targets sales, RevOps and marketing teams at larger companies. For a solo founder or a team of three, distribute.you is sized and priced for you." },
-    ],
-  },
-  {
     slug: "smartlead",
     name: "Smartlead",
     domain: "smartlead.ai",
@@ -520,49 +475,96 @@ export const COMPETITORS: readonly Competitor[] = [
       { q: "Can I feed Clay data into distribute.you?", a: "You can upload a list as its own audience. We run it beside the audiences we find and report its cost per outcome separately." },
     ],
   },
+  // The AI SDR agents (category "ai-sdr"). Their comparison pages live under the AI SDR
+  // page's own cluster, `/ai-sdr/vs/<slug>` (PAGE-AI-SDR-1029); `/compare/<slug>` 301s
+  // there. Every figure re-read on each site on 2026-10-29.
+  {
+    slug: "11x",
+    name: "11x",
+    domain: "11x.ai",
+    category: "ai-sdr",
+    oneLiner: "AI agents for large revenue teams: Alice writes outbound email and social, Julian answers inbound by voice and chat and books meetings.",
+    sourceUrl: "https://www.11x.ai/",
+    verifiedOn: "2026-10-29",
+    pricingModel: "Not published. Every call to action on the site books a demo.",
+    entryPrice: "On request",
+    prices: [
+      { plan: "Alice and Julian", price: "On request", note: "No price on the site; every path leads to a demo" },
+    ],
+    operatedBy: "their AI agent",
+    sendingDomains: "Not stated on their site; set up with their team after the demo.",
+    leads: "Researched by Alice, account by account.",
+    replies: "Alice works outbound replies by email and social; Julian answers inbound by voice and chat, around the clock.",
+    channels: "Voice, chat, email, social, SMS and WhatsApp, plus a human dialer.",
+    costPerMeetingPublished: false,
+    freeTier: "None stated; a demo comes first.",
+    contract: "Not published; set after a demo.",
+    whereTheyWin: [
+      "Voice agents that call and answer in several languages, around the clock.",
+      "Inbound and outbound in one platform, with a human dialer beside the agents.",
+      "Built for large revenue teams, with pages for Sales, RevOps and Enterprise.",
+    ],
+    whereWeWin: [
+      "Start today from your website, without a demo.",
+      "Free for one user, every action at the API price with 0% markup.",
+      "Open source under the MIT license: run it on your own server.",
+    ],
+    chooseThemIf: [
+      "You run a large revenue team and want voice agents on inbound calls.",
+      "You buy through a demo and a contract.",
+    ],
+    chooseUsIf: [
+      "You want your first meetings this week, from your website.",
+      "You want to see every price before you start.",
+    ],
+    faq: [
+      { q: "How much does 11x cost?", a: "11x does not publish a price on its site; every path leads to a demo. distribute.you is free for one user, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "Is 11x an AI SDR?", a: "Yes. Alice is their outbound agent and Julian their inbound one. distribute.you is an AI SDR too: it finds your buyers, writes to them, answers the replies and books the meetings." },
+      { q: "Which one fits a small team?", a: "11x writes for large revenue teams. distribute.you is built for founders and small teams: free for one user, $9 per user for a team." },
+    ],
+  },
   {
     slug: "artisan",
     name: "Artisan",
     domain: "artisan.co",
     category: "ai-sdr",
-    oneLiner: "An outbound platform led by Ava, an AI BDR that finds leads, writes and sends, handles replies and books meetings.",
+    oneLiner: "Ava, an autonomous AI BDR that finds and enriches B2B leads, writes and sends outreach, handles replies and books meetings.",
     sourceUrl: "https://www.artisan.co/pricing",
-    verifiedOn: "2026-09-07",
-    pricingModel: "Credit-based tiers from startup to enterprise. Figures are not on the page; a call sets the price.",
+    verifiedOn: "2026-10-29",
+    pricingModel: "Credit-based tiers from startups through enterprise. No figure is on the pricing page; a demo comes first.",
     entryPrice: "On request",
     prices: [
-      { plan: "Credit-based tiers", price: "On request", note: "Startups through enterprise; the pricing page states the model, not the figures" },
+      { plan: "Credit-based tiers", price: "On request", note: "Startups through enterprise; the page states the model, not the figures" },
     ],
     operatedBy: "their AI agent",
-    sendingDomains: "Set up through their platform during onboarding.",
-    leads: "Sourced by Ava from their database.",
-    replies: "Handled by Ava, meetings booked to your calendar.",
-    channels: "Email, with LinkedIn.",
+    sendingDomains: "Not stated on their site.",
+    leads: "Found and enriched by Ava.",
+    replies: "Handled by Ava, who books the meetings.",
+    channels: "Outbound outreach, with a dialer and intent signals in the platform.",
     costPerMeetingPublished: false,
-    freeTier: "None stated.",
-    contract: "Through their sales team.",
+    freeTier: "None stated; the main call to action is a demo.",
+    contract: "Not published.",
     whereTheyWin: [
-      "An all-in-one platform with the agent, the data and the sequencer together.",
-      "Ava handles replies and books meetings on her own.",
-      "Built for teams from startup to enterprise.",
+      "One platform for the agent, the data, a dialer and intent signals.",
+      "Ava runs outbound end to end, replies and meetings included.",
     ],
     whereWeWin: [
       "Published prices: free for one user, every action at the API price with 0% markup.",
-      "A person, not only a model, answers the interested replies.",
-      "You can start today from a website, without a sales call.",
+      "Start from your website in minutes, without a demo.",
+      "Open source: your leads and replies can live in your own database.",
     ],
     chooseThemIf: [
-      "You want an AI agent inside a full platform and a sales-led onboarding.",
-      "Your team will steer the agent week to week.",
+      "You want an AI BDR inside an all-in-one outbound platform.",
+      "You are happy to start with a demo.",
     ],
     chooseUsIf: [
       "You want to know what you will pay before you talk to anyone.",
-      "You want the campaign run as a service and measured per meeting.",
+      "You want to own the code and the data.",
     ],
     faq: [
-      { q: "How much does Artisan cost?", a: "Their pricing page describes credit-based tiers without figures; a call sets the price. distribute.you is free for one user, with every action at the API price and 0% markup." },
-      { q: "Ava books meetings. So does distribute.you. What differs?", a: "Ava is an agent you license and steer. distribute.you runs it for you: we run the campaign from our own domains and a person handles the interested replies with the model." },
-      { q: "Which is faster to start?", a: "distribute.you runs from your website within minutes and the first sends leave the same day. Artisan starts with a demo and an onboarding." },
+      { q: "How much does Artisan cost?", a: "Their pricing page describes credit-based tiers without figures; a demo comes first. distribute.you is free for one user, with every action at the API price and 0% markup." },
+      { q: "Ava books meetings. So does distribute.you. What differs?", a: "Both find leads, write, answer replies and book meetings. distribute.you sends from domains we own and warm, shows the price of every action before it runs, and is open source." },
+      { q: "Which is faster to start?", a: "distribute.you starts from your website in minutes, and your first emails can leave the same day. Artisan starts with a demo." },
     ],
   },
   {
@@ -570,46 +572,94 @@ export const COMPETITORS: readonly Competitor[] = [
     name: "AiSDR",
     domain: "aisdr.com",
     category: "ai-sdr",
-    oneLiner: "An AI SDR platform that prospects, personalises and runs email and LinkedIn outreach, with a strategist agent named Ami.",
+    oneLiner: "An AI SDR platform that prospects, personalises and runs multichannel sequences, with an AI strategist named Ami.",
     sourceUrl: "https://aisdr.com/pricing",
-    verifiedOn: "2026-09-07",
-    pricingModel: "Monthly plans by contacts reached, quarterly commitment above the entry plan.",
-    entryPrice: "$250/month",
+    verifiedOn: "2026-10-29",
+    pricingModel: "Pay as you go at $1.50 per person prospected, charged daily. Team plans are priced on volume, billed monthly on quarterly contracts.",
+    entryPrice: "$1.50 per person prospected",
     prices: [
-      { plan: "Solo", price: "$250/month", note: "200 contacts a month, one user, self-serve" },
-      { plan: "Explore", price: "$900/month, quarterly", note: "800 contacts a month, unlimited users, GTM engineer support" },
-      { plan: "Scale", price: "$2,500/month, quarterly", note: "2,500 contacts a month, managed options, priority support" },
+      { plan: "Pay as you go", price: "$1.50 per person prospected", note: "Charged daily, cancel anytime; Ami, prospecting, sequences, warmup and a unified inbox" },
+      { plan: "Teams", price: "On request", note: "For teams contacting 1,000+ people a month; quarterly contracts, 20% off annual" },
+      { plan: "Warmed-up mailbox", price: "$33", note: "Add-on, any plan" },
+      { plan: "Fully managed service", price: "$2,500/month", note: "Add-on; a single managed campaign is $149" },
     ],
     operatedBy: "their AI agent",
-    sendingDomains: "Set up and warmed by them as part of the plan.",
-    leads: "Sourced from their 300M+ database.",
-    replies: "Handled by the agent, with human support on the higher plans.",
-    channels: "Email and LinkedIn.",
+    sendingDomains: "Lookalike domains with warmup and deliverability monitoring, set up by them.",
+    leads: "Prospected from their 2B+ profiles.",
+    replies: "Land in their unified inbox, synced both ways with HubSpot.",
+    channels: "Multichannel sequences; LinkedIn signals and AI voice notes on Teams.",
     costPerMeetingPublished: false,
-    freeTier: "None; onboarding included.",
-    contract: "Monthly on Solo, quarterly or annual above it. 20% off annual.",
+    freeTier: "Sign up without a card; payment starts when you launch a campaign.",
+    contract: "None on pay as you go. Teams are quarterly, 20% off annual.",
     whereTheyWin: [
-      "Email infrastructure and warmup included in the plan.",
-      "LinkedIn in the same motion as email.",
-      "HubSpot and Salesforce integrations out of the box.",
+      "Pay as you go with no commitment, and a price per person on the page.",
+      "HubSpot sync on every plan, Salesforce on Teams.",
+      "A managed service if you want their team to run it.",
     ],
     whereWeWin: [
-      "Free for one user instead of $250 a month. Every dollar you choose goes to your campaign.",
-      "No quarterly commitment.",
-      "The cost of a positive reply measured on your account and published across clients.",
+      "Free for one user, every action at the API price with 0% markup.",
+      "Open source: run it on your own server with your own keys.",
+      "What each meeting cost you, measured on your dashboard.",
     ],
     chooseThemIf: [
-      "You want a fixed monthly volume of contacts and a CRM-integrated agent.",
-      "You are ready for a quarterly commitment at $900 or more.",
+      "You want an AI SDR priced per person prospected, inside HubSpot.",
+      "You plan to contact 1,000+ people a month on a quarterly contract.",
     ],
     chooseUsIf: [
-      "You want to start small and let results set the budget.",
-      "You want a human in the loop on the interested replies.",
+      "You want to pay the vendor's API price for each action, nothing added.",
+      "You want the code and the data in your hands.",
     ],
     faq: [
-      { q: "AiSDR's Solo plan is $250 a month. What does distribute.you cost for the same?", a: "One user is free, with no fixed contact count: every dollar becomes campaign credit, and the dashboard shows what each positive reply cost." },
-      { q: "Do both handle infrastructure?", a: "Yes. AiSDR sets up and warms domains inside your plan. distribute.you sends from domains we own and warm, so nothing is set up in your name at all." },
-      { q: "Is there a commitment with distribute.you?", a: "No. Cancel anytime, and your monthly amount is a hard cap." },
+      { q: "How much does AiSDR cost?", a: "AiSDR's pay as you go plan is $1.50 per person prospected, charged daily. Team plans are priced on volume, on quarterly contracts. distribute.you is free for one user, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "Do both send from warmed domains?", a: "Yes. AiSDR sets up lookalike domains with warmup. distribute.you sends from domains we own and warm, so nothing is set up in your name." },
+      { q: "Is there a commitment with distribute.you?", a: "No. You start with a $10 balance and can pause or cancel anytime." },
+    ],
+  },
+  {
+    slug: "qualified",
+    name: "Qualified",
+    domain: "qualified.com",
+    category: "ai-sdr",
+    oneLiner: "Piper, an AI SDR agent that talks with your website visitors and inbound leads by text, voice and email, and books meetings.",
+    sourceUrl: "https://www.qualified.com/pricing",
+    verifiedOn: "2026-10-29",
+    pricingModel: "Three plans sized by web sessions and email contacts. No price is published; every plan says Contact us.",
+    entryPrice: "On request",
+    prices: [
+      { plan: "Premier", price: "On request", note: "One SDR agent, 250K web sessions and 2.5K active email contacts a month" },
+      { plan: "Enterprise", price: "On request", note: "2M web sessions and 10K email contacts a month, agent handoff, MCP and API access" },
+      { plan: "Ultimate", price: "On request", note: "5M web sessions and 24K email contacts a month, a dedicated IP" },
+    ],
+    operatedBy: "their AI agent",
+    sendingDomains: "Not a cold email sender: Piper emails your inbound leads.",
+    leads: "Your own website visitors and inbound leads, enriched.",
+    replies: "Piper answers on your website and by email, and books the meeting.",
+    channels: "Website chat, voice and video, email, and Slack.",
+    costPerMeetingPublished: false,
+    freeTier: "None; a demo comes first.",
+    contract: "Not published.",
+    whereTheyWin: [
+      "Turns the buyers already on your website into meetings, in real time.",
+      "Deep Salesforce integration and 20+ GTM integrations.",
+      "Over 500 companies have hired Piper, in their own words.",
+    ],
+    whereWeWin: [
+      "We find new buyers who have never visited your site.",
+      "Free for one user, every action at the API price with 0% markup.",
+      "Start from your website today, without a demo.",
+    ],
+    chooseThemIf: [
+      "Your site already gets heavy traffic and you want every visitor answered.",
+      "You run Salesforce and buy through a demo.",
+    ],
+    chooseUsIf: [
+      "You need new buyers, not only the ones already on your site.",
+      "You want to see the price before you start.",
+    ],
+    faq: [
+      { q: "How much does Qualified cost?", a: "Qualified publishes three plans, Premier, Enterprise and Ultimate, without a price; each says Contact us. distribute.you is free for one user, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "Is Qualified an outbound AI SDR?", a: "Piper works inbound: your website visitors and inbound leads. distribute.you works outbound: it finds new buyers, writes to them and books the meetings. The two can run side by side." },
+      { q: "Which is faster to start?", a: "distribute.you starts from your website in minutes. Qualified starts with a demo." },
     ],
   },
   {
@@ -1580,9 +1630,46 @@ export function competitorBySlug(slug: string): Competitor | undefined {
   return COMPETITORS.find((c) => c.slug === slug);
 }
 
+/**
+ * The AI SDR page (PAGE-AI-SDR-1029) owns the comparisons against AI SDR agents: they
+ * are served at `/ai-sdr/vs/<slug>` and wear that page's nav and footer, and their old
+ * `/compare/<slug>` URLs answer a 301 there. Every other competitor stays under `/compare`.
+ */
+export const AI_SDR_PATH = "/ai-sdr";
+export const AI_SDR_ALTERNATIVES_PATH = `${AI_SDR_PATH}/alternatives`;
+
+/**
+ * The AI SDRs searchers weigh against "ai sdr" (owner brief 2026-10-29): their pages move
+ * under `/ai-sdr/vs/`. Gojiberry and Explee, AI SDRs too, stay under `/compare` with the
+ * other clones the owner picked.
+ */
+export const AI_SDR_SLUGS: readonly string[] = ["11x", "artisan", "aisdr", "qualified"];
+
+/** The AI SDR page's own competitors, in that order. */
+export function aiSdrCompetitors(): Competitor[] {
+  return AI_SDR_SLUGS.map((slug) => COMPETITORS.find((c) => c.slug === slug)).filter((c): c is Competitor => !!c);
+}
+
+export function isAiSdrCluster(c: Pick<Competitor, "slug">): boolean {
+  return AI_SDR_SLUGS.includes(c.slug);
+}
+
+/** Where a competitor's comparison page is served. Every link to one reads this. */
+export function competitorPath(c: Pick<Competitor, "slug">): string {
+  return isAiSdrCluster(c) ? `${AI_SDR_PATH}/vs/${c.slug}` : `/compare/${c.slug}`;
+}
+
+/** The AI SDR page's own vs/alternatives links, listed in its footer and closing its FAQ. */
+export function aiSdrCompareLinks(): { label: string; href: string }[] {
+  return [
+    ...aiSdrCompetitors().map((c) => ({ label: `distribute.you vs ${c.name}`, href: competitorPath(c) })),
+    { label: "AI SDR alternatives", href: AI_SDR_ALTERNATIVES_PATH },
+  ];
+}
+
 /** Every path the cluster serves, for the sitemap and llms.txt. */
 export function comparePaths(): string[] {
-  return ["/compare", "/alternatives", ...COMPETITORS.map((c) => `/compare/${c.slug}`)];
+  return ["/compare", "/alternatives", AI_SDR_ALTERNATIVES_PATH, ...COMPETITORS.map(competitorPath)];
 }
 
 /**
