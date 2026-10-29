@@ -390,7 +390,14 @@ const LADDER_ORDER = ["website_visit", "conversation", "signup", "form_submitted
  * Change what happened to this lead (owner 2026-10-08), with lead-service's per-lead step
  * statements: the person page's write, its cost question and its close-won form.
  */
-function LeadStatus({ lead, lifetimeRevenueUsd }: { lead: PipelineLead | ColdPipelineLead; lifetimeRevenueUsd: number | null }) {
+export function LeadStatus({
+  lead,
+  lifetimeRevenueUsd,
+}: {
+  /** The step the lead stands on and its leads_campaigns row (the write's id); Done by your team passes the same pair. */
+  lead: Pick<PipelineLead, "campaignLeadId"> & { step: { key: string } };
+  lifetimeRevenueUsd: number | null;
+}) {
   const setStep = useSetAnyLeadStepStatement();
   const [open, setOpen] = useState<{ key: string; kind: "outcome" | "never" } | null>(null);
   const [done, setDone] = useState<string | null>(null);

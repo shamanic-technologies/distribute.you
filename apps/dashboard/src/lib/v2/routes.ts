@@ -28,7 +28,9 @@ export type V2Section =
   | "research"
   | "monitoring"
   | "posts"
-  | "catalogue";
+  | "catalogue"
+  | "ledger"
+  | "team-work";
 
 export function v2Base(orgId: string, brandId: string): string {
   return `/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}`;
@@ -120,6 +122,8 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "monitoring",
     "posts",
     "catalogue",
+    "ledger",
+    "team-work",
   ];
   // An offer's Sales path is its own section, opened from the sidebar.
   if (s === "offers" && parts[7] === "sales-path") return "sales-path";

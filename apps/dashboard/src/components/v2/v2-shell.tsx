@@ -150,6 +150,10 @@ const ICONS = {
   overview: "M2.5 2.5h4.5v4.5h-4.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5h-4.5zM9 9h4.5v4.5H9z",
   // A flag on its pole: a step reached.
   outcome: "M3.5 13.5v-11M3.5 3h8l-1.5 2.5 1.5 2.5h-8",
+  // An open book: the brand's ledger.
+  ledger: "M8 4.5c-1.5-1-3.5-1.5-5.5-1.5v9c2 0 4 .5 5.5 1.5m0-9c1.5-1 3.5-1.5 5.5-1.5v9c-2 0-4 .5-5.5 1.5m0-9v9",
+  // Two people: the client's own team.
+  team: "M6 7.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm-3.5 6c0-2 1.6-3.5 3.5-3.5s3.5 1.5 3.5 3.5M11 7.5a1.6 1.6 0 1 0 0-3.2M11.5 10c1.2.3 2 1.6 2 3.5",
   workflows: "M4 3.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4 6.5v2a2 2 0 0 0 2 2h4.5",
 };
 
@@ -405,6 +409,16 @@ function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: str
   const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
   return (
     <>
+      {/* The factory's books and the client's own team's work (FACTORY-P4-PAGES): staff for now. */}
+      <Group title="Factory">
+        <NavItem href={v2Href(orgId, brandId, "ledger")} label="Ledger" icon={<I d={ICONS.ledger} />} active={pathname.startsWith(v2Href(orgId, brandId, "ledger"))} />
+        <NavItem
+          href={v2Href(orgId, brandId, "team-work")}
+          label="Done by your team"
+          icon={<I d={ICONS.team} />}
+          active={pathname.startsWith(v2Href(orgId, brandId, "team-work"))}
+        />
+      </Group>
       {CATALOGUE_OBJECTS.map((object) => {
         const overview = v2CatalogueHref(orgId, brandId, object);
         return (
