@@ -13,6 +13,24 @@ const read = (rel: string) => readFileSync(join(__dirname, "../src", rel), "utf8
 const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const day = (d: string, received: number, delivered: number, notDelivered: number) => ({ day: d, received, delivered, notDelivered });
 
+describe("Sophie's replies: chat-service's read as served in prod (2026-10-29, days=30)", () => {
+  const prod = () => SophieReplyDaysSchema.parse(JSON.parse(readFileSync(join(__dirname, "fixtures", "chat-channel-replies-prod-2026-10-29.json"), "utf8")));
+
+  it("the whole payload parses: 30 UTC days oldest first, quiet days with zeros", () => {
+    const d = prod();
+    expect(d.days.length).toBe(30);
+    expect(d.days[0].day).toBe("2026-09-30");
+    expect(d.days[29].day).toBe("2026-10-29");
+  });
+
+  it("10-27 and 10-29 hold the refused replies, and the hub reads red on both, newest first", () => {
+    const by = Object.fromEntries(prod().days.map((x) => [x.day, x.notDelivered]));
+    expect(by["2026-10-27"]).toBeGreaterThan(0);
+    expect(by["2026-10-29"]).toBeGreaterThan(0);
+    expect(recentNotDelivered(prod()).map((x) => x.day)).toEqual(["2026-10-29", "2026-10-27"]);
+  });
+});
+
 describe("Sophie's replies: chat-service's read and the red window", () => {
   it("parses as served: one row per UTC day, oldest first", () => {
     const d = SophieReplyDaysSchema.parse({ days: [day("2026-10-28", 4, 4, 0), day("2026-10-29", 3, 1, 2)] });

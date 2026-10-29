@@ -24,21 +24,34 @@ type Bar = SophieReplyDay & { period: string };
 
 const replies = (v: number) => `${n(v)} ${v === 1 ? "reply" : "replies"}`;
 
-/** Delivered (green) under Not delivered (red), one bar per served UTC day. */
+/**
+ * Two charts side by side: Not delivered alone on its own scale (a busy day, 632 replies on 2026-10-23, would flatten
+ * 1 or 2 refused replies to a pixel in the stacked one), then Delivered (green) under Not delivered (red).
+ */
 export function SophieRepliesChart({ data }: { data: SophieReplyDays }) {
   const periods: Bar[] = data.days.map((d) => ({ ...d, period: d.day }));
   return (
-    <PeriodBars
-      periods={periods}
-      series={[
-        { key: "delivered", label: "Delivered", color: OK, get: (m) => m.delivered },
-        { key: "notDelivered", label: "Not delivered", color: RED, get: (m) => m.notDelivered },
-      ]}
-      caption={(m) => `${n(m.received)} ${m.received === 1 ? "message" : "messages"} received`}
-      format={n}
-      label={(d, short) => (short ? shortDay(d) : dayLabel(d))}
-      empty="Sophie has not answered anyone on WhatsApp yet."
-    />
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <PeriodBars
+        periods={periods}
+        series={[{ key: "notDelivered", label: "Not delivered", color: RED, get: (m) => m.notDelivered }]}
+        caption={(m) => `${n(m.received)} ${m.received === 1 ? "message" : "messages"} received`}
+        format={n}
+        label={(d, short) => (short ? shortDay(d) : dayLabel(d))}
+        empty="Sophie has not answered anyone on WhatsApp yet."
+      />
+      <PeriodBars
+        periods={periods}
+        series={[
+          { key: "delivered", label: "Delivered", color: OK, get: (m) => m.delivered },
+          { key: "notDelivered", label: "Not delivered", color: RED, get: (m) => m.notDelivered },
+        ]}
+        caption={(m) => `${n(m.received)} ${m.received === 1 ? "message" : "messages"} received`}
+        format={n}
+        label={(d, short) => (short ? shortDay(d) : dayLabel(d))}
+        empty="Sophie has not answered anyone on WhatsApp yet."
+      />
+    </div>
   );
 }
 
