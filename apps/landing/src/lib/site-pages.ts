@@ -15,6 +15,7 @@
  * Alias-free: the unit tests import it directly.
  */
 import { agencyCompareLinks } from "./agencies";
+import { leadgenCompareLinks } from "./lead-generation-agencies";
 
 export type Buyer = "agent" | "agency";
 
@@ -70,7 +71,7 @@ function agencyPath(slug: OutcomeSlug): string {
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/gtm-agency"]);
+const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency"]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
 const GTM_AGENCY_SECTIONS = [
@@ -78,6 +79,15 @@ const GTM_AGENCY_SECTIONS = [
   { label: "Our data", href: "/gtm-agency#data" },
   { label: "Price", href: "/gtm-agency#price" },
   { label: "FAQ", href: "/gtm-agency#faq" },
+];
+
+/** The sections of the Lead Generation Agency page (PAGE-LEADGEN-AGENCY-1029). */
+const LEADGEN_AGENCY_SECTIONS = [
+  { label: "How we work", href: "/lead-generation-agency#how" },
+  { label: "Every lead", href: "/lead-generation-agency#lead" },
+  { label: "Our data", href: "/lead-generation-agency#data" },
+  { label: "Price", href: "/lead-generation-agency#price" },
+  { label: "FAQ", href: "/lead-generation-agency#faq" },
 ];
 
 /** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
@@ -117,6 +127,7 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           description: o.slug === "gtm" ? "Your GTM department, run for you" : o.line,
           live: LIVE_PATHS.has(agencyPath(o.slug)),
           ...(o.slug === "gtm" ? { sections: GTM_AGENCY_SECTIONS, compare: agencyCompareLinks() } : {}),
+          ...(o.slug === "lead-generation" ? { sections: LEADGEN_AGENCY_SECTIONS, compare: leadgenCompareLinks() } : {}),
         },
       ]),
 ]);
