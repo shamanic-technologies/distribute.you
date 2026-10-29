@@ -4,7 +4,8 @@
  *
  *   node scripts/check-public-urls.mjs <base> [--docs-base <url>]
  *
- * Reads the LIVE sitemaps (https://distribute.you/sitemap.xml and the docs sitemap),
+ * Reads the LIVE sitemap (https://distribute.you/sitemap.xml; the old docs URLs are its
+ * /docs entries as docs.distribute.you published them, trailing slash included),
  * replays every path against <base> (a local `next start`, or prod after the merge) and
  * passes only when each answers 200, or a redirect whose target answers 200. Docs URLs
  * are checked at `--docs-base` (default: <base>, i.e. once the docs live under /docs the
@@ -24,25 +25,38 @@ const opt = (name) => {
 const docsBase = (opt("--docs-base") ?? base).replace(/\/$/, "");
 const docsPrefix = opt("--docs-prefix") ?? "";
 
+/** One retry on a transport error: a dropped connection is not a 404. (If every connect
+ *  times out locally while curl works, run node with --no-network-family-autoselection.) */
+async function get(url, init) {
+  try {
+    return await fetch(url, init);
+  } catch {
+    await new Promise((r) => setTimeout(r, 2000));
+    return fetch(url, init);
+  }
+}
+
 async function locs(url) {
-  const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 url-check" } });
+  const res = await get(url, { headers: { "user-agent": "Mozilla/5.0 url-check" } });
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
   return [...(await res.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
 }
 
 async function check(url) {
-  let res = await fetch(url, { redirect: "manual", headers: { "user-agent": "Mozilla/5.0 url-check" } });
+  let res = await get(url, { redirect: "manual", headers: { "user-agent": "Mozilla/5.0 url-check" } });
   if (res.status === 200) return { url, ok: true, status: "200" };
   if (res.status >= 300 && res.status < 400) {
     const to = new URL(res.headers.get("location") ?? "", url).toString();
-    const hop = await fetch(to, { headers: { "user-agent": "Mozilla/5.0 url-check" } });
+    const hop = await get(to, { headers: { "user-agent": "Mozilla/5.0 url-check" } });
     return { url, ok: hop.status === 200, status: `${res.status} -> ${to} ${hop.status}` };
   }
   return { url, ok: false, status: String(res.status) };
 }
 
 const site = await locs("https://distribute.you/sitemap.xml");
-const docs = await locs("https://docs.distribute.you/sitemap.xml");
+// The old docs host serves only redirects now (its sitemap 301s to ours), so its paths
+// are the /docs entries of our own sitemap, prefix dropped, each with its old trailing slash.
+const docs = site.filter((p) => p === "/docs" || p.startsWith("/docs/")).map((p) => (p === "/docs" ? "/" : `${p.slice(5)}/`));
 const targets = [
   ...site.map((p) => `${base}${p}`),
   ...docs.map((p) => `${docsBase}${docsPrefix}${p}`),

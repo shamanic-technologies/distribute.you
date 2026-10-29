@@ -8,15 +8,15 @@
  * harness-specific lives in that skill, so this page never has to learn a new
  * client.
  *
- * The skill is generated and served by the docs app (`apps/docs`,
- * `src/lib/agent-skill.ts`, at `/skill.md`); the URL and the MCP endpoint are
- * restated here because the two apps share no module, and a guard pins them
- * equal to the docs app's own constants.
+ * The skill is generated and served by the landing's docs (`apps/landing`,
+ * `src/lib/docs/agent-skill.ts`, at `/docs/skill.md`); the URL and the MCP endpoint
+ * are restated here because the two apps share no module, and a guard pins them
+ * equal to the docs' own constants.
  *
  * Alias-free, so it carries real unit tests.
  */
 
-export const AGENT_SKILL_URL = "https://docs.distribute.you/skill.md";
+export const AGENT_SKILL_URL = "https://distribute.you/docs/skill.md";
 export const MCP_ENDPOINT_URL = "https://mcp.distribute.you/mcp";
 
 /** A key the dashboard just issued. Shown once, so the line can carry it. */

@@ -2060,12 +2060,16 @@ export const STAFF_MONITORING_PATHS = {
   stuckOccurrences: "/campaigns/ops/stuck-occurrences",
   // Whether each trigger a live campaign waits on still fires, per day + the served verdict (campaign-service, TRIGGER-HEALTH-1028).
   triggerHealth: "/campaigns/ops/trigger-health",
+  // Answers owed to a person who wrote, refused by the sender or given up after failed runs, per day + the served verdict (campaign-service, ONE-AI-REFUSED-ANSWERS-1029).
+  unsentAnswers: "/campaigns/ops/unsent-answers",
   // Per tool a client connected (GoHighLevel, PostHog, Stripe, Clerk): records taken in per day + the served verdict (crm-service, CONNECTOR-INTAKE-MONITORING-1028).
   connectorIntake: "/crm/ops/connector-intake",
   // Per client org and day, the funnel campaigns whose shadow plan or Jev pick differs from what runs + the verdict (features-service, FACTORY-P1-DASH).
   factoryShadow: "/features/audit/factory-shadow/monitoring",
   // Funnel campaigns following their plan: status ok|red, the red ones, one row per UTC day (campaign-service #808, api-service #1409).
   planFollowing: "/campaigns/ops/plan-following",
+  // Per outcome a stored script makes, script path vs the service path it replaced, per day + the verdicts and the roll-back guard (workflow-service, FACTORY-P3).
+  scriptsMonitoring: "/scripts/ops/monitoring",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -2228,6 +2232,7 @@ import {
   type FactoryShadowMonitoring,
 } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
+import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
 /**
  * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
@@ -2249,6 +2254,11 @@ export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunne
 /** Monitoring > Factory plan > Following its plan: status, the red campaigns with their served state, one row per UTC day. */
 export async function getStaffPlanFollowing(days: number): Promise<PlanFollowing> {
   return parseStaff("getStaffPlanFollowing", PlanFollowingSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.planFollowing}?days=${days}`));
+}
+
+/** Monitoring > Scripts: per outcome, the script path vs the service path it replaced, per UTC day, + verdicts and guard (workflow-service, FACTORY-P3). */
+export async function getStaffScriptsMonitoring(days: number): Promise<ScriptsMonitoring> {
+  return parseStaff("getStaffScriptsMonitoring", ScriptsMonitoringSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.scriptsMonitoring}?days=${days}`));
 }
 
 /** A funnel campaign's plan changes, newest first: when, from which sales funnel to which (campaign-service #808, api-service #1411). */
@@ -13208,6 +13218,14 @@ import { StuckOccurrencesSchema as StaffStuckOccurrencesSchema, type StuckOccurr
 /** Prospects waiting on a blocked campaign answer over the last `days` UTC days, with campaign-service's served verdict. */
 export async function getStaffStuckOccurrences(days: number): Promise<StaffStuckOccurrences> {
   return parseStaff("getStaffStuckOccurrences", StaffStuckOccurrencesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.stuckOccurrences}?days=${days}`));
+}
+
+// ─── Monitoring > Triggers > Unsent answers (ONE-AI-REFUSED-ANSWERS-1029) ───
+import { UnsentAnswersSchema as StaffUnsentAnswersSchema, type UnsentAnswers as StaffUnsentAnswers } from "./monitoring/unsent-answers";
+
+/** Answers owed to a person who wrote that the sender refused or that every run failed, over the last `days` UTC days, with campaign-service's served verdict. */
+export async function getStaffUnsentAnswers(days: number): Promise<StaffUnsentAnswers> {
+  return parseStaff("getStaffUnsentAnswers", StaffUnsentAnswersSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.unsentAnswers}?days=${days}`));
 }
 
 // ─── Monitoring > Triggers > Firing (TRIGGER-HEALTH-1028-DASH) ───

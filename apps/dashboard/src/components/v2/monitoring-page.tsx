@@ -46,12 +46,16 @@ import { triggerName } from "@/lib/monitoring/trigger-reports";
 import { ProspectsWaitingPage, ProspectsWaitingTile, useStuckOccurrences } from "@/components/v2/monitoring-waiting";
 import { TriggerHealthPage, TriggerHealthTile, useTriggerHealth } from "@/components/v2/monitoring-trigger-health";
 import { redTriggers, watchedTriggers } from "@/lib/monitoring/trigger-health";
+import { UnsentAnswersPage, UnsentAnswersTile, useUnsentAnswers } from "@/components/v2/monitoring-unsent-answers";
 import { PlugsConnectedIcon } from "@phosphor-icons/react/dist/csr/PlugsConnected";
 import { ConnectorIntakePage, ConnectorIntakeTile, useConnectorIntake } from "@/components/v2/monitoring-connectors";
 import { connectionName, redConnections } from "@/lib/monitoring/connector-intake";
 import { StrategyIcon } from "@phosphor-icons/react/dist/csr/Strategy";
 import { FactoryShadowPage, FactoryShadowTile, PlanFollowingPage, PlanFollowingTile, useFactoryShadowMonitoring, usePlanFollowing } from "@/components/v2/monitoring-factory";
 import { planStateWords } from "@/lib/plan-following";
+import { CodeIcon } from "@phosphor-icons/react/dist/csr/Code";
+import { ScriptsPage, ScriptsTile, useScriptsMonitoring } from "@/components/v2/monitoring-scripts";
+import { brokenOutcomes, guardStateWords, outcomeName } from "@/lib/monitoring/scripts-monitoring";
 import { verdictReasonWords } from "@/lib/factory-shadow";
 import { loadLabel, memLabel } from "@/lib/monitoring/box-health";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
@@ -121,7 +125,7 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "chat";
+type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "scripts" | "chat";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
@@ -137,6 +141,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   triggers: { name: "Triggers", color: "var(--data-amber)", Icon: LightningIcon, sub: "Whether every trigger still fires, reaches its campaign, and gets its answer" },
   tools: { name: "Connected tools", color: "var(--data-sky)", Icon: PlugsConnectedIcon, sub: "Whether every tool a client connected still brings records in" },
   factory: { name: "Factory plan", color: "var(--data-violet)", Icon: StrategyIcon, sub: "Which client campaigns would run differently if they followed their plan" },
+  scripts: { name: "Scripts", color: "var(--data-teal)", Icon: CodeIcon, sub: "Whether each stored script works as well as the code it replaced" },
   chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
 };
 
@@ -174,9 +179,11 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "triggers/reports": { section: "triggers", title: "Reports", question: "Did every form, WhatsApp number, positive reply and account event reach its campaign?" },
   "triggers/waiting": { section: "triggers", title: "Prospects waiting", question: "Is any prospect waiting on a blocked campaign answer?" },
   "triggers/firing": { section: "triggers", title: "Firing", question: "Is any trigger our campaigns wait on broken?" },
+  "triggers/unsent": { section: "triggers", title: "Unsent answers", question: "Did anyone who wrote to a brand get no answer?" },
   "tools/intake": { section: "tools", title: "Records taken in", question: "Does every tool a client connected still bring records in?" },
   "factory/plan": { section: "factory", title: "Would change", question: "Which client campaigns would change if they followed their plan?" },
   "factory/following": { section: "factory", title: "Following its plan", question: "Does every campaign switched to its plan actually run it?" },
+  "scripts/engines": { section: "scripts", title: "Engines", question: "Does each script work as well as the code it replaced?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -268,6 +275,8 @@ export function V2Monitoring() {
           ? "The production server (every service and Postgres), sampled every 5 minutes. Before 2026-10-26, history comes from sysstat every 10 minutes, without containers. Times are UTC."
           : meta.section === "triggers" || meta.section === "tools" || meta.section === "factory"
           ? "Every org, read live from production. Days are UTC."
+          : meta.section === "scripts"
+          ? "Every org, read live from production, stored once a day. Days are UTC."
           : meta.section === "chat"
           ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
           : meta.section === "ledger"
@@ -330,9 +339,11 @@ export function V2Monitoring() {
         {view.page === "triggers/reports" && <TriggerReportsPage />}
         {view.page === "triggers/waiting" && <ProspectsWaitingPage />}
         {view.page === "triggers/firing" && <TriggerHealthPage />}
+        {view.page === "triggers/unsent" && <UnsentAnswersPage />}
         {view.page === "tools/intake" && <ConnectorIntakePage />}
         {view.page === "factory/plan" && <FactoryShadowPage />}
         {view.page === "factory/following" && <PlanFollowingPage />}
+        {view.page === "scripts/engines" && <ScriptsPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -430,9 +441,13 @@ function Hub({ base }: { base: string }) {
   const trig = useTriggerReports();
   const waiting = useStuckOccurrences();
   const firing = useTriggerHealth();
+  const unsent = useUnsentAnswers();
   const tools = useConnectorIntake();
   const factory = useFactoryShadowMonitoring();
   const following = usePlanFollowing();
+  const scripts = useScriptsMonitoring();
+  const scriptsBroken = scripts.data ? brokenOutcomes(scripts.data) : undefined;
+  const scriptGuards = scripts.data?.outcomes.flatMap((o) => (o.guard ? [o.guard.state] : [])) ?? [];
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
@@ -471,12 +486,16 @@ function Hub({ base }: { base: string }) {
         <ProspectsWaitingTile href={href("triggers/waiting")} />
         {/* A trigger live campaigns wait on that never fired, or whose facts came with no event (TRIGGER-HEALTH-1028): red here IS the alert, never an email. */}
         <TriggerHealthTile href={href("triggers/firing")} />
+        {/* A person wrote to a brand and the answer we owed them was refused by the sender or given up after failed runs, in the last 24 h (ONE-AI-REFUSED-ANSWERS-1029): red here IS the alert, never an email. */}
+        <UnsentAnswersTile href={href("triggers/unsent")} />
         {/* A tool a client connected that syncs "fine" but takes in nothing for longer than its habit, or whose sync fails (CONNECTOR-INTAKE-MONITORING-1028): red here IS the alert, never an email. */}
         <ConnectorIntakeTile href={href("tools/intake")} />
         {/* The GTM Factory shadow pass failed to judge or plan a live campaign, or stopped running (FACTORY-P1-DASH): red here IS the alert, never an email. */}
         <FactoryShadowTile href={href("factory/plan")} />
         {/* A campaign switched to follow its plan that cannot apply it, or the follower went silent (FACTORY-P1-PLAN-FOLLOWING-DASH): red here IS the alert, never an email. */}
         <PlanFollowingTile href={href("factory/following")} />
+        {/* A stored script that fails more often than the code it replaced, or whose guard rolled the fleet back (FACTORY-P3): red here IS the alert, never an email. */}
+        <ScriptsTile href={href("scripts/engines")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -760,11 +779,12 @@ function Hub({ base }: { base: string }) {
 
       <div>
       <SectionTitle count={1}>Triggers</SectionTitle>
-      <Section section="triggers" count={3} grid={false}>
+      <Section section="triggers" count={4} grid={false}>
         <HubChips>
           <HubChip href={href("triggers/reports")} color={trig.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Reports" />
           <HubChip href={href("triggers/waiting")} color={waiting.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Prospects waiting" />
           <HubChip href={href("triggers/firing")} color={firing.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Firing" />
+          <HubChip href={href("triggers/unsent")} color={unsent.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Unsent answers" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -808,6 +828,19 @@ function Hub({ base }: { base: string }) {
               note: "never fired, or no event",
             },
             { label: "Watched", value: firing.data && watchedTriggers(firing.data).watched.length, note: "a live campaign waits on it" },
+          ]}
+        />
+        <Card
+          href={href("triggers/unsent")}
+          page="triggers/unsent"
+          error={unsent.isError && !unsent.data}
+          cells={[
+            {
+              label: "Not sent",
+              value: unsent.data && <span style={{ color: unsent.data.status === "red" ? "var(--data-rose)" : undefined }}>{unsent.data.brokenLast24h.toLocaleString("en-US")}</span>,
+              note: unsent.data ? `last ${unsent.data.redWindowHours} h` : "last 24 h",
+            },
+            { label: "Listed", value: unsent.data?.unsent.length.toLocaleString("en-US"), note: unsent.data ? `last ${unsent.data.days} days` : undefined },
           ]}
         />
         </div>
@@ -886,6 +919,44 @@ function Hub({ base }: { base: string }) {
               value: following.data?.following,
               note: "switched campaigns",
               bars: following.data?.byDay.map((d) => d.following),
+            },
+          ]}
+        />
+        </div>
+      </Section>
+      </div>
+
+      <div>
+      <SectionTitle count={1}>Scripts</SectionTitle>
+      <Section section="scripts" count={1} grid={false}>
+        <HubChips>
+          <HubChip href={href("scripts/engines")} color={scriptsBroken?.length ? "var(--data-rose)" : "var(--data-teal)"} label="Engines" />
+        </HubChips>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Card
+          href={href("scripts/engines")}
+          page="scripts/engines"
+          error={scripts.isError && !scripts.data}
+          cells={[
+            {
+              label: "Red now",
+              value: scriptsBroken && <span style={{ color: scriptsBroken.length ? "var(--data-rose)" : undefined }}>{scriptsBroken.length}</span>,
+              note: scriptsBroken?.length ? scriptsBroken.map((o) => outcomeName(o.outcome)).join(", ") : "every script works",
+            },
+            {
+              label: "Guard",
+              value: scripts.data && (
+                scriptGuards.includes("rolled_back") ? (
+                  <span style={{ color: "var(--data-rose)" }}>{guardStateWords("rolled_back").words}</span>
+                ) : scriptGuards.includes("watching") ? (
+                  guardStateWords("watching").words
+                ) : scriptGuards.length ? (
+                  guardStateWords(scriptGuards[0]).words
+                ) : (
+                  "Not live"
+                )
+              ),
+              note: "rolls back on too many errors",
             },
           ]}
         />

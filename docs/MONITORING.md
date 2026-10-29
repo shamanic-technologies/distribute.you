@@ -43,7 +43,7 @@ Public status page at `status.distribute.you`.
 | Name | URL | Method | Expected Status |
 |------|-----|--------|-----------------|
 | Dashboard | `https://dashboard.distribute.you` | GET | 200 |
-| Docs | `https://docs.distribute.you` | GET | 200 |
+| Docs | `https://distribute.you/docs` | GET | 200 |
 
 ### Custom Domain Setup
 
