@@ -16,13 +16,17 @@
 import {
   CATEGORY_LABEL,
   COMPARE_VERIFIED_LABEL,
-  AI_SDR_ALTERNATIVES_PATH,
-  AI_SDR_PATH,
+  AI_LEAD_GEN_CLUSTER,
+  AI_SDR_CLUSTER,
   COMPETITORS,
   DISTRIBUTE_ROW,
-  aiSdrCompetitors,
+  clusterAlternativesPath,
+  clusterCompetitors,
+  clusterOf,
   competitorPath,
+  isAiLeadGenCluster,
   isAiSdrCluster,
+  type CompareCluster,
   monthLabel,
   type Category,
   type Competitor,
@@ -37,6 +41,7 @@ import {
   whyLine,
 } from "./v2-shell";
 import { AI_SDR_CSS_VERSION } from "./pages/ai-sdr";
+import { AI_LEAD_GEN_CSS_VERSION } from "./pages/ai-lead-generation";
 
 export { V2_STYLES_VERSION };
 
@@ -102,19 +107,26 @@ export function comparePageDescription(c: Competitor): string {
   if (isAiSdrCluster(c)) {
     return `Looking at ${c.name} alternatives? distribute.you is the AI SDR that books your meetings, free for one user. Compare price, contract and channels.`;
   }
+  if (isAiLeadGenCluster(c)) {
+    return `Looking at ${c.name} alternatives? distribute.you's AI lead generation agent finds, checks and contacts your leads, free for one user. Compare prices.`;
+  }
   return `Looking at ${c.name} alternatives? distribute.you's AI agent runs your cold email, free for one user. Compare price and cost per positive reply.`;
 }
 
 /** What distribute.you is, said for the reader of this page: an AI SDR page names the job. */
 function ourLine(c: Competitor): string {
-  return isAiSdrCluster(c)
-    ? "distribute.you is the AI SDR that books your meetings: you paste a website, our agent finds your buyers, writes from domains we own, answers the replies and books the meeting."
-    : "distribute.you runs your cold email for you: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.";
+  if (isAiSdrCluster(c)) {
+    return "distribute.you is the AI SDR that books your meetings: you paste a website, our agent finds your buyers, writes from domains we own, answers the replies and books the meeting.";
+  }
+  if (isAiLeadGenCluster(c)) {
+    return "distribute.you is the AI lead generation agent: you paste a website, our agent finds your leads, judges each one, checks the email and writes to them from domains we own.";
+  }
+  return "distribute.you runs your cold email for you: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.";
 }
 
 export function renderComparePage(c: Competitor): string {
   const path = competitorPath(c);
-  const aiSdr = isAiSdrCluster(c);
+  const cluster = clusterOf(c);
   const verified = new Date(c.verifiedOn).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -212,7 +224,7 @@ ${liveBand()}
     <div class="faq-list rv">${faqList(c.faq)}</div>
     <p class="cmp-more rv">More comparisons: ${COMPETITORS.filter((o) => o.slug !== c.slug)
       .map((o) => `<a href="${competitorPath(o)}">distribute.you vs ${esc(o.name)}</a>`)
-      .join(" · ")} · ${aiSdr ? `<a href="${AI_SDR_ALTERNATIVES_PATH}">AI SDR alternatives</a> · <a href="/compare">every comparison</a> · ` : ""}<a href="/alternatives">all alternatives</a></p>
+      .join(" · ")} · ${cluster ? `<a href="${clusterAlternativesPath(cluster)}">${esc(cluster.name)} alternatives</a> · <a href="/compare">every comparison</a> · ` : ""}<a href="/alternatives">all alternatives</a></p>
   </div>
 </section>`;
 
@@ -223,9 +235,9 @@ ${liveBand()}
     body,
     jsonLd: [
       breadcrumb(
-        aiSdr
+        cluster
           ? [
-              { name: "AI SDR", path: AI_SDR_PATH },
+              { name: cluster.name, path: cluster.path },
               { name: `distribute.you vs ${c.name}`, path },
             ]
           : [
@@ -339,9 +351,72 @@ const AI_SDR_ALTERNATIVES_FAQ = [
   },
 ];
 
+/** What one cluster's alternatives page says, beside the data every cluster shares. */
+type AlternativesCopy = {
+  cluster: CompareCluster;
+  /** The noun for one row ("AI SDR", "Tool"). */
+  rowLabel: string;
+  sub: (names: string) => string;
+  seeOurs: string;
+  tableHead: string;
+  faq: readonly { q: string; a: string }[];
+  /** "distribute.you AI SDR". */
+  ourName: string;
+  stylesheet: string;
+};
+
+const AI_SDR_ALTERNATIVES: AlternativesCopy = {
+  cluster: AI_SDR_CLUSTER,
+  rowLabel: "AI SDR",
+  sub: (names) => `${names} and distribute.you all sell an AI that books sales meetings. Here is what each one costs and how you start, read from their own sites.`,
+  seeOurs: "See our AI SDR",
+  tableHead: "Price, start and channels for each AI SDR",
+  faq: AI_SDR_ALTERNATIVES_FAQ,
+  ourName: "distribute.you AI SDR",
+  stylesheet: `/landing/v2/ai-sdr.css?v=${AI_SDR_CSS_VERSION}`,
+};
+
+const AI_LEAD_GEN_ALTERNATIVES_FAQ = [
+  {
+    q: "What is the best AI lead generation alternative for a founder?",
+    a: "distribute.you, if you want leads who answer rather than a database to search: our AI agent finds your leads from your website, judges each one, checks the email and writes to them, free for one user at the API price with 0% markup.",
+  },
+  {
+    q: "Which lead tools publish their price?",
+    a: "Apollo, Clay and Lusha publish the price of each plan. Seamless.AI is free for up to 50 credits, then quotes through its sales team. distribute.you prints every action's price on its catalog.",
+  },
+  {
+    q: "Is there an open source AI lead generation tool?",
+    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free for one user.",
+  },
+];
+
+const AI_LEAD_GEN_ALTERNATIVES: AlternativesCopy = {
+  cluster: AI_LEAD_GEN_CLUSTER,
+  rowLabel: "Tool",
+  sub: (names) => `${names} and distribute.you all help you find B2B leads. Here is what each one costs and how you start, read from their own sites.`,
+  seeOurs: "See our AI lead generation",
+  tableHead: "Price, start and what you get from each tool",
+  faq: AI_LEAD_GEN_ALTERNATIVES_FAQ,
+  ourName: "distribute.you AI lead generation",
+  stylesheet: `/landing/v2/ai-lead-generation.css?v=${AI_LEAD_GEN_CSS_VERSION}`,
+};
+
 /** `/ai-sdr/alternatives`: the AI SDR agents side by side, every figure read from their own site. */
 export function renderAiSdrAlternativesPage(): string {
-  const list = aiSdrCompetitors();
+  return renderClusterAlternativesPage(AI_SDR_ALTERNATIVES);
+}
+
+/** `/ai-lead-generation/alternatives`: the lead tools side by side, every figure read from their own site. */
+export function renderAiLeadGenAlternativesPage(): string {
+  return renderClusterAlternativesPage(AI_LEAD_GEN_ALTERNATIVES);
+}
+
+function renderClusterAlternativesPage(copy: AlternativesCopy): string {
+  const { cluster } = copy;
+  const PAGE = cluster.path;
+  const ALT = clusterAlternativesPath(cluster);
+  const list = clusterCompetitors(cluster);
   const verified = new Date(`${list.map((c) => c.verifiedOn).sort().at(-1)}T12:00:00Z`).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -355,25 +430,25 @@ export function renderAiSdrAlternativesPage(): string {
     )
     .join("");
   const table = `<table class="cmp-table cmp-alt-table">
-    <thead><tr><th scope="col">AI SDR</th><th scope="col">Entry price</th><th scope="col">Free to start</th><th scope="col">Channels</th><th scope="col">Source</th></tr></thead>
+    <thead><tr><th scope="col">${esc(copy.rowLabel)}</th><th scope="col">Entry price</th><th scope="col">Free to start</th><th scope="col">Channels</th><th scope="col">Source</th></tr></thead>
     <tbody>
-      <tr class="us-row"><th scope="row"><a href="${AI_SDR_PATH}">distribute.you</a></th><td class="us">${esc(DISTRIBUTE_ROW.entryPrice)}</td><td class="us">Yes, for one user. Open source too.</td><td class="us">${esc(DISTRIBUTE_ROW.channels)}</td><td class="us"><a href="/catalog">Our catalog</a></td></tr>
+      <tr class="us-row"><th scope="row"><a href="${PAGE}">distribute.you</a></th><td class="us">${esc(DISTRIBUTE_ROW.entryPrice)}</td><td class="us">Yes, for one user. Open source too.</td><td class="us">${esc(DISTRIBUTE_ROW.channels)}</td><td class="us"><a href="/catalog">Our catalog</a></td></tr>
       ${rows}
     </tbody>
   </table>`;
   const body = `<section class="hero cmp-hero">
   <div class="hero-glow" aria-hidden="true"></div>
   <div class="wrap hero-inner">
-    <span class="eyebrow">AI SDR alternatives · Verified ${esc(verified)}</span>
-    <h1>AI SDR alternatives, <span class="accent">side by side</span></h1>
-    <p class="hero-sub">${list.map((c) => esc(c.name)).join(", ")} and distribute.you all sell an AI that books sales meetings. Here is what each one costs and how you start, read from their own sites.</p>
+    <span class="eyebrow">${esc(cluster.name)} alternatives · Verified ${esc(verified)}</span>
+    <h1>${esc(cluster.name)} alternatives, <span class="accent">side by side</span></h1>
+    <p class="hero-sub">${esc(copy.sub(list.map((c) => c.name).join(", ")))}</p>
     ${whyLine()}
-    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="${AI_SDR_PATH}">See our AI SDR</a></div>
+    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="${PAGE}">${esc(copy.seeOurs)}</a></div>
   </div>
 </section>
 <section class="framed tint" id="table">
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Side by side</span><h2>Price, start and channels for each AI SDR</h2><p>Ours is first. Each other row links the page we read it on.</p></div>
+    <div class="section-head"><span class="eyebrow">Side by side</span><h2>${esc(copy.tableHead)}</h2><p>Ours is first. Each other row links the page we read it on.</p></div>
     <div class="cmp-table-wrap rv">${table}</div>
     <p class="cmp-source">Every competitor figure was read on its own site on ${esc(verified)}. Prices change; each link is the authority.</p>
   </div>
@@ -387,32 +462,32 @@ export function renderAiSdrAlternativesPage(): string {
 ${liveBand()}
 <section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center rv"><h2>Questions about AI SDR alternatives</h2></div>
-    <div class="faq-list rv">${faqList(AI_SDR_ALTERNATIVES_FAQ)}</div>
-    <p class="cmp-more rv">More: <a href="${AI_SDR_PATH}">distribute.you AI SDR</a> · <a href="/compare">every comparison</a> · <a href="/alternatives">all alternatives</a></p>
+    <div class="section-head center rv"><h2>Questions about ${esc(cluster.name)} alternatives</h2></div>
+    <div class="faq-list rv">${faqList(copy.faq)}</div>
+    <p class="cmp-more rv">More: <a href="${PAGE}">${esc(copy.ourName)}</a> · <a href="/compare">every comparison</a> · <a href="/alternatives">all alternatives</a></p>
   </div>
 </section>`;
   return shell({
-    title: `AI SDR alternatives: ${list.map((c) => c.name).join(", ")} compared (${monthLabel(new Date())})`,
-    description: `The best AI SDR alternatives: ${list.map((c) => c.name).join(", ")} and distribute.you, with prices read from each one's own site.`,
-    path: AI_SDR_ALTERNATIVES_PATH,
-    head: `<link rel="stylesheet" href="/landing/v2/ai-sdr.css?v=${AI_SDR_CSS_VERSION}">`,
+    title: `${cluster.name} alternatives: ${list.map((c) => c.name).join(", ")} compared (${monthLabel(new Date())})`,
+    description: `The best ${cluster.name} alternatives: ${list.map((c) => c.name).join(", ")} and distribute.you, with prices read from each one's own site.`,
+    path: ALT,
+    head: `<link rel="stylesheet" href="${copy.stylesheet}">`,
     body,
     jsonLd: [
       {
         "@context": "https://schema.org",
         "@type": "ItemList",
-        name: "AI SDR alternatives",
-        url: `${SITE}${AI_SDR_ALTERNATIVES_PATH}`,
+        name: `${cluster.name} alternatives`,
+        url: `${SITE}${ALT}`,
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "distribute.you", url: `${SITE}${AI_SDR_PATH}` },
+          { "@type": "ListItem", position: 1, name: "distribute.you", url: `${SITE}${PAGE}` },
           ...list.map((c, i) => ({ "@type": "ListItem", position: i + 2, name: c.name, url: `${SITE}${competitorPath(c)}` })),
         ],
       },
-      faqJsonLd(AI_SDR_ALTERNATIVES_FAQ),
+      faqJsonLd(copy.faq),
       breadcrumb([
-        { name: "AI SDR", path: AI_SDR_PATH },
-        { name: "Alternatives", path: AI_SDR_ALTERNATIVES_PATH },
+        { name: cluster.name, path: PAGE },
+        { name: "Alternatives", path: ALT },
       ]),
     ],
   });

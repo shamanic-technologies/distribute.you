@@ -234,52 +234,55 @@ export const COMPETITORS: readonly Competitor[] = [
       { q: "Is $30 for 750 emails cheaper than distribute.you?", a: "Per email, yes. distribute.you is free for one user: you choose your outreach budget. Per meeting, the honest answer is on your dashboard after the first weeks. We publish our clients' cost per positive reply so you can judge before you start." },
     ],
   },
+  // The AI lead generation tools (PAGE-AI-LEAD-GEN-1029). Their comparison pages live under
+  // the AI lead generation page's own cluster, `/ai-lead-generation/vs/<slug>`;
+  // `/compare/<slug>` 301s there. Every figure re-read on each site on 2026-10-29.
   {
     slug: "apollo",
     name: "Apollo.io",
     domain: "apollo.io",
     category: "data-platform",
-    oneLiner: "A B2B contact database with sequencing, dialer and enrichment, sold per user.",
+    oneLiner: "A B2B contact database with sequences, a dialer and AI features, sold per seat with credits for contact data.",
     sourceUrl: "https://www.apollo.io/pricing",
-    verifiedOn: "2026-09-07",
-    pricingModel: "Per user per month, with credits for contact data.",
-    entryPrice: "Free plan, then $49/user/month",
+    verifiedOn: "2026-10-29",
+    pricingModel: "Per seat per month, with credits for contact data pooled across the team. Unused credits expire each cycle.",
+    entryPrice: "Free plan, then $49/seat/month",
     prices: [
-      { plan: "Free", price: "$0", note: "Limited contact database and basic engagement" },
-      { plan: "Basic", price: "$49/user/month", note: "Contact access, CRM integrations, email automation" },
-      { plan: "Professional", price: "$99/user/month", note: "Advanced automation, engagement tracking, AI insights" },
-      { plan: "Enterprise", price: "On request", note: "Dedicated support, advanced analytics, API access" },
+      { plan: "Free", price: "$0", note: "A limited contact database and basic engagement tools" },
+      { plan: "Basic", price: "$49/seat/month", note: "Contact access, CRM integrations and email automation" },
+      { plan: "Professional", price: "$99/seat/month", note: "Higher credit limits, AI features, call recording" },
+      { plan: "Custom", price: "On request", note: "Custom volumes, SSO, dedicated support, through their sales team" },
     ],
     operatedBy: "you",
     sendingDomains: "Yours. You connect your own mailboxes.",
-    leads: "Their database, on credits.",
+    leads: "Searched by you in their database, revealed on credits.",
     replies: "Land in your inbox and their engagement view.",
-    channels: "Email, phone, LinkedIn tasks.",
+    channels: "Contact data, with email sequences, a dialer and LinkedIn tasks.",
     costPerMeetingPublished: false,
     freeTier: "Free plan with limited credits.",
-    contract: "Monthly or annual per user.",
+    contract: "Monthly, or annual paid upfront at a discount.",
     whereTheyWin: [
-      "The database. Hundreds of millions of contacts with filters and enrichment.",
-      "A full sales stack for a team: sequences, dialer, CRM sync.",
+      "A huge contact database with filters and enrichment, in one search.",
+      "A full sales stack for a team: sequences, dialer and CRM sync.",
       "A free plan to start with.",
     ],
     whereWeWin: [
-      "Nobody on your side has to run sequences or warm mailboxes.",
-      "Your own domain never sends cold email.",
-      "One user is free. You pay for outreach at the API price, and a team is $9 per user.",
+      "Our AI agent picks the leads for you from your website. Nobody builds a search.",
+      "Every lead is judged for fit and its email checked before anyone writes.",
+      "Free for one user, every action at the API price with 0% markup, no seat to buy.",
     ],
     chooseThemIf: [
-      "You have a sales team that needs a shared database and a dialer.",
-      "You want to own every step of outbound in one tool.",
+      "Your sales team needs a shared database and a dialer every day.",
+      "You want to run every step of outbound yourself, in one tool.",
     ],
     chooseUsIf: [
-      "You have no SDR and do not want to become one.",
-      "You want the outcome measured and delivered, not the data to produce it.",
+      "You want qualified leads found for you, not a database to search.",
+      "You want to pay the vendor's price for each lead, nothing added.",
     ],
     faq: [
-      { q: "Does distribute.you use Apollo data?", a: "We source contacts from several providers and pay for them inside your budget. You never buy credits or manage a database." },
-      { q: "Can my team use Apollo for the CRM and still run distribute.you?", a: "Yes. The interested replies we forward can be logged in whatever CRM you keep." },
-      { q: "Why is Apollo priced per user and distribute.you by credit?", a: "Apollo sells software seats. distribute.you sells a campaign: the credit you add is spent on it, so the number of people on your side changes nothing." },
+      { q: "How much does Apollo cost?", a: "Apollo has a free plan, then Basic at $49 and Professional at $99 per seat per month, with credits for contact data. distribute.you is free for one user, and every action, each lead found included, is billed at the vendor's API price with 0% markup." },
+      { q: "Does distribute.you use Apollo data?", a: "Yes, among other sources. Our agent calls Apollo's API to find people, and you pay Apollo's own price per credit, shown live on our catalog." },
+      { q: "Can I keep Apollo for my sales team?", a: "Yes. Keep Apollo for your reps, and let our AI agent find, judge and write to new leads from domains we own." },
     ],
   },
   {
@@ -434,22 +437,22 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "data-platform",
     oneLiner: "A data enrichment and GTM workflow builder that pulls from many providers on credits, for teams that build their own outbound.",
     sourceUrl: "https://www.clay.com/pricing",
-    verifiedOn: "2026-09-07",
-    pricingModel: "Monthly credits for data and actions, tiered by plan.",
+    verifiedOn: "2026-10-29",
+    pricingModel: "Monthly actions plus data credits, tiered by plan. The headline price is the entry actions and data credits together, billed annually.",
     entryPrice: "Free plan, then from $167/month",
     prices: [
-      { plan: "Free", price: "$0", note: "100 data credits and 500 actions a month" },
-      { plan: "Launch", price: "From $167/month", note: "2,500 data credits and 15,000 actions a month; lower on annual" },
-      { plan: "Growth", price: "From $446/month", note: "6,000 data credits and 40,000 actions a month" },
-      { plan: "Enterprise", price: "On request", note: "100,000+ credits for GTM systems at scale" },
+      { plan: "Free", price: "$0", note: "500 actions and 100 data credits a month, unlimited seats" },
+      { plan: "Launch", price: "From $167/month", note: "15,000 actions and 3,000 data credits a month, billed annually" },
+      { plan: "Growth", price: "From $446/month", note: "40,000 actions and 6,000 data credits a month, billed annually" },
+      { plan: "Enterprise", price: "On request", note: "Custom actions and data credits, through a demo" },
     ],
     operatedBy: "you",
     sendingDomains: "Not a sending tool. You connect a sequencer.",
-    leads: "Built in tables from dozens of data providers, on credits.",
+    leads: "Built by you in tables, from dozens of data providers, on credits.",
     replies: "Handled in whatever sequencer you connect.",
     channels: "Data and workflows; sending happens elsewhere.",
     costPerMeetingPublished: false,
-    freeTier: "Free plan with 100 credits.",
+    freeTier: "Free plan with 100 data credits a month.",
     contract: "Monthly or annual.",
     whereTheyWin: [
       "The most flexible data layer in the category: waterfalls across providers, AI columns, any workflow.",
@@ -457,22 +460,22 @@ export const COMPETITORS: readonly Competitor[] = [
       "A free plan to learn on.",
     ],
     whereWeWin: [
-      "You do not need a GTM engineer. The finding, writing, sending and answering are done for you.",
-      "One price for the outcome instead of credits for data plus a sequencer plus someone's week.",
-      "Your domain never sends cold email.",
+      "No table to build. Our AI agent reads your website and finds the leads itself.",
+      "It also writes to each lead and answers the replies, from domains we own.",
+      "Free for one user, every action at the API price with 0% markup.",
     ],
     chooseThemIf: [
-      "You have someone who builds outbound systems and wants full control of the data.",
-      "You already run a sequencer and need better inputs for it.",
+      "You have a GTM engineer who wants full control of the data.",
+      "You already run a sequencer and need richer inputs for it.",
     ],
     chooseUsIf: [
-      "You want the meetings without building the machine.",
-      "You want one measured cost per positive reply, not a credit ledger.",
+      "You want qualified leads without building the machine.",
+      "You want each lead's price shown before it runs.",
     ],
     faq: [
-      { q: "Clay is not a sending tool. Why compare?", a: "Because a founder deciding how to get meetings weighs building an outbound system in Clay against having one run for them. distribute.you is the second option." },
-      { q: "Does distribute.you enrich leads?", a: "Yes, inside your budget. We source and qualify the buyers; you never buy credits or manage a table." },
-      { q: "Can I feed Clay data into distribute.you?", a: "You can upload a list as its own audience. We run it beside the audiences we find and report its cost per outcome separately." },
+      { q: "How much does Clay cost?", a: "Clay has a free plan, then Launch from $167 and Growth from $446 a month on annual billing, for actions and data credits together. distribute.you is free for one user, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "Clay finds leads too. What differs?", a: "Clay gives you the parts to build lead generation yourself. distribute.you is an AI agent that does it: it finds the leads, judges each one, checks the email and writes to them." },
+      { q: "Can I feed a Clay table into distribute.you?", a: "Yes. Upload the list as its own audience. Our agent writes to it beside the leads it finds, and you see what each one brought." },
     ],
   },
   // The AI SDR agents (category "ai-sdr"). Their comparison pages live under the AI SDR
@@ -1051,42 +1054,89 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "data-platform",
     oneLiner: "An AI sales prospecting platform with verified business emails and phone numbers, plus outreach tools and AI agents for sales teams.",
     sourceUrl: "https://seamless.ai/",
-    verifiedOn: "2026-10-16",
-    pricingModel: "Free for up to 50 credits. Paid plans are not published; their pricing page leads to a sales inquiry form.",
+    verifiedOn: "2026-10-29",
+    pricingModel: "Free for up to 50 credits. Paid plans are not published; their site sends you to their sales team.",
     entryPrice: "Free up to 50 credits, then on request",
     prices: [
-      { plan: "Pricing", price: "On request", note: "Free for up to 50 credits. Plans with unlimited users, bulk credits, buyer intent and enrichment are quoted by their sales team." },
+      { plan: "Pricing", price: "On request", note: "Free for up to 50 credits. Every paid plan is quoted by their sales team." },
     ],
     operatedBy: "you",
     sendingDomains: "Yours. Emails and calls go out from your own accounts.",
-    leads: "Their real-time search engine of verified business emails and phone numbers.",
+    leads: "Searched by you in their engine of business emails and phone numbers.",
     replies: "Yours to handle, in your inbox or CRM.",
     channels: "Contact data, with email, calling and social selling tools.",
     costPerMeetingPublished: false,
     freeTier: "Free for up to 50 credits.",
     contract: "Set with their sales team.",
     whereTheyWin: [
-      "A big pool of contacts, with emails and direct phone numbers in the same search.",
-      "Credit back protection. An invalid email gets its credit refunded automatically.",
-      "Easy to try. The first 50 credits are free.",
+      "Emails and direct phone numbers in the same search.",
+      "Easy to try: the first 50 credits are free.",
     ],
     whereWeWin: [
-      "We find the buyers and then do the outreach. You paste a website; we write, send and answer the replies.",
-      "Your domain stays out of it. We send from domains and mailboxes we own and warm.",
-      "Every campaign is A/B tested, and your dashboard shows the price of each positive reply.",
+      "A price on the page: free for one user, every action at the API price with 0% markup.",
+      "Our AI agent picks and judges the leads from your website, then writes to them.",
+      "Emails leave from domains we own, so your own domain stays clean.",
     ],
     chooseThemIf: [
-      "Your reps call and email prospects every day and need fresh phone numbers.",
-      "You want a contact search tool your whole sales team can share.",
+      "Your reps call prospects every day and need phone numbers.",
+      "You want a contact search your whole sales team shares.",
     ],
     chooseUsIf: [
-      "You want booked meetings rather than a list of contacts to work through.",
-      "Nobody on your team has time to write, send and follow up cold email.",
+      "You want qualified leads, already contacted, rather than contacts to work through.",
+      "You want to see the price before you talk to anyone.",
     ],
     faq: [
-      { q: "How much does Seamless.AI cost?", a: "Seamless.AI is free for up to 50 credits. Paid plans are not published. Its pricing page leads to a form, and its sales team quotes a plan for your team." },
-      { q: "Is distribute.you a Seamless.AI alternative?", a: "Yes, if what you want from Seamless.AI is new sales meetings. Seamless.AI gives your team contacts to reach. distribute.you finds the buyers, writes and sends the cold email from our own domains, and answers the interested replies until the meeting is booked." },
-      { q: "Do I have to build a lead list for distribute.you?", a: "No. You paste your website and we find and qualify the buyers. If you already own a list, you can add it as an extra audience." },
+      { q: "How much does Seamless.AI cost?", a: "Seamless.AI is free for up to 50 credits. Paid plans are not published; their sales team quotes one for your team. distribute.you is free for one user, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "Is distribute.you a Seamless.AI alternative?", a: "Yes, if what you want is new leads who answer. Seamless.AI gives your team contacts to reach. distribute.you finds the leads, judges each one, checks the email and writes to them for you." },
+      { q: "Do I have to build a lead list for distribute.you?", a: "No. Paste your website and our agent finds the leads. If you already own a list, add it as an extra audience." },
+    ],
+  },
+  {
+    slug: "lusha",
+    name: "Lusha",
+    domain: "lusha.com",
+    category: "data-platform",
+    oneLiner: "A B2B contact data platform: reveal verified emails and phone numbers on credits, from the web app, a browser extension or your CRM.",
+    sourceUrl: "https://www.lusha.com/pricing/",
+    verifiedOn: "2026-10-29",
+    pricingModel: "Monthly plans with a credit allowance. A verified email costs 1 credit, a phone number 5 credits.",
+    entryPrice: "Free plan, then $49.90/month",
+    prices: [
+      { plan: "Free", price: "$0", note: "40 credits a month" },
+      { plan: "Starter", price: "$49.90/month", note: "400 credits a month; $37.45/month billed annually" },
+      { plan: "Professional", price: "$69.90/month", note: "600 credits a month; $52.45/month billed annually" },
+      { plan: "Premium", price: "$399.90/month", note: "3,400 credits a month; $299.95/month billed annually" },
+      { plan: "Scale", price: "On request", note: "Custom credits, for teams larger than 5 users" },
+    ],
+    operatedBy: "you",
+    sendingDomains: "Not a cold email sender. You reach out from your own tools.",
+    leads: "Revealed by you, one contact at a time or in bulk, on credits.",
+    replies: "Handled in your own inbox or CRM.",
+    channels: "Contact data and intent signals, with CRM and browser integrations.",
+    costPerMeetingPublished: false,
+    freeTier: "Free plan with 40 credits a month.",
+    contract: "Monthly or annual.",
+    whereTheyWin: [
+      "Quick reveals of emails and phone numbers right inside your browser and CRM.",
+      "A free plan and a clear price per credit on the page.",
+    ],
+    whereWeWin: [
+      "Our AI agent decides who to reveal: only leads it judged a fit.",
+      "Each email is checked, then written to from domains we own.",
+      "Free for one user, every action at the API price with 0% markup.",
+    ],
+    chooseThemIf: [
+      "Your reps look people up one by one and need their phone numbers.",
+      "You want contact data inside your CRM and browser.",
+    ],
+    chooseUsIf: [
+      "You want qualified leads found and contacted for you.",
+      "You would rather pay per lead found than for a credit allowance.",
+    ],
+    faq: [
+      { q: "How much does Lusha cost?", a: "Lusha has a free plan with 40 credits a month, then Starter at $49.90, Professional at $69.90 and Premium at $399.90 a month. A verified email is 1 credit, a phone number 5. distribute.you is free for one user, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "Is distribute.you a Lusha alternative?", a: "Yes, if what you want is leads who answer. Lusha reveals contacts for your team to reach. distribute.you finds the leads, judges each one, checks the email and writes to them." },
+      { q: "Can I use both?", a: "Yes. Keep Lusha for your reps' lookups, and let our agent find and contact new leads from domains we own." },
     ],
   },
   {
@@ -1631,10 +1681,18 @@ export function competitorBySlug(slug: string): Competitor | undefined {
 }
 
 /**
- * The AI SDR page (PAGE-AI-SDR-1029) owns the comparisons against AI SDR agents: they
- * are served at `/ai-sdr/vs/<slug>` and wear that page's nav and footer, and their old
+ * An AI Agent page that owns the comparisons against the tools its own searchers weigh:
+ * they are served at `<page>/vs/<slug>` and wear that page's nav and footer, and their old
  * `/compare/<slug>` URLs answer a 301 there. Every other competitor stays under `/compare`.
  */
+export type CompareCluster = {
+  /** The owning page's path. */
+  readonly path: string;
+  /** What the page is called in breadcrumbs and links ("AI SDR alternatives"). */
+  readonly name: string;
+  readonly slugs: readonly string[];
+};
+
 export const AI_SDR_PATH = "/ai-sdr";
 export const AI_SDR_ALTERNATIVES_PATH = `${AI_SDR_PATH}/alternatives`;
 
@@ -1645,31 +1703,74 @@ export const AI_SDR_ALTERNATIVES_PATH = `${AI_SDR_PATH}/alternatives`;
  */
 export const AI_SDR_SLUGS: readonly string[] = ["11x", "artisan", "aisdr", "qualified"];
 
+/** The AI lead generation page (Lead Generation, AI Agent buyer, PAGE-AI-LEAD-GEN-1029). */
+export const AI_LEAD_GEN_PATH = "/ai-lead-generation";
+export const AI_LEAD_GEN_ALTERNATIVES_PATH = `${AI_LEAD_GEN_PATH}/alternatives`;
+
+/** The lead tools searchers weigh against "ai lead generation", each price published on their site. */
+export const AI_LEAD_GEN_SLUGS: readonly string[] = ["apollo", "clay", "seamless-ai", "lusha"];
+
+export const AI_SDR_CLUSTER: CompareCluster = { path: AI_SDR_PATH, name: "AI SDR", slugs: AI_SDR_SLUGS };
+export const AI_LEAD_GEN_CLUSTER: CompareCluster = { path: AI_LEAD_GEN_PATH, name: "AI lead generation", slugs: AI_LEAD_GEN_SLUGS };
+export const COMPARE_CLUSTERS: readonly CompareCluster[] = [AI_SDR_CLUSTER, AI_LEAD_GEN_CLUSTER];
+
+/** The cluster a competitor's page sits in, if any. */
+export function clusterOf(c: Pick<Competitor, "slug">): CompareCluster | undefined {
+  return COMPARE_CLUSTERS.find((k) => k.slugs.includes(c.slug));
+}
+
+/** A cluster's competitors, in its order. */
+export function clusterCompetitors(k: CompareCluster): Competitor[] {
+  return k.slugs.map((slug) => COMPETITORS.find((c) => c.slug === slug)).filter((c): c is Competitor => !!c);
+}
+
+export function clusterAlternativesPath(k: CompareCluster): string {
+  return `${k.path}/alternatives`;
+}
+
 /** The AI SDR page's own competitors, in that order. */
 export function aiSdrCompetitors(): Competitor[] {
-  return AI_SDR_SLUGS.map((slug) => COMPETITORS.find((c) => c.slug === slug)).filter((c): c is Competitor => !!c);
+  return clusterCompetitors(AI_SDR_CLUSTER);
 }
 
 export function isAiSdrCluster(c: Pick<Competitor, "slug">): boolean {
-  return AI_SDR_SLUGS.includes(c.slug);
+  return clusterOf(c) === AI_SDR_CLUSTER;
+}
+
+/** The AI lead generation page's own competitors, in that order. */
+export function aiLeadGenCompetitors(): Competitor[] {
+  return clusterCompetitors(AI_LEAD_GEN_CLUSTER);
+}
+
+export function isAiLeadGenCluster(c: Pick<Competitor, "slug">): boolean {
+  return clusterOf(c) === AI_LEAD_GEN_CLUSTER;
 }
 
 /** Where a competitor's comparison page is served. Every link to one reads this. */
 export function competitorPath(c: Pick<Competitor, "slug">): string {
-  return isAiSdrCluster(c) ? `${AI_SDR_PATH}/vs/${c.slug}` : `/compare/${c.slug}`;
+  const k = clusterOf(c);
+  return k ? `${k.path}/vs/${c.slug}` : `/compare/${c.slug}`;
 }
 
-/** The AI SDR page's own vs/alternatives links, listed in its footer and closing its FAQ. */
-export function aiSdrCompareLinks(): { label: string; href: string }[] {
+/** A cluster's own vs/alternatives links, listed in its page's footer and closing its FAQ. */
+export function clusterCompareLinks(k: CompareCluster): { label: string; href: string }[] {
   return [
-    ...aiSdrCompetitors().map((c) => ({ label: `distribute.you vs ${c.name}`, href: competitorPath(c) })),
-    { label: "AI SDR alternatives", href: AI_SDR_ALTERNATIVES_PATH },
+    ...clusterCompetitors(k).map((c) => ({ label: `distribute.you vs ${c.name}`, href: competitorPath(c) })),
+    { label: `${k.name} alternatives`, href: clusterAlternativesPath(k) },
   ];
+}
+
+export function aiSdrCompareLinks(): { label: string; href: string }[] {
+  return clusterCompareLinks(AI_SDR_CLUSTER);
+}
+
+export function aiLeadGenCompareLinks(): { label: string; href: string }[] {
+  return clusterCompareLinks(AI_LEAD_GEN_CLUSTER);
 }
 
 /** Every path the cluster serves, for the sitemap and llms.txt. */
 export function comparePaths(): string[] {
-  return ["/compare", "/alternatives", AI_SDR_ALTERNATIVES_PATH, ...COMPETITORS.map(competitorPath)];
+  return ["/compare", "/alternatives", ...COMPARE_CLUSTERS.map(clusterAlternativesPath), ...COMPETITORS.map(competitorPath)];
 }
 
 /**

@@ -13,7 +13,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import { AI_SDR_ALTERNATIVES_PATH, COMPETITORS, competitorPath } from "./competitors";
+import { COMPARE_CLUSTERS, COMPETITORS, clusterAlternativesPath, competitorPath } from "./competitors";
 import { BEST_FOR_PAGES, bestForLinkLabel } from "./best-for";
 import { INDEX_LINKS_TOKEN } from "./fleet-indexes";
 import { OUTCOMES, SITE_PAGES, livePages, ownerPage, pageAt, type SitePage } from "./site-pages";
@@ -124,7 +124,7 @@ function compareColumn(): FooterColumn {
     title: "Compare",
     links: [
       ...COMPETITORS.map((c) => ({ label: `distribute.you vs ${c.name}`, href: competitorPath(c) })),
-      { label: "AI SDR alternatives", href: AI_SDR_ALTERNATIVES_PATH },
+      ...COMPARE_CLUSTERS.map((k) => ({ label: `${k.name} alternatives`, href: clusterAlternativesPath(k) })),
       { label: "All comparisons", href: "/compare" },
       { label: "Alternatives", href: "/alternatives" },
     ],
