@@ -97,6 +97,10 @@ export type Stage = (typeof STAGES)[number];
 
 const LANDING_HOST = "distribute.you";
 const ONBOARDING_PATHS = new Set(["/get-started", "/onboarding"]);
+// The org page (brand picker: "Finish setup") and its brand walk are the setup, still
+// behind the first-run gate until the launch is paid. Reading them as "the dashboard"
+// told the owner an unpaid signup got in (2026-10-29, SEO Engine).
+const SETUP_PATH = /^(\/v2)?\/orgs\/[^/]+(\/new-brand)?\/?$/;
 const SIGNUP_EVENT = /^(get_started_)?sign(up|in)_/;
 const SIGNUP_DONE = new Set([
   "signup_completed",
@@ -134,7 +138,7 @@ export function stageOf(e: VisitEvent): Stage {
   if (PAYMENT_DONE.has(e.event) || e.event === CHECKOUT_OPENED || stripeReturn(e)) return "Payment";
   const path = e.pathname ?? "";
   if (path.startsWith("/sign-in") || path.startsWith("/sign-up") || SIGNUP_EVENT.test(e.event)) return "Signup";
-  if (ONBOARDING_PATHS.has(path)) return "Onboarding";
+  if (ONBOARDING_PATHS.has(path) || SETUP_PATH.test(path)) return "Onboarding";
   return "Dashboard";
 }
 
@@ -390,7 +394,9 @@ export function visitRecap(
       ? "<b>Reached the dashboard</b>"
       : checkoutOpened
         ? `<b>Opened the ${checkout}, did not pay ❌</b>`
-        : `<b>Left at ${furthest.toLowerCase()} ❌</b>`;
+        : signedUp
+          ? "<b>Signed up, left before paying ❌</b>"
+          : `<b>Left at ${furthest.toLowerCase()} ❌</b>`;
 
   const lines = openingLines(returning, sorted, account);
   lines.push(`${countryLabel(first.country)} · ${formatDuration(total)} · ${outcome}`);
