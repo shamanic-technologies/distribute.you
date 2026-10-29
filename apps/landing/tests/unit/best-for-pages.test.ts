@@ -10,7 +10,7 @@ import {
   bestForPaths,
 } from "../../src/lib/best-for";
 import { bestForHeading, renderBestForHub, renderBestForPage } from "../../src/lib/best-for-page";
-import { COMPETITORS, competitorBySlug } from "../../src/lib/competitors";
+import { COMPETITORS, competitorBySlug, competitorPath } from "../../src/lib/competitors";
 import { renderComparePage } from "../../src/lib/compare-page";
 import { V2_STYLES_VERSION } from "../../src/lib/v2-shell";
 import { withSiteChrome } from "../../src/lib/site-chrome";
@@ -109,7 +109,7 @@ describe("every page", () => {
         expect(list).toContain(`<span class="best-rank">${i + 2}</span>`);
         expect(list).toContain(c.entryPrice);
         expect(list).toContain(`href="${c.sourceUrl}"`);
-        expect(list).toContain(`href="/compare/${c.slug}"`);
+        expect(list).toContain(`href="${competitorPath(c)}"`);
       });
     });
 

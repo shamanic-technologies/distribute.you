@@ -9,7 +9,7 @@ import { renderAboutPage } from "../../src/lib/pages/about";
 import { renderContactPage } from "../../src/lib/pages/contact";
 import { renderNotFoundPage } from "../../src/lib/pages/not-found";
 import { renderComparePage } from "../../src/lib/compare-page";
-import { COMPETITORS } from "../../src/lib/competitors";
+import { COMPETITORS, competitorPath } from "../../src/lib/competitors";
 import { V2_STYLES_VERSION } from "../../src/lib/v2-shell";
 import { withSiteChrome } from "../../src/lib/site-chrome";
 
@@ -48,7 +48,7 @@ describe("every rendered document page wears the homepage chrome", () => {
         expect(html).toContain(col);
       }
       for (const c of COMPETITORS) {
-        expect(html).toContain(`href="/compare/${c.slug}">distribute.you vs `);
+        expect(html).toContain(`href="${competitorPath(c)}">distribute.you vs `);
       }
       // Nothing of the previous chrome.
       expect(html).not.toContain("components.js");

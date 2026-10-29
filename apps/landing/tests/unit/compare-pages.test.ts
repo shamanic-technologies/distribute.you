@@ -11,7 +11,7 @@ import {
   renderComparePage,
   V2_STYLES_VERSION,
 } from "../../src/lib/compare-page";
-import { COMPARE_VERIFIED_LABEL, COMPETITORS, comparePaths, competitorBySlug, monthLabel } from "../../src/lib/competitors";
+import { COMPARE_VERIFIED_LABEL, COMPETITORS, comparePaths, competitorBySlug, competitorPath, monthLabel } from "../../src/lib/competitors";
 import { withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
@@ -36,7 +36,7 @@ describe("the competitor catalogue", () => {
   it("names the competitors the owner picked, the clones and the 2026-10-16 search-demand set, and not Amplemarket", () => {
     expect(COMPETITORS.map((c) => c.slug).sort()).toEqual(
       [
-        "11x", "aisdr", "apollo", "artisan", "chili-piper", "clay", "default", "explee", "frontrunner", "gojiberry", "heyreach", "hunter", "instantly", "leadrebel", "lemlist", "mailshake", "outreach", "parcellab", "postbeyond", "rb2b", "reply-io", "salesforge", "saleshandy", "salesloft", "seamless-ai", "smartlead", "snov-io", "waalaxy", "warmly", "woodpecker", "zoominfo",
+        "11x", "aisdr", "apollo", "artisan", "chili-piper", "clay", "default", "explee", "frontrunner", "gojiberry", "heyreach", "hunter", "instantly", "leadrebel", "lemlist", "mailshake", "outreach", "parcellab", "postbeyond", "qualified", "rb2b", "reply-io", "salesforge", "saleshandy", "salesloft", "seamless-ai", "smartlead", "snov-io", "waalaxy", "warmly", "woodpecker", "zoominfo",
       ],
     );
     expect(COMPETITORS.some((c) => /amplemarket/i.test(c.name))).toBe(false);
@@ -80,7 +80,7 @@ describe("a comparison page", () => {
 
       it("states who it compares, canonically, with the verification date", () => {
         expect(html).toContain(`<h1>distribute.you <span class="accent">vs</span> ${c.name}</h1>`);
-        expect(html).toContain(`<link rel="canonical" href="https://distribute.you/compare/${c.slug}">`);
+        expect(html).toContain(`<link rel="canonical" href="https://distribute.you${competitorPath(c)}">`);
         expect(html).toContain(`Verified ${COMPARE_VERIFIED_LABEL}`);
         expect(html).toContain(`href="${c.sourceUrl}" rel="nofollow noopener"`);
         expect(html).not.toContain("noindex");
@@ -101,7 +101,7 @@ describe("a comparison page", () => {
         // The full phrase is the query people type and the entity a crawler links.
         for (const other of COMPETITORS) {
           if (other.slug === c.slug) continue;
-          expect(html).toContain(`href="/compare/${other.slug}">distribute.you vs ${other.name}</a>`);
+          expect(html).toContain(`href="${competitorPath(other)}">distribute.you vs ${other.name}</a>`);
         }
         expect(html).not.toMatch(/href="\/compare\/[a-z0-9]+">vs /);
       });
@@ -143,7 +143,7 @@ describe("a comparison page", () => {
       it("links the whole cluster in raw HTML, so a crawler sees the graph", () => {
         for (const other of COMPETITORS) {
           if (other.slug === c.slug) continue;
-          expect(html).toContain(`href="/compare/${other.slug}"`);
+          expect(html).toContain(`href="${competitorPath(other)}"`);
         }
         expect(html).toContain('href="/compare"');
         expect(html).toContain('href="/alternatives"');
@@ -170,8 +170,8 @@ describe("the hub and the alternatives page", () => {
 
   it("list every competitor", () => {
     for (const c of COMPETITORS) {
-      expect(hub).toContain(`href="/compare/${c.slug}"`);
-      expect(alt).toContain(`href="/compare/${c.slug}"`);
+      expect(hub).toContain(`href="${competitorPath(c)}"`);
+      expect(alt).toContain(`href="${competitorPath(c)}"`);
     }
   });
 
@@ -211,7 +211,7 @@ describe("every list that names the cluster reads the catalogue", () => {
     const footer = home.slice(home.indexOf("<footer>"));
     expect(footer).toContain("<h4>Compare</h4>");
     for (const p of comparePaths()) expect(footer).toContain(`href="${p}"`);
-    for (const c of COMPETITORS) expect(footer).toContain(`href="/compare/${c.slug}">distribute.you vs ${c.name}</a>`);
+    for (const c of COMPETITORS) expect(footer).toContain(`href="${competitorPath(c)}">distribute.you vs ${c.name}</a>`);
     expect(footer).not.toMatch(/href="\/compare\/[a-z0-9]+">vs /);
     // The stylesheet gained the compare rules and a fifth footer column, so its key moved.
     expect(home).toContain(`href="/landing/v2/styles.css?v=${V2_STYLES_VERSION}"`);
