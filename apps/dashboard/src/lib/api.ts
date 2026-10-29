@@ -2060,6 +2060,8 @@ export const STAFF_MONITORING_PATHS = {
   stuckOccurrences: "/campaigns/ops/stuck-occurrences",
   // Whether each trigger a live campaign waits on still fires, per day + the served verdict (campaign-service, TRIGGER-HEALTH-1028).
   triggerHealth: "/campaigns/ops/trigger-health",
+  // Answers owed to a person who wrote, refused by the sender or given up after failed runs, per day + the served verdict (campaign-service, ONE-AI-REFUSED-ANSWERS-1029).
+  unsentAnswers: "/campaigns/ops/unsent-answers",
   // Per tool a client connected (GoHighLevel, PostHog, Stripe, Clerk): records taken in per day + the served verdict (crm-service, CONNECTOR-INTAKE-MONITORING-1028).
   connectorIntake: "/crm/ops/connector-intake",
   // Per client org and day, the funnel campaigns whose shadow plan or Jev pick differs from what runs + the verdict (features-service, FACTORY-P1-DASH).
@@ -13208,6 +13210,14 @@ import { StuckOccurrencesSchema as StaffStuckOccurrencesSchema, type StuckOccurr
 /** Prospects waiting on a blocked campaign answer over the last `days` UTC days, with campaign-service's served verdict. */
 export async function getStaffStuckOccurrences(days: number): Promise<StaffStuckOccurrences> {
   return parseStaff("getStaffStuckOccurrences", StaffStuckOccurrencesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.stuckOccurrences}?days=${days}`));
+}
+
+// ─── Monitoring > Triggers > Unsent answers (ONE-AI-REFUSED-ANSWERS-1029) ───
+import { UnsentAnswersSchema as StaffUnsentAnswersSchema, type UnsentAnswers as StaffUnsentAnswers } from "./monitoring/unsent-answers";
+
+/** Answers owed to a person who wrote that the sender refused or that every run failed, over the last `days` UTC days, with campaign-service's served verdict. */
+export async function getStaffUnsentAnswers(days: number): Promise<StaffUnsentAnswers> {
+  return parseStaff("getStaffUnsentAnswers", StaffUnsentAnswersSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.unsentAnswers}?days=${days}`));
 }
 
 // ─── Monitoring > Triggers > Firing (TRIGGER-HEALTH-1028-DASH) ───
