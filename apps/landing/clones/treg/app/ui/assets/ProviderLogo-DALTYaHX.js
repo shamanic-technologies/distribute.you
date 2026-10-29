@@ -1,0 +1,1 @@
+import{E as e,R as t,f as n,h as r,x as i}from"./vue-BtMu2A12.js";var a=[`src`],o=i({__name:`ProviderLogo`,props:{service:{},large:{type:Boolean}},setup(i){let o=e=>{e.target.style.visibility=`hidden`};return(s,c)=>(e(),r(`span`,{class:t([`pl-logo`,{lg:i.large}])},[n(`img`,{src:`/logos/`+i.service+`.svg`,alt:``,"aria-hidden":`true`,onError:o},null,40,a)],2))}});export{o as t};

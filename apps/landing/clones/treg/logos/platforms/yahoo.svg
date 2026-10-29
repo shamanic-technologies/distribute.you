@@ -1,0 +1,8 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Yahoo">
+  <!-- "y!" in Yahoo purple: y + exclamation subpaths lifted from the 2019 wordmark (Wikimedia Commons, File:Yahoo! (2019).svg), "ahoo" removed. -->
+  <g fill="#6001D2" transform="translate(2 3.65) scale(0.2277)">
+    <path d="M0 17.86 17.33 58.67 11.02 73.38 H26.44 L49.52 17.86 H34.19 L24.91 41.31 15.74 17.86 Z"/>
+    <path d="M70.73 0 55.5 36.6 H72.66 L87.84 0 Z"/>
+    <circle cx="59.99" cy="49.64" r="9.54"/>
+  </g>
+</svg>

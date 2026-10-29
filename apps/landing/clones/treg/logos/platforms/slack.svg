@@ -1,0 +1,9 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Slack">
+  <!-- Four rounded bars pinwheeled in the brand's four colours: the mark's geometry, simplified. -->
+  <g stroke-width="3.4" stroke-linecap="round" fill="none">
+    <path stroke="#36C5F0" d="M8.6 3.9v4.7"/>
+    <path stroke="#2EB67D" d="M15.4 15.4v4.7"/>
+    <path stroke="#ECB22E" d="M15.4 8.6h4.7"/>
+    <path stroke="#E01E5A" d="M3.9 15.4h4.7"/>
+  </g>
+</svg>

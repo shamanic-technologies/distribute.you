@@ -1,0 +1,9 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Google Business Profile">
+  <!-- The Business Profile storefront: scalloped awning over a blue shopfront with the G. Geometry from the official product icon (gstatic google_my_business_48dp), flattened to its real colours. -->
+  <path fill="#4285F4" d="M2 8h20v12.7a1.7 1.7 0 0 1-1.7 1.7H3.7A1.7 1.7 0 0 1 2 20.7Z"/>
+  <path fill="#7BAAF7" d="M1.7 3H6v6.3a3 3 0 0 1-6 0Z"/>
+  <path fill="#4A5AB9" d="M6 3h6v6.3a3 3 0 0 1-6 0Z"/>
+  <path fill="#7BAAF7" d="M12 3h6v6.3a3 3 0 0 1-6 0Z"/>
+  <path fill="#4A5AB9" d="M18 3h4.3L24 9.3a3 3 0 0 1-6 0Z"/>
+  <path fill="#FFFFFF" d="M17.727 14.727c.808 0 1.488.298 2.007.782l-.859.859a1.623 1.623 0 0 0-1.148-.447c-.98 0-1.772.827-1.772 1.806 0 .98.792 1.807 1.772 1.807.882 0 1.485-.501 1.615-1.191h-1.615v-1.16h2.826c.035.196.054.4.054.613 0 1.714-1.147 2.931-2.88 2.931a3 3 0 0 1 0-6z"/>
+</svg>
