@@ -39,9 +39,10 @@ vi.mock("@/lib/site-pages", async (orig) => {
 });
 
 describe("the catalogue starts with the pages served today", () => {
-  it("`/`, `/gtm-agency` and `/ai-sdr` are live; 19 entries, one per outcome and buyer (Revenue has no Agency page)", () => {
+  it("`/`, `/gtm-agency` and `/lead-generation-agency` are live; 19 entries, one per outcome and buyer (Revenue has no Agency page)", () => {
     expect(SITE_PAGES).toHaveLength(19);
-    expect(livePages().map((p) => p.path)).toEqual(["/", "/gtm-agency", "/ai-sdr"]);
+    // Sibling outcome pages flip live in their own PRs: pin the ones shipped, not the exact set.
+    expect(livePages().map((p) => p.path)).toEqual(expect.arrayContaining(["/", "/gtm-agency", "/lead-generation-agency", "/ai-sdr"]));
     expect(new Set(SITE_PAGES.map((p) => p.path)).size).toBe(19);
   });
 
@@ -89,7 +90,9 @@ describe("adding a catalogue entry adds it everywhere", () => {
   });
 
   it("the sitemap lists it", async () => {
-    expect(sitePagePaths(FIXTURE)).toEqual(["/", "/gtm-agency", AGENT, AGENCY, "/ai-sdr"]);
+    // Every live page plus the two the fixture flips (siblings flip their own pages live).
+    expect(sitePagePaths(FIXTURE)).toEqual(expect.arrayContaining(["/", "/gtm-agency", AGENT, AGENCY]));
+    expect(sitePagePaths(FIXTURE)).toHaveLength(sitePagePaths().length + (sitePagePaths().includes(AGENT) ? 0 : 1) + (sitePagePaths().includes(AGENCY) ? 0 : 1));
     pagesRef.pages = FIXTURE;
     const { default: sitemap } = await import("@/app/sitemap");
     const urls = (await sitemap()).map((e) => e.url);
