@@ -68,7 +68,7 @@ import {
   type QualificationCriterion,
   type QualificationPreviewCompany,
 } from "@/lib/api";
-import { startAnonSession } from "@/lib/anon-session-client";
+import { readWalkOffer, startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
 import { websiteInputProblem } from "@/lib/website-input";
 import { phoneSyntaxProblem, toE164 } from "@/lib/phone-syntax";
@@ -148,6 +148,8 @@ import {
   type GetStartedStepKey,
   type StepPhase,
   TOPUP_CHOICES_USD,
+  AT_COST_TOPUP_CHOICES_USD,
+  isAtCostOffer,
   wallCopy,
 } from "@/lib/v2/get-started";
 import { DEFAULT_MONTHLY_LIMIT_USD, monthlyLimitToSave, type LimitArm } from "@/lib/v2/monthly-limit";
@@ -241,10 +243,16 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     if (!org && offerArm(document.cookie) === "postpaid") setPostpaidArm(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const wall = wallCopy(planMonthlyUsd, postpaidArm);
+  // The walk org's offer (billing's `free_credit_offer`), read once the signed-out session
+  // exists: an org created since 2026-10-29 (`prepaid_at_cost`) is promised no free money.
+  const [walkOffer, setWalkOffer] = useState<string | null>(null);
+  // No match is promised until billing says the org has one (unknown = promise nothing).
+  const walkAtCost = !org && (walkOffer === null || isAtCostOffer({ free_credit_offer: walkOffer }));
+  const wall = wallCopy(planMonthlyUsd, postpaidArm, walkAtCost);
   // The monthly limit's first charge to let through (owner 2026-10-12): the plan, post-paid's first step, or the smallest top-up.
-  const limitArm: LimitArm =
-    planMonthlyUsd !== null
+  const limitArm: LimitArm = walkAtCost
+    ? { kind: "prepaid", topupUsd: AT_COST_TOPUP_CHOICES_USD[0] }
+    : planMonthlyUsd !== null
       ? { kind: "plan", monthlyUsd: planMonthlyUsd }
       : postpaidArm
         ? { kind: "postpaid" }
@@ -1724,6 +1732,16 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // The campaign step opens once the preview is complete (offer, audience, answers); its Launch
   // opens the wall on the plan it checked.
   const readyForCampaign = started && !!brandId && !!offer && !!audience && answered;
+  useEffect(() => {
+    if (org || !started || walkOffer !== null) return;
+    let live = true;
+    void readWalkOffer().then((o) => {
+      if (live && o) setWalkOffer(o);
+    });
+    return () => {
+      live = false;
+    };
+  }, [org, started, walkOffer]);
   const launchPlan = useMemo(() => {
     const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null });
     return "plan" in r ? r.plan : null;
@@ -1995,7 +2013,12 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
               ) : (
                 <>
                   <p className="k-fg text-[14px] font-medium">
-                    <CountUp value={wall.creditUsd} format={(n) => `$${Math.round(n)}`} ms={700} /> {wall.bannerTitle}
+                    {wall.creditUsd !== null && (
+                      <>
+                        <CountUp value={wall.creditUsd} format={(n) => `$${Math.round(n)}`} ms={700} />{" "}
+                      </>
+                    )}
+                    {wall.bannerTitle}
                   </p>
                   <p className="k-fg3 hidden text-[12px] sm:block">We write and send the emails, you get the replies.</p>
                 </>
@@ -2092,6 +2115,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           monthlyLimit={campaignDraft.monthlyLimit}
           outlook={chosenFunnelOutlook(launchPlan?.proactive ? (funnels?.proactive ?? null) : null)}
           answered={answered}
+          walkAtCost={walkAtCost}
           onClose={() => setWallOpen(false)}
         />
       )}
