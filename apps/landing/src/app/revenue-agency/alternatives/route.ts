@@ -1,8 +1,4 @@
-import { renderedResponse } from "@/lib/static-html";
-import { renderAgencyAlternativesPage } from "@/lib/pages/agency-compare";
-
-export const revalidate = 86400;
-
-export async function GET(request: Request) {
-  return renderedResponse(renderAgencyAlternativesPage(), request, { canonicalPath: "/revenue-agency/alternatives" });
+/** Moved with the Agency page to `/gtm-agency` (see `../route.ts`). */
+export function GET() {
+  return new Response(null, { status: 308, headers: { Location: "/gtm-agency/alternatives" } });
 }

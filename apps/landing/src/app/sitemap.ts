@@ -72,7 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 2 ? 0.7 : 0.8 });
   }
 
-  // The Revenue Agency page's own vs/alternatives cluster, read from its catalogue.
+  // The GTM Agency page's own vs/alternatives cluster, read from its catalogue.
   for (const path of agencyClusterPaths()) {
     STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
   }

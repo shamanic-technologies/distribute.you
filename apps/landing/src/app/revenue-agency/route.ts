@@ -1,18 +1,9 @@
-import { renderedResponse } from "@/lib/static-html";
-import { fetchIndexList } from "@/lib/fleet-indexes";
-import { fetchMonthlyRuns, renderRevenueAgencyPage } from "@/lib/pages/revenue-agency";
-
-// Literal (Next reads it statically): the indexes record a new day every hour.
-export const revalidate = 1800;
-
 /**
- * The Revenue Agency page (PAGE-REVENUE-AGENCY-1029). Its two live reads drop their
- * own section on failure; the page itself always renders.
+ * The Agency page shipped here on 2026-10-29 and moved to `/gtm-agency` the same day
+ * (owner: "revenue agency" searches are people looking for a tax office). A permanent
+ * redirect keeps any link already pointing here. Relative `Location`: `request.url` is
+ * the bind address on the box.
  */
-export async function GET(request: Request) {
-  const [list, monthly] = await Promise.all([fetchIndexList(), fetchMonthlyRuns()]);
-  return renderedResponse(renderRevenueAgencyPage(list, monthly), request, {
-    canonicalPath: "/revenue-agency",
-    sMaxAge: list && monthly ? 1800 : 60,
-  });
+export function GET() {
+  return new Response(null, { status: 308, headers: { Location: "/gtm-agency" } });
 }
