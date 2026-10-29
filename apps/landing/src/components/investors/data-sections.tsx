@@ -74,11 +74,13 @@ export async function CompanyOverviewSection() {
         offers, channels and audiences against each other and ranks them by return.
       </p>
       <p>
-        The business model is a{" "}
-        <strong className="text-gray-900">free platform</strong> with the outreach
-        billed at public catalogue prices, prepaid as credit, with our margin inside
-        them. No subscription, no seat, no setup fee, cancel anytime. Revenue grows
-        with the outreach each customer chooses to run.
+        The business model has two arms. The{" "}
+        <strong className="text-gray-900">AI agent</strong> is free for one user
+        and $9 per user each month for a team, with every action at the API price,
+        0% markup, prepaid. The{" "}
+        <strong className="text-gray-900">GTM agency</strong> is from $1K a month
+        plus 10% of the budget. Revenue grows with the teams and the budgets our
+        customers run.
       </p>
       <p>
         The platform runs{" "}

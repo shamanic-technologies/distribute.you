@@ -175,9 +175,10 @@ describe("catalog copy", () => {
     expect(html).toContain("5 to 10 days");
   });
 
-  it("keeps the margin inside the price and no banned framing", () => {
-    expect(html).toContain("Our margin is included.");
-    for (const banned of ["at cost", "pass-through", "no markup", "costs us", "workflow", "pay as you go"]) {
+  it("states the API price with 0% markup (OFFER-RESET-1029) and no banned framing", () => {
+    expect(html).toMatch(/at the vendor(&apos;|&#39;|')s API price with 0% markup/);
+    expect(lower).not.toMatch(/our margin|margin (is )?included/);
+    for (const banned of ["at cost", "pass-through", "costs us", "workflow", "pay as you go"]) {
       expect(lower).not.toContain(banned);
     }
     expect(html).not.toContain(String.fromCharCode(0x2014));

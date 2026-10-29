@@ -55,7 +55,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            The cold email agency: paste your website, we find your buyers, run the campaign and book your meetings. The platform is free.
+            Our AI agent finds your buyers, writes to them and books your meetings. Free for one user, at the API price with 0% markup.
           </div>
         </div>
         <div

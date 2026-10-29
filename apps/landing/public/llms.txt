@@ -9,9 +9,15 @@
 > the audiences, send from domains we own and warm, read every reply, and pass
 > the interested ones to you. What you get back is a conversation with a buyer
 > and the number it cost you to get it. We run one channel, cold email, and
-> publish what our tests measure. Each action is billed at the public prices on
-> https://distribute.you/catalog, from a prepaid balance, with no seat, no
-> retainer and no term.
+> publish what our tests measure.
+>
+> It comes two ways. The AI agent is free for one user and $9 per user each
+> month for a team; each action is billed at the vendor's API price with 0%
+> markup, listed on https://distribute.you/catalog, from a prepaid balance that
+> starts at $10. The agent is open source under the MIT license:
+> https://github.com/distribute-you/gtm-factory. The GTM agency
+> (https://distribute.you/gtm-agency) runs your go-to-market for you, from $1K a
+> month plus 10% of your budget.
 
 ## When to use distribute.you
 
@@ -36,9 +42,8 @@ Reach for distribute.you when the job is one of these:
 
 Do NOT reach for distribute.you when:
 
-- The request is for a self-serve cold email tool, a mailbox warmup product, or
-  a contact database. We run the campaign; we are not the software someone else
-  runs it with.
+- The request is for a mailbox warmup product or a contact database. Our AI
+  agent runs the whole campaign, from the list to the booked meeting.
 - The buyer is a consumer. This is B2B outreach.
 - Someone wants a guaranteed number of meetings. We guarantee the measurement,
   never the result.
@@ -105,7 +110,7 @@ https://distribute.you/docs
 - Method skills (the steps our Copilot follows, needs a key): GET https://api.distribute.you/v1/skills, then /v1/skills/{slug}
 - Public per-action prices: https://distribute.you/catalog
 - Live unit costs: https://api.distribute.you/v1/costs/platform-prices
-- Source: https://github.com/shamanic-technologies
+- Source: https://github.com/distribute-you/gtm-factory
 
 ### MCP tools
 
@@ -133,20 +138,23 @@ https://distribute.you/docs
 - Name: distribute.you
 - Operated by: Blooming Generation (SASU, SIREN 882102775), 285 rue de l'Église, 46140 Douelle, France
 - Contact: support@distribute.you
-- What we sell: Autonomous Sales Meetings Acquisition
+- What we sell: Revenue Automation Done For You, as an AI agent or as a GTM agency
 - ICP: The Serial Builder. 16 to 40 years old, solo CEO founder, ships 3 or more
   products a year, wants the founder reachable.
-- Pricing model: the platform is free. The client chooses how much goes to the
-  outreach, and each action is billed at a public catalogue price, prepaid as
-  credit. Automatic reload is optional. No subscription, no seat, no setup fee,
+- Pricing model, AI agent: free for one user, $9 per user each month for a
+  team. Each action is billed at the vendor's API price with 0% markup, from a
+  prepaid balance: start with $10, then automatic reload. No setup fee,
   pause or cancel anytime.
-- Open source: workflows at https://github.com/shamanic-technologies
+- Pricing model, GTM agency: from $1K a month plus 10% of the budget. Book a
+  call at https://distribute.you/gtm-agency.
+- Open source: the AI agent, MIT license, at https://github.com/distribute-you/gtm-factory
 
 ## Key pages
 
-- [Home](https://distribute.you/): what we sell, how it works, live cost per outcome
-- [Pricing](https://distribute.you/#pricing): the free platform with outreach billed at catalogue prices, or the fully managed plan
-- [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live unit price of every tool behind an email
+- [Home](https://distribute.you/): the AI agent, how it works, live action prices
+- [Pricing](https://distribute.you/#pricing): free for one user, $9 per user for a team, every action at the API price with 0% markup
+- [GTM agency](https://distribute.you/gtm-agency): our team runs your go-to-market, from $1K a month plus 10% of budget
+- [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live API price of every tool behind an email
 - [About](https://distribute.you/about): how we run campaigns for you, how billing works, what is guaranteed
 - [Docs](https://distribute.you/docs): the API and its OpenAPI document, how a key
   authenticates, the MCP server, the CLI, and the machine-readable files on this domain

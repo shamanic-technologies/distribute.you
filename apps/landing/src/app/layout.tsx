@@ -86,10 +86,17 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Free platform",
+      name: "AI agent, one user",
       price: "0",
       priceCurrency: "USD",
-      description: "The platform is free. You choose how much goes to your outreach, billed at public catalogue prices. Pause or cancel anytime.",
+      description: "Free for one user. Every action at the vendor's API price, 0% markup, from a prepaid balance. Start with $10. Pause or cancel anytime.",
+    },
+    {
+      "@type": "Offer",
+      name: "AI agent, team",
+      price: "9",
+      priceCurrency: "USD",
+      description: "$9 per user each month. The same API prices, 0% markup.",
     },
   ],
   provider: {
@@ -122,7 +129,7 @@ const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
   name: "How to get sales meetings with distribute.you",
-  description: "Paste your website, confirm what we found, and add credit. distribute.you finds the buyers, runs the outreach from its own domains, answers interested leads until the meeting is booked, and shows what each one cost.",
+  description: "Paste your website, confirm what we found, and add your first $10. distribute.you finds the buyers, runs the outreach from its own domains, answers interested leads until the meeting is booked, and shows what each one cost.",
   step: [
     {
       "@type": "HowToStep",
@@ -134,7 +141,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Confirm what we found",
-      text: "Check the offer, the audiences and the sales funnel, then choose how much goes to your outreach. The platform is free.",
+      text: "Check the offer, the audiences and the sales funnel, then choose how much goes to your outreach. One user is free, and every action is at the API price with 0% markup.",
     },
     {
       "@type": "HowToStep",

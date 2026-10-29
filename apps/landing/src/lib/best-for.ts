@@ -84,7 +84,7 @@ export const BEST_FOR_PAGES: readonly BestForPage[] = [
     category: "AI SDR",
     audience: "agencies",
     answer:
-      "For a marketing, dev or design agency that needs new clients without pulling its team off billable work, the best AI SDR is distribute.you, a cold email agency rather than another tool to run: it runs the whole outbound campaign from domains it owns, reads every reply, and shows what each positive reply cost. The platform is free. Agencies that want to run outbound themselves across many client workspaces should look at Smartlead or Salesforge.",
+      "For a marketing, dev or design agency that needs new clients without pulling its team off billable work, the best AI SDR is distribute.you, a cold email agency rather than another tool to run: it runs the whole outbound campaign from domains it owns, reads every reply, and shows what each positive reply cost. Our AI agent is free for one user, at the API price with 0% markup. Agencies that want to run outbound themselves across many client workspaces should look at Smartlead or Salesforge.",
     whyUs: [
       "Your team's hours are what you sell. We run the campaign so nobody on it stops billable work to prospect.",
       "We send from our own domains, so your agency domain, which your clients email every day, stays out of cold outreach.",
@@ -146,9 +146,9 @@ export const BEST_FOR_PAGES: readonly BestForPage[] = [
     category: "outbound agency",
     audience: "early-stage startups",
     answer:
-      "For an early-stage startup that needs its first customers before it can afford a sales team, the best outbound agency is distribute.you: the platform is free, you choose your outreach budget, and we run the campaign and show what each positive reply cost. Startups with a founder who wants to do outbound hands-on should look at Instantly or Apollo.io.",
+      "For an early-stage startup that needs its first customers before it can afford a sales team, the best outbound agency is distribute.you: the AI agent is free for one user, you choose your outreach budget, and we run the campaign and show what each positive reply cost. Startups with a founder who wants to do outbound hands-on should look at Instantly or Apollo.io.",
     whyUs: [
-      "Runway decides. The platform is free, so every dollar you choose to spend goes to the campaign, not to a retainer.",
+      "Runway decides. One user is free, so every dollar you choose to spend goes to the campaign, not to a retainer.",
       "You learn what a positive reply costs for your offer early, before you commit to a hire or a channel.",
       "Nothing is set up in your name, so a startup with a brand-new domain is not burning it on cold email.",
       "Several offers can run side by side, which is how an early team finds the one buyers answer.",
@@ -168,7 +168,7 @@ export const BEST_FOR_PAGES: readonly BestForPage[] = [
     ],
     faq: [
       { q: "What is the best outbound agency for early-stage startups?", a: "distribute.you, for a startup without a sales team: it is free as a platform, runs the campaign from its own domains, and shows what each positive reply cost. A founder who wants to run outbound hands-on is better served by Instantly or Apollo.io." },
-      { q: "How much budget does a startup need to test outbound?", a: "As much as you choose: the platform is free and the outreach is billed at catalogue prices. The dashboard shows what each positive reply cost as the campaign runs, so you can decide from real numbers whether to raise the amount." },
+      { q: "How much budget does a startup need to test outbound?", a: "As much as you choose: one user is free and every action is billed at the API price with 0% markup. The dashboard shows what each positive reply cost as the campaign runs, so you can decide from real numbers whether to raise the amount." },
       { q: "Can a pre-launch startup use outbound to test demand?", a: "Yes. We can run the test from our own identity and hand over the prospects who leaned in, so you learn whether buyers care before the brand is public." },
     ],
   },
@@ -177,7 +177,7 @@ export const BEST_FOR_PAGES: readonly BestForPage[] = [
     category: "cold email agency",
     audience: "solo founders",
     answer:
-      "For a solo founder who has to sell and build at the same time, the best cold email agency is distribute.you: it runs the outbound for you from domains it owns, answers the interested replies, and shows what each positive reply cost. The platform is free. A solo founder who enjoys running sequences personally is better served by Lemlist or Instantly.",
+      "For a solo founder who has to sell and build at the same time, the best cold email agency is distribute.you: it runs the outbound for you from domains it owns, answers the interested replies, and shows what each positive reply cost. Our AI agent is free for one user, at the API price with 0% markup. A solo founder who enjoys running sequences personally is better served by Lemlist or Instantly.",
     whyUs: [
       "When you are the whole team, an hour spent on sending settings is an hour off the product. We run all of it.",
       "Several products can each have their own campaign and their own measured cost, so you can see which one buyers want.",

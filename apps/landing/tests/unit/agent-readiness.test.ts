@@ -276,9 +276,9 @@ describe("llms.txt", () => {
     const lower = llms.toLowerCase();
     expect(lower).toContain("distribute.you does done-for-you revenue automation");
     expect(lower).not.toMatch(/distribute\.you is a[^.]*cold email agency/);
-    // "cold email tool" appears once, in the Do-NOT list, naming what we are not.
     expect(lower).not.toMatch(/distribute\.you is a[^.]*cold email tool/);
-    expect(lower.split("cold email tool").length - 1).toBe(1);
+    // OFFER-RESET-1029: the offer is stated, AI agent and agency alike.
+    for (const line of ["free for one user", "0% markup", "github.com/distribute-you/gtm-factory", "/gtm-agency"]) expect(lower).toContain(line);
     expect(lower).not.toContain("at cost");
     expect(lower).not.toContain("costs us");
     expect(llms).not.toContain(String.fromCharCode(0x2014));

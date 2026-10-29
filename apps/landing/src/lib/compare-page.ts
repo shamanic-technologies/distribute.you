@@ -93,7 +93,7 @@ export function comparePageTitle(c: Competitor, now: Date = new Date()): string 
 }
 
 export function comparePageDescription(c: Competitor): string {
-  return `Looking at ${c.name} alternatives? distribute.you runs your cold email, and the platform is free. Compare price and cost per positive reply.`;
+  return `Looking at ${c.name} alternatives? distribute.you's AI agent runs your cold email, free for one user. Compare price and cost per positive reply.`;
 }
 
 export function renderComparePage(c: Competitor): string {
@@ -151,17 +151,17 @@ export function renderComparePage(c: Competitor): string {
 
 <section class="framed" id="pricing">
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(c.name)} pricing: what they charge, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. Our platform is free: you choose how much goes to your outreach, billed at public catalogue prices, and we show what each positive reply cost.</p></div>
+    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(c.name)} pricing: what they charge, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. Our AI agent is free for one user: every action is at the vendor's API price with 0% markup, and we show what each positive reply cost.</p></div>
     <div class="cmp-cols">
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
         <span class="plan-tag">distribute.you</span>
-        <div class="plan-price">Free<small>platform</small></div>
-        <p class="plan-desc">You pay only for the outreach you choose. Pause or cancel anytime.</p>
+        <div class="plan-price">Free<small>for one user</small></div>
+        <p class="plan-desc">Every action at the API price, 0% markup. Start with $10. Pause or cancel anytime.</p>
         <a class="btn btn-accent" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">Included in the plan</div>
         <ul><li><i></i>Buyers found and qualified from your website</li><li><i></i>Emails written and sent from our domains</li><li><i></i>Every reply read, the interested ones answered</li><li><i></i>Cost per positive reply on your dashboard</li></ul>
-        <div class="plan-foot">Our margin sits inside the plan. What a meeting costs you is measured on your account.</div>
+        <div class="plan-foot">Teams are $9 per user each month. What a meeting costs you is measured on your account.</div>
       </div>
     </div>
   </div>
@@ -293,7 +293,7 @@ export function renderAlternativesPage(): string {
 ${liveBand()}`;
   return shell({
     title: `Alternatives to ${COMPETITORS.slice(0, 4).map((c) => c.name).join(", ")} and ${COMPETITORS.length - 4} more (${monthLabel(new Date())})`,
-    description: `Weighing ${COMPETITORS.length} cold email tools? distribute.you runs your outbound from our domains, on a free platform, and shows what a positive reply costs.`,
+    description: `Weighing ${COMPETITORS.length} cold email tools? distribute.you is the AI agent that runs your outbound from our domains, free for one user, and shows what a positive reply costs.`,
     path: "/alternatives",
     body,
     jsonLd: [breadcrumb([{ name: "Alternatives", path: "/alternatives" }])],

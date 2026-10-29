@@ -249,8 +249,8 @@ export default function InvestorsPage() {
                   <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-blue-500/60">
                     <li>A team sending on their behalf, from domains it owns</li>
                     <li>Interested replies answered and handed over with the meeting</li>
-                    <li>Our margin inside the budget, the cost per outcome shown</li>
-                    <li>A free platform, outreach billed at catalogue prices, cancel anytime</li>
+                    <li>Every action at the API price, the cost per outcome shown</li>
+                    <li>A free AI agent for one user, cancel anytime</li>
                     <li>Every brand, offer, channel and audience in one dashboard, ranked by return</li>
                   </ul>
                 </div>

@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "October 22, 2026";
+const LAST_UPDATED = "October 29, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -18,7 +18,7 @@ const SUPPORT_EMAIL = "support@distribute.you";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for distribute.you: catalogue pricing, prepaid credit, post-paid billing, outreach on your behalf, public performance data, and acceptable use.",
+    "Terms of Service for distribute.you: the AI agent and the GTM agency, catalogue pricing, prepaid credit, outreach on your behalf, public performance data, and acceptable use.",
   alternates: { canonical: TERMS_URL },
   openGraph: {
     title: "Terms of Service | distribute.you",
@@ -113,11 +113,12 @@ const SECTIONS: SectionDef[] = [
     body: (
       <>
         <p>
-          {SERVICE} is an acquisition agency delivered as a service. You
-          provide a website and choose a daily budget for each campaign; we
-          find the buyers, write and send the outreach from domains we own,
-          qualify and answer the replies, and report what each outcome cost
-          you. Cold email is the channel we run. When a prospect asks to
+          {SERVICE} is an acquisition agency delivered as a service, offered
+          two ways: our AI agent, which runs your campaigns for you, and our
+          GTM agency, where our team runs your go-to-market. You provide a
+          website and set caps for each campaign; we find the buyers, write
+          and send the outreach from domains we own, qualify and answer the
+          replies, and report what each outcome cost you. Cold email is the channel we run. When a prospect asks to
           talk, our AI Instant Call can ring your sales rep and connect the
           call to the prospect. Any channel we add later is governed by
           these same Terms.
@@ -126,6 +127,17 @@ const SECTIONS: SectionDef[] = [
           The Service depends on AI providers, data providers, email
           infrastructure, and other third parties. See Section 8
           (Third-Party Services).
+        </p>
+        <p>
+          <strong>Open source code.</strong> The code of our AI agent is
+          published at{" "}
+          <a href="https://github.com/distribute-you/gtm-factory" className="text-brand-400 underline">
+            github.com/distribute-you/gtm-factory
+          </a>{" "}
+          under the MIT license. If you run it yourself, that license governs
+          your use of the code, which is provided as is, without warranty, and
+          your vendors bill you directly. These Terms govern the Service we
+          host and run.
         </p>
       </>
     ),
@@ -136,17 +148,57 @@ const SECTIONS: SectionDef[] = [
     body: (
       <>
         <p>
-          <strong>The platform is free.</strong> You pay for the work done on
-          your campaigns. Each tool behind your emails (lead data, research,
-          AI writing, email checks, sending, calls) is billed by the unit at
-          our public catalogue price, our margin included. The catalogue is
-          published at{" "}
+          <strong>Which offer applies to you.</strong> The offer that applies
+          to your account is the one in effect when the account was created.
+          Accounts created on or after October 29, 2026 are on the current
+          offer below. Accounts created before that date keep the offer they
+          signed up under, described under &ldquo;Earlier offers&rdquo;, and
+          are not re-priced in either direction.
+        </p>
+        <p>
+          <strong>Current offer: the AI agent.</strong> The AI agent is free
+          for one user. A team is billed per user each month (currently $9 per
+          user). You pay for the work done on your campaigns: each tool behind
+          them (lead data, research, AI writing, email checks, sending, calls)
+          is billed by the unit at our public catalogue price, published at{" "}
           <a href="/catalog" className="text-brand-400 underline">
             distribute.you/catalog
           </a>
-          . There is no seat and no setup fee. Depending on the offer you
-          signed up under, you pay with prepaid credit, through a monthly
-          plan, or after use (post-paid), all described below.
+          . For these accounts we set each catalogue price at the
+          vendor&apos;s list price for that tool, with no markup added. The
+          catalogue price is the one that governs, even where a vendor&apos;s
+          own price differs at a given moment (for example a vendor discount, a
+          currency change, or a vendor change we have not yet published).
+          Costs that come with running your account, such as onboarding, chat
+          with our AI agent, and payment processing fees, are billed to your
+          account the same way. There is no setup fee.
+        </p>
+        <p>
+          <strong>Current offer: prepaid, with automatic reload.</strong> On
+          the current offer, the Service is prepaid. Before your campaigns
+          start, you pay a first top-up on the checkout page (currently at least
+          $10) and set an automatic reload: a reload threshold (currently at
+          least $5) and a reload amount (currently at least $10 above that
+          threshold). Automatic reload is required for as long as you use the
+          Service. An onboarding advance (currently $5) may be added to your
+          account when it is created: it is an advance on your first payment,
+          and that payment is credited net of it.
+        </p>
+        <p>
+          <strong>Current offer: the GTM agency.</strong> When our team runs
+          your go-to-market, the price is the one we agree with you (currently
+          from $1,000 a month plus 10% of the campaign budget, the service
+          fees), and the campaign budget is billed at the catalogue prices
+          above.
+        </p>
+        <p>
+          <strong>Earlier offers.</strong> For accounts created before October
+          29, 2026, the platform is free and each tool is billed by the unit at
+          our public catalogue price, our margin included. Depending on the
+          offer such an account signed up under, it pays with prepaid credit,
+          through a monthly plan, or after use (post-paid), and it may hold a
+          welcome or referral offer, all described below. None of these earlier
+          offers is open to accounts created on or after October 29, 2026.
         </p>
         <p>
           <strong>Prices are dynamic.</strong> Catalogue prices are in USD
@@ -164,7 +216,7 @@ const SECTIONS: SectionDef[] = [
           method on file, or a declined charge), sending stops.
         </p>
         <p>
-          <strong>Post-paid billing.</strong> Where we offer it, you pay after
+          <strong>Post-paid billing (earlier offers).</strong> Where an account signed up under it, you pay after
           use instead of adding credit first. You save a payment method when
           you sign up and nothing is charged that day. We charge it for what
           your campaigns spent when your unpaid usage reaches a threshold
@@ -195,9 +247,11 @@ const SECTIONS: SectionDef[] = [
           <strong>Automatic reload.</strong> Your campaigns spend money every
           day they run, so a prepaid account opened on or after October 11,
           2026 keeps automatic reload on to use the Service: when your credit
-          falls under the reload threshold (currently $10), we charge your
-          saved payment method the amount of your first payment and add it to
-          your credit, as many times as your campaigns need. Once it is on,
+          falls under the reload threshold, we charge your saved payment
+          method the reload amount and add it to your credit, as many times as
+          your campaigns need. On the current offer you choose the threshold
+          and the amount within the minimums above; on an earlier offer the
+          threshold is $10 and the amount is that of your first payment. Once it is on,
           there is no switch to turn it off. To stop these charges, turn your
           campaigns off or remove your payment method; sending then stops when
           your credit runs out. Accounts opened before that date keep the
@@ -205,7 +259,7 @@ const SECTIONS: SectionDef[] = [
           charges without further confirmation.
         </p>
         <p>
-          <strong>Monthly plan.</strong> Where we offer it, you can subscribe to
+          <strong>Monthly plan (earlier offers).</strong> Where an account signed up under it, it can subscribe to
           a monthly plan instead of prepaid credit. Each monthly payment is
           added to your account as credit for that month. A plan can start
           with a free trial of the length shown when you sign up (currently 3
@@ -235,9 +289,9 @@ const SECTIONS: SectionDef[] = [
           budgets.
         </p>
         <p>
-          <strong>Campaign budgets.</strong> You set a daily budget for each
-          campaign. Each channel has a minimum daily budget, and there is no
-          maximum. Turning a campaign off stops its spend; amounts already
+          <strong>Campaign budgets.</strong> You set caps for each campaign
+          (a max budget and/or a max volume, each with a period). A channel
+          may have a minimum budget, and there is no maximum. Turning a campaign off stops its spend; amounts already
           used or reserved stay due.
         </p>
         <p>
@@ -254,12 +308,13 @@ const SECTIONS: SectionDef[] = [
           automatic reload, post-paid charges, monthly plan payments (including
           the first payment after a free trial), automatic plan upgrades, or service fees. Unused or expired
           credit is not refunded. The only exception is the managed plan
-          guarantee below.
+          guarantee below, for managed plans started before October 29, 2026.
         </p>
         <p>
-          <strong>Managed plan.</strong> On the managed plan we run your
-          outreach for you. It is priced from $1,000 a month plus 10% of the
-          campaign budget (the service fees), with no time commitment. If you
+          <strong>Managed plan (earlier offers).</strong> On a managed plan
+          started before October 29, 2026, we run your outreach for you. It is
+          priced from $1,000 a month plus 10% of the campaign budget (the
+          service fees), with no time commitment. If you
           are not satisfied with the outcome after 60 days, tell us at{" "}
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-400 underline">
             {SUPPORT_EMAIL}
@@ -268,7 +323,7 @@ const SECTIONS: SectionDef[] = [
           are not refunded.
         </p>
         <p>
-          <strong>Welcome credits and promotions.</strong> Welcome credits,
+          <strong>Welcome credits and promotions (earlier offers).</strong> Welcome credits,
           referral credits, and promotional credits are granted at our sole
           discretion, offset charges rather than paying out in cash, have no
           cash value, expire as set out above, and may be revoked for abuse.
@@ -298,7 +353,7 @@ const SECTIONS: SectionDef[] = [
           reaches that threshold.
         </p>
         <p>
-          <strong>Which offer applies to you.</strong> Payments means money
+          <strong>Offer amounts.</strong> Payments means money
           actually received and not refunded or charged back, not usage accrued
           on credit. The welcome amount, the referral amount and any threshold
           that apply to an account are the ones in effect when that account was
