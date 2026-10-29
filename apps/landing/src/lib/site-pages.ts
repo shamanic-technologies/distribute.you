@@ -15,6 +15,7 @@
  * Alias-free: the unit tests import it directly.
  */
 import { agencyCompareLinks } from "./agencies";
+import { AI_SDR_PATH, aiSdrCompareLinks } from "./competitors";
 import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
 
@@ -47,6 +48,8 @@ export type SitePage = {
   sections?: { label: string; href: string }[];
   /** The page's own vs/alternatives cluster, listed in its footer (empty clusters are not linked). */
   compare?: { label: string; href: string }[];
+  /** The footer column title over `compare` on an AI Agent page. */
+  compareTitle?: string;
 };
 
 /** Outcome display names, in the owner's order (root CLAUDE.md POSITIONING). */
@@ -63,19 +66,28 @@ export const OUTCOMES: { slug: OutcomeSlug; name: string; line: string }[] = [
   { slug: "customer-success", name: "Customer Success", line: "Customers kept happy, and buying again" },
 ];
 
+/**
+ * An AI Agent page served at the path its buyers search for, not `/<slug>-automation`:
+ * Meetings Booked is "ai sdr" (1,600 US searches a month, PAGE-AI-SDR-1029).
+ */
+const AGENT_PATH: Partial<Record<OutcomeSlug, string>> = { revenue: "/", meetings: AI_SDR_PATH };
+
 function agentPath(slug: OutcomeSlug): string {
-  return slug === "revenue" ? "/" : `/${slug}-automation`;
+  return AGENT_PATH[slug] ?? `/${slug}-automation`;
 }
 
-/** Paid Acquisition's Agency page is served under its search term (owner 2026-10-29: "ppc agency"). */
-const AGENCY_PATH_OVERRIDES: Partial<Record<OutcomeSlug, string>> = { "paid-acquisition": "/ppc-agency" };
+/**
+ * An Agency page served at the path its buyers search for, not `/<slug>-agency`:
+ * Paid Acquisition is "ppc agency" (5,400 US searches a month, PAGE-PPC-AGENCY-1029).
+ */
+const AGENCY_PATH: Partial<Record<OutcomeSlug, string>> = { "paid-acquisition": "/ppc-agency" };
 
 function agencyPath(slug: OutcomeSlug): string {
-  return AGENCY_PATH_OVERRIDES[slug] ?? `/${slug}-agency`;
+  return AGENCY_PATH[slug] ?? `/${slug}-agency`;
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", "/ppc-agency"]);
+const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, "/ppc-agency"]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
 const GTM_AGENCY_SECTIONS = [
@@ -113,6 +125,21 @@ const HOME_SECTIONS = [
   { label: "FAQ", href: "/#faq" },
 ];
 
+/** The sections of the AI SDR page (Meetings Booked, AI Agent buyer, PAGE-AI-SDR-1029). */
+const AI_SDR_SECTIONS = [
+  { label: "How it books", href: `${AI_SDR_PATH}#how` },
+  { label: "Prices", href: `${AI_SDR_PATH}#prices` },
+  { label: "AI SDRs compared", href: `${AI_SDR_PATH}#compare` },
+  { label: "Pricing", href: `${AI_SDR_PATH}#pricing` },
+  { label: "FAQ", href: `${AI_SDR_PATH}#faq` },
+];
+
+/** Per-page extras of the AI Agent pages: their own sections and vs/alternatives cluster. */
+const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "compare" | "compareTitle">>> = {
+  revenue: { sections: HOME_SECTIONS },
+  meetings: { sections: AI_SDR_SECTIONS, compare: aiSdrCompareLinks(), compareTitle: "Compare AI SDRs" },
+};
+
 /**
  * Revenue has no Agency page of its own (owner 2026-10-29): "revenue agency" searches are
  * people looking for a tax office, so its outcome is folded into the GTM Agency page.
@@ -127,7 +154,7 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
     navLabel: `${o.name} Automation`,
     description: o.line,
     live: LIVE_PATHS.has(agentPath(o.slug)),
-    ...(o.slug === "revenue" ? { sections: HOME_SECTIONS } : {}),
+    ...(AGENT_EXTRAS[o.slug] ?? {}),
   },
   ...(NO_AGENCY_PAGE.has(o.slug)
     ? []

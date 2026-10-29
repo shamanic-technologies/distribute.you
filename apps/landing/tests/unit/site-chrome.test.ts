@@ -42,7 +42,7 @@ describe("the catalogue starts with the pages served today", () => {
   it("`/`, `/gtm-agency` and `/lead-generation-agency` are live; 19 entries, one per outcome and buyer (Revenue has no Agency page)", () => {
     expect(SITE_PAGES).toHaveLength(19);
     // Sibling outcome pages flip live in their own PRs: pin the ones shipped, not the exact set.
-    expect(livePages().map((p) => p.path)).toEqual(expect.arrayContaining(["/", "/gtm-agency", "/lead-generation-agency"]));
+    expect(livePages().map((p) => p.path)).toEqual(expect.arrayContaining(["/", "/gtm-agency", "/lead-generation-agency", "/ai-sdr"]));
     expect(new Set(SITE_PAGES.map((p) => p.path)).size).toBe(19);
   });
 
@@ -100,6 +100,26 @@ describe("adding a catalogue entry adds it everywhere", () => {
     expect(urls).toContain(`https://distribute.you${AGENT}`);
     expect(urls).toContain(`https://distribute.you${AGENCY}`);
     expect(urls).toContain("https://distribute.you");
+  });
+});
+
+describe("an AI Agent page served at its search path (PAGE-AI-SDR-1029)", () => {
+  it("Meetings Booked is `/ai-sdr`, never `/meetings-automation`, and wears the agent footer", () => {
+    const page = SITE_PAGES.find((p) => p.outcome === "meetings" && p.buyer === "agent")!;
+    expect(page.path).toBe("/ai-sdr");
+    expect(page.live).toBe(true);
+    expect(SITE_PAGES.some((p) => p.path === "/meetings-automation")).toBe(false);
+    const model = footerModel("/ai-sdr/vs/11x");
+    expect(model.variant).toBe("agent");
+    const compare = model.columns.find((c) => c.title === "Compare AI SDRs")!;
+    expect(compare.links.map((l) => l.href)).toEqual([
+      "/ai-sdr/vs/11x",
+      "/ai-sdr/vs/artisan",
+      "/ai-sdr/vs/aisdr",
+      "/ai-sdr/vs/qualified",
+      "/ai-sdr/alternatives",
+    ]);
+    expect(navHtml("/")).toContain('href="/ai-sdr"><b>Meetings Booked Automation</b>');
   });
 });
 
