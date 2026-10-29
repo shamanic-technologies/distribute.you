@@ -988,25 +988,35 @@ function wholeDollars(input: string): number | null {
 }
 
 /**
- * The three amounts of the at-cost checkout, each checked against its minimum. Every
- * field carries its own problem (null = fine); `values` is set only when all three pass.
+ * The amounts of the at-cost checkout, each checked against its minimum. The automatic
+ * reload is OPTIONAL, ticked by default (owner 2026-10-29: « optional, but checked by
+ * default »): with `reloadOn` false its two fields are neither checked nor sent. Every
+ * field carries its own problem (null = fine); `values` is set only when all pass.
  */
-export function atCostCheckout(input: { topup: string; threshold: string; reload: string }): {
+export function atCostCheckout(input: { topup: string; threshold: string; reload: string; reloadOn?: boolean }): {
   problems: { topup: string | null; threshold: string | null; reload: string | null };
-  values: { topupUsd: number; thresholdUsd: number; reloadUsd: number } | null;
+  values: { topupUsd: number; thresholdUsd: number; reloadUsd: number } | { topupUsd: number; thresholdUsd: null; reloadUsd: null } | null;
 } {
+  const reloadOn = input.reloadOn ?? true;
   const topup = wholeDollars(input.topup);
   const threshold = wholeDollars(input.threshold);
   const reload = wholeDollars(input.reload);
   const topupProblem =
     topup === null ? "Whole dollars." : topup < AT_COST_MIN_TOPUP_USD ? `At least $${AT_COST_MIN_TOPUP_USD}.` : null;
-  const thresholdProblem =
-    threshold === null ? "Whole dollars." : threshold < AT_COST_MIN_THRESHOLD_USD ? `At least $${AT_COST_MIN_THRESHOLD_USD}.` : null;
+  const thresholdProblem = !reloadOn
+    ? null
+    : threshold === null
+      ? "Whole dollars."
+      : threshold < AT_COST_MIN_THRESHOLD_USD
+        ? `At least $${AT_COST_MIN_THRESHOLD_USD}.`
+        : null;
   const reloadMin = (threshold ?? AT_COST_MIN_THRESHOLD_USD) + AT_COST_RELOAD_ABOVE_THRESHOLD_USD;
-  const reloadProblem = reload === null ? "Whole dollars." : reload < reloadMin ? `At least $${reloadMin}.` : null;
+  const reloadProblem = !reloadOn ? null : reload === null ? "Whole dollars." : reload < reloadMin ? `At least $${reloadMin}.` : null;
   const problems = { topup: topupProblem, threshold: thresholdProblem, reload: reloadProblem };
+  if (topup === null || topupProblem) return { problems, values: null };
+  if (!reloadOn) return { problems, values: { topupUsd: topup, thresholdUsd: null, reloadUsd: null } };
   const values =
-    topup !== null && threshold !== null && reload !== null && !topupProblem && !thresholdProblem && !reloadProblem
+    threshold !== null && reload !== null && !thresholdProblem && !reloadProblem
       ? { topupUsd: topup, thresholdUsd: threshold, reloadUsd: reload }
       : null;
   return { problems, values };

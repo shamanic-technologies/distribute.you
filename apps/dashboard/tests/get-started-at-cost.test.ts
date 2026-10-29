@@ -38,6 +38,28 @@ describe("at-cost checkout minimums", () => {
   });
 });
 
+describe("the automatic reload is optional, ticked by default (owner 2026-10-29)", () => {
+  it("unticked: only the top-up is checked, no reload is sent", () => {
+    expect(atCostCheckout({ topup: "10", threshold: "", reload: "", reloadOn: false })).toEqual({
+      problems: { topup: null, threshold: null, reload: null },
+      values: { topupUsd: 10, thresholdUsd: null, reloadUsd: null },
+    });
+    expect(atCostCheckout({ topup: "9", threshold: "", reload: "", reloadOn: false }).values).toBeNull();
+  });
+
+  it("the box starts ticked and an unticked box pays without a reload", () => {
+    const topup = src("src/components/v2/get-started/prepaid-topup.tsx");
+    expect(topup).toContain("const [reloadOn, setReloadOn] = useState(true);");
+    expect(topup).toContain("Reload my credit automatically");
+    expect(topup).toMatch(/: null,\n\s+consent: consentRecord/);
+  });
+
+  it("the statement says the campaigns pause without a reload", () => {
+    const [card] = spendConsentLines({ arm: { kind: "prepaid", topupUsd: 10, reload: null } });
+    expect(card.text).toBe("My campaigns run on the credit I add. When it runs out, they pause until I add more.");
+  });
+});
+
 describe("no free money for an at-cost org", () => {
   it("reads billing's offer", () => {
     expect(isAtCostOffer({ free_credit_offer: "prepaid_at_cost" })).toBe(true);
