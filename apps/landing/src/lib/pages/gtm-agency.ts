@@ -52,11 +52,11 @@ export function agencyFeeUsd(budgetUsd: number): number {
   return Math.round(AGENCY_FEE_BASE_USD + AGENCY_FEE_SHARE * budgetUsd);
 }
 
-function usd(n: number): string {
+export function usd(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
-const BOOK_ATTRS = `href="${BOOK_A_CALL}" target="_blank" rel="noopener"`;
+export const BOOK_ATTRS = `href="${BOOK_A_CALL}" target="_blank" rel="noopener"`;
 
 // ---------------------------------------------------------------------------
 // Live reads
@@ -223,7 +223,7 @@ function daysHtml(): string {
 </section>`;
 }
 
-function indexCardHtml(i: IndexSummary, at: number): string {
+export function indexCardHtml(i: IndexSummary, at: number): string {
   const value =
     i.value === null
       ? `<span class="v words">${esc(unavailableLine(i.unavailableReason))}</span>`
@@ -291,7 +291,7 @@ export function monthlyHtml(rows: MonthlyRuns | null, now: Date = new Date()): s
 </section>`;
 }
 
-const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+export const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
 const INCLUDED = [
   "Your go-to-market run by our team and our AI agents",
@@ -301,7 +301,8 @@ const INCLUDED = [
   "Live in 5 days from our first call",
 ];
 
-function priceHtml(): string {
+/** The price card + slider; an outcome's Agency page passes its own name and list. */
+export function priceHtml(title = "GTM Agency", included: readonly string[] = INCLUDED): string {
   const fee = agencyFeeUsd(DEFAULT_BUDGET_USD);
   const share = Math.round(AGENCY_FEE_SHARE * DEFAULT_BUDGET_USD);
   return `<section class="framed" id="price">
@@ -313,9 +314,9 @@ function priceHtml(): string {
     </div>
     <div class="ag-price">
       <div class="ag-card feat">
-        <h3>GTM Agency</h3>
+        <h3>${esc(title)}</h3>
         <p class="big">From $1K<small>/month + 10% of budget</small></p>
-        <ul>${INCLUDED.map((l) => `<li>${CHECK}<span>${esc(l)}</span></li>`).join("")}</ul>
+        <ul>${included.map((l) => `<li>${CHECK}<span>${esc(l)}</span></li>`).join("")}</ul>
         <a class="btn btn-accent btn-lg" ${BOOK_ATTRS}>Book a call</a>
       </div>
       <div class="ag-card ag-calc" data-agency-calc data-base="${AGENCY_FEE_BASE_USD}" data-share="${AGENCY_FEE_SHARE}">
@@ -335,7 +336,7 @@ function priceHtml(): string {
 }
 
 /** The slider: recomputes the fee in the browser from the same two numbers the card states. */
-const CALC_SCRIPT = `<script>(function(){var c=document.querySelector("[data-agency-calc]");if(!c)return;var b=Number(c.getAttribute("data-base")),s=Number(c.getAttribute("data-share"));var i=c.querySelector("#ag-budget"),o=c.querySelector("#ag-budget-out"),sh=c.querySelector("#ag-share-out"),f=c.querySelector("#ag-fee-out");function u(n){return "$"+Math.round(n).toLocaleString("en-US")}function d(){var v=Number(i.value);o.textContent=u(v);sh.textContent=u(s*v);f.textContent=u(b+s*v)}i.addEventListener("input",d);d()})();</script>`;
+export const CALC_SCRIPT = `<script>(function(){var c=document.querySelector("[data-agency-calc]");if(!c)return;var b=Number(c.getAttribute("data-base")),s=Number(c.getAttribute("data-share"));var i=c.querySelector("#ag-budget"),o=c.querySelector("#ag-budget-out"),sh=c.querySelector("#ag-share-out"),f=c.querySelector("#ag-fee-out");function u(n){return "$"+Math.round(n).toLocaleString("en-US")}function d(){var v=Number(i.value);o.textContent=u(v);sh.textContent=u(s*v);f.textContent=u(b+s*v)}i.addEventListener("input",d);d()})();</script>`;
 
 export function callHtml(): string {
   return `<section class="framed">

@@ -12,6 +12,8 @@
     <div data-motion="chat">              [data-msg] children arrive one by one after typing dots
     <div data-motion="bar-grow">          [data-bar] children grow from zero to their size
     <svg data-motion="beams">             every <path> draws, then a pulse travels along it
+    <ol data-motion="lead-rows">          children drop in one by one and get .is-judged (the page's CSS flashes
+                                          the verdict), then re-judges them in a loop while on screen (origami)
 
   Rules every effect keeps:
   - The HTML is the FINAL state. A visitor who asks for reduced motion, a crawler, or a page
@@ -183,6 +185,30 @@
           scrollTrigger: { trigger: el, start: "top 85%", once: true },
           onComplete: function () { p.style.strokeDasharray = ""; p.style.strokeDashoffset = ""; },
         });
+      });
+    },
+
+    "lead-rows": function (el, gsap) {
+      var rows = toArray(el.children);
+      if (!rows.length) return;
+      el.classList.add("is-playing");
+      function judge(r) { return function () { r.classList.add("is-judged"); }; }
+      // First pass: each row drops in, then its verdict flashes.
+      var current = gsap.timeline({ paused: true });
+      rows.forEach(function (r, i) {
+        current.fromTo(r, { opacity: 0, y: -18 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, i * 0.8);
+        current.call(judge(r), null, i * 0.8 + 0.5);
+      });
+      // Then the rows stay and the feed re-judges them in a loop, so the panel is never empty.
+      current.call(function () {
+        current = gsap.timeline({ repeat: -1, repeatDelay: 2.6 });
+        current.call(function () { rows.forEach(function (r) { r.classList.remove("is-judged"); }); }, null, 0);
+        rows.forEach(function (r, i) { current.call(judge(r), null, 0.6 + i * 0.55); });
+      }, null, "+=2.6");
+      // Plays only while the feed is on screen; parks wherever it is when it leaves.
+      window.ScrollTrigger.create({
+        trigger: el, start: "top 85%", end: "bottom top",
+        onToggle: function (self) { if (self.isActive) current.play(); else current.pause(); },
       });
     },
   };
