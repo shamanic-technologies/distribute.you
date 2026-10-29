@@ -1,0 +1,66 @@
+/*
+  The docs' palette, scoped to `.docs-root` (moved from apps/docs, SITE-FOUNDATION-1029).
+  The landing's own Tailwind `brand-*` ramp is the retired pink one; the docs wear dashboard
+  v2's blue ramp (oklch hue 258) and Keel's neutral greys, so the variables the utilities
+  read are restated here, under the docs only. Light only, like the rest of the landing.
+*/
+.docs-root {
+  --color-brand-50: oklch(97% 0.02 258);
+  --color-brand-100: oklch(94% 0.05 258);
+  --color-brand-200: oklch(88% 0.09 258);
+  --color-brand-300: oklch(80% 0.14 258);
+  --color-brand-400: oklch(72% 0.17 258);
+  --color-brand-500: oklch(64% 0.17 258);
+  --color-brand-600: oklch(54% 0.16 258);
+  --color-brand-700: oklch(47% 0.14 258);
+  --color-brand-800: oklch(41% 0.115 258);
+  --color-brand-900: oklch(35% 0.09 258);
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f3f3f4;
+  --color-gray-200: #e6e6e8;
+  --color-gray-300: #d4d4d8;
+  --color-gray-400: #a9a9b0;
+  --color-gray-500: #74747c;
+  --color-gray-600: #5e5e66;
+  --color-gray-700: #3f3f46;
+  --color-gray-800: #27272b;
+  --color-gray-900: #101012;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  color: #101012;
+}
+
+.docs-root code,
+.docs-root pre,
+.docs-root .font-mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+.docs-root .prose a { color: oklch(54% 0.16 258); }
+.docs-root .prose a:hover { color: oklch(47% 0.14 258); }
+
+.docs-root .prose code {
+  color: oklch(47% 0.14 258);
+  background-color: oklch(97% 0.02 258);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-weight: 400;
+}
+
+.docs-root .prose code::before,
+.docs-root .prose code::after {
+  content: none;
+}
+
+.docs-root .prose pre {
+  background-color: #18181b;
+  border-radius: 0.5rem;
+  /* Wide code scrolls inside the block, never clipped by html{overflow-x:clip}. */
+  overflow-x: auto;
+}
+
+.docs-root .prose pre code {
+  color: #e5e7eb;
+  background-color: transparent;
+  padding: 0;
+}

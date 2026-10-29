@@ -3,118 +3,62 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/blog/db", () => ({ listArticles: vi.fn(async () => []) }));
+vi.mock("@/lib/fleet-indexes", async (orig) => ({
+  ...(await orig<typeof import("../../src/lib/fleet-indexes")>()),
+  fetchIndexList: vi.fn(async () => null),
+}));
 
-import { decorateHtml, renderedResponse } from "@/lib/static-html";
-import { renderDevelopersPage } from "@/lib/pages/developers";
 import { renderAboutPage } from "@/lib/pages/about";
 import { renderContactPage } from "@/lib/pages/contact";
 import { renderNotFoundPage } from "@/lib/pages/not-found";
+import { DOCS_ROUTES, docsUrl } from "@/lib/docs/docs-routes";
 import { withSiteChrome } from "../../src/lib/site-chrome";
 
 function read(relative: string): string {
   return readFileSync(join(process.cwd(), relative), "utf8");
 }
 
-const PAGE = renderDevelopersPage();
-const source = PAGE;
-const rendered = decorateHtml(PAGE);
-
 /**
- * The is-agentic audit's "Developer resource discoverability" finding is not
- * that these surfaces are missing — the API, the OpenAPI document, the MCP
- * server and the CLI have all been live for a while. It is that a name search
- * "surfaced no pages on distribute.you", because every one of them lives on a
- * SUBDOMAIN and the apex carried no page naming them. `/developers` is the
- * page, so what these guards protect is: it exists, it says the product's name
- * where a search engine reads one, it names each resource at its real URL, and
- * a crawler that runs no JavaScript can find it.
+ * The is-agentic audit's "Developer resource discoverability" finding: a name search
+ * surfaced no page on distribute.you, because every developer surface lived on a
+ * subdomain. `/developers` answered it on the apex; since SITE-FOUNDATION-1029 the docs
+ * themselves live on the apex at `/docs` (docs.distribute.you 301s there) and
+ * `/developers` redirects to the docs home. These guards keep the docs findable.
  */
-describe("/developers exists at a predictable URL", () => {
-  it("is wired to a route that renders the page", () => {
-    const route = read("src/app/developers/route.ts");
-    expect(route).toContain("renderedResponse(renderDevelopersPage(), request");
+describe("the docs live on the apex", () => {
+  it("/developers (and anything under it) redirects permanently to /docs", () => {
+    const cfg = read("next.config.ts");
+    expect(cfg).toContain('{ source: "/developers", destination: "/docs", permanent: true, missing: offLab }');
+    expect(cfg).toContain('{ source: "/developers/:path+", destination: "/docs", permanent: true, missing: offLab }');
   });
 
-  it("canonicalises to the apex, not to a docs subdomain", () => {
-    expect(source).toContain(
-      '<link rel="canonical" href="https://distribute.you/developers">',
-    );
-  });
-
-  it("is in the sitemap", async () => {
+  it("every docs route is in the sitemap, at its apex URL", async () => {
     const { default: sitemap } = await import("@/app/sitemap");
     const urls = (await sitemap()).map((entry) => entry.url);
-    expect(urls).toContain("https://distribute.you/developers");
+    for (const r of DOCS_ROUTES) expect(urls).toContain(docsUrl(r.path));
+    expect(urls).toContain("https://distribute.you/docs");
+    expect(urls).not.toContain("https://distribute.you/developers");
   });
-});
 
-describe("the product name is where a name search reads one", () => {
-  it("names the product in the title, the OG title and the Twitter title", () => {
-    const title = source.match(/<title>([\s\S]*?)<\/title>/);
-    expect(title?.[1]).toContain("distribute.you");
-    for (const prop of ['property="og:title"', 'name="twitter:title"']) {
-      const meta = source.match(new RegExp(`${prop} content="([^"]*)"`));
-      expect(meta?.[1], prop).toContain("distribute.you");
+  it("every docs route has a page under src/app/docs", () => {
+    for (const r of DOCS_ROUTES) {
+      const file = r.path === "/" ? "src/app/docs/page.tsx" : `src/app/docs${r.path}/page.tsx`;
+      expect(read(file), file).toContain(`docsMetadata("${r.path}")`);
     }
   });
 
-  it("names the product in the h1 and in the headings that name a resource", () => {
-    const h1 = source.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
-    expect(h1?.[1]).toContain("distribute.you");
-    // A heading per resource, each carrying the product name, because the
-    // finding is specifically about name-based queries.
-    for (const heading of [
-      "The distribute.you API",
-      "The distribute.you MCP server",
-      "The distribute.you CLI",
-    ]) {
-      expect(source, heading).toContain(heading);
-    }
-  });
-});
-
-describe("every developer surface is named at its real URL", () => {
-  // Each of these was requested live before being published here. A URL that
-  // needs a query parameter to answer is deliberately absent: publishing one
-  // that 400s bare is worse than not publishing it.
-  const URLS = [
-    "https://api.distribute.you",
-    "https://api.distribute.you/openapi.json",
-    "https://api.distribute.you/docs",
-    "https://api.distribute.you/v1/costs/platform-prices",
-    "https://api.distribute.you/v1/public/channels",
-    "https://mcp.distribute.you/mcp",
-    "https://docs.distribute.you/",
-    "https://docs.distribute.you/mcp/",
-    "https://docs.distribute.you/openapi/",
-    "https://www.npmjs.com/package/@distribute.you/cli",
-    "/.well-known/mcp.json",
-    "/llms.txt",
-    "/sitemap.xml",
-    "/robots.txt",
-  ];
-
-  for (const url of URLS) {
-    it(`links ${url}`, () => {
-      expect(source).toContain(`href="${url}"`);
-    });
-  }
-
-  it("states the authentication scheme the deployed OpenAPI document declares", () => {
-    // bearerAuth with a `distrib.usr_*` key. `X-API-Key` is the platform/admin
-    // scheme and must never be advertised to a customer building a client.
-    expect(source).toContain("Bearer distrib.usr_");
-    expect(source).not.toContain("X-API-Key");
+  it("declares the API and its reference as machine-readable types", () => {
+    const layout = read("src/app/docs/layout.tsx");
+    expect(layout).toContain('"@type": "WebAPI"');
+    expect(layout).toContain('"@type": "APIReference"');
+    expect(layout).toContain("documentation: `${DOCS_SITE_URL}/api`");
   });
 });
 
 describe("a crawler that runs no JavaScript can find it", () => {
   it("is linked from the raw HTML of the served homepage", () => {
-    // The homepage's nav is JS-injected; its footer is not. A JS-injected link
-    // is invisible to the link graph, which is how a new page is born orphaned.
-    // The footer is resolved at serve time from the page catalogue, still in raw HTML.
     const home = withSiteChrome(read("public/landing/index-v2.html"), "/");
-    expect(home).toContain('href="/developers"');
+    expect(home).toContain('href="/docs"');
   });
 
   it("is linked from the raw HTML of the trust pages and the 404", () => {
@@ -123,78 +67,27 @@ describe("a crawler that runs no JavaScript can find it", () => {
       ["contact", renderContactPage()],
       ["404", renderNotFoundPage()],
     ] as const) {
-      expect(html, name).toContain('href="/developers"');
+      expect(html, name).toContain('href="/docs"');
+    }
+  });
+
+  it("no page on the apex still points at the old docs host", () => {
+    for (const f of ["src/lib/pages/not-found.ts", "src/lib/pages/contact.ts", "src/lib/site-chrome.ts", "public/llms.txt"]) {
+      expect(read(f), f).not.toContain("docs.distribute.you");
     }
   });
 });
 
-describe("llms.txt points an agent at the page", () => {
+describe("llms.txt points an agent at the docs", () => {
   const llms = read("public/llms.txt");
 
-  it("lists it under Developer resources and under Key pages", () => {
-    expect(llms).toContain("https://distribute.you/developers");
-    expect(llms).toContain("[Developers](https://distribute.you/developers)");
+  it("lists the docs under Developer resources and under Key pages", () => {
+    expect(llms).toContain("https://distribute.you/docs");
+    expect(llms).toContain("[Docs](https://distribute.you/docs)");
+    expect(llms).not.toContain("https://distribute.you/developers");
   });
 
   it("carries no em-dash, like the rest of the file", () => {
     expect(llms).not.toContain(String.fromCharCode(0x2014));
-  });
-});
-
-describe("the page itself holds the repo's conventions", () => {
-  it("carries no em-dash, since every string on it is copy a person reads", () => {
-    expect(source).not.toContain(String.fromCharCode(0x2014));
-  });
-
-  it("gets the canonical Organization injected, and declares none of its own", () => {
-    // `withCanonicalOrganization` deletes a hand-written Organization node and
-    // injects the one from lib/seo. A second one here would be a second answer.
-    const blocks = [...rendered.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
-    const orgs = blocks
-      .map((m) => JSON.parse(m[1]) as Record<string, unknown>)
-      .flatMap((node) => {
-        const graph = node["@graph"];
-        return Array.isArray(graph) ? (graph as Record<string, unknown>[]) : [node];
-      })
-      .filter((node) => node["@type"] === "Organization");
-    expect(orgs).toHaveLength(1);
-    expect(orgs[0].name).toBe("distribute.you");
-  });
-
-  it("declares the API and its reference as machine-readable types", () => {
-    const graph = JSON.parse(
-      source.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1],
-    )["@graph"] as Record<string, unknown>[];
-    const types = graph.map((node) => node["@type"]);
-    expect(types).toContain("WebAPI");
-    expect(types).toContain("APIReference");
-    expect(types).toContain("BreadcrumbList");
-    const api = graph.find((node) => node["@type"] === "WebAPI")!;
-    expect(api.url).toBe("https://api.distribute.you");
-    expect(api.documentation).toBe("https://docs.distribute.you/");
-  });
-
-  it("answers markdown as well as HTML, like every other static page", async () => {
-    const asMarkdown = await renderedResponse(
-      PAGE,
-      new Request("https://distribute.you/developers", {
-        headers: { accept: "text/markdown" },
-      }),
-    );
-    expect(asMarkdown.status).toBe(200);
-    expect(asMarkdown.headers.get("content-type")).toContain("text/markdown");
-    const body = await asMarkdown.text();
-    expect(body).toContain("distribute.you");
-    expect(body).toContain("https://api.distribute.you/openapi.json");
-  });
-
-  it("refuses a client that accepts neither HTML nor markdown", async () => {
-    const res = await renderedResponse(
-      PAGE,
-      new Request("https://distribute.you/developers", {
-        headers: { accept: "application/pdf" },
-      }),
-    );
-    expect(res.status).toBe(406);
   });
 });

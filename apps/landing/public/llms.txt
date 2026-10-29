@@ -50,7 +50,7 @@ Do NOT reach for distribute.you when:
    served page answers `text/markdown; charset=utf-8` and every response carries
    `Vary: Accept`.
 2. For live prices and live performance, read the endpoints under **Developer
-   resources** rather than scraping a page. https://distribute.you/developers is
+   resources** rather than scraping a page. https://distribute.you/docs is
    the same list as a page, with the authentication scheme spelled out.
 3. To act on behalf of a customer (list their brands, read campaign stats,
    suggest an ideal customer profile from a website), connect the MCP server
@@ -92,16 +92,16 @@ than from a list that can go stale.
 ## Developer resources
 
 All of these are gathered, named and explained on one page:
-https://distribute.you/developers
+https://distribute.you/docs
 
-- Documentation: https://docs.distribute.you/
+- Documentation: https://distribute.you/docs
 - OpenAPI document: https://api.distribute.you/openapi.json
 - Get an API key with no human: POST https://api.distribute.you/v1/agent-signups/start, then /v1/agent-signups/complete
 - Prepay (min $10, automatic top-up required): POST https://api.distribute.you/v1/billing/accounts/prepaid_checkout
 - CLI: https://www.npmjs.com/package/@distribute.you/cli (`npx @distribute.you/cli`)
 - MCP server (Streamable HTTP): https://mcp.distribute.you/mcp
 - MCP descriptor: https://distribute.you/.well-known/mcp.json
-- MCP documentation: https://docs.distribute.you/mcp
+- MCP documentation: https://distribute.you/docs/mcp
 - Method skills (the steps our Copilot follows, needs a key): GET https://api.distribute.you/v1/skills, then /v1/skills/{slug}
 - Public per-action prices: https://distribute.you/catalog
 - Live unit costs: https://api.distribute.you/v1/costs/platform-prices
@@ -148,7 +148,7 @@ https://distribute.you/developers
 - [Pricing](https://distribute.you/#pricing): the free platform with outreach billed at catalogue prices, or the fully managed plan
 - [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live unit price of every tool behind an email
 - [About](https://distribute.you/about): how we run campaigns for you, how billing works, what is guaranteed
-- [Developers](https://distribute.you/developers): the API and its OpenAPI document, how a key
+- [Docs](https://distribute.you/docs): the API and its OpenAPI document, how a key
   authenticates, the MCP server, the CLI, and the machine-readable files on this domain
 - [Contact](https://distribute.you/contact): support, press, and the registered company
 - [Investors](https://distribute.you/investors): live platform metrics, growth data, infrastructure, SAFE round details, ICP definition

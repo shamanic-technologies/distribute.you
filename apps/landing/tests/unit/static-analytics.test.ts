@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { decorateHtml, staticHtml } from "../../src/lib/static-html";
 import { renderAboutPage } from "../../src/lib/pages/about";
-import { renderDevelopersPage } from "../../src/lib/pages/developers";
 
 // The landing pages are served as raw HTML via route handlers that bypass
 // the React root layout (GA) and Next client instrumentation (PostHog).
@@ -19,7 +18,6 @@ describe("Static landing pages carry GA + PostHog", () => {
   const pages: Record<string, () => string> = {
     "index-v2.html": () => staticHtml("index-v2.html"),
     about: () => decorateHtml(renderAboutPage()),
-    developers: () => decorateHtml(renderDevelopersPage()),
   };
 
   for (const page of Object.keys(pages)) {
