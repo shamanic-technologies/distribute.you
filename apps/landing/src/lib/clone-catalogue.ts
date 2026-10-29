@@ -133,21 +133,22 @@ export type RecordedResponse = {
 };
 
 export const CLONES: readonly Clone[] = [
-  { slug: "explee", source: "https://explee.com/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
-  { slug: "revid", source: "https://www.revid.ai/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
-  { slug: "outrank", source: "https://www.outrank.so/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
-  { slug: "trustmrr", source: "https://trustmrr.com/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
-  { slug: "origami", source: "https://origami.chat/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
-  { slug: "oxygen", source: "https://oxygen-agent.com/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
-  { slug: "graphed", source: "https://www.graphed.com/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
-  { slug: "instinct", source: "https://instinct.com/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
+  { slug: "explee", source: "https://explee.com/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
+  { slug: "revid", source: "https://www.revid.ai/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
+  { slug: "outrank", source: "https://www.outrank.so/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
+  { slug: "trustmrr", source: "https://trustmrr.com/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
+  { slug: "origami", source: "https://origami.chat/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
+  { slug: "oxygen", source: "https://oxygen-agent.com/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
+  { slug: "graphed", source: "https://www.graphed.com/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
+  { slug: "instinct", source: "https://instinct.com/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
+  // A TEMPLATE we took, not a competitor (owner 2026-10-29): left out of competitor refreshes.
   // A whole demo APP rather than a landing: 30 document routes (crew, records, work) captured
   // explicitly, since the static pass follows assets and never document links.
   { slug: "keel", source: "https://keel-workspace.vercel.app/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
   {
     slug: "gojiberry",
     source: "https://gojiberry.ai/",
-    capturedAt: "2026-10-15",
+    capturedAt: "2026-10-29",
     brandised: false,
     // Framer: the origin serves the HTML and nothing else, so without this the clone is a
     // shell rendering out of framerusercontent.com. 506 assets rapatriated (2026-10-15).
@@ -159,20 +160,24 @@ export const CLONES: readonly Clone[] = [
       "fonts.gstatic.com",
       "framer.com",
       "framerusercontent.com",
+      "t2.gojiberry.ai",
       "visitor.wv.gojiberry.ai",
     ],
   },
+  // treg (2026-10-29): "OpenRouter for agent tools and data, pay per call". Self-hosted
+  // static landing; its app (`/app`) is a Vue shell behind sign-in.
+  { slug: "treg", source: "https://treg.to/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
   // Revenue-automation set (2026-10-15), the study material for the revenue-engine draft.
   // Default (Next): one platform for inbound workflows, enrichment, routing and meetings.
-  { slug: "default", source: "https://www.default.com/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
+  { slug: "default", source: "https://www.default.com/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
   // usefr.com is Frontrunner, "AI agents for GTM" (YC): a client-rendered app shell.
-  { slug: "frontrunner", source: "https://usefr.com/", capturedAt: "2026-10-15", brandised: false, localisedHosts: [] },
+  { slug: "frontrunner", source: "https://usefr.com/", capturedAt: "2026-10-29", brandised: false, localisedHosts: [] },
   {
     // 11x, the best-funded "digital workers that drive revenue" (outbound, inbound,
     // expansion). Webflow: every asset sits on cdn.prod.website-files.com.
     slug: "11x",
     source: "https://www.11x.ai/",
-    capturedAt: "2026-10-15",
+    capturedAt: "2026-10-29",
     brandised: false,
     localisedHosts: [
       "18dccfa619686586.cdn.express",
@@ -191,9 +196,11 @@ export const CLONES: readonly Clone[] = [
       "import-cdn.default.com",
       "opps-widget.getwarmly.com",
       "pixel-cdn.default.com",
+      "sc.lfeeder.com",
       "scripts.clarity.ms",
       "static.ads-twitter.com",
       "t.co",
+      "tr.lfeeder.com",
       "tracking-api.g2.com",
       "www.clarity.ms",
       "www.google.kz",
@@ -205,7 +212,7 @@ export const CLONES: readonly Clone[] = [
     // Webflow, same reason as 11x.
     slug: "warmly",
     source: "https://www.warmly.ai/",
-    capturedAt: "2026-10-15",
+    capturedAt: "2026-10-29",
     brandised: false,
     localisedHosts: [
       "ajax.googleapis.com",

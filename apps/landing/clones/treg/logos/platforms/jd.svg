@@ -1,0 +1,5 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="JD.com">
+  <!-- Lettermark fallback: white "JD" monogram on JD.com red (#E1251B); no official SVG of the JOY-dog mark is freely available (Commons/CDNs carry only non-free PNGs). -->
+  <rect width="24" height="24" rx="5.5" fill="#E1251B"/>
+  <text x="12" y="12.6" fill="#fff" font-family="ui-sans-serif,system-ui,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',Arial,sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.2" text-anchor="middle" dominant-baseline="central">JD</text>
+</svg>

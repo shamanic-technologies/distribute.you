@@ -40,18 +40,32 @@ ICONS.Graph = "<path fill=\"currentColor\" d=\"M7.205 7.562a.75.75 0 0 0-.993-1.
       if(this.shadowRoot.childElementCount)return;
       this.render();
       const frame = this.shadowRoot.querySelector('.app-frame');
+      const preview = this.shadowRoot.querySelector('.app-preview');
+      const appWindow = this.shadowRoot.querySelector('.app-window');
       const sidebar = this.shadowRoot.querySelector('.sidebar');
-      this.previewResize = new ResizeObserver(([entry]) => {
-        const width = entry.contentRect.width;
+      const fitPreview = () => {
+        const width = preview.clientWidth;
         // Use the outer width so changing frame padding cannot flip the breakpoint.
         const compact = frame.clientWidth < 850;
         frame.toggleAttribute('data-desktop-preview', compact);
-        frame.style.setProperty('--preview-scale', String(Math.min(1, width / 1100)));
+        const scale = compact ? Math.min(1, width / 1100) : 1;
+        frame.style.setProperty('--preview-scale', String(scale));
+        preview.style.height = compact ? `${appWindow.offsetHeight * scale}px` : '';
         // Full-size tabs remain the controls for the scaled illustration.
         sidebar.inert = compact;
-      });
-      this.previewResize.observe(frame);
+        this.revealTab('instant');
+      };
+      const scheduleFit = () => {
+        if(this.fitFrame!==undefined)return;
+        this.fitFrame=requestAnimationFrame(()=>{this.fitFrame=undefined;fitPreview();});
+      };
+      this.previewResize = new ResizeObserver(scheduleFit);
+      this.previewResize.observe(preview);
+      this.previewResize.observe(appWindow);
       this.abort=new AbortController();const options={signal:this.abort.signal};
+      this.shadowRoot.querySelectorAll('link').forEach(link=>link.addEventListener('load',scheduleFit,options));
+      window.addEventListener('resize',scheduleFit,options);
+      fitPreview();
       this.shadowRoot.addEventListener('click',e=>{const tab=e.target.closest('[data-feature]');if(tab)this.select(tab.dataset.feature);},options);
       this.shadowRoot.addEventListener('keydown',e=>{
         const tab=e.target.closest('[role=tab]');if(!tab)return;const i=FEATURES.findIndex(f=>f.key===tab.dataset.feature);
@@ -62,21 +76,30 @@ ICONS.Graph = "<path fill=\"currentColor\" d=\"M7.205 7.562a.75.75 0 0 0-.993-1.
       this.shadowRoot.addEventListener('focusout',()=>queueMicrotask(()=>{this.focused=!!this.shadowRoot.activeElement;this.sync();}),options);
       document.addEventListener('visibilitychange',()=>this.sync(),options);
       this.reduced.addEventListener('change',()=>this.sync(),options);
-      this.observer=new IntersectionObserver(entries=>{this.inView=entries[0].isIntersecting;this.sync();},{threshold:.2});this.observer.observe(this.shadowRoot.querySelector('.app-frame'));
+      this.observer=new IntersectionObserver(entries=>{this.inView=entries[0].isIntersecting;if(this.inView)scheduleFit();this.sync();},{threshold:.2});this.observer.observe(this.shadowRoot.querySelector('.app-frame'));
     }
-    disconnectedCallback(){this.abort?.abort();this.observer?.disconnect();this.previewResize?.disconnect();cancelAnimationFrame(this.frame);}
+    disconnectedCallback(){this.abort?.abort();this.observer?.disconnect();this.previewResize?.disconnect();cancelAnimationFrame(this.frame);cancelAnimationFrame(this.fitFrame);}
     render(){
       const nav=f=>`<button class="nav-row ${f.key===this.active?'active':''}" data-feature="${f.key}" aria-label="Show ${f.label} preview">${icon(f.icon)}<span>${f.label}</span></button>`;
-      this.shadowRoot.innerHTML=`<link rel="stylesheet" href="/design-system/components.css"><link rel="stylesheet" href="/branding2-assets/product-tour.css"><section class="tour" aria-label="Oxygen product overview"><div class="app-frame"><div class="tour-controls"><div class="tabs ox-glass" role="tablist" aria-label="Explore OXYGEN">${FEATURES.map((f,i)=>`<button class="tab" role="tab" id="${this.instancePrefix}-tab-${f.key}" aria-controls="${this.instancePrefix}-panel-${f.key}" aria-selected="${i===0}" tabindex="${i===0?0:-1}" data-feature="${f.key}">${icon(f.icon)}${f.label}</button>`).join('')}</div></div><div class="app-window ox-glass"><aside class="sidebar ox-glass-rail" aria-label="Product preview navigation"><div class="workspace-name"><img src="/branding2-assets/oxygen-logo.svg" alt="">OXYGEN</div><div class="nav-row">${icon('Magnifer')} Search <span class="muted">⌘K</span></div><div class="nav-row">${icon('Home')} Home</div><div class="sidebar-label">DATA</div>${nav(FEATURES[1])}${nav(FEATURES[0])}<div class="nav-row">${icon('Inbox')} Unibox</div>${nav(FEATURES[5])}<div class="sidebar-label">ACTION</div>${nav(FEATURES[2])}${nav(FEATURES[4])}${nav(FEATURES[3])}<div class="nav-bottom"><div class="workspace-id">${icon('UsersGroup')} Demo workspace</div><div class="nav-row">${icon('Settings')} Settings</div></div></aside><div class="app-content"><div class="app-chrome ox-glass-rail"><span>${icon('Home')} <b class="chrome-path">Tables</b></span><span class="sample-label">Product preview · sample data</span></div><div class="workspace-viewport ox-glass-rail">${FEATURES.map((f,i)=>`<div class="workspace-panel ${i===0?'is-active':''}" role="tabpanel" id="${this.instancePrefix}-panel-${f.key}" aria-labelledby="${this.instancePrefix}-tab-${f.key}" aria-hidden="${i!==0}" ${i===0?'':'inert'}>${PANELS[f.key]()}</div>`).join('')}</div></div></div></div></section>`;
+      this.shadowRoot.innerHTML=`<link rel="stylesheet" href="/design-system/components.css"><link rel="stylesheet" href="/branding2-assets/product-tour.css"><section class="tour" aria-label="Oxygen product overview"><div class="app-frame"><div class="tour-controls ox-glass"><div class="tabs" role="tablist" aria-label="Explore OXYGEN">${FEATURES.map((f,i)=>`<button class="tab" role="tab" id="${this.instancePrefix}-tab-${f.key}" aria-controls="${this.instancePrefix}-panel-${f.key}" aria-selected="${i===0}" tabindex="${i===0?0:-1}" data-feature="${f.key}">${icon(f.icon)}${f.label}</button>`).join('')}</div></div><div class="app-preview"><div class="app-window ox-glass"><aside class="sidebar ox-glass-rail" aria-label="Product preview navigation"><div class="workspace-name"><img src="/branding2-assets/oxygen-logo.svg" alt="">OXYGEN</div><div class="nav-row">${icon('Magnifer')} Search <span class="muted">⌘K</span></div><div class="nav-row">${icon('Home')} Home</div><div class="sidebar-label">DATA</div>${nav(FEATURES[1])}${nav(FEATURES[0])}<div class="nav-row">${icon('Inbox')} Unibox</div>${nav(FEATURES[5])}<div class="sidebar-label">ACTION</div>${nav(FEATURES[2])}${nav(FEATURES[4])}${nav(FEATURES[3])}<div class="nav-bottom"><div class="workspace-id">${icon('UsersGroup')} Demo workspace</div><div class="nav-row">${icon('Settings')} Settings</div></div></aside><div class="app-content"><div class="app-chrome ox-glass-rail"><span>${icon('Home')} <b class="chrome-path">Tables</b></span><span class="sample-label">Product preview · sample data</span></div><div class="workspace-viewport ox-glass-rail">${FEATURES.map((f,i)=>`<div class="workspace-panel ${i===0?'is-active':''}" role="tabpanel" id="${this.instancePrefix}-panel-${f.key}" aria-labelledby="${this.instancePrefix}-tab-${f.key}" aria-hidden="${i!==0}" ${i===0?'':'inert'}>${PANELS[f.key]()}</div>`).join('')}</div></div></div></div></div></section>`;
     }
     select(key){
       const feature=FEATURES.find(f=>f.key===key);if(!feature)return;this.active=key;this.elapsed=0;this.last=undefined;
       this.shadowRoot.querySelectorAll('[role=tab]').forEach(tab=>{const active=tab.dataset.feature===key;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;});
       this.shadowRoot.querySelectorAll('.nav-row[data-feature]').forEach(tab=>tab.classList.toggle('active',tab.dataset.feature===key));
-      this.shadowRoot.querySelectorAll('[role=tabpanel]').forEach(panel=>{const active=panel.id===this.instancePrefix+'-panel-'+key;panel.classList.toggle('is-active',active);panel.inert=!active;panel.setAttribute('aria-hidden',String(!active));});
+      const index=FEATURES.indexOf(feature);
+      this.shadowRoot.querySelectorAll('[role=tabpanel]').forEach((panel,i)=>{const active=i===index;panel.style.setProperty('--panel-offset',i<index?'-24px':'24px');panel.classList.toggle('is-active',active);panel.inert=!active;panel.setAttribute('aria-hidden',String(!active));});
       this.shadowRoot.querySelector('.chrome-path').textContent=feature.label;
       this.style.setProperty('--tour-progress','0');
+      this.revealTab(this.reduced.matches?'instant':'smooth');
       this.dispatchEvent(new CustomEvent('tour-change',{detail:{feature:key},bubbles:true,composed:true}));
+    }
+    revealTab(behavior){
+      const rail=this.shadowRoot.querySelector('.tabs');
+      const tab=rail.querySelector('[aria-selected=true]');
+      const bounds=rail.getBoundingClientRect();
+      const selected=tab.getBoundingClientRect();
+      rail.scrollTo({left:rail.scrollLeft+selected.left-bounds.left-(bounds.width-selected.width)/2,behavior});
     }
     sync(){
       cancelAnimationFrame(this.frame);this.last=undefined;

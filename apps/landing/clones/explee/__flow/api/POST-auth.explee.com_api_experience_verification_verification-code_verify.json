@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "POST",
-    "url": "https://auth.explee.com/api/experience/verification/verification-code/verify",
+    "url": "https://lab-explee-auth.distribute.you/api/experience/verification/verification-code/verify",
     "query": null
   },
   "requestBody": null,

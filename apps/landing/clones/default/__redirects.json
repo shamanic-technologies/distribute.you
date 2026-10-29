@@ -1,0 +1,6 @@
+{
+  "/book-a-demo": {
+    "status": 301,
+    "location": "https://lab-default.distribute.you/"
+  }
+}

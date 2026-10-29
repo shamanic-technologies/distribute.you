@@ -4,6 +4,14 @@ export function createGrowthScene({ page, hero, onChange, onPreferenceChange }) 
   const track = document.getElementById('hero-scroll');
   const source = video.querySelector('source');
   const connection = navigator.connection;
+  // Phones, 3:5 or narrower, see only the film's centre. They load a 2.9 MB
+  // portrait encode of it, and only from their first scroll or touch: nobody
+  // sees the film move before scrolling, and fetched with the page the 16 MB
+  // film's first frame became a phone's largest paint (8.9 s on throttled 4G,
+  // 2026-10-15).
+  const portrait = window.matchMedia?.('(max-aspect-ratio: 3/5)');
+  const engageEvents = ['scroll', 'touchstart', 'pointerdown', 'keydown', 'wheel'];
+  let engaged = false;
   let active = false;
   let suspended = true;
   let loaded = false;
@@ -22,6 +30,13 @@ export function createGrowthScene({ page, hero, onChange, onPreferenceChange }) 
       if (lastSync) sync(lastSync);
     }, { once: true });
   }
+
+  function engage() {
+    engaged = true;
+    for (const type of engageEvents) removeEventListener(type, engage);
+    if (lastSync) sync(lastSync);
+  }
+  for (const type of engageEvents) addEventListener(type, engage, { passive: true });
 
   function shortViewport() {
     const barHeight = document.querySelector('.study-bar')?.getBoundingClientRect().height || 0;
@@ -79,11 +94,12 @@ export function createGrowthScene({ page, hero, onChange, onPreferenceChange }) 
       frame = undefined;
       return;
     }
-    if (documentLoaded && (retry || (!loaded && status !== 'error'))) {
+    const phone = Boolean(portrait?.matches && source.dataset.srcPortrait);
+    if (documentLoaded && (!phone || engaged) && (retry || (!loaded && status !== 'error'))) {
       loaded = true;
       publish('loading');
       video.preload = 'auto';
-      source.src = source.dataset.src;
+      source.src = phone ? source.dataset.srcPortrait : source.dataset.src;
       video.load();
     }
     clearTimeout(timer);
