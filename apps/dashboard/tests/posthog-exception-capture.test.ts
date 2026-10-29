@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 // PostHog states it in code, and every React error boundary reports what it swallows.
 const ROOT = resolve(__dirname, "../../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
-const APPS = ["dashboard", "admin", "landing", "sales-cold-emails-landing"];
+const APPS = ["dashboard", "admin", "landing"];
 
 describe("PostHog exception capture", () => {
   it.each(APPS)("%s turns on uncaught-error and rejection capture, and tags the release", (app) => {

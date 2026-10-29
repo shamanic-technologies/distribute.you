@@ -27,7 +27,6 @@ import {
   SITE,
   V2_STYLES_VERSION,
   breadcrumb,
-  compareFooterColumn,
   esc,
   shell,
   whyLine,

@@ -131,7 +131,8 @@ describe("GET / with the test on", () => {
   it("keeps the subscription page in step with the prepaid one outside the offer", () => {
     // Built from the prepaid page; a later homepage edit must land on both.
     const sub = readFileSync(path.join(__dirname, "../../public/landing/index-v2-subscription.html"), "utf8");
-    for (const shared of ['<a href="/catalog">Price catalog</a>', "main.js?v=", "Get <span class=\"accent\">revenue in 24h</span>"]) {
+    // The footer is a token both pages resolve from the page catalogue.
+    for (const shared of ["<!--site-footer-->", "<!--site-nav-->", "main.js?v=", "Get <span class=\"accent\">revenue in 24h</span>"]) {
       expect(sub, shared).toContain(shared);
     }
     expect(sub).toContain("lp_plan=(\\d+)");

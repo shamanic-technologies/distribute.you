@@ -13,6 +13,7 @@ import { bestForHeading, renderBestForHub, renderBestForPage } from "../../src/l
 import { COMPETITORS, competitorBySlug } from "../../src/lib/competitors";
 import { renderComparePage } from "../../src/lib/compare-page";
 import { V2_STYLES_VERSION } from "../../src/lib/v2-shell";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
  * The "best X for Y" cluster: `/best/<slug>` and `/best`.
@@ -151,7 +152,7 @@ describe("the lists that name the cluster equal the catalogue", () => {
   });
 
   it("the homepage footer and the rendered footer carry a Best for column in raw HTML", () => {
-    const home = read("public/landing/index-v2.html");
+    const home = withSiteChrome(read("public/landing/index-v2.html"), "/");
     const rendered = renderComparePage(COMPETITORS[0]);
     for (const html of [home, rendered]) {
       const footer = html.slice(html.indexOf("<footer>"));
@@ -165,9 +166,10 @@ describe("the lists that name the cluster equal the catalogue", () => {
   });
 
   it("the React footer reads the catalogue", () => {
-    const f = read("src/components/footer.tsx");
-    expect(f).toContain("BEST_FOR_PAGES.map(");
-    expect(f).toContain('title="Best for"');
+    // The React footer draws the same model the static pages render.
+    expect(read("src/components/footer.tsx")).toContain("footerModel(");
+    expect(read("src/lib/site-chrome.ts")).toContain("BEST_FOR_PAGES.map(");
+    expect(read("src/lib/site-chrome.ts")).toContain('title: "Best for"');
   });
 
   it("the routes exist", () => {

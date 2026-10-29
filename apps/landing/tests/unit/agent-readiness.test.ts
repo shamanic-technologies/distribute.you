@@ -10,6 +10,7 @@ import { renderAboutPage } from "@/lib/pages/about";
 import { renderContactPage } from "@/lib/pages/contact";
 import { renderDevelopersPage } from "@/lib/pages/developers";
 import { renderNotFoundPage } from "@/lib/pages/not-found";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 function read(relative: string): string {
   return readFileSync(join(process.cwd(), relative), "utf8");
@@ -221,9 +222,10 @@ describe("trust anchor pages", () => {
   it("is reachable from the site", () => {
     // Raw HTML on the homepage, because a JS-injected link is invisible to a
     // crawler that does not run scripts.
-    const home = read("public/landing/index-v2.html");
-    expect(home).toContain('href="https://distribute.you/about"');
-    expect(home).toContain('href="https://distribute.you/contact"');
+    // The homepage's chrome is resolved at serve time from the page catalogue.
+    const home = withSiteChrome(read("public/landing/index-v2.html"), "/");
+    expect(home).toContain('href="/about"');
+    expect(home).toContain('href="/contact"');
     // Plus the footer every rendered page carries.
     for (const page of ["about", "contact", "developers"]) {
       expect(RENDERED[page]).toContain('href="/about"');

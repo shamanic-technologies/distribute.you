@@ -4,6 +4,7 @@ import { listArticles } from "@/lib/blog/db";
 import { comparePaths } from "@/lib/competitors";
 import { bestForPaths } from "@/lib/best-for";
 import { fetchIndexList } from "@/lib/fleet-indexes";
+import { sitePagePaths } from "@/lib/site-pages";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
 // (e.g. CI build runners without a Neon binding) we skip article rows
@@ -26,13 +27,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     articles = rows.map((a) => ({ slug: a.slug, updatedAt: a.updatedAt }));
   }
 
-  const staticEntries: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1,
-    },
+  // The outcome pages, read from the page catalogue (`/` is the Revenue AI Agent page):
+  // a page flipped live there is listed here without a second edit.
+  const staticEntries: MetadataRoute.Sitemap = sitePagePaths().map((path) => ({
+    url: path === "/" ? baseUrl : `${baseUrl}${path}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: path === "/" ? 1 : 0.9,
+  }));
+  staticEntries.push(
     {
       url: `${baseUrl}/blog`,
       lastModified: new Date(),
@@ -45,7 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly",
       priority: 0.3,
     },
-  ];
+  );
 
   // Statically-served pages (src/app/<page>/route.ts → staticResponse) that were
   // missing from the sitemap — all live + indexable. Keep in lockstep with the
