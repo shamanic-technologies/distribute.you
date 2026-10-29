@@ -82,6 +82,7 @@ import {
   type GetStartedOffer,
   wallCopy,
   accountPhone,
+  isAtCostOffer,
 } from "@/lib/v2/get-started";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { requiredPhoneProblem } from "@/lib/phone-syntax";
@@ -138,6 +139,7 @@ export function AccountCardWall({
   ipCountry = null,
   earlyPhone = null,
   earlyName = null,
+  walkAtCost = false,
   onClose,
 }: {
   brandId: string;
@@ -167,6 +169,8 @@ export function AccountCardWall({
   earlyPhone?: PhoneValue | null;
   /** The first and last name typed on the first page, if any: set on the account once it exists. */
   earlyName?: { firstName: string; lastName: string } | null;
+  /** The walk org is (or may be) on billing's prepaid at cost offer: no free money promised. */
+  walkAtCost?: boolean;
   onClose: () => void;
 }) {
   const { isLoaded: authLoaded, isSignedIn, orgId } = useAuth();
@@ -194,7 +198,11 @@ export function AccountCardWall({
     setSoldState(next);
   }
   const isPlan = sold === "subscription";
-  const copy = wallCopy(isPlan ? Math.round(arm.monthlyCents / 100) : null, sold === "postpaid");
+  // Prepaid at cost (owner 2026-10-29, billing `free_credit_offer`): the account's word
+  // once it exists, the walk org's before. No match, no trial, no post-paid on it.
+  const [account, setAccount] = useState<BillingAccount | null>(null);
+  const atCost = account ? isAtCostOffer(account) : walkAtCost;
+  const copy = wallCopy(isPlan ? Math.round(arm.monthlyCents / 100) : null, sold === "postpaid", atCost);
   // The plan's statements before the trial starts (owner 2026-10-11); prepaid ticks
   // its own inside `PrepaidTopup`, where the amount they name is picked.
   const [planTicked, setPlanTicked] = useState([false, false]);
@@ -251,7 +259,6 @@ export function AccountCardWall({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cardSecret, setCardSecret] = useState<string | null>(null);
-  const [account, setAccount] = useState<BillingAccount | null>(null);
   const [phone, setPhone] = useState<PhoneValue>(() => {
     if (earlyPhone) return earlyPhone;
     const c = defaultPhoneCountry(ipCountry, navigator.language);
@@ -364,6 +371,9 @@ export function AccountCardWall({
         if (me) void sendSignupEmailsOnce({ userId: me.id, createdAt: me.createdAt }).catch((e) => console.error("[get-started] signup emails failed:", e));
         const acct = await getBillingAccount();
         setAccount(acct);
+        // Prepaid at cost (owner 2026-10-29): prepaid only, whatever arm the homepage drew
+        // (billing refuses post-paid with 409 `postpaid_not_offered`).
+        if (isAtCostOffer(acct)) setSold("prepaid");
         await saveEarlyName();
         await openPhoneStage();
       } catch (e) {
@@ -1067,7 +1077,12 @@ export function AccountCardWall({
         <section className="gs-panel k-popover p-5 md:col-start-1">
           {note && <p className="k-fg2 mb-3 rounded-lg bg-[var(--accent-soft)] px-3 py-2 text-[13px] leading-5">{note}</p>}
           <p className="k-fg text-[22px] font-semibold leading-7 tracking-tight">
-            <CountUp value={copy.creditUsd} format={(n) => `$${Math.round(n)}`} ms={800} /> {copy.creditLine}
+            {copy.creditUsd !== null && (
+              <>
+                <CountUp value={copy.creditUsd} format={(n) => `$${Math.round(n)}`} ms={800} />{" "}
+              </>
+            )}
+            {copy.creditLine}
           </p>
           <ul className="k-fg2 mt-2.5 grid gap-1 text-[13px] leading-5">
             {[
@@ -1083,7 +1098,7 @@ export function AccountCardWall({
           </ul>
           {outlook && (outcomes != null || expectedRoi != null) && (
             <>
-              <p className="k-fg mt-4 text-[13px] font-medium">{`Here is what your $${copy.creditUsd} gets you`}</p>
+              <p className="k-fg mt-4 text-[13px] font-medium">{copy.creditUsd !== null ? `Here is what your $${copy.creditUsd} gets you` : "Here is what your campaign gets you"}</p>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {outcomes != null && (
                   <BuysTile label={outlook.outcome} note="Expected">
@@ -1303,7 +1318,7 @@ export function AccountCardWall({
                     {busy ? "Checking your payment..." : "Check my payment and launch"}
                   </button>
                 ) : (
-                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} monthlyLimit={monthlyLimit} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
+                  <PrepaidTopup busy={busy} atCost={atCost} matchNote={matchNote(account)} monthlyLimit={monthlyLimit} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
                 )}
               </div>
             )}

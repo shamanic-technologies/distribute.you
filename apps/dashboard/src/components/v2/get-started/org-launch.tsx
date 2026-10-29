@@ -47,7 +47,7 @@ import { SpendConsent, allTicked } from "./spend-consent";
 import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccount } from "@/lib/sales-rep-default";
 import { v2Href } from "@/lib/v2/routes";
-import { matchNote, topupCta, type GetStartedOffer } from "@/lib/v2/get-started";
+import { isAtCostOffer, matchNote, topupCta, type GetStartedOffer } from "@/lib/v2/get-started";
 import { launchCount, type SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
@@ -152,7 +152,7 @@ export function OrgLaunch({
         consent: choice.consent,
         // Only an org created under the offer starts prepaid; an older one keeps its mode,
         // unless the person picked "Switch to prepaid" on a card post-paid cannot run on.
-        setPrepaid: chosePrepaid || account?.free_credit_offer === "match_100",
+        setPrepaid: chosePrepaid || account?.free_credit_offer === "match_100" || isAtCostOffer(account),
         name: user?.fullName ?? undefined,
         email: email ?? undefined,
         onPaid: (creditedBefore) => void afterPaid({ creditedBefore, reload: choice.reload }),
@@ -418,7 +418,7 @@ export function OrgLaunch({
                 {busy ? "Checking your payment..." : "Check my payment and launch"}
               </button>
             ) : (
-              <PrepaidTopup busy={busy} matchNote={matchNote(account)} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
+              <PrepaidTopup busy={busy} atCost={isAtCostOffer(account)} matchNote={matchNote(account)} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
             )
           )}
 

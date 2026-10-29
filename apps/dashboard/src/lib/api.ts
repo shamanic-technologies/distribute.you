@@ -10390,9 +10390,12 @@ export interface BillingAccount {
   /**
    * The free-credit offer this org was created under (billing-service, 2026-10-06):
    * "match_100" = we match the first $100 paid (part at creation, the rest once paid),
-   * "legacy" = an older org's welcome. Optional until every billing deploy states it.
+   * "legacy" = an older org's welcome, "agent_api" = opened through the API (no free
+   * credit), "prepaid_at_cost" = every org created since 2026-10-29 (a $5 advance repaid
+   * by the first payment, no other free credit, prepaid only, auto top-up required).
+   * Optional until every billing deploy states it.
    */
-  free_credit_offer?: "match_100" | "legacy";
+  free_credit_offer?: "match_100" | "legacy" | "agent_api" | "prepaid_at_cost";
   free_credit_entitlement_cents?: number;
   /** Decimal cents received so far toward the offer. */
   free_credit_received_cents?: string;

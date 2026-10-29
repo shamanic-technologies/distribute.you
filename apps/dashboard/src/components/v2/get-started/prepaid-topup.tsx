@@ -11,7 +11,15 @@
  */
 
 import { useState } from "react";
-import { DEFAULT_RELOAD_THRESHOLD_USD, TOPUP_CHOICES_USD, parseTopupUsd } from "@/lib/v2/get-started";
+import {
+  AT_COST_DEFAULT_RELOAD_USD,
+  AT_COST_DEFAULT_THRESHOLD_USD,
+  AT_COST_TOPUP_CHOICES_USD,
+  DEFAULT_RELOAD_THRESHOLD_USD,
+  TOPUP_CHOICES_USD,
+  atCostCheckout,
+  parseTopupUsd,
+} from "@/lib/v2/get-started";
 import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
 import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/lib/v2/spend-consent";
 import { SpendConsent, allTicked } from "./spend-consent";
@@ -98,7 +106,129 @@ function amountOf(value: number | typeof OTHER, other: string): { usd: number } 
   return value === OTHER ? parseTopupUsd(other) : { usd: value };
 }
 
-export function PrepaidTopup({
+/** One whole-dollar field of the at-cost checkout, with its own problem under it. */
+function DollarField({
+  label,
+  value,
+  onChange,
+  problem,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  problem: string | null;
+  disabled: boolean;
+}) {
+  return (
+    <label className="grid gap-1">
+      <span className="k-fg2 text-[12.5px]">{label}</span>
+      <span className="flex items-center gap-1.5">
+        <span className="k-fg2 text-[13px]">$</span>
+        <input
+          className={`k-input w-24 px-2 text-right tabular-nums ${problem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          aria-invalid={problem !== null}
+        />
+      </span>
+      {problem && <span className="text-[12px] text-[var(--data-rose)]">{problem}</span>}
+    </label>
+  );
+}
+
+/**
+ * The at-cost checkout (owner 2026-10-29, every org created since): the first top-up
+ * (at least $10), then the automatic reload: under $X (at least $5), add $Y (at least
+ * $X + $10). Required, one step, one payment. No match, nothing free.
+ */
+function AtCostTopup({
+  busy,
+  disabled,
+  monthlyLimit,
+  cta,
+  onPay,
+}: {
+  busy: boolean;
+  disabled: boolean;
+  monthlyLimit?: string | null;
+  cta: (usd: number) => string;
+  onPay: (choice: TopupChoice) => void;
+}) {
+  const [first, setFirst] = useState<number | typeof OTHER>(AT_COST_TOPUP_CHOICES_USD[0]);
+  const [firstOther, setFirstOther] = useState("");
+  const [threshold, setThreshold] = useState(String(AT_COST_DEFAULT_THRESHOLD_USD));
+  const [reload, setReload] = useState(String(AT_COST_DEFAULT_RELOAD_USD));
+  const [ticked, setTicked] = useState([false, false]);
+  const [shown, setShown] = useState(false);
+
+  const checked = atCostCheckout({ topup: first === OTHER ? firstOther : String(first), threshold, reload });
+  const off = busy || disabled;
+  const topupUsd = checked.values?.topupUsd ?? AT_COST_TOPUP_CHOICES_USD[0];
+  const limit = monthlyLimit === undefined ? null : monthlyLimitToSave(monthlyLimit, { kind: "prepaid", topupUsd });
+  const lines = spendConsentLines({
+    arm: {
+      kind: "prepaid",
+      topupUsd,
+      reload: {
+        thresholdUsd: checked.values?.thresholdUsd ?? AT_COST_DEFAULT_THRESHOLD_USD,
+        amountUsd: checked.values?.reloadUsd ?? AT_COST_DEFAULT_RELOAD_USD,
+      },
+      ...(limit && "usd" in limit ? { limitUsd: limit.usd } : {}),
+    },
+  });
+
+  function submit() {
+    setShown(true);
+    if (!checked.values || !allTicked(ticked)) return;
+    onPay({
+      topupUsd: checked.values.topupUsd,
+      reload: { thresholdUsd: checked.values.thresholdUsd, amountUsd: checked.values.reloadUsd },
+      consent: consentRecord(lines, new Date(), navigator.userAgent),
+    });
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div>
+        <p className="k-label mb-2">Add credit</p>
+        <AmountPicker
+          label="Credit to add"
+          choices={AT_COST_TOPUP_CHOICES_USD}
+          value={first}
+          onChange={(v) => {
+            setFirst(v);
+            setShown(false);
+          }}
+          other={firstOther}
+          onOther={setFirstOther}
+          problem={shown || first !== OTHER ? checked.problems.topup : null}
+          disabled={off}
+        />
+      </div>
+      <div>
+        <p className="k-label mb-2">Automatic reload</p>
+        <div className="flex flex-wrap gap-4">
+          <DollarField label="When my credit falls under" value={threshold} onChange={setThreshold} problem={checked.problems.threshold} disabled={off} />
+          <DollarField label="Add" value={reload} onChange={setReload} problem={checked.problems.reload} disabled={off} />
+        </div>
+      </div>
+      <SpendConsent lines={lines} ticked={ticked} onChange={setTicked} disabled={off} />
+      <button
+        type="button"
+        className="k-cta k-btn-accent gs-glow w-full justify-center"
+        onClick={submit}
+        disabled={off || !allTicked(ticked) || !checked.values}
+      >
+        {busy ? "Opening the card form..." : checked.values ? cta(checked.values.topupUsd) : "Add credit and launch"}
+      </button>
+    </div>
+  );
+}
+
+function MatchTopup({
   busy,
   disabled = false,
   matchNote,
@@ -108,6 +238,7 @@ export function PrepaidTopup({
 }: {
   busy: boolean;
   disabled?: boolean;
+
   /** The monthly limit typed at the campaign step (null while untouched); absent where none is set. */
   monthlyLimit?: string | null;
   /** The match, in billing's figures for this org. */
@@ -167,4 +298,25 @@ export function PrepaidTopup({
       </button>
     </div>
   );
+}
+
+/**
+ * The wall's and the dashboard walk's credit step: the at-cost checkout for an org
+ * billing serves `prepaid_at_cost`, else the older offer's (match, unchanged).
+ */
+export function PrepaidTopup(props: {
+  busy: boolean;
+  disabled?: boolean;
+  /** billing serves this org the prepaid at cost offer: its own checkout, no match. */
+  atCost?: boolean;
+  monthlyLimit?: string | null;
+  matchNote: string;
+  cta: (usd: number) => string;
+  onPay: (choice: TopupChoice) => void;
+}) {
+  const { atCost = false, ...rest } = props;
+  if (atCost) {
+    return <AtCostTopup busy={rest.busy} disabled={rest.disabled ?? false} monthlyLimit={rest.monthlyLimit} cta={rest.cta} onPay={rest.onPay} />;
+  }
+  return <MatchTopup {...rest} />;
 }
