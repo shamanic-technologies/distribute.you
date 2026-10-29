@@ -146,10 +146,10 @@ export function V2BillingPage() {
   const sub = c.accountPending
     ? "Your balance, how you pay, and every payment."
     : mode === null
-      ? `${onCredit ? `${balanceFigure} spent on credit` : `${balanceFigure} available`}.`
+      ? `${onCredit ? `${balanceFigure} over your credit` : `${balanceFigure} available`}.`
       : mode === "postpaid" && owed.owedCents !== null
         ? `${MODE_COPY[mode].title}. Current balance ${formatCentsAsUsd(owed.owedCents, 2)}.`
-        : `${MODE_COPY[mode].title}. ${onCredit ? `${balanceFigure} spent on credit` : `${balanceFigure} available`}.`;
+        : `${MODE_COPY[mode].title}. ${onCredit ? `${balanceFigure} over your credit` : `${balanceFigure} available`}.`;
 
   return (
     <>
@@ -283,6 +283,7 @@ export function V2BillingPage() {
               provisionedCents={c.provisionedChargesCents}
               chargesCents={c.totalChargesCents}
               discountPct={c.hasUsageDiscount ? c.usageDiscountPct : null}
+              nextPayment={mode === "subscription" ? "next monthly payment" : "next top-up"}
             />
           )}
         </Section>
