@@ -144,6 +144,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "factoryShadowPlan",
   "staffPlanFollowing",
   "salesFunnelPlanChanges",
+  // Monitoring > Scripts (FACTORY-P3): staff-only read, never persisted to disk.
+  "staffScriptsMonitoring",
   "staffOpsThreads",
   "staffOpsThreadMessages",
   "staffOpsInfra",

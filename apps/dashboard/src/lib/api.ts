@@ -2068,6 +2068,8 @@ export const STAFF_MONITORING_PATHS = {
   factoryShadow: "/features/audit/factory-shadow/monitoring",
   // Funnel campaigns following their plan: status ok|red, the red ones, one row per UTC day (campaign-service #808, api-service #1409).
   planFollowing: "/campaigns/ops/plan-following",
+  // Per outcome a stored script makes, script path vs the service path it replaced, per day + the verdicts and the roll-back guard (workflow-service, FACTORY-P3).
+  scriptsMonitoring: "/scripts/ops/monitoring",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -2230,6 +2232,7 @@ import {
   type FactoryShadowMonitoring,
 } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
+import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
 /**
  * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
@@ -2251,6 +2254,11 @@ export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunne
 /** Monitoring > Factory plan > Following its plan: status, the red campaigns with their served state, one row per UTC day. */
 export async function getStaffPlanFollowing(days: number): Promise<PlanFollowing> {
   return parseStaff("getStaffPlanFollowing", PlanFollowingSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.planFollowing}?days=${days}`));
+}
+
+/** Monitoring > Scripts: per outcome, the script path vs the service path it replaced, per UTC day, + verdicts and guard (workflow-service, FACTORY-P3). */
+export async function getStaffScriptsMonitoring(days: number): Promise<ScriptsMonitoring> {
+  return parseStaff("getStaffScriptsMonitoring", ScriptsMonitoringSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.scriptsMonitoring}?days=${days}`));
 }
 
 /** A funnel campaign's plan changes, newest first: when, from which sales funnel to which (campaign-service #808, api-service #1411). */
