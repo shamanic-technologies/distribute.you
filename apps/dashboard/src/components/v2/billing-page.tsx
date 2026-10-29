@@ -1,5 +1,6 @@
 "use client";
 
+import { offersNoFreeMoney } from "@/lib/v2/get-started";
 import { useState } from "react";
 import { configureAutoTopup, disableAutoTopup, getOrgUsage } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -522,7 +523,9 @@ export function V2BillingPage() {
           </Section>
         )}
 
-        {/* Free credit: what was given, then what is on the way. */}
+        {/* Free credit: what was given, then what is on the way. None on billing's
+            no-free-money offers (owner 2026-10-29): its $5 at creation is an advance. */}
+        {account && !offersNoFreeMoney(account) && (
         <Section id="free-credit" title="Free credit" description="Credit we added to your account, and credit that unlocks as your payments grow.">
           <div className="k-card overflow-hidden">
             {c.grantsPending && c.grants.length === 0 ? (
@@ -555,6 +558,7 @@ export function V2BillingPage() {
             <ComingCreditsCard />
           </div>
         </Section>
+        )}
 
         {/* Payments. */}
         <Section
