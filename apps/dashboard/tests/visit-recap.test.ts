@@ -42,7 +42,25 @@ describe("visit recap (owner 2026-10-03: one readable Telegram per human visit)"
     expect(stageOf(ev(0, { event: "get_started_signup_email_started" }))).toBe("Signup");
     expect(stageOf(ev(0, { event: "get_started_card_saved" }))).toBe("Payment");
     expect(stageOf(ev(0, { pathname: "/onboarding", currentUrl: "https://dashboard.distribute.you/onboarding?launch_checkout=success" }))).toBe("Payment");
-    expect(stageOf(ev(0, { pathname: "/v2/orgs/x" }))).toBe("Dashboard");
+    expect(stageOf(ev(0, { pathname: "/v2/orgs/x/brands/b" }))).toBe("Dashboard");
+    // The org page and its brand walk are setup behind the gate, never the dashboard (2026-10-29, SEO Engine).
+    expect(stageOf(ev(0, { pathname: "/v2/orgs/x" }))).toBe("Onboarding");
+    expect(stageOf(ev(0, { pathname: "/v2/orgs/x/new-brand" }))).toBe("Onboarding");
+    expect(stageOf(ev(0, { pathname: "/orgs/x" }))).toBe("Onboarding");
+  });
+
+  it("an unpaid signup who stopped in the setup walk left before paying, never reached the dashboard (2026-10-29, SEO Engine)", () => {
+    const walk = { pathname: "/v2/orgs/x/new-brand" };
+    const text = visitRecap([
+      ev(0, {}),
+      ev(30, { pathname: "/sign-in", event: "signin_email_completed" }),
+      click(60, "SEO Engine Finish setup", { pathname: "/v2/orgs/x" }),
+      click(90, "Continue", walk),
+      ev(120, walk),
+    ]);
+    expect(text).not.toContain("Reached the dashboard");
+    expect(text).toContain("Signed up, left before paying ❌");
+    expect(text).not.toContain("<b>Dashboard</b>");
   });
 
   it("prints a flag and a country name, never a bare code", () => {
@@ -68,7 +86,7 @@ describe("visit recap (owner 2026-10-03: one readable Telegram per human visit)"
     );
     expect(sourceLine(ev(0, { ...landing, referringDomain: "$direct" }))).toBe("Came direct, landed on the homepage");
     expect(sourceLine(ev(0, { referringDomain: "chatgpt.com" }))).toBe("Came from an AI assistant (chatgpt.com), landed on onboarding");
-    expect(sourceLine(ev(0, { pathname: "/v2/orgs/x" }))).toBe("Came direct, landed on the dashboard");
+    expect(sourceLine(ev(0, { pathname: "/v2/orgs/x/brands/b" }))).toBe("Came direct, landed on the dashboard");
     expect(sourceLine(ev(0, { ...landing, pathname: "/alternatives", title: "A".repeat(80) }))).toBe(`Came direct, landed on "${"A".repeat(59)}…"`);
   });
 
@@ -262,7 +280,7 @@ describe("visit recap firmographics (owner 2026-10-04: who is the company behind
 });
 
 describe("returning visitor recap (owner 2026-10-07: tell me when someone comes back, anywhere)", () => {
-  const dash = { pathname: "/v2/orgs/x" };
+  const dash = { pathname: "/v2/orgs/x/brands/b" };
 
   it("sends a visit with no onboarding when the same person visited before, over 90 days", () => {
     expect(ENDED_VISITS_SQL).toContain("and (onboarding > 0 or (prior_visits > 0 and last_seen < visit_started - interval 30 minute))");
@@ -301,7 +319,7 @@ describe("returning visitor recap (owner 2026-10-07: tell me when someone comes 
   });
 
   it("names a signed-in returner PostHog holds no email for, with the brand (owner 2026-10-12: Jay Peak read as Not signed up)", () => {
-    const dash = { pathname: "/v2/orgs/x", distinctId: "user_3KZGifeRJrhEUgCcrq4evxlU7G3" };
+    const dash = { pathname: "/v2/orgs/x/brands/b", distinctId: "user_3KZGifeRJrhEUgCcrq4evxlU7G3" };
     const events = [ev(0, { ...dash, country: "US" }), ev(19, { ...dash, event: "signin_completed" }), click(40, "Unibox", dash), ev(71, dash)];
     const returning = { priorVisits: 3, lastSeenAt: new Date(T0 - 12 * 3_600_000).toISOString() };
     const account: VisitAccount = { name: "Jay Peak", email: "jayjppeak@gmail.com", brands: [{ name: "Peak Local Leads", domain: "peaklocalserviceleads.com" }] };
