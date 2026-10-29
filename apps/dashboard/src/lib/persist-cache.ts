@@ -103,6 +103,11 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "modelDynastyOutputs",
   // A workflow dynasty's recent runs with the emails they wrote (Research workflow drawer + page).
   "workflowDynastyOutputs",
+  // Staff Ledger (one brand's books and production orders: cost data).
+  "brandLedger",
+  "brandLedgerRuns",
+  // Staff Done by your team (who waits on the client's own team: names and companies).
+  "pipeQueue",
   // Staff Monitoring (fleet margin, vendor costs, price catalogue, emails sent).
   "staffCostMargin",
   "staffPriceVersions",

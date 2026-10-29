@@ -43,7 +43,8 @@ describe("legs no channel of ours performs are hidden", () => {
         return (
           src.includes("funnelLegOperator") ||
           src.includes("Distribute.you team") ||
-          src.includes("Done by you") ||
+          // "Done by your team" (FACTORY-P4-PAGES, the staff page of the client's own pipes) is not the old label.
+          /Done by you(?!r team)/.test(src) ||
           src.includes("statesOperator")
         );
       });

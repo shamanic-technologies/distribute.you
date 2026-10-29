@@ -13229,6 +13229,31 @@ export async function getStaffLedgerReconciliation(): Promise<StaffLedgerReconci
   return parseStaff("getStaffLedgerReconciliation", StaffLedgerReconciliationSchema, await apiCall<unknown>(STAFF_COST_LEDGER_PATHS.reconciliation));
 }
 
+// ─── Brand > Ledger (FACTORY-P4-PAGES, staff) ───
+import { BrandLedgerRunsSchema, BrandLedgerSchema, ledgerRunsQuery, type BrandLedger, type BrandLedgerRuns, type LedgerRunsCursor } from "./v2/brand-ledger";
+
+/** The books of one brand since inception, per UTC day (runs-service through api-service's staff passthrough). */
+export async function getBrandLedger(brandId: string): Promise<BrandLedger> {
+  return parseStaff("getBrandLedger", BrandLedgerSchema, await apiCall<unknown>(`/runs/brands/${encodeURIComponent(brandId)}/ledger`));
+}
+
+/** One page of the brand's production orders, newest first (null cursor = the newest page). */
+export async function getBrandLedgerRuns(brandId: string, cursor: LedgerRunsCursor): Promise<BrandLedgerRuns> {
+  return parseStaff(
+    "getBrandLedgerRuns",
+    BrandLedgerRunsSchema,
+    await apiCall<unknown>(`/runs/brands/${encodeURIComponent(brandId)}/ledger/runs?${ledgerRunsQuery(cursor)}`),
+  );
+}
+
+// ─── Brand > Done by your team (FACTORY-P4-PAGES, staff) ───
+import { PipeQueueSchema, pipeQueueQuery, type PipeQueue } from "./v2/team-work";
+
+/** Who waits on one pipe of the brand (its leg as two catalogue steps) and how many it moved per week (lead-service). */
+export async function getPipeQueue(brandId: string, from: string, to: string): Promise<PipeQueue> {
+  return parseStaff("getPipeQueue", PipeQueueSchema, await apiCall<unknown>(`/leads/pipe-queue?${pipeQueueQuery(brandId, from, to)}`));
+}
+
 // ─── Monitoring > Emails, ported from the admin cold-email pages (capacity-rules) ───
 import {
   CapacityHistorySchema,
