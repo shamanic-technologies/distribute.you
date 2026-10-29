@@ -24,18 +24,28 @@ const opt = (name) => {
 const docsBase = (opt("--docs-base") ?? base).replace(/\/$/, "");
 const docsPrefix = opt("--docs-prefix") ?? "";
 
+/** One retry on a transport error: a dropped connection is not a 404. */
+async function get(url, init) {
+  try {
+    return await fetch(url, init);
+  } catch {
+    await new Promise((r) => setTimeout(r, 2000));
+    return fetch(url, init);
+  }
+}
+
 async function locs(url) {
-  const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 url-check" } });
+  const res = await get(url, { headers: { "user-agent": "Mozilla/5.0 url-check" } });
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
   return [...(await res.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
 }
 
 async function check(url) {
-  let res = await fetch(url, { redirect: "manual", headers: { "user-agent": "Mozilla/5.0 url-check" } });
+  let res = await get(url, { redirect: "manual", headers: { "user-agent": "Mozilla/5.0 url-check" } });
   if (res.status === 200) return { url, ok: true, status: "200" };
   if (res.status >= 300 && res.status < 400) {
     const to = new URL(res.headers.get("location") ?? "", url).toString();
-    const hop = await fetch(to, { headers: { "user-agent": "Mozilla/5.0 url-check" } });
+    const hop = await get(to, { headers: { "user-agent": "Mozilla/5.0 url-check" } });
     return { url, ok: hop.status === 200, status: `${res.status} -> ${to} ${hop.status}` };
   }
   return { url, ok: false, status: String(res.status) };
