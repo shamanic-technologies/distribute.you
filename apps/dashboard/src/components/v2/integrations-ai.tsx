@@ -11,7 +11,7 @@ import { ApiKeyScope } from "@/components/settings/api-key-scope";
 
 /**
  * Integrations → AI: one line to paste into any assistant and the MCP server.
- * Docs links live on docs.distribute.you, not here (owner 2026-10-21). The line points the assistant at the agent skill, which
+ * Docs links live on distribute.you/docs, not here (owner 2026-10-21). The line points the assistant at the agent skill, which
  * carries the per-harness setup, so this page stays one sentence long.
  *
  * A key is shown once, the moment it is issued; that is the only time the line

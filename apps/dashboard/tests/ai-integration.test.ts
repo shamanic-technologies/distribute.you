@@ -19,12 +19,12 @@ describe("the AI setup line", () => {
     expect(aiSetupPrompt("not-a-key")).toContain("Ask me for my API key.");
   });
 
-  it("names the skill and MCP URLs the docs app actually serves", () => {
-    const skill = read("../docs/src/lib/agent-skill.ts");
-    const routes = read("../docs/src/lib/docs-routes.ts");
+  it("names the skill and MCP URLs the landing's docs actually serve", () => {
+    const skill = read("../landing/src/lib/docs/agent-skill.ts");
+    const routes = read("../landing/src/lib/docs/docs-routes.ts");
     expect(skill).toContain('export const SKILL_PATH = "/skill.md"');
-    expect(routes).toContain('DOCS_SITE_URL = "https://docs.distribute.you"');
-    expect(AGENT_SKILL_URL).toBe("https://docs.distribute.you/skill.md");
+    expect(routes).toContain('DOCS_SITE_URL = "https://distribute.you/docs"');
+    expect(AGENT_SKILL_URL).toBe("https://distribute.you/docs/skill.md");
     expect(routes).toContain(`MCP_ENDPOINT_URL = "${MCP_ENDPOINT_URL}"`);
   });
 
@@ -45,7 +45,7 @@ describe("the AI tab", () => {
     expect(SETUP).toContain('{ label: "Integrations", href: `${v2Href(orgId, brandId, "integrations")}/ai`');
   });
 
-  it("lists no docs links: they live on docs.distribute.you (owner 2026-10-21)", () => {
+  it("lists no docs links: they live on distribute.you/docs (owner 2026-10-21)", () => {
     expect(VIEW).not.toContain("Docs and skills");
     expect(VIEW).not.toContain("AI_RESOURCES");
   });

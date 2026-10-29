@@ -8,7 +8,6 @@ Claude Code loads a nested `CLAUDE.md` only when working in that directory. Read
 - `apps/dashboard/CLAUDE.md` (customer dashboard: data layer, cache, org switching, tenant identity, money/maturity, auth) and `apps/dashboard/src/components/{onboarding,campaigns,billing,crm,leads,workflows,v2}/CLAUDE.md` (per-domain surfaces).
 - `apps/admin/CLAUDE.md` (staff console on the box, config console, `/metrics`, audit pages, `/model`, investors).
 - `apps/landing/CLAUDE.md` (served static pages, clones/archives, blog, SEO/GEO, agent readiness, compare cluster).
-- `apps/docs/CLAUDE.md` (static export, discoverability).
 - `apps/desktop/CLAUDE.md` (Mac app: prepaid-only offer, user's own Claude Code CLI, CI-only build).
 
 ## Commands
@@ -98,7 +97,7 @@ No `release.sh hotfix` here (that is for backend semver services). The Hetzner b
 ## Architecture
 
 **Monorepo**: pnpm workspaces + Turborepo; roots `apps/`, `packages/`, `shared/`.
-- **Apps**: `apps/dashboard/` (port 3001, Next.js App Router, Clerk) · `apps/admin/` (staff console, on the box) · `apps/docs/` · `apps/landing/` · `apps/desktop/` (SwiftUI Mac app, private beta, built by CI; see its CLAUDE.md).
+- **Apps**: `apps/dashboard/` (port 3001, Next.js App Router, Clerk) · `apps/admin/` (staff console, on the box) · `apps/landing/` · `apps/desktop/` (SwiftUI Mac app, private beta, built by CI; see its CLAUDE.md).
 - **Extracted services (separate repos)**: api-service, mcp (github.com/shamanic-technologies/<name>).
 - **Packages** (published MCP servers, tsup ESM): mcp-sales-outreach · mcp-google-ads · mcp-influencer-pitch · mcp-journalist-pitch · mcp-podcaster-pitch · mcp-reddit-ads · mcp-thought-leader (`@distribute/*`).
 - **Shared libs**: `shared/auth` · `shared/content` · `shared/pictures` · `shared/runs-client` · `shared/types`.
