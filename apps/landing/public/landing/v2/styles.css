@@ -807,7 +807,10 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
    works with no script and from the keyboard; every link sits in the raw HTML. */
 .nav-links { align-items: center; }
 .nav-group { position: relative; }
-.nav-links .nav-top { display: inline-flex; align-items: center; gap: 5px; }
+.nav-links .nav-top { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+/* Once the Agency menu is live the bar holds four menus and two buttons: under 1240px the
+   Catalog and Docs links fold away (both stay one click away in the AI Agent menu). */
+@media (max-width: 1240px) { .nav-links > a { display: none; } }
 .nav-chev { opacity: 0.55; transition: transform 0.2s ease; }
 .nav-group:hover .nav-chev, .nav-group:focus-within .nav-chev { transform: rotate(180deg); }
 .nav-drop {

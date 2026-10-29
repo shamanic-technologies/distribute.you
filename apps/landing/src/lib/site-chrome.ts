@@ -16,12 +16,17 @@
 import { COMPETITORS } from "./competitors";
 import { BEST_FOR_PAGES, bestForLinkLabel } from "./best-for";
 import { INDEX_LINKS_TOKEN } from "./fleet-indexes";
-import { OUTCOMES, SITE_PAGES, livePages, pageAt, type SitePage } from "./site-pages";
+import { OUTCOMES, SITE_PAGES, livePages, ownerPage, pageAt, type SitePage } from "./site-pages";
 
 export const SIGN_UP = "https://dashboard.distribute.you/get-started";
 export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
-/** Where an Agency page's call to action goes until a booking page exists. */
-export const BOOK_A_CALL = "/contact";
+/**
+ * Where every "Book a call" goes: the booking link of the distribute.you brand's
+ * "Sales-led" offer in brand-service (`brand_offers.booking_url`, offer 5a2868bb, read
+ * 2026-10-29). The landing holds no brand-service key, so the served value is copied
+ * here; change it in brand-service AND here together.
+ */
+export const BOOK_A_CALL = "https://calendar.app.google/BkmyoA7ujMFFDg1s9";
 /** The developer docs, served by the landing since SITE-FOUNDATION-1029. */
 export const DOCS_HREF = "/docs";
 export const WHY = "Revenue made easy.";
@@ -58,7 +63,7 @@ const CATALOG: ChromeLink = { label: "Price catalog", href: "/catalog" };
 
 export function footerVariantFor(path: string, pages: SitePage[] = SITE_PAGES): FooterVariant {
   if (path === "/") return "home";
-  return pageAt(path, pages)?.buyer ?? "home";
+  return ownerPage(path, pages)?.buyer ?? "home";
 }
 
 const toLink = (p: SitePage): ChromeLink => ({ label: p.navLabel, href: p.path, description: p.description });
@@ -174,7 +179,7 @@ export function footerModel(path: string, pages: SitePage[] = SITE_PAGES): Foote
   const agents = livePages("agent", pages).map((p) => ({ label: p.navLabel, href: p.path }));
   const agencies = livePages("agency", pages).map((p) => ({ label: p.navLabel, href: p.path }));
   const home = pageAt("/", pages);
-  const page = variant === "home" ? home : pageAt(path, pages);
+  const page = variant === "home" ? home : ownerPage(path, pages);
   const sections = page?.sections ?? [];
   const tail = [compareColumn(), bestForColumn(), INDEXES_COLUMN];
 
@@ -184,6 +189,7 @@ export function footerModel(path: string, pages: SitePage[] = SITE_PAGES): Foote
       variant,
       columns: [
         { title: "Agency", links: [BOOK, ...sections, ...agencies] },
+        ...(page.compare?.length ? [{ title: "Compare agencies", links: page.compare }] : []),
         ...tail,
         COMPANY_COLUMN,
         LEGAL_COLUMN,

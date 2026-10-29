@@ -7,7 +7,7 @@
     <div data-motion="marquee">           children loop sideways, pause on hover
     <div data-motion="sticky-story">      pins, steps through [data-step] children (adds .is-active)
     <div data-motion="scrub">             sets --scrub 0..1 as the element crosses the viewport
-    <div data-motion="orbit">             children circle the centre, kept upright
+    <div data-motion="orbit">             children (centred at left/top 50%) circle the centre, kept upright
     <p data-motion="typewriter">          types its own text
     <div data-motion="chat">              [data-msg] children arrive one by one after typing dots
     <div data-motion="bar-grow">          [data-bar] children grow from zero to their size
@@ -119,12 +119,18 @@
 
     orbit: function (el, gsap) {
       var kids = toArray(el.children);
-      var radius = Number(el.getAttribute("data-motion-radius")) || el.clientWidth / 2.6;
+      // A page may place the children on the circle in CSS (`translate` + `--orbit-r`, the
+      // final state with no script): the orbit reads that radius and takes the same
+      // positions over, so nothing jumps when it starts.
+      var cssRadius = parseFloat(getComputedStyle(el).getPropertyValue("--orbit-r"));
+      var radius = Number(el.getAttribute("data-motion-radius")) || cssRadius || el.clientWidth / 2.6;
+      kids.forEach(function (k) { k.style.translate = "none"; });
       var state = { a: 0 };
       function place() {
         kids.forEach(function (k, i) {
           var t = state.a + (i / kids.length) * Math.PI * 2;
-          gsap.set(k, { x: Math.cos(t) * radius, y: Math.sin(t) * radius });
+          // Children are centred on the middle of the orbit (left/top 50%, the -50% kept here).
+          gsap.set(k, { xPercent: -50, yPercent: -50, x: Math.cos(t) * radius, y: Math.sin(t) * radius });
         });
       }
       gsap.to(state, { a: Math.PI * 2, duration: Number(el.getAttribute("data-motion-speed")) || 30, ease: "none", repeat: -1, onUpdate: place });

@@ -5,6 +5,7 @@ import { comparePaths } from "@/lib/competitors";
 import { bestForPaths } from "@/lib/best-for";
 import { fetchIndexList } from "@/lib/fleet-indexes";
 import { sitePagePaths } from "@/lib/site-pages";
+import { agencyClusterPaths } from "@/lib/agencies";
 import { DOCS_ROUTES, docsUrl } from "@/lib/docs/docs-routes";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
@@ -69,6 +70,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // without a second edit. The hub and /alternatives rank above the per-competitor pages.
   for (const path of comparePaths()) {
     STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 2 ? 0.7 : 0.8 });
+  }
+
+  // The Revenue Agency page's own vs/alternatives cluster, read from its catalogue.
+  for (const path of agencyClusterPaths()) {
+    STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
   }
 
   // The "best X for Y" cluster, read from its own catalogue for the same reason.
