@@ -43,6 +43,28 @@ async function post(
 }
 
 /**
+ * The free-credit offer an org was created under (billing-service
+ * `GET /internal/accounts/by-org/:orgId/topup-minimums`, which serves it beside the
+ * minimums). The signed-out wall reads it to know whether to promise a match: an
+ * org created since 2026-10-29 is `prepaid_at_cost` and is promised no free money.
+ * THROWS on failure: the caller decides what the wall says without it.
+ */
+export async function getOrgFreeCreditOffer(orgId: string): Promise<string> {
+  if (!BILLING_SERVICE_URL || !BILLING_SERVICE_API_KEY) {
+    throw new Error("[billing-service] BILLING_SERVICE_URL / BILLING_SERVICE_API_KEY not set");
+  }
+  const res = await fetch(
+    `${BILLING_SERVICE_URL}/internal/accounts/by-org/${encodeURIComponent(orgId)}/topup-minimums`,
+    { headers: { "x-api-key": BILLING_SERVICE_API_KEY }, signal: AbortSignal.timeout(TIMEOUT_MS) },
+  );
+  const body = (await res.json().catch(() => null)) as { free_credit_offer?: unknown } | null;
+  if (!res.ok || typeof body?.free_credit_offer !== "string") {
+    throw new Error(`[billing-service] topup-minimums read failed: ${res.status} ${JSON.stringify(body)}`);
+  }
+  return body.free_credit_offer;
+}
+
+/**
  * Put the trial seed on an org nobody has signed up for.
  *
  * THROWS on failure, and the caller must let that refuse the whole session. An
