@@ -11,16 +11,16 @@ import {
   monthlyHtml,
   parseMonthlyRuns,
   proofHtml,
-  renderRevenueAgencyPage,
-} from "../../src/lib/pages/revenue-agency";
+  renderGtmAgencyPage,
+} from "../../src/lib/pages/gtm-agency";
 import { renderAgencyAlternativesPage, renderAgencyVsPage } from "../../src/lib/pages/agency-compare";
 import { AGENCIES, agencyClusterPaths, agencyVsPath } from "../../src/lib/agencies";
 import { BOOK_A_CALL, footerModel, navModel } from "../../src/lib/site-chrome";
-import { pageAt } from "../../src/lib/site-pages";
+import { SITE_PAGES, pageAt } from "../../src/lib/site-pages";
 import type { IndexList } from "../../src/lib/fleet-indexes";
 
 /**
- * PAGE-REVENUE-AGENCY-1029: `/revenue-agency`, its alternatives page and one vs page per
+ * PAGE-REVENUE-AGENCY-1029: `/gtm-agency` (first shipped at `/revenue-agency`, now a 308), its alternatives page and one vs page per
  * agency. Rendered behaviour (orbit, sticky story, scrubbed proof line, bars, slider,
  * reduced motion) was checked frame by frame with Playwright; this pins the contract.
  */
@@ -64,16 +64,31 @@ const MONTHLY = [
   { month: "2026-10", completed: 2452723 },
 ];
 const NOW = new Date("2026-10-29T12:00:00Z");
-const page = renderRevenueAgencyPage(LIST, MONTHLY, NOW);
+const page = renderGtmAgencyPage(LIST, MONTHLY, NOW);
 const text = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<[^>]+>/g, " ");
 
-describe("the Revenue Agency page", () => {
+describe("the GTM Agency page", () => {
   it("is live in the catalogue, with the agency footer and its own compare column", () => {
-    expect(pageAt("/revenue-agency")?.buyer).toBe("agency");
-    const f = footerModel("/revenue-agency");
+    expect(pageAt("/gtm-agency")?.buyer).toBe("agency");
+    const f = footerModel("/gtm-agency");
     expect(f.variant).toBe("agency");
     const compare = f.columns.find((c) => c.title === "Compare agencies");
-    expect(compare?.links.map((l) => l.href)).toEqual([...AGENCIES.map(agencyVsPath), "/revenue-agency/alternatives"]);
+    expect(compare?.links.map((l) => l.href)).toEqual([...AGENCIES.map(agencyVsPath), "/gtm-agency/alternatives"]);
+  });
+
+  it("targets GTM agency; Revenue has no Agency page, the first path 308s here", async () => {
+    expect(page).toContain("<title>GTM Agency: ");
+    expect(page).toContain('<link rel="canonical" href="https://distribute.you/gtm-agency">');
+    expect(SITE_PAGES.find((p) => p.outcome === "revenue" && p.buyer === "agency")).toBeUndefined();
+    expect(page.toLowerCase()).not.toContain("revenue agency");
+    const { GET: top } = await import("@/app/revenue-agency/route");
+    const { GET: alt } = await import("@/app/revenue-agency/alternatives/route");
+    const { GET: vs } = await import("@/app/revenue-agency/vs/[slug]/route");
+    const r = top();
+    expect([r.status, r.headers.get("location")]).toEqual([308, "/gtm-agency"]);
+    expect(alt().headers.get("location")).toBe("/gtm-agency/alternatives");
+    const v = await vs(new Request("https://distribute.you/revenue-agency/vs/belkins"), { params: Promise.resolve({ slug: "belkins" }) });
+    expect([v.status, v.headers.get("location")]).toEqual([308, "/gtm-agency/vs/belkins"]);
   });
 
   it("states the owner's price, the why line, and books a call on the brand's booking link", () => {
@@ -112,7 +127,7 @@ describe("the Revenue Agency page", () => {
     expect(monthlyHtml(null)).toBe("");
     expect(parseMonthlyRuns({ monthly: [{ month: "2026-10", completed: "12" }] })).toEqual([{ month: "2026-10", completed: 12 }]);
     expect(parseMonthlyRuns({ monthly: [{ month: "Oct", completed: 1 }] })).toBeNull();
-    const empty = renderRevenueAgencyPage(null, null, NOW);
+    const empty = renderGtmAgencyPage(null, null, NOW);
     expect(empty).not.toContain('id="data"');
     expect(empty).not.toContain('id="growth"');
     expect(empty).toContain('id="price"');
@@ -163,7 +178,7 @@ describe("the agency comparison cluster", () => {
     }
     // A cluster page wears its page's chrome: Book a call first, the agency footer.
     expect(footerModel(agencyVsPath(AGENCIES[0])).variant).toBe("agency");
-    expect(navModel("/revenue-agency/alternatives").ctas[0].label).toBe("Book a call");
+    expect(navModel("/gtm-agency/alternatives").ctas[0].label).toBe("Book a call");
     const alt = renderAgencyAlternativesPage();
     for (const a of AGENCIES) expect(alt).toContain(`href="${agencyVsPath(a)}"`);
   });
@@ -171,6 +186,6 @@ describe("the agency comparison cluster", () => {
   it("the sitemap lists the page and its cluster", async () => {
     const { default: sitemap } = await import("@/app/sitemap");
     const urls = (await sitemap()).map((e) => e.url);
-    for (const p of ["/revenue-agency", ...agencyClusterPaths()]) expect(urls).toContain(`https://distribute.you${p}`);
+    for (const p of ["/gtm-agency", ...agencyClusterPaths()]) expect(urls).toContain(`https://distribute.you${p}`);
   });
 });

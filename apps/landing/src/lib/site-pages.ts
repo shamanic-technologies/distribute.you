@@ -70,14 +70,14 @@ function agencyPath(slug: OutcomeSlug): string {
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/revenue-agency"]);
+const LIVE_PATHS = new Set<string>(["/", "/gtm-agency"]);
 
-/** The sections of the Revenue Agency page (PAGE-REVENUE-AGENCY-1029). */
-const REVENUE_AGENCY_SECTIONS = [
-  { label: "How we work", href: "/revenue-agency#how" },
-  { label: "Our data", href: "/revenue-agency#data" },
-  { label: "Price", href: "/revenue-agency#price" },
-  { label: "FAQ", href: "/revenue-agency#faq" },
+/** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
+const GTM_AGENCY_SECTIONS = [
+  { label: "How we work", href: "/gtm-agency#how" },
+  { label: "Our data", href: "/gtm-agency#data" },
+  { label: "Price", href: "/gtm-agency#price" },
+  { label: "FAQ", href: "/gtm-agency#faq" },
 ];
 
 /** The sections of the homepage, listed first in its footer. */
@@ -88,7 +88,13 @@ const HOME_SECTIONS = [
   { label: "FAQ", href: "/#faq" },
 ];
 
-export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o) => [
+/**
+ * Revenue has no Agency page of its own (owner 2026-10-29): "revenue agency" searches are
+ * people looking for a tax office, so its outcome is folded into the GTM Agency page.
+ */
+const NO_AGENCY_PAGE = new Set<OutcomeSlug>(["revenue"]);
+
+export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
   {
     outcome: o.slug,
     buyer: "agent" as const,
@@ -98,15 +104,19 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o) => [
     live: LIVE_PATHS.has(agentPath(o.slug)),
     ...(o.slug === "revenue" ? { sections: HOME_SECTIONS } : {}),
   },
-  {
-    outcome: o.slug,
-    buyer: "agency" as const,
-    path: agencyPath(o.slug),
-    navLabel: `${o.name} Agency`,
-    description: o.line,
-    live: LIVE_PATHS.has(agencyPath(o.slug)),
-    ...(o.slug === "revenue" ? { sections: REVENUE_AGENCY_SECTIONS, compare: agencyCompareLinks() } : {}),
-  },
+  ...(NO_AGENCY_PAGE.has(o.slug)
+    ? []
+    : [
+        {
+          outcome: o.slug,
+          buyer: "agency" as const,
+          path: agencyPath(o.slug),
+          navLabel: `${o.name} Agency`,
+          description: o.slug === "gtm" ? "Your GTM department, run for you" : o.line,
+          live: LIVE_PATHS.has(agencyPath(o.slug)),
+          ...(o.slug === "gtm" ? { sections: GTM_AGENCY_SECTIONS, compare: agencyCompareLinks() } : {}),
+        },
+      ]),
 ]);
 
 /** The live pages, optionally of one buyer. `pages` defaults to the catalogue (tests pass a fixture). */
@@ -121,7 +131,7 @@ export function pageAt(path: string, pages: SitePage[] = SITE_PAGES): SitePage |
 
 /**
  * The live page that owns `path`: the page itself, or the page whose own cluster it sits
- * under (`/revenue-agency/vs/belkins` belongs to `/revenue-agency`), so a cluster page
+ * under (`/gtm-agency/vs/belkins` belongs to `/gtm-agency`), so a cluster page
  * wears its page's nav and footer.
  */
 export function ownerPage(path: string, pages: SitePage[] = SITE_PAGES): SitePage | undefined {
