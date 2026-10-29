@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -32,7 +32,7 @@ import {
   type IntegrationDef,
   type IntegrationSlug,
 } from "@/lib/integrations";
-import { GOOGLE_RETURN_KEY, googleCallbackUrl, withLoginHint } from "@/lib/google-connect";
+import { GOOGLE_RETURN_KEY, OUTCOME_PARAMS, googleCallbackUrl, withLoginHint } from "@/lib/google-connect";
 import { GoogleCalendarLine } from "@/components/settings/google-calendar-line";
 import { GmailMailboxLine } from "@/components/settings/gmail-mailbox-line";
 import {
@@ -572,10 +572,29 @@ function IntegrationRow({
  * to paste: the button runs Google's own sign-in (google-service owns it), and the
  * mailbox mirrors and syncs on its own once Google sends the person back.
  */
+/**
+ * Back from Google with `?<param>=connected`: re-read the list from the server once.
+ * The cached list was read seconds before leaving for Google, so it is still "fresh"
+ * (under the 60s staleTime) and the persisted snapshot would paint "Not connected"
+ * over an account google-service just stored (2026-10-29, Google Calendar).
+ */
+function useRefetchOnConnected(param: string, query: { data: unknown; refetch: () => unknown }) {
+  const search = useSearchParams();
+  const connected = search?.get(param) === "connected";
+  const done = useRef(false);
+  const loaded = query.data !== undefined;
+  useEffect(() => {
+    if (!connected || !loaded || done.current) return;
+    done.current = true;
+    void query.refetch();
+  }, [connected, loaded, query]);
+}
+
 function GmailRow({ orgId }: { orgId: string | null }) {
   const queryClient = useQueryClient();
   const search = useSearchParams();
   const accountsQ = useAuthQuery(["googleAccounts"], () => listGoogleAccounts());
+  useRefetchOnConnected(OUTCOME_PARAMS.mailbox.connected, accountsQ);
   const [error, setError] = useState<string | null>(search?.get("gmailError") ?? null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const accounts = accountsQ.data?.accounts ?? [];
@@ -681,6 +700,7 @@ function GoogleCalendarRow({ orgId }: { orgId: string | null }) {
   const queryClient = useQueryClient();
   const search = useSearchParams();
   const calendarsQ = useAuthQuery(["googleCalendars"], () => listGoogleCalendars());
+  useRefetchOnConnected(OUTCOME_PARAMS.calendar.connected, calendarsQ);
   const [error, setError] = useState<string | null>(search?.get("calendarError") ?? null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const calendars = calendarsQ.data?.calendars ?? [];

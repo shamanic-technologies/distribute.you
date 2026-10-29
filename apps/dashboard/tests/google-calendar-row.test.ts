@@ -175,3 +175,27 @@ describe("list and disconnect", () => {
     expect(copy).not.toMatch(/[—–]/);
   });
 });
+
+describe("back from Google", () => {
+  // 2026-10-29: the list cached 20s before leaving for Google was still "fresh", so the
+  // row painted "Not connected" over a calendar google-service had just stored.
+  const card = () => read("components/settings/brand-integrations-card.tsx");
+  const rowBody = (name: string) => {
+    const s = card();
+    const at = s.indexOf(`function ${name}(`);
+    return s.slice(at, s.indexOf("\nfunction ", at + 1));
+  };
+
+  it("each Google row re-reads its list once when the URL says connected", () => {
+    expect(rowBody("GoogleCalendarRow")).toContain("useRefetchOnConnected(OUTCOME_PARAMS.calendar.connected, calendarsQ)");
+    expect(rowBody("GmailRow")).toContain("useRefetchOnConnected(OUTCOME_PARAMS.mailbox.connected, accountsQ)");
+  });
+
+  it("the re-read waits for the cached list, fires once, and hits the server", () => {
+    const hook = rowBody("useRefetchOnConnected");
+    expect(hook).toContain('=== "connected"');
+    expect(hook).toContain("query.data !== undefined");
+    expect(hook).toContain("done.current = true");
+    expect(hook).toContain("query.refetch()");
+  });
+});
