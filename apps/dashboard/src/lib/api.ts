@@ -13241,7 +13241,7 @@ export async function getStaffLedgerReconciliation(): Promise<StaffLedgerReconci
 }
 
 // ─── Brand > Ledger (FACTORY-P4-PAGES, staff) ───
-import { BrandLedgerRunsSchema, BrandLedgerSchema, ledgerRunsQuery, type BrandLedger, type BrandLedgerRuns, type LedgerRunsCursor } from "./v2/brand-ledger";
+import { BrandLedgerRunsSchema, BrandLedgerSchema, ledgerRunsQuery, type BrandLedger, type BrandLedgerRuns, type LedgerRunsCursor, type LedgerRunsTab } from "./v2/brand-ledger";
 
 /** The books of one brand since inception, per UTC day (runs-service through api-service's staff passthrough). */
 export async function getBrandLedger(brandId: string): Promise<BrandLedger> {
@@ -13249,11 +13249,11 @@ export async function getBrandLedger(brandId: string): Promise<BrandLedger> {
 }
 
 /** One page of the brand's production orders, newest first (null cursor = the newest page). */
-export async function getBrandLedgerRuns(brandId: string, cursor: LedgerRunsCursor): Promise<BrandLedgerRuns> {
+export async function getBrandLedgerRuns(brandId: string, cursor: LedgerRunsCursor, tab: LedgerRunsTab = "all"): Promise<BrandLedgerRuns> {
   return parseStaff(
     "getBrandLedgerRuns",
     BrandLedgerRunsSchema,
-    await apiCall<unknown>(`/runs/brands/${encodeURIComponent(brandId)}/ledger/runs?${ledgerRunsQuery(cursor)}`),
+    await apiCall<unknown>(`/runs/brands/${encodeURIComponent(brandId)}/ledger/runs?${ledgerRunsQuery(cursor, 50, tab)}`),
   );
 }
 
