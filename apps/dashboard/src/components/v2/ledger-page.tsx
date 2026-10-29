@@ -265,7 +265,9 @@ function FigureMark({ look, size = 28 }: { look: Look; size?: number }) {
 function FigureChart({ figure, ledger }: { figure: BookFigure; ledger: BrandLedger }) {
   // A money figure's total is the served books line; outcomes are counted per outcome in the table below.
   const total = figure.money ? usd(gross(figure.money(ledger.books))) : null;
-  const rows = ledger.days.map((d) => ({ day: d.day, v: figure.money ? centsToUsd(gross(figure.money(d))) : figure.count!(d) }));
+  // A day not computed yet is absent from the served series (never a zero): a TIME axis keeps its gap visible.
+  const rows = ledger.days.map((d) => ({ day: d.day, ts: Date.parse(`${d.day}T00:00:00Z`), v: figure.money ? centsToUsd(gross(figure.money(d))) : figure.count!(d) }));
+  const spanDays = rows.length > 1 ? (rows[rows.length - 1].ts - rows[0].ts) / 86_400_000 + 1 : 1;
   const fmt = (v: number) => (figure.money ? formatUsdTick(v) : formatCount(v));
   return (
     <div className="k-card flex min-w-0 flex-col p-4">
@@ -284,8 +286,18 @@ function FigureChart({ figure, ledger }: { figure: BookFigure; ledger: BrandLedg
           <EmptyNote>No day computed yet.</EmptyNote>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap={rows.length > 60 ? 0 : "15%"}>
-              <XAxis dataKey="day" tick={TICK} tickLine={false} axisLine={false} minTickGap={32} tickFormatter={(d: string) => shortDay(d)} />
+            <BarChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barSize={Math.max(1, Math.floor(560 / spanDays))}>
+              <XAxis
+                dataKey="ts"
+                type="number"
+                scale="time"
+                domain={["dataMin - 43200000", "dataMax + 43200000"]}
+                tick={TICK}
+                tickLine={false}
+                axisLine={false}
+                minTickGap={32}
+                tickFormatter={(ts: number) => shortDay(new Date(ts).toISOString().slice(0, 10))}
+              />
               <YAxis tick={TICK} tickLine={false} axisLine={false} width={48} tickCount={4} tickFormatter={fmt} allowDecimals={!!figure.money} />
               <Tooltip
                 cursor={{ fill: "var(--data-track)" }}
