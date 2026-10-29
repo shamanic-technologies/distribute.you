@@ -11,7 +11,7 @@ import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { EmailsCharts, SentPerDayChart } from "@/components/v2/monitoring-emails";
-import { AccountsPage, DomainsPage, InboxProvidersPage, LatestEmails, MailboxesPage, SendingHealthTiles, useSendingVerdict } from "@/components/v2/monitoring-sending";
+import { AccountsPage, DomainsPage, InboxProvidersPage, LatestEmails, MailboxesPage, SendingHealthTiles, shortDay, useSendingVerdict } from "@/components/v2/monitoring-sending";
 import { CapacityPlanChart, EntityPage, PlacementTestPage, PlacementTestsPage, QueuedPage, WarmupPage, entityTitle } from "@/components/v2/monitoring-drilldown";
 import { HubChip, HubChips, HubSectionBlock, useOpenSections } from "@/components/v2/hub-section";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
@@ -33,6 +33,8 @@ import { CapacityPage, RulesPage } from "@/components/v2/monitoring-capacity";
 import { BlocklistsPage } from "@/components/v2/monitoring-blocklists";
 import { ThreadsPage } from "@/components/v2/monitoring-threads";
 import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/components/v2/monitoring-whatsapp";
+import { SophieRepliesChart, SophieRepliesPage, SophieRepliesTile, useSophieReplies } from "@/components/v2/monitoring-sophie";
+import { recentNotDelivered } from "@/lib/monitoring/sophie-replies";
 import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
 import { ShieldCheckIcon } from "@phosphor-icons/react/dist/csr/ShieldCheck";
 import { SecurityAdvisoriesPage, SecurityAdvisoriesTile, useSecurityAdvisories } from "@/components/v2/monitoring-security";
@@ -129,7 +131,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   price: { name: "Price", color: "var(--data-sky)", Icon: TagIcon, sub: "What we charge our users" },
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
   emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Inbox placement, mailboxes, domains, and every email we sent" },
-  whatsapp: { name: "WhatsApp", color: "var(--data-lime)", Icon: WhatsappLogoIcon, sub: "Whether every linked line can send" },
+  whatsapp: { name: "WhatsApp", color: "var(--data-lime)", Icon: WhatsappLogoIcon, sub: "Whether every linked line can send, and every reply Sophie wrote left" },
   security: { name: "Security", color: "var(--data-rose)", Icon: ShieldCheckIcon, sub: "Whether our prod repos carry open security advisories" },
   box: { name: "Box", color: "var(--data-sky)", Icon: CpuIcon, sub: "Whether the production server is overloaded, and which containers eat it" },
   triggers: { name: "Triggers", color: "var(--data-amber)", Icon: LightningIcon, sub: "Whether every trigger still fires, reaches its campaign, and gets its answer" },
@@ -166,6 +168,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "emails/threads": { section: "emails", title: "Threads", question: "What did each thread send and receive, and how did it end?" },
   "emails/rules": { section: "emails", title: "Rules", question: "What decides whether an address gets new sequences, and at what limits?" },
   "whatsapp/lines": { section: "whatsapp", title: "Lines", question: "Is every WhatsApp line connected, and since when is one down?" },
+  "whatsapp/sophie": { section: "whatsapp", title: "Sophie's replies", question: "Did every WhatsApp reply Sophie wrote reach the person?" },
   "security/advisories": { section: "security", title: "Advisories", question: "Does any prod repo carry an open critical or high advisory?" },
   "box/load": { section: "box", title: "Load and memory", question: "Is the production server overloaded, and which containers eat its CPU and memory?" },
   "triggers/reports": { section: "triggers", title: "Reports", question: "Did every form, WhatsApp number, positive reply and account event reach its campaign?" },
@@ -321,6 +324,7 @@ export function V2Monitoring() {
         {view.page === "emails/threads" && <ThreadsPage base={base} />}
         {view.page === "emails/rules" && <RulesPage base={base} />}
         {view.page === "whatsapp/lines" && <WhatsappLinesPage />}
+        {view.page === "whatsapp/sophie" && <SophieRepliesPage />}
         {view.page === "security/advisories" && <SecurityAdvisoriesPage />}
         {view.page === "box/load" && <BoxHealthPage />}
         {view.page === "triggers/reports" && <TriggerReportsPage />}
@@ -416,6 +420,8 @@ function Hub({ base }: { base: string }) {
   const verdict = useSendingVerdict();
   const hub = useOpenSections(OPEN_SECTIONS_KEY);
   const wa = useWhatsappLines();
+  const sophie = useSophieReplies();
+  const sophieBad = sophie.data ? recentNotDelivered(sophie.data) : undefined;
   const coverage = useOutcomeCoverage();
   const ledger = useLedgerCheck();
   const recon = useLedgerReconciliation();
@@ -448,6 +454,8 @@ function Hub({ base }: { base: string }) {
       {/* A line down blocks every WhatsApp greeting (owner 2026-10-23): red here IS the alert, outside any collapsed row. */}
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <WhatsappLinesTile href={href("whatsapp/lines")} />
+        {/* A reply Sophie wrote on WhatsApp that never left, today or the 2 days before (SOPHIE-WA-DELIVERY-CHART-1029): red here IS the alert, never an email. */}
+        <SophieRepliesTile href={href("whatsapp/sophie")} />
         {/* Every outcome's cost exact to the cent (owner 2026-10-23): red here IS the alert. */}
         <OutcomeCoverageTile href={href("ledger/coverage")} />
         <LedgerCheckTile href={href("ledger/check")} />
@@ -699,9 +707,10 @@ function Hub({ base }: { base: string }) {
 
       <div>
       <SectionTitle count={1}>WhatsApp</SectionTitle>
-      <Section section="whatsapp" count={1} grid={false}>
+      <Section section="whatsapp" count={2} grid={false}>
         <HubChips>
           <HubChip href={href("whatsapp/lines")} color={wa.data && linesDown(wa.data).length ? "var(--data-rose)" : "var(--data-lime)"} label="Lines" />
+          <HubChip href={href("whatsapp/sophie")} color={sophieBad?.length ? "var(--data-rose)" : "var(--data-lime)"} label="Sophie's replies" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -717,6 +726,34 @@ function Hub({ base }: { base: string }) {
             { label: "Linked lines", value: wa.data && linkedLines(wa.data).length, note: "every org" },
           ]}
         />
+        <Card
+          href={href("whatsapp/sophie")}
+          page="whatsapp/sophie"
+          error={sophie.isError && !sophie.data}
+          cells={[
+            {
+              label: "Not delivered",
+              value: sophieBad && <span style={{ color: sophieBad.length ? "var(--data-rose)" : undefined }}>{sophieBad.length ? sophieBad[0].notDelivered : 0}</span>,
+              note: sophieBad?.length ? `on ${shortDay(sophieBad[0].day)}` : "last 3 days",
+              bars: sophie.data?.days.slice(-7).map((d) => d.notDelivered),
+            },
+            { label: "Delivered today", value: sophie.data?.days.at(-1)?.delivered, note: "UTC day", bars: sophie.data?.days.slice(-7).map((d) => d.delivered) },
+          ]}
+        />
+        </div>
+        <div className="mt-6">
+          <SectionTitle right={<span>One bar per UTC day</span>}>Sophie&apos;s WhatsApp replies</SectionTitle>
+          {sophie.isError && !sophie.data ? (
+            <div className="k-card">
+              <EmptyNote>Could not read Sophie&apos;s replies from production.</EmptyNote>
+            </div>
+          ) : sophie.data ? (
+            <SophieRepliesChart data={sophie.data} />
+          ) : (
+            <div className="k-card p-4">
+              <Shimmer className="h-[140px] w-full" />
+            </div>
+          )}
         </div>
       </Section>
       </div>
