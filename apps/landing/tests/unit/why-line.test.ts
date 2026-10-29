@@ -9,6 +9,7 @@ import { BEST_FOR_PAGES } from "../../src/lib/best-for";
 import { COMPETITORS } from "../../src/lib/competitors";
 import { renderAboutPage } from "../../src/lib/pages/about";
 import { WHY, ctaBox, footer } from "../../src/lib/v2-shell";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
  * Owner 2026-10-03: the why is one frozen sentence, "Revenue made easy.", stated on
@@ -25,7 +26,7 @@ describe("the why", () => {
   });
 
   it("frames the homepage hero without touching the H1", () => {
-    const html = read("public/landing/index-v2.html");
+    const html = withSiteChrome(read("public/landing/index-v2.html"), "/");
     const h1At = html.indexOf("<h1>");
     const whyAt = html.indexOf('<span class="eyebrow why-eyebrow">Revenue made easy.</span>');
     expect(whyAt).toBeGreaterThan(-1);

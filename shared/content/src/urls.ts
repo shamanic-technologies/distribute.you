@@ -1,11 +1,10 @@
 export const URLS = {
   landing: "https://distribute.you",
   dashboard: "https://dashboard.distribute.you",
-  docs: "https://docs.distribute.you",
-  salesLanding: "https://salescoldemail.distribute.you",
+  docs: "https://distribute.you/docs",
   api: "https://api.distribute.you",
   apiDocs: "https://api.distribute.you/docs",
-  mcp: "https://docs.distribute.you/mcp",
+  mcp: "https://distribute.you/docs/mcp",
   github: "https://github.com/shamanic-technologies/distribute.you",
   twitter: "https://twitter.com/distribute_you",
   signUp: "https://dashboard.distribute.you/sign-up",

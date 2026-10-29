@@ -1,50 +1,27 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { BEST_FOR_PAGES, bestForLinkLabel } from "@/lib/best-for";
-import { COMPETITORS } from "@/lib/competitors";
-import { PROD_URLS } from "@/lib/env-urls";
 import { fetchIndexList } from "@/lib/fleet-indexes";
-import { WHY } from "@/lib/v2-shell";
+import { WHY, footerModel } from "@/lib/site-chrome";
 
 interface FooterProps {
   /** Optional context-specific note rendered under the columns. */
   disclaimer?: ReactNode;
+  /** The page's path: an outcome page gets its own variant, every other page the home one. */
+  path?: string;
 }
 
 /**
- * The homepage footer (`public/landing/index-v2.html`) for the React pages. The four
- * columns are the homepage's, in its order; the Compare column is read from the
- * competitor catalogue like every other footer on the apex, so a competitor added
- * there appears here without a second edit.
+ * The homepage footer for the React pages. It holds no link of its own: the columns come
+ * from `footerModel` (`lib/site-chrome.ts`), which reads the page catalogue, the competitor
+ * catalogue and the best-for list, exactly like the footer the static pages render.
  */
-const PRODUCT = [
-  { label: "How it works", href: "/#how" },
-  { label: "Features", href: "/#features" },
-  { label: "Pricing", href: "/#pricing" },
-  { label: "Price catalog", href: "/catalog" },
-  { label: "FAQ", href: "/#faq" },
-];
-
-const COMPANY = [
-  { label: "About", href: "/about" },
-  { label: "Investors", href: "/investors" },
-  { label: "Contact", href: "/contact" },
-  { label: "Blog", href: "/blog" },
-];
-
-const LEGAL = [
-  { label: "Terms", href: "/terms" },
-  { label: "Privacy", href: "/privacy" },
-  { label: "Developers", href: "/developers" },
-];
-
 function Column({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
     <div>
       <h4 className="mb-3.5 text-[18px] tracking-[-0.02em] text-[#0a0a0a]">{title}</h4>
       <ul className="grid gap-0.5">
         {links.map((l) => (
-          <li key={l.href}>
+          <li key={l.href + l.label}>
             <a href={l.href} className="inline-block py-1 text-sm text-[#6b6b6b] transition hover:text-[#0a0a0a]">
               {l.label}
             </a>
@@ -55,40 +32,30 @@ function Column({ title, links }: { title: string; links: { label: string; href:
   );
 }
 
-export async function Footer({ disclaimer }: FooterProps) {
-  const compare = [
-    ...COMPETITORS.map((c) => ({ label: `distribute.you vs ${c.name}`, href: `/compare/${c.slug}` })),
-    { label: "All comparisons", href: "/compare" },
-    { label: "Alternatives", href: "/alternatives" },
-  ];
-  const best = [
-    ...BEST_FOR_PAGES.map((p) => ({ label: bestForLinkLabel(p), href: `/best/${p.slug}` })),
-    { label: "All rankings", href: "/best" },
-  ];
+export async function Footer({ disclaimer, path = "" }: FooterProps) {
+  const m = footerModel(path);
   // One link per index the service serves, read live like the rendered footers.
-  const indexList = await fetchIndexList(3_000);
-  const indexes = [
-    ...(indexList?.indexes ?? []).map((i) => ({ label: i.name, href: `/indexes/${i.slug}` })),
-    { label: "All indexes", href: "/indexes" },
-  ];
-  void PROD_URLS;
+  const indexList = m.columns.some((c) => c.indexLinks) ? await fetchIndexList(3_000) : null;
+  const indexLinks = (indexList?.indexes ?? []).map((i) => ({ label: i.name, href: `/indexes/${i.slug}` }));
   return (
     <footer className="border-t border-[#ececec] bg-white text-[#6b6b6b]">
       <div className="mx-auto max-w-[1120px] px-6 py-16">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1fr_1fr]">
-          <div className="col-span-2 md:col-span-1">
+        <div data-footer={m.variant} className="grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
+          <div className="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2">
             <a href="/" className="inline-flex items-center gap-2 text-[20px] tracking-[-0.03em] text-[#0a0a0a]">
               <Image src="/landing/v2/assets/logo-mark.svg" alt="" width={26} height={26} className="rounded-md" />
               distribute.you
             </a>
-            <p className="mt-3 max-w-[260px] text-sm text-[#6b6b6b]">{WHY}</p>
+            <p className="text-sm text-[#6b6b6b]">{WHY}</p>
+            {m.bridge && (
+              <a href={m.bridge.href} className="text-sm font-medium text-[#2563eb] md:ml-auto">
+                {m.bridge.label}
+              </a>
+            )}
           </div>
-          <Column title="Product" links={PRODUCT} />
-          <Column title="Compare" links={compare} />
-          <Column title="Best for" links={best} />
-          <Column title="Indexes" links={indexes} />
-          <Column title="Company" links={COMPANY} />
-          <Column title="Legal" links={LEGAL} />
+          {m.columns.map((c) => (
+            <Column key={c.title} title={c.title} links={c.indexLinks ? [...indexLinks, ...c.links] : c.links} />
+          ))}
         </div>
         <div className="mt-12 flex justify-between text-[13px] text-[#919191]">
           <span>© 2026 distribute.you</span>

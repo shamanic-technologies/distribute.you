@@ -2060,6 +2060,8 @@ export const STAFF_MONITORING_PATHS = {
   stuckOccurrences: "/campaigns/ops/stuck-occurrences",
   // Whether each trigger a live campaign waits on still fires, per day + the served verdict (campaign-service, TRIGGER-HEALTH-1028).
   triggerHealth: "/campaigns/ops/trigger-health",
+  // Answers owed to a person who wrote, refused by the sender or given up after failed runs, per day + the served verdict (campaign-service, ONE-AI-REFUSED-ANSWERS-1029).
+  unsentAnswers: "/campaigns/ops/unsent-answers",
   // Per tool a client connected (GoHighLevel, PostHog, Stripe, Clerk): records taken in per day + the served verdict (crm-service, CONNECTOR-INTAKE-MONITORING-1028).
   connectorIntake: "/crm/ops/connector-intake",
   // Per client org and day, the funnel campaigns whose shadow plan or Jev pick differs from what runs + the verdict (features-service, FACTORY-P1-DASH).
@@ -10398,9 +10400,12 @@ export interface BillingAccount {
   /**
    * The free-credit offer this org was created under (billing-service, 2026-10-06):
    * "match_100" = we match the first $100 paid (part at creation, the rest once paid),
-   * "legacy" = an older org's welcome. Optional until every billing deploy states it.
+   * "legacy" = an older org's welcome, "agent_api" = opened through the API (no free
+   * credit), "prepaid_at_cost" = every org created since 2026-10-29 (a $5 advance repaid
+   * by the first payment, no other free credit, prepaid only, auto top-up required).
+   * Optional until every billing deploy states it.
    */
-  free_credit_offer?: "match_100" | "legacy";
+  free_credit_offer?: "match_100" | "legacy" | "agent_api" | "prepaid_at_cost";
   free_credit_entitlement_cents?: number;
   /** Decimal cents received so far toward the offer. */
   free_credit_received_cents?: string;
@@ -13164,6 +13169,17 @@ export async function runStaffWhatsappLineCheck(): Promise<void> {
   await apiCall<unknown>(STAFF_WHATSAPP_LINE_PATHS.check, { method: "POST" });
 }
 
+// ─── Monitoring > WhatsApp > Sophie's replies (SOPHIE-WA-DELIVERY-CHART-1029) ───
+import { SophieReplyDaysSchema as StaffSophieReplyDaysSchema, type SophieReplyDays as StaffSophieReplyDays } from "./monitoring/sophie-replies";
+
+/** chat-service's per-day count of Sophie's WhatsApp replies delivered or not, through api-service's staff passthrough. */
+export const STAFF_SOPHIE_REPLIES_PATH = "/chat/ops/channel-replies/daily";
+
+/** One row per UTC day over the last `days` (oldest first, quiet days with zeros). */
+export async function getStaffSophieReplies(days: number): Promise<StaffSophieReplyDays> {
+  return parseStaff("getStaffSophieReplies", StaffSophieReplyDaysSchema, await apiCall<unknown>(`${STAFF_SOPHIE_REPLIES_PATH}?days=${days}`));
+}
+
 // ─── Monitoring > Security (SEC-ADVISORIES-MONITORING-1025) ───
 import { SecurityAdvisoriesSchema as StaffSecurityAdvisoriesSchema, type SecurityAdvisories as StaffSecurityAdvisories } from "./monitoring/security-advisories";
 
@@ -13204,6 +13220,14 @@ export async function getStaffStuckOccurrences(days: number): Promise<StaffStuck
   return parseStaff("getStaffStuckOccurrences", StaffStuckOccurrencesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.stuckOccurrences}?days=${days}`));
 }
 
+// ─── Monitoring > Triggers > Unsent answers (ONE-AI-REFUSED-ANSWERS-1029) ───
+import { UnsentAnswersSchema as StaffUnsentAnswersSchema, type UnsentAnswers as StaffUnsentAnswers } from "./monitoring/unsent-answers";
+
+/** Answers owed to a person who wrote that the sender refused or that every run failed, over the last `days` UTC days, with campaign-service's served verdict. */
+export async function getStaffUnsentAnswers(days: number): Promise<StaffUnsentAnswers> {
+  return parseStaff("getStaffUnsentAnswers", StaffUnsentAnswersSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.unsentAnswers}?days=${days}`));
+}
+
 // ─── Monitoring > Triggers > Firing (TRIGGER-HEALTH-1028-DASH) ───
 import { TriggerHealthSchema as StaffTriggerHealthSchema, type TriggerHealth as StaffTriggerHealth } from "./monitoring/trigger-health";
 
@@ -13238,7 +13262,7 @@ export async function getStaffLedgerReconciliation(): Promise<StaffLedgerReconci
 }
 
 // ─── Brand > Ledger (FACTORY-P4-PAGES, staff) ───
-import { BrandLedgerRunsSchema, BrandLedgerSchema, ledgerRunsQuery, type BrandLedger, type BrandLedgerRuns, type LedgerRunsCursor } from "./v2/brand-ledger";
+import { BrandLedgerRunsSchema, BrandLedgerSchema, ledgerRunsQuery, type BrandLedger, type BrandLedgerRuns, type LedgerRunsCursor, type LedgerRunsTab } from "./v2/brand-ledger";
 
 /** The books of one brand since inception, per UTC day (runs-service through api-service's staff passthrough). */
 export async function getBrandLedger(brandId: string): Promise<BrandLedger> {
@@ -13246,11 +13270,11 @@ export async function getBrandLedger(brandId: string): Promise<BrandLedger> {
 }
 
 /** One page of the brand's production orders, newest first (null cursor = the newest page). */
-export async function getBrandLedgerRuns(brandId: string, cursor: LedgerRunsCursor): Promise<BrandLedgerRuns> {
+export async function getBrandLedgerRuns(brandId: string, cursor: LedgerRunsCursor, tab: LedgerRunsTab = "all"): Promise<BrandLedgerRuns> {
   return parseStaff(
     "getBrandLedgerRuns",
     BrandLedgerRunsSchema,
-    await apiCall<unknown>(`/runs/brands/${encodeURIComponent(brandId)}/ledger/runs?${ledgerRunsQuery(cursor)}`),
+    await apiCall<unknown>(`/runs/brands/${encodeURIComponent(brandId)}/ledger/runs?${ledgerRunsQuery(cursor, 50, tab)}`),
   );
 }
 

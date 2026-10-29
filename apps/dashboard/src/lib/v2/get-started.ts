@@ -778,8 +778,8 @@ export function chosenFunnelOutlook(funnel: { roi: number | null; status: string
 
 /** The words of the wall. */
 export interface WallCopy {
-  /** The match, in dollars (what the left panel counts). */
-  creditUsd: number;
+  /** The match, in dollars (what the left panel counts); null = no credit promised (at cost). */
+  creditUsd: number | null;
   creditLine: string;
   bannerTitle: string;
   bannerCta: string;
@@ -802,7 +802,26 @@ export const PLAN_TRIAL_CREDIT_USD = 99;
  * for a visitor the homepage A/B test put in the $99/month arm (owner 2026-10-10): the
  * monthly amount they picked on the landing (`lp_plan`), $99 when none.
  */
-export function wallCopy(planMonthlyUsd: number | null = null, postpaid = false): WallCopy {
+export function wallCopy(planMonthlyUsd: number | null = null, postpaid = false, atCost = false): WallCopy {
+  // Prepaid at cost (owner 2026-10-29, every org created since): no match, no trial,
+  // no free money promised anywhere. The $5 at creation is an advance, never named here.
+  if (atCost) {
+    return {
+      creditUsd: null,
+      creditLine: "Your campaign is ready to launch",
+      bannerTitle: "Your campaign is ready to launch",
+      bannerCta: "Launch my campaign",
+      timerLabel: "Time left to launch your campaign",
+      timerExtendedLabel: "We're giving you more time to launch",
+      formTitle: "Launch your campaign",
+      formSub: "One minute. You add credit at the end.",
+      emailCta: "Continue with Email",
+      codeCta: "Continue",
+      cardTitle: "Add credit",
+      cardNote: "Your campaigns spend this credit. It reloads on its own, so they never stop.",
+      cardCta: "Add credit and launch",
+    };
+  }
   if (planMonthlyUsd !== null) {
     const plan = `$${planMonthlyUsd.toLocaleString("en-US")}`;
     return {
@@ -931,6 +950,66 @@ export function parseReloadThresholdUsd(input: string): { usd: number } | { prob
   const n = Number(t);
   if (n < MIN_RELOAD_THRESHOLD_USD) return { problem: `At least $${MIN_RELOAD_THRESHOLD_USD}.` };
   return { usd: n };
+}
+
+/** billing's offer of every org created since 2026-10-29 (OFFER-RESET-1029). */
+export const AT_COST_OFFER = "prepaid_at_cost";
+
+/** True when billing serves this org the prepaid at cost offer: no free money, prepaid only. */
+export function isAtCostOffer(account: { free_credit_offer?: string } | null | undefined): boolean {
+  return account?.free_credit_offer === AT_COST_OFFER;
+}
+
+/**
+ * billing gives this org no free money (no match, no welcome, no referral reward):
+ * the at-cost offer and an org opened through the API (billing `isNoFreeCreditOffer`).
+ * Every referral or free credit surface is hidden for it.
+ */
+export function offersNoFreeMoney(account: { free_credit_offer?: string } | null | undefined): boolean {
+  return account?.free_credit_offer === AT_COST_OFFER || account?.free_credit_offer === "agent_api";
+}
+
+/**
+ * The at-cost checkout (owner 2026-10-29: « les memes montants minimaux $10 topup, et
+ * below $5 au plus bas pour retopup, et montant de retopup at least $10 de plus que le
+ * seuil de reload »). Our validation only: billing refuses none of them.
+ */
+export const AT_COST_TOPUP_CHOICES_USD = [10, 25, 50, 100] as const;
+export const AT_COST_MIN_TOPUP_USD = 10;
+export const AT_COST_MIN_THRESHOLD_USD = 5;
+/** A reload adds at least this much more than the threshold it fires under. */
+export const AT_COST_RELOAD_ABOVE_THRESHOLD_USD = 10;
+export const AT_COST_DEFAULT_THRESHOLD_USD = 5;
+export const AT_COST_DEFAULT_RELOAD_USD = 15;
+
+function wholeDollars(input: string): number | null {
+  const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
+  return /^\d+$/.test(t) ? Number(t) : null;
+}
+
+/**
+ * The three amounts of the at-cost checkout, each checked against its minimum. Every
+ * field carries its own problem (null = fine); `values` is set only when all three pass.
+ */
+export function atCostCheckout(input: { topup: string; threshold: string; reload: string }): {
+  problems: { topup: string | null; threshold: string | null; reload: string | null };
+  values: { topupUsd: number; thresholdUsd: number; reloadUsd: number } | null;
+} {
+  const topup = wholeDollars(input.topup);
+  const threshold = wholeDollars(input.threshold);
+  const reload = wholeDollars(input.reload);
+  const topupProblem =
+    topup === null ? "Whole dollars." : topup < AT_COST_MIN_TOPUP_USD ? `At least $${AT_COST_MIN_TOPUP_USD}.` : null;
+  const thresholdProblem =
+    threshold === null ? "Whole dollars." : threshold < AT_COST_MIN_THRESHOLD_USD ? `At least $${AT_COST_MIN_THRESHOLD_USD}.` : null;
+  const reloadMin = (threshold ?? AT_COST_MIN_THRESHOLD_USD) + AT_COST_RELOAD_ABOVE_THRESHOLD_USD;
+  const reloadProblem = reload === null ? "Whole dollars." : reload < reloadMin ? `At least $${reloadMin}.` : null;
+  const problems = { topup: topupProblem, threshold: thresholdProblem, reload: reloadProblem };
+  const values =
+    topup !== null && threshold !== null && reload !== null && !topupProblem && !thresholdProblem && !reloadProblem
+      ? { topupUsd: topup, thresholdUsd: threshold, reloadUsd: reload }
+      : null;
+  return { problems, values };
 }
 
 /** The next slide of a carousel, wrapping. */

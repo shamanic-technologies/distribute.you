@@ -1,0 +1,11 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Google Search Console">
+  <!-- Rankings under a lens: bars for the positions, a magnifier for the search. -->
+  <g fill="#4285F4">
+    <rect x="3" y="13.5" width="3.2" height="7" rx="1"/>
+    <rect x="8" y="10" width="3.2" height="10.5" rx="1"/>
+  </g>
+  <g fill="none" stroke="#34A853" stroke-width="2.1">
+    <circle cx="16.4" cy="8.6" r="4.6"/>
+    <path stroke="#FBBC05" stroke-linecap="round" d="m13.1 11.9-2.9 2.9"/>
+  </g>
+</svg>

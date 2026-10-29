@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ledgerRunsQuery, nextLedgerRunsCursor, BrandLedgerSchema } from "../src/lib/v2/brand-ledger";
+import { ledgerRunsQuery, nextLedgerRunsCursor, runResult, BrandLedgerSchema } from "../src/lib/v2/brand-ledger";
 import { personName, pipeQueueQuery, teamPipes } from "../src/lib/v2/team-work";
 
 // FACTORY-P4-PAGES: the staff Ledger and Done by your team pages.
@@ -22,6 +22,26 @@ describe("Ledger: runs-service's books, drawn not computed", () => {
     const books = { production: m, standardCharged: m, reuseGain: m, producedNone: m, support: m, undeclared: m, abnormal: m, spend: m, difference: m, balanced: true };
     const parsed = BrandLedgerSchema.safeParse({ brandId: "b", since: "2026-10-01", until: "2026-10-29", complete: true, daysMissing: [], books, days: [{ day: "2026-10-29", occurrences: 2, ...books }], outcomes: [] });
     expect(parsed.success).toBe(true);
+  });
+
+  it("names what a run made from served facts: outputs, open, support, a free step of its caller, else none", () => {
+    const base = { produced: [], status: "completed", supportKind: null, costRows: 0, parent: null };
+    expect(runResult({ ...base, produced: [{ outcomeKey: "email_found", occurrences: 1 }], status: "running" })).toEqual({ kind: "made" });
+    expect(runResult({ ...base, status: "running" })).toEqual({ kind: "running" });
+    expect(runResult({ ...base, supportKind: "product_feature" })).toEqual({ kind: "support", fn: "product feature" });
+    expect(runResult({ ...base, parent: { serviceName: "crm-service", taskName: "people.build" } })).toEqual({ kind: "step", parent: "crm-service · people.build" });
+    expect(runResult({ ...base, costRows: 2, parent: { serviceName: "crm-service", taskName: "people.build" } })).toEqual({ kind: "none" });
+    expect(runResult(base)).toEqual({ kind: "none" });
+    expect(new URLSearchParams(ledgerRunsQuery(null, 50, "made")).get("kind")).toBe("made");
+    expect(new URLSearchParams(ledgerRunsQuery(null, 50, "all")).get("kind")).toBeNull();
+  });
+
+  it("first paint is shimmer: an error shows only once the query has answered, and the books never poll every 5 s", () => {
+    const page = read("components/v2/ledger-page.tsx");
+    expect(page).toContain("q.data === undefined && q.isFetchedAfterMount && q.isError");
+    expect(page).not.toContain("q.isError && !l");
+    const ledgerQuery = page.slice(page.indexOf('useAuthQuery(["brandLedger"'), page.indexOf("const failed"));
+    expect(ledgerQuery).not.toContain("pollOptions");
   });
 
   it("sums no served money in the browser and reads the verdict as served", () => {

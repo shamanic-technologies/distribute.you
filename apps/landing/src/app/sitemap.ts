@@ -4,6 +4,8 @@ import { listArticles } from "@/lib/blog/db";
 import { comparePaths } from "@/lib/competitors";
 import { bestForPaths } from "@/lib/best-for";
 import { fetchIndexList } from "@/lib/fleet-indexes";
+import { sitePagePaths } from "@/lib/site-pages";
+import { DOCS_ROUTES, docsUrl } from "@/lib/docs/docs-routes";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
 // (e.g. CI build runners without a Neon binding) we skip article rows
@@ -26,13 +28,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     articles = rows.map((a) => ({ slug: a.slug, updatedAt: a.updatedAt }));
   }
 
-  const staticEntries: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1,
-    },
+  // The outcome pages, read from the page catalogue (`/` is the Revenue AI Agent page):
+  // a page flipped live there is listed here without a second edit.
+  const staticEntries: MetadataRoute.Sitemap = sitePagePaths().map((path) => ({
+    url: path === "/" ? baseUrl : `${baseUrl}${path}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: path === "/" ? 1 : 0.9,
+  }));
+  staticEntries.push(
     {
       url: `${baseUrl}/blog`,
       lastModified: new Date(),
@@ -45,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly",
       priority: 0.3,
     },
-  ];
+  );
 
   // Statically-served pages (src/app/<page>/route.ts → staticResponse) that were
   // missing from the sitemap — all live + indexable. Keep in lockstep with the
@@ -53,7 +57,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Every other indexable page. Keep in lockstep with the routes under src/app: a page
   // added there and not here is live and absent from the sitemap.
   const STATIC_SEO_PATHS: { path: string; priority: number }[] = [
-    { path: "/developers", priority: 0.7 },
     { path: "/brand", priority: 0.5 },
     { path: "/about", priority: 0.6 },
     { path: "/catalog", priority: 0.6 },
@@ -96,6 +99,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: day ? new Date(`${day}T00:00:00Z`) : new Date(),
       changeFrequency: "daily" as const,
       priority: 0.8,
+    })),
+  );
+
+  // The developer docs (moved from docs.distribute.you), read from their one route list.
+  staticEntries.push(
+    ...DOCS_ROUTES.map((route) => ({
+      url: docsUrl(route.path),
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: route.path === "/" ? 0.8 : 0.6,
     })),
   );
 

@@ -93,3 +93,23 @@ export async function startAnonSession(
     return { started: false, message: UNREACHABLE, reason: "unreachable" };
   }
 }
+
+/**
+ * The free-credit offer of the org this browser's walk built (billing's
+ * `free_credit_offer`, through `/api/anon/offer`), or null when it could not be read.
+ * The wall promises a match only when this says the org has one.
+ */
+export async function readWalkOffer(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/anon/offer", { credentials: "same-origin" });
+    const body = (await res.json().catch(() => null)) as { freeCreditOffer?: unknown } | null;
+    if (!res.ok || typeof body?.freeCreditOffer !== "string") {
+      console.error("[get-started] walk offer read failed:", res.status, body);
+      return null;
+    }
+    return body.freeCreditOffer;
+  } catch (e) {
+    console.error("[get-started] walk offer read failed:", e);
+    return null;
+  }
+}

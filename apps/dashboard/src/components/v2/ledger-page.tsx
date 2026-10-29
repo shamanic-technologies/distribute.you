@@ -11,7 +11,6 @@ import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { RecycleIcon } from "@phosphor-icons/react/dist/csr/Recycle";
 import { WarningIcon } from "@phosphor-icons/react/dist/csr/Warning";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions } from "@/lib/query-options";
 import { getBrandLedger, getBrandLedgerRuns, getPublicCatalogueSteps, type PublicCatalogueStep } from "@/lib/api";
 import {
   centsToUsd,
@@ -22,6 +21,9 @@ import {
   type BrandLedgerRun,
   type LedgerMoney,
   type LedgerRunsCursor,
+  type LedgerRunsTab,
+  LEDGER_RUNS_TABS,
+  runResult,
 } from "@/lib/v2/brand-ledger";
 import { formatCentsAsUsd, formatCount } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
@@ -30,6 +32,7 @@ import { InfoTooltip } from "@/components/visibility/metric-info";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
+import { RecordsTabs } from "@/components/v2/records";
 
 /**
  * Ledger (staff, FACTORY-P4-PAGES): the books of ONE brand, the cost-accounting doctrine's line
@@ -115,7 +118,16 @@ const TIPS = {
 
 export function V2Ledger() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const q = useAuthQuery(["brandLedger", brandId], () => getBrandLedger(brandId), { ...pollOptions, retry: false });
+  // The books move on runs-service's 15-min sweep and a cold read takes seconds: read on open, then
+  // every 5 min (served from runs-service's cache), never the 5-s poll. A failed first read retries
+  // behind the shimmer; the error shows only once the query has answered (isFetchedAfterMount).
+  const q = useAuthQuery(["brandLedger", brandId], () => getBrandLedger(brandId), {
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
+    retry: 2,
+    retryDelay: 2_000,
+  });
+  const failed = q.data === undefined && q.isFetchedAfterMount && q.isError;
   const steps = usePublicSteps();
   const l = q.data;
   return (
@@ -124,7 +136,7 @@ export function V2Ledger() {
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            {l || q.isError ? (
+            {l || failed ? (
               <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
                 {l ? `${usd(gross(l.books.spend))} spent since ${dayText(l.since)}` : "The books could not be read"}
               </h1>
@@ -136,7 +148,7 @@ export function V2Ledger() {
           {l && <Verdict l={l} />}
         </div>
 
-        {q.isError && !l ? (
+        {failed ? (
           <div className="k-card mt-6">
             <EmptyNote>We could not read this brand&apos;s books. Retrying.</EmptyNote>
           </div>
@@ -333,8 +345,10 @@ function formatUsdTick(v: number): string {
 
 /** An outcome by its catalogue step: served icon and name. */
 function OutcomeLabel({ outcomeKey, steps, size = 16 }: { outcomeKey: string; steps: PublicCatalogueStep[] | undefined; size?: number }) {
-  const step = steps?.find((s) => s.key === outcomeKey);
-  if (steps && !step) console.error("[v2 ledger] outcome missing from the public step catalogue", { outcomeKey });
+  // The catalogue has not answered yet: a quiet placeholder, never the raw key.
+  if (!steps) return <span className="inline-block h-3 w-16 animate-pulse rounded-[4px] bg-[var(--data-track)] align-middle" aria-hidden="true" />;
+  const step = steps.find((s) => s.key === outcomeKey);
+  if (!step) console.error("[v2 ledger] outcome missing from the public step catalogue", { outcomeKey });
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
       <CatalogueMark icon={step?.icon ?? null} name={step?.name ?? outcomeKey} size={size} />
@@ -384,20 +398,33 @@ function OutcomesTable({ ledger, steps }: { ledger: BrandLedger; steps: PublicCa
   );
 }
 
-/** Every production order, newest first: one served page per cursor, older pages on demand. */
+/** Every production order, newest first, by tab: one served page per cursor, older pages on demand. */
 function ProductionOrders({ orgId, brandId, steps }: { orgId: string; brandId: string; steps: PublicCatalogueStep[] | undefined }) {
+  const [tab, setTab] = useState<LedgerRunsTab>("all");
   const [cursors, setCursors] = useState<LedgerRunsCursor[]>([null]);
+  // The counts ride the ALL tab's first page (runs-service serves them on every first page; one key).
+  const counts = useRunsPage(brandId, null, "all").data?.counts ?? null;
+  const pick = (t: string) => {
+    setTab(t as LedgerRunsTab);
+    setCursors([null]);
+  };
   return (
     <section className="mt-8">
       <SectionTitle>Production orders</SectionTitle>
       <div className="k-card overflow-hidden">
+        <RecordsTabs
+          tabs={LEDGER_RUNS_TABS.map((t) => ({ key: t.key, label: t.label, count: counts ? counts[t.key] : null }))}
+          active={tab}
+          onPick={pick}
+          right={counts ? <span>Started in the 24 h to {timeText(counts.until)}</span> : undefined}
+        />
         <div className="k-scroll overflow-x-auto">
           <table className="w-full min-w-[760px] table-fixed text-[13px]">
             <colgroup>
-              <col className="w-[96px]" />
+              <col className="w-[120px]" />
               <col />
               <col className="w-[24%]" />
-              <col className="w-[24%]" />
+              <col className="w-[26%]" />
               <col className="w-[96px]" />
             </colgroup>
             <thead>
@@ -411,27 +438,28 @@ function ProductionOrders({ orgId, brandId, steps }: { orgId: string; brandId: s
             </thead>
             <tbody>
               {cursors.map((c) => (
-                <RunsPage key={`${c?.before ?? "newest"}|${c?.beforeId ?? ""}`} cursor={c} orgId={orgId} brandId={brandId} steps={steps} />
+                <RunsPage key={`${tab}|${c?.before ?? "newest"}|${c?.beforeId ?? ""}`} tab={tab} cursor={c} orgId={orgId} brandId={brandId} steps={steps} />
               ))}
             </tbody>
           </table>
         </div>
-        <OrdersFooter brandId={brandId} last={cursors[cursors.length - 1]} onMore={(next) => setCursors((cs) => [...cs, next])} />
+        <OrdersFooter brandId={brandId} tab={tab} last={cursors[cursors.length - 1]} onMore={(next) => setCursors((cs) => [...cs, next])} />
       </div>
     </section>
   );
 }
 
-/** One page of runs; the newest one polls, an older one is read once. */
-function useRunsPage(brandId: string, cursor: LedgerRunsCursor) {
-  return useAuthQuery(["brandLedgerRuns", brandId, cursor?.before ?? "newest", cursor?.beforeId ?? ""], () => getBrandLedgerRuns(brandId, cursor), {
-    ...(cursor ? { staleTime: Infinity } : pollOptions),
-    retry: false,
-  });
+/** One page of one tab; a newest page re-reads every minute, an older one is read once. */
+function useRunsPage(brandId: string, cursor: LedgerRunsCursor, tab: LedgerRunsTab) {
+  return useAuthQuery(
+    ["brandLedgerRuns", brandId, tab, cursor?.before ?? "newest", cursor?.beforeId ?? ""],
+    () => getBrandLedgerRuns(brandId, cursor, tab),
+    { ...(cursor ? { staleTime: Infinity } : { refetchInterval: 60_000 }), retry: 2, retryDelay: 2_000 },
+  );
 }
 
-function RunsPage({ cursor, orgId, brandId, steps }: { cursor: LedgerRunsCursor; orgId: string; brandId: string; steps: PublicCatalogueStep[] | undefined }) {
-  const q = useRunsPage(brandId, cursor);
+function RunsPage({ tab, cursor, orgId, brandId, steps }: { tab: LedgerRunsTab; cursor: LedgerRunsCursor; orgId: string; brandId: string; steps: PublicCatalogueStep[] | undefined }) {
+  const q = useRunsPage(brandId, cursor, tab);
   if (q.data === undefined) {
     if (q.isFetchedAfterMount && q.isError) {
       return (
@@ -444,10 +472,10 @@ function RunsPage({ cursor, orgId, brandId, steps }: { cursor: LedgerRunsCursor;
     }
     return (
       <>
-        {[0, 1, 2, 3].map((i) => (
-          <tr key={i} className="k-line-subtle border-b">
+        {Array.from({ length: cursor ? 3 : 8 }, (_, i) => (
+          <tr key={i} className="k-line-subtle h-10 border-b">
             <td colSpan={5} className="px-4 py-2">
-              <Shimmer className="h-6 w-full" />
+              <Shimmer className="h-5 w-full" />
             </td>
           </tr>
         ))}
@@ -458,7 +486,7 @@ function RunsPage({ cursor, orgId, brandId, steps }: { cursor: LedgerRunsCursor;
     return (
       <tr className="k-line-subtle border-b">
         <td colSpan={5} className="k-fg3 px-4 py-2.5 text-[12px]">
-          No run in the 24 hours before {timeText(q.data.before)}.
+          None in the 24 hours before {timeText(q.data.before)}.
         </td>
       </tr>
     );
@@ -498,17 +526,34 @@ function RunRow({ run, href, steps }: { run: BrandLedgerRun; href: string; steps
         <Counts items={run.consumed} steps={steps} />
       </td>
       <td className={TD}>
-        {run.produced.length > 0 ? (
-          <Counts items={run.produced} steps={steps} />
-        ) : run.supportKind ? (
-          <span className="k-chip">Support · {run.supportKind.replace(/_/g, " ")}</span>
-        ) : (
-          <span className="k-fg3 text-[12px]">Made none</span>
-        )}
+        <RunMade run={run} steps={steps} />
       </td>
       <td className={`${TDR}`}>{run.costRows === 0 ? DASH : usd(run.cost.grossCents)}</td>
     </tr>
   );
+}
+
+/** The Made cell: outputs, else what the run is (open, support, a free step of its caller), else Made none. */
+function RunMade({ run, steps }: { run: BrandLedgerRun; steps: PublicCatalogueStep[] | undefined }) {
+  const r = runResult(run);
+  if (r.kind === "made") return <Counts items={run.produced} steps={steps} />;
+  if (r.kind === "running") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
+        <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
+        Running
+      </span>
+    );
+  }
+  if (r.kind === "support") return <span className="k-chip">Support · {r.fn}</span>;
+  if (r.kind === "step") {
+    return (
+      <span className="k-fg3 block truncate text-[12px]" title={`No cost of its own: a call made for ${r.parent}`}>
+        No cost · step of {r.parent}
+      </span>
+    );
+  }
+  return <span className="k-fg3 text-[12px]">Made none</span>;
 }
 
 function Counts({ items, steps }: { items: BrandLedgerRun["produced"]; steps: PublicCatalogueStep[] | undefined }) {
@@ -526,8 +571,8 @@ function Counts({ items, steps }: { items: BrandLedgerRun["produced"]; steps: Pu
 }
 
 /** "Show older": the next page starts where the producer says the last one stopped. */
-function OrdersFooter({ brandId, last, onMore }: { brandId: string; last: LedgerRunsCursor; onMore: (next: LedgerRunsCursor) => void }) {
-  const page = useRunsPage(brandId, last).data;
+function OrdersFooter({ brandId, tab, last, onMore }: { brandId: string; tab: LedgerRunsTab; last: LedgerRunsCursor; onMore: (next: LedgerRunsCursor) => void }) {
+  const page = useRunsPage(brandId, last, tab).data;
   return (
     <div className="k-fg3 k-line-subtle flex items-center justify-between border-t px-4 py-2.5 text-[12px] tabular-nums">
       <span>{page ? `Read back to ${timeText(page.windowStart)}` : null}</span>

@@ -264,5 +264,20 @@
       }
     ],
     "wall": "The main CTA is Book a Demo. Log In leads to opps.getwarmly.com with a free signup behind a work email, not captured."
+  },
+  "treg": {
+    "origin": "https://treg.to",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://treg.to/app?ref=landing",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://treg.to/catalog",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Start free and Sign in both open /app: a Sign in to treg modal (email code behind a captcha, Company SSO, GitHub, Google, or an org token for agents). No separate signup; the account is created at first sign-in. /catalog is public."
   }
 }

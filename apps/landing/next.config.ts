@@ -70,7 +70,9 @@ const nextConfig: NextConfig = {
       { source: "/cold-email-cost-guide/:path*", destination: "/blog/cold-email-cost-per-positive-reply", permanent: true, missing: offLab },
       { source: "/cold-email-for-saas-founders/:path*", destination: "/", permanent: true, missing: offLab },
       { source: "/cold-email-vs-linkedin/:path*", destination: "/", permanent: true, missing: offLab },
-      { source: "/developers/:path+", destination: "/developers", permanent: true, missing: offLab },
+      // `/developers` became the docs home when the docs moved under the landing (SITE-FOUNDATION-1029).
+      { source: "/developers", destination: "/docs", permanent: true, missing: offLab },
+      { source: "/developers/:path+", destination: "/docs", permanent: true, missing: offLab },
       // Blog posts that no longer exist, still fetched by ChatGPT-User, Claude-User and
       // DuckAssistBot (Cloudflare, 7 days to 2026-10-02). Each lands on the live article on the
       // same subject; one with no live article on its subject, and junk slugs, land on /blog.

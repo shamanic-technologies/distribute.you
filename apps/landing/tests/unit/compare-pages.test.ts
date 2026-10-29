@@ -12,6 +12,7 @@ import {
   V2_STYLES_VERSION,
 } from "../../src/lib/compare-page";
 import { COMPARE_VERIFIED_LABEL, COMPETITORS, comparePaths, competitorBySlug, monthLabel } from "../../src/lib/competitors";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
  * The comparison cluster: `/compare/<slug>`, `/compare`, `/alternatives`.
@@ -206,7 +207,7 @@ describe("every list that names the cluster reads the catalogue", () => {
   });
 
   it("the homepage footer carries a Compare column with every page, in raw HTML", () => {
-    const home = read("public/landing/index-v2.html");
+    const home = withSiteChrome(read("public/landing/index-v2.html"), "/");
     const footer = home.slice(home.indexOf("<footer>"));
     expect(footer).toContain("<h4>Compare</h4>");
     for (const p of comparePaths()) expect(footer).toContain(`href="${p}"`);
@@ -227,7 +228,8 @@ describe("every list that names the cluster reads the catalogue", () => {
   it("the stylesheet carries the compare rules and the five-column footer", () => {
     const css = read("public/landing/v2/styles.css");
     expect(css).toContain(".cmp-table {");
-    expect(css).toContain(".foot { display: grid; grid-template-columns: 1.4fr repeat(6, 1fr);");
+    // The column count follows the footer variant, so the grid fills rows instead of fixing a count.
+    expect(css).toContain(".foot { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));");
   });
 });
 

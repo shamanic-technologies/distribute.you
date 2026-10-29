@@ -25,6 +25,7 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, pe
 import { companyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, v2NewBrandHref, v2OfferHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
+import { useFreeMoneyShown } from "@/lib/use-no-free-money";
 import { moveOrgCursor, showOrgSearch, switcherOrgs } from "@/lib/v2/org-switcher-list";
 
 /**
@@ -384,6 +385,7 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
   const name = user?.fullName || user?.firstName || "";
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const base = v2Base(orgId, brandId);
+  const freeMoney = useFreeMoneyShown();
   const close = () => setOpen(false);
   // Every account page lives under a brand; an org with no brand yet (its first brand
   // not added) gets the menu without them: who is signed in, help, sign out.
@@ -398,7 +400,8 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
         ...(staffMode ? [{ href: `${base}/monitoring`, label: "Monitoring", icon: MENU_ICON.monitoring, prefetch: true }] : []),
         // Research compares workflows, models and templates: below a campaign, so staff mode only.
         ...(staffMode ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, prefetch: true }] : []),
-        { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
+        // No referral reward on billing's no-free-money offers (owner 2026-10-29).
+        ...(freeMoney.show ? [{ href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` }] : []),
       ]
     : [];
   const avatar = (size: number) =>
@@ -569,6 +572,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
   }, [q]);
 
   const { staffMode } = useStaffMode();
+  const freeMoney = useFreeMoneyShown();
   const revenue = useBrandRevenue(brandId).data;
   const buckets = useBucketCounts(brandId).data;
   const call = useNeedsYourCall(brandId, 5).data?.leads ?? [];
@@ -602,6 +606,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       }
     }
     for (const s of SETUP) {
+      if (s.section === "referral" && !freeMoney.show) continue;
       if (!term || matches(s.label, term)) out.push({ key: `setup-${s.section}`, group: "Setup", text: s.label, label: s.label, href: v2Href(orgId, brandId, s.section) });
     }
     // Unibox, Campaigns and Outcomes, GA like their sidebar entries (owner 2026-10-10).
@@ -628,7 +633,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       for (const l of peopleQ.data?.leads ?? []) out.push(personItem("People", l));
     }
     return out;
-  }, [q, call, staffMode, revenue, peopleQ.data, orgId, brandId]);
+  }, [q, call, staffMode, freeMoney.show, revenue, peopleQ.data, orgId, brandId]);
 
   useEffect(() => setCursor(0), [q, items.length]);
   useEffect(() => {

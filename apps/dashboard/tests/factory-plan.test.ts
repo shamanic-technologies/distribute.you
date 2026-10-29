@@ -7,7 +7,9 @@ import {
   FactoryShadowPlanSchema,
   changingCampaigns,
   confidenceWords,
-  failedCampaigns,
+  notYetCampaigns,
+  problemCampaigns,
+  stateSentence,
   isLowConfidence,
   pickSourceWords,
   pricedRunning,
@@ -86,9 +88,31 @@ describe("factory shadow: Monitoring read parses as served", () => {
     expect(d.verdict.red).toBe(true);
     expect(d.verdict.reasons.map(verdictReasonWords)).toContain("no line to the Target could be priced for a campaign");
     expect(d.series[0]).toMatchObject({ day: "2026-10-28", campaigns: 36, differs: 23, planFailed: 4 });
-    expect(failedCampaigns(d)).toHaveLength(4);
-    expect(changingCampaigns(d).length).toBeGreaterThan(0);
+    // A body from before features-service v0.179.452 carries no states: nothing listed, nothing invented.
+    expect(problemCampaigns(d)).toEqual([]);
+    expect(changingCampaigns(d)).toEqual([]);
     expect(verdictReasonWords("brand_new")).toBe("brand_new");
+  });
+
+  it("v0.179.452+: red only for a real problem, waiting campaigns apart with their served sentence, what would change", () => {
+    // Real production read of 2026-10-29 12:29 UTC: nothing broken, 2 waiting on a first price, 1 that would change.
+    const d = FactoryShadowMonitoringSchema.parse(fixture("factory-shadow-monitoring-prod-1029.json"));
+    expect(d.verdict.red).toBe(false);
+    expect(problemCampaigns(d)).toHaveLength(0);
+    expect(notYetCampaigns(d).map(stateSentence)).toContain("Waiting for a first price: Cold WhatsApp Outreach has never run.");
+    const change = changingCampaigns(d)[0].change!;
+    expect(change.running.pipes.map((p) => p.name)).toEqual(["Your Team Reply Closing"]);
+    expect(change.best.pipes[0].name).toBe("AI Meeting Booking: Leads only");
+    expect(change.running.costPerTargetUsd).toBe(3041.56);
+    expect(change.best.roi).toBe(0.73);
+    expect(d.series[d.series.length - 1].notYet).toBeDefined();
+  });
+
+  it("a campaign's sentence is the served stateDetail, else its code in words", () => {
+    const base = { campaignId: "c", orgId: "o", brandId: "b", salesFunnelName: "n", status: "ok", failure: null, planDiffers: null, pickDiffers: false };
+    expect(stateSentence({ ...base, stateDetail: "Served words.", stateReason: "judge_failed" })).toBe("Served words.");
+    expect(stateSentence({ ...base, stateDetail: null, stateReason: "judge_failed" })).toBe("Jev could not answer for a pipe");
+    expect(stateSentence({ ...base, stateDetail: null, stateReason: "something_else" })).toBe("something_else");
   });
 });
 
@@ -148,9 +172,16 @@ describe("factory shadow: Monitoring page and hub", () => {
     expect(hub.indexOf("<FactoryShadowTile")).toBeLessThan(hub.indexOf("<Section "));
   });
 
-  it("turns red on the served verdict, draws served series in served order", () => {
+  it("turns red ONLY on the served verdict (owner 2026-10-29), problems listed before what waits", () => {
     const src = read("components/v2/monitoring-factory.tsx");
     expect(src).toContain("data.verdict.red");
+    const tile = src.slice(src.indexOf("export function FactoryShadowTile("), src.indexOf("// ─── Following its plan"));
+    expect(tile).toContain("color: data.verdict.red ? RED : undefined");
+    const view = src.slice(src.indexOf("export function FactoryShadowView("), src.indexOf("export function FactoryShadowPage("));
+    expect(view.indexOf(">Broken</SectionTitle>")).toBeGreaterThan(-1);
+    expect(view.indexOf(">Broken</SectionTitle>")).toBeLessThan(view.indexOf(">Waiting on a first price</SectionTitle>"));
+    expect(view.indexOf(">Waiting on a first price</SectionTitle>")).toBeLessThan(view.indexOf(">What would change</SectionTitle>"));
+    expect(src).not.toContain("another line to its Target");
     expect(src).not.toMatch(/\.sort\(/);
     expect(src).not.toMatch(/\.reduce\(/);
   });

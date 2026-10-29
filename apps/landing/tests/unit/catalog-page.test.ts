@@ -10,6 +10,7 @@ import {
   renderCatalogPage,
   type PlatformPrice,
 } from "../../src/lib/pages/catalog";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
  * `/catalog` (owner 2026-10-06): why we bill per tool rather than per email, and the
@@ -189,9 +190,10 @@ describe("catalog is reachable", () => {
   const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8");
 
   it("every footer and the sitemap link it", () => {
-    expect(read("public/landing/index-v2.html")).toContain('<a href="/catalog">Price catalog</a>');
-    expect(read("src/lib/v2-shell.ts")).toContain('<a href="/catalog">Price catalog</a>');
-    expect(read("src/components/footer.tsx")).toContain('{ label: "Price catalog", href: "/catalog" }');
+    // One footer model (site-chrome.ts) feeds the homepage, the rendered pages and React.
+    expect(withSiteChrome(read("public/landing/index-v2.html"), "/")).toContain('<a href="/catalog">Price catalog</a>');
+    expect(read("src/lib/site-chrome.ts")).toContain('{ label: "Price catalog", href: "/catalog" }');
+    expect(read("src/components/footer.tsx")).toContain("footerModel(");
     expect(read("src/app/sitemap.ts")).toContain('path: "/catalog"');
   });
 });

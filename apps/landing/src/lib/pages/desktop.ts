@@ -1,4 +1,5 @@
 import { CONTACT } from "./concierge";
+import { footerHtml } from "../site-chrome";
 
 /**
  * `/desktop`: the private-beta page for distribute for Mac (`apps/desktop`).
@@ -95,9 +96,19 @@ html, body { background: var(--bg-canvas); }
 .how li::before { content: counter(s); font-variant-numeric: tabular-nums; color: var(--fg-3); }
 @media (max-width: 800px) { .how { grid-template-columns: 1fr; } }
 .note { color: var(--fg-3); font-size: 13px; padding-bottom: 32px; max-width: 640px; }
-.legal { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0 20px; border-top: 1px solid var(--line-subtle); color: var(--fg-3); font-size: 12px; margin-top: auto; }
-.legal a { text-decoration: none; }
-.legal a:hover { color: var(--fg-1); }
+/* The site footer (links from site-chrome.ts), drawn in this page's Keel tokens. */
+.site-foot { margin-top: auto; border-top: 1px solid var(--line-subtle); }
+.site-foot footer { padding: 40px 0 24px; }
+.site-foot .foot { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 28px 24px; }
+.site-foot .foot-brand { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.site-foot .brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; color: var(--fg-1); text-decoration: none; }
+.site-foot .brand img { width: 22px; height: 22px; }
+.site-foot .tag { color: var(--fg-3); font-size: 13px; }
+.site-foot h4 { font-size: 13px; font-weight: 500; color: var(--fg-1); margin: 0 0 8px; }
+.site-foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.site-foot .foot a { color: var(--fg-3); font-size: 13px; text-decoration: none; display: inline-block; padding: 3px 0; }
+.site-foot .foot a:hover { color: var(--fg-1); }
+.site-foot .foot-bottom { margin-top: 28px; color: var(--fg-3); font-size: 12px; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .window { animation: rise 640ms cubic-bezier(.23,1,.32,1) 120ms both; }
@@ -131,8 +142,9 @@ function top(): string {
   return `<header class="wrap top"><a href="/" aria-label="distribute.you home"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="28" height="28"></a><span class="beta">Private beta</span></header>`;
 }
 
+/** The site footer (catalogue-driven, `site-chrome.ts`), in its own scope so the page's Keel tokens stay untouched. */
 function legal(): string {
-  return `<footer class="wrap legal"><p>© ${new Date().getUTCFullYear()} distribute.you. Revenue made easy.</p><nav><a href="/privacy">Privacy</a> &nbsp; <a href="/terms">Terms</a></nav></footer>`;
+  return `<div class="site-foot">${footerHtml(DESKTOP_PATH)}</div>`;
 }
 
 /** A drawn app window. No figures in it: a number on a public page is live or sourced, never invented. */

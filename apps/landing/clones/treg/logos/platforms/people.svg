@@ -1,0 +1,7 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="People data">
+  <!-- Not a brand: person records, drawn as the two-figure glyph every contact list uses. -->
+  <circle cx="9.4" cy="8.2" r="3.9" fill="#7C6BAF"/>
+  <path fill="#7C6BAF" d="M1.9 20.4c0-3.9 3.4-6.4 7.5-6.4s7.5 2.5 7.5 6.4z"/>
+  <circle cx="17.6" cy="9.1" r="3" fill="#7C6BAF" opacity=".55"/>
+  <path fill="#7C6BAF" opacity=".55" d="M13.6 20.4c0-3 2.1-5 4.9-5 2.4 0 3.6 1.6 3.6 5z"/>
+</svg>

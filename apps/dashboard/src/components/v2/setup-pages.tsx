@@ -17,6 +17,7 @@ import { formatBillingCentsWhole } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
 import { promiseProgressSentence, promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
 import { v2Base, v2Href, v2OfferHref } from "@/lib/v2/routes";
+import { offersNoFreeMoney } from "@/lib/v2/get-started";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
@@ -442,6 +443,38 @@ export function V2ReferralPage() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setCopied(false), 2500);
   };
+  const linkCard = (
+    <div className="k-card p-4">
+      <p className="k-label">Your invite link</p>
+      {link ? (
+        <div className="mt-2 flex items-center gap-2">
+          <input readOnly value={link} aria-label="Invite link" className="k-input min-w-0 flex-1 px-2" onFocus={(e) => e.currentTarget.select()} />
+          <button type="button" onClick={copy} className="k-btn-strong shrink-0">
+            {copied ? "Copied" : "Copy link"}
+          </button>
+        </div>
+      ) : inviteQ.isError ? (
+        <p className="k-fg3 mt-2 text-[13px]">We could not read your invite link right now.</p>
+      ) : (
+        <Shimmer className="mt-2 h-7 w-full" />
+      )}
+    </div>
+  );
+  // billing gives this org no referral reward (owner 2026-10-29: « les $ gratuits de
+  // referral » stop for every org created since): the link only, no reward promised.
+  if (offersNoFreeMoney(account)) {
+    return (
+      <V2Page
+        crumbs={[{ label: "Account" }, { label: "Refer a friend" }]}
+        title="Refer a friend"
+        sub="Share your link with a founder who wants more revenue."
+        width="max-w-[760px]"
+      >
+        {linkCard}
+        {copied && <Toast message="Invite link copied" />}
+      </V2Page>
+    );
+  }
   return (
     <V2Page
       crumbs={[{ label: "Account" }, { label: "Refer a friend" }]}
@@ -449,21 +482,7 @@ export function V2ReferralPage() {
       sub={`Share your link. Once someone who signs up through it has paid us $${REFERRAL_CREDIT_USD}, you get $${REFERRAL_CREDIT_USD} in free credits. There is no limit.`}
       width="max-w-[760px]"
     >
-      <div className="k-card p-4">
-        <p className="k-label">Your invite link</p>
-        {link ? (
-          <div className="mt-2 flex items-center gap-2">
-            <input readOnly value={link} aria-label="Invite link" className="k-input min-w-0 flex-1 px-2" onFocus={(e) => e.currentTarget.select()} />
-            <button type="button" onClick={copy} className="k-btn-strong shrink-0">
-              {copied ? "Copied" : "Copy link"}
-            </button>
-          </div>
-        ) : inviteQ.isError ? (
-          <p className="k-fg3 mt-2 text-[13px]">We could not read your invite link right now.</p>
-        ) : (
-          <Shimmer className="mt-2 h-7 w-full" />
-        )}
-      </div>
+      {linkCard}
 
       <div className="k-card mt-4 p-4">
         <div className="flex items-baseline justify-between gap-3">

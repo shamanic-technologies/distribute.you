@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" dir="ltr" data-react-helmet="lang,dir,data-theme"><head>
+<html lang="en" translate="no" data-theme="light" dir="ltr" data-react-helmet="lang,dir,data-theme"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
+  <meta name="google" content="notranslate">
   <title>Sign in to your account</title>
   
   
@@ -13,7 +14,7 @@
   
   
   <link rel="stylesheet" crossorigin="" href="/assets/vendors-Dv-33be7.css">
-  <link rel="stylesheet" crossorigin="" href="/assets/index-B8zCuE34.css">
+  <link rel="stylesheet" crossorigin="" href="/assets/index-BQ-6VFae.css">
 <style data-custom-css="">/* ── Explee Dark Theme — Sign-in Experience ── */
 
 #app * {
@@ -260,6 +261,45 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* ── Consent page (ChatGPT / Claude connect) ── */
+/* The footer rule above was meant for «Powered by», but the consent page's
+   buttons and «Use another account» also sit in *footer* classes. */
+
+#app div[class*='footerButton'],
+#app div[class*='footerLink'] {
+  opacity: 1;
+}
+
+#app div[class*='footerButton'] button[class*='primary'] {
+  background: #10b981 !important;
+  color: #000000 !important;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+#app div[class*='footerButton'] button[class*='primary']:hover {
+  background: #059669 !important;
+}
+
+#app div[class*='footerButton'] button[class*='secondary'] {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #d4d4d4;
+}
+
+#app div[class*='footerLink'] {
+  color: #a1a1a1;
+}
+
+#app div[class*='footerLink'] a {
+  color: #10b981;
+}
+
+#app main[class*='main'] div[class$='_name'],
+#app main[class*='main'] div[class$='_scopeGroupName'] {
+  color: #fafafa;
+}
 </style><style data-logto-signature-guard="true">[data-logto-signature-container="secured"][data-logto-signature-container="secured"] { display: block !important; visibility: visible !important; opacity: 1 !important; }
 [data-logto-signature="secured"][data-logto-signature="secured"] { display: flex !important; align-items: center !important; justify-content: flex-start !important; font-style:  !important; font-variant-ligatures:  !important; font-variant-caps:  !important; font-variant-numeric:  !important; font-variant-east-asian:  !important; font-variant-alternates:  !important; font-variant-position:  !important; font-variant-emoji:  !important; font-stretch:  !important; font-size:  !important; line-height:  !important; font-family:  !important; font-optical-sizing:  !important; font-size-adjust:  !important; font-kerning:  !important; font-feature-settings:  !important; font-variation-settings:  !important; font-language-override:  !important; font-weight: normal !important; color: var(--color-neutral-variant-60) !important; padding: 4px 8px !important; text-decoration: none !important; opacity: 0.75 !important; direction: ltr !important; position: relative !important; inset: auto !important; transform: none !important; pointer-events: auto !important; }
 [data-logto-signature="secured"][data-logto-signature="secured"]:is(:hover, :active, :focus-visible) { opacity: 1 !important; }
@@ -514,6 +554,45 @@ body.mobile [data-logto-signature="secured"][data-logto-signature="secured"] { c
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* ── Consent page (ChatGPT / Claude connect) ── */
+/* The footer rule above was meant for «Powered by», but the consent page's
+   buttons and «Use another account» also sit in *footer* classes. */
+
+#app div[class*='footerButton'],
+#app div[class*='footerLink'] {
+  opacity: 1;
+}
+
+#app div[class*='footerButton'] button[class*='primary'] {
+  background: #10b981 !important;
+  color: #000000 !important;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+#app div[class*='footerButton'] button[class*='primary']:hover {
+  background: #059669 !important;
+}
+
+#app div[class*='footerButton'] button[class*='secondary'] {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #d4d4d4;
+}
+
+#app div[class*='footerLink'] {
+  color: #a1a1a1;
+}
+
+#app div[class*='footerLink'] a {
+  color: #10b981;
+}
+
+#app main[class*='main'] div[class$='_name'],
+#app main[class*='main'] div[class$='_scopeGroupName'] {
+  color: #fafafa;
+}
 </style></head>
 
 <body class="desktop eAa6M_light" data-react-helmet="class" style="--color-brand-default: #00AD74; --color-brand-hover: hsl(160, 100%, 44%); --color-brand-pressed: hsl(160, 100%, 24%); --color-brand-loading: hsl(160, 100%, 49%); --color-overlay-brand-focused: rgba(0, 173, 116, 0.16); --color-overlay-brand-hover: rgba(0, 173, 116, 0.08); --color-overlay-brand-pressed: rgba(0, 173, 116, 0.12);">

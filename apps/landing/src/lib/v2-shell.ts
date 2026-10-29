@@ -8,103 +8,40 @@
  * Alias-free apart from the competitor catalogue, so the unit tests can render a page
  * directly without a module alias.
  */
-import { COMPETITORS } from "./competitors";
-import { BEST_FOR_PAGES, bestForLinkLabel } from "./best-for";
-import { INDEX_LINKS_TOKEN } from "./fleet-indexes";
+import { footerHtml, navHtml, SIGN_IN, SIGN_UP, WHY, esc } from "./site-chrome";
+
+export { SIGN_IN, SIGN_UP, WHY, esc };
 
 export const SITE = "https://distribute.you";
-/** Where every CTA on the site goes.
- *
- *  The picker, not the signup form: the product sells before it asks anybody to
- *  make an account, so a CTA opens the four narrowing screens and hands the
- *  visitor to Clerk once they have seen what it costs. The name is kept because
- *  it is what a CTA still MEANS to a reader, and because every page renders it
- *  through this one constant -- a second spelling is how one page comes to send
- *  people somewhere else. */
-export const SIGN_UP = "https://dashboard.distribute.you/get-started";
-export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
+// Where every CTA goes (SIGN_UP: the picker, not the signup form) and the why line
+// live in `site-chrome.ts`, re-exported here for the pages that import them from the shell.
 
 /**
  * Bumped together with the homepage's link: every page reads the same stylesheet, so
  * an edit to it ships to a returning visitor only if every `?v=` moves at once.
  */
-export const V2_STYLES_VERSION = 18;
+export const V2_STYLES_VERSION = 19;
 export const V2_MAIN_VERSION = 8;
+/** The motion kit (`public/landing/v2/motion.js`): it loads GSAP only on a page with a `data-motion` element. */
+export const MOTION_VERSION = 1;
 
-/**
- * Why distribute.you exists, in the owner's frozen wording (2026-10-03). One spelling,
- * read by every surface that states it: the footer tag, the closing CTA box and the
- * hero line on the pages rendered here. The H1s keep saying WHAT we are.
- */
-export const WHY = "Revenue made easy.";
 
 /** The why under a hero's lead paragraph (compare, best-for, alternatives, About...). */
 export function whyLine(): string {
   return `<p class="why">${WHY}</p>`;
 }
 
-export function esc(s: string): string {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
-/** The footer column every page carries, read from the catalogue. */
-export function compareFooterColumn(): string {
-  const items = COMPETITORS.map(
-    (c) => `<li><a href="/compare/${c.slug}">distribute.you vs ${esc(c.name)}</a></li>`,
-  ).join("");
-  const best = BEST_FOR_PAGES.map(
-    (p) => `<li><a href="/best/${p.slug}">${esc(bestForLinkLabel(p))}</a></li>`,
-  ).join("");
-  return `<div><h4>Compare</h4><ul>${items}<li><a href="/compare">All comparisons</a></li><li><a href="/alternatives">Alternatives</a></li></ul></div><div><h4>Best for</h4><ul>${best}<li><a href="/best">All rankings</a></li></ul></div>`;
-}
-
 /**
- * The footer's Indexes column. Its per-index links are resolved per request from the
- * live list (`withIndexLinks` in static-html.ts), so the markup carries the token.
+ * The nav and the footer every rendered page wears, drawn from the page catalogue
+ * (`site-chrome.ts`): the variant follows the page's path (an AI Agent page, an Agency
+ * page, or the both-columns footer of `/` and every other page).
  */
-export function indexesFooterColumn(): string {
-  return `<div><h4>Indexes</h4><ul>${INDEX_LINKS_TOKEN}<li><a href="/indexes">All indexes</a></li></ul></div>`;
+export function nav(path = "/"): string {
+  return navHtml(path);
 }
 
-export function nav(): string {
-  return `<div class="nav" id="nav">
-  <div class="nav-pill">
-    <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
-    <nav class="nav-links">
-      <a href="/#how">How it works</a>
-      <a href="/#pricing">Pricing</a>
-      <a href="/compare">Compare</a>
-      <a href="/#faq">FAQ</a>
-    </nav>
-    <div class="nav-right">
-      <a class="btn btn-ghost" href="${SIGN_IN}">Log in</a>
-      <a class="btn btn-primary" href="${SIGN_UP}">Start free</a>
-    </div>
-  </div>
-</div>`;
-}
-
-export function footer(): string {
-  return `<footer>
-  <div class="wrap">
-    <div class="foot">
-      <div>
-        <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
-        <p class="tag">${WHY}</p>
-      </div>
-      <div><h4>Product</h4><ul><li><a href="/#how">How it works</a></li><li><a href="/#features">Features</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/catalog">Price catalog</a></li><li><a href="/#faq">FAQ</a></li></ul></div>
-      ${compareFooterColumn()}
-      ${indexesFooterColumn()}
-      <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/investors">Investors</a></li><li><a href="/contact">Contact</a></li><li><a href="/blog">Blog</a></li></ul></div>
-      <div><h4>Legal</h4><ul><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li><li><a href="/developers">Developers</a></li></ul></div>
-    </div>
-    <div class="foot-bottom"><span>© 2026 distribute.you</span></div>
-  </div>
-</footer>`;
+export function footer(path = "/"): string {
+  return footerHtml(path);
 }
 
 export function ctaBox(): string {
@@ -184,11 +121,12 @@ ${s.noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" 
 ${ld}
 </head>
 <body>
-${nav()}
+${nav(s.path)}
 ${s.body}
 ${s.noCta ? "" : ctaBox()}
-${footer()}
+${footer(s.path)}
 <script src="/landing/v2/main.js?v=${V2_MAIN_VERSION}" defer></script>
+<script src="/landing/v2/motion.js?v=${MOTION_VERSION}" defer></script>
 </body>
 </html>
 `;

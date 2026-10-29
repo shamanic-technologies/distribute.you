@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
  * The homepage, served at `/`.
@@ -13,7 +14,8 @@ import { describe, expect, it } from "vitest";
  * quietly undo one.
  */
 const LANDING = path.resolve(__dirname, "../../public/landing");
-const html = readFileSync(path.join(LANDING, "index-v2.html"), "utf8");
+// As served: the nav and footer tokens resolved from the page catalogue (site-chrome.ts).
+const html = withSiteChrome(readFileSync(path.join(LANDING, "index-v2.html"), "utf8"), "/");
 const css = readFileSync(path.join(LANDING, "v2/styles.css"), "utf8");
 const js = readFileSync(path.join(LANDING, "v2/main.js"), "utf8");
 const route = readFileSync(path.resolve(__dirname, "../../src/app/route.ts"), "utf8");
@@ -34,7 +36,7 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=18"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=19"');
     expect(html).toContain('src="/landing/v2/main.js?v=9"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
