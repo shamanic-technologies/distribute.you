@@ -76,7 +76,7 @@ describe("Monitoring > Unsent answers: page and hub", () => {
     expect(src).not.toMatch(/\.sort\(/);
     expect(src).not.toMatch(/\.reduce\(/);
     // The normal ones never wear red.
-    expect(src).toMatch(/key: "answeredByTeam", label: "[^"]+", color: "var\(--data-teal\)"/);
+    expect(src).toMatch(/key: "answeredByTeam", label: "[^"]+", color: "var\(--data-violet\)"/);
     expect(src).toMatch(/key: "replaying", label: "[^"]+", color: "var\(--data-sky\)"/);
   });
 });

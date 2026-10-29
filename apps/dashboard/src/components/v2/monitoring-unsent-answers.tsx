@@ -31,7 +31,7 @@ export function useUnsentAnswers() {
 }
 
 /** A brand named from the staff brand list, a display lookup; an unknown one by its id's head. */
-function useBrandName() {
+export function useBrandName() {
   const brands = useAuthQuery(["staffBrands"], getStaffBrands, { staleTime: Infinity, retry: false });
   return useMemo(() => {
     const names = new Map<string, string>();
@@ -65,7 +65,7 @@ export function UnsentAnswersChart({ data }: { data: UnsentAnswers }) {
           { key: "failed", label: "Failed", color: RED, get: (m) => m.failed },
           { key: "refused", label: "Refused", color: REFUSED, get: (m) => m.refused },
         ]}
-        caption={(m) => (m.refusedByCode.length ? m.refusedByCode.map((c) => `${c.count} ${refusalCodeName(c.code).toLowerCase()}`).join(", ") : "not sent")}
+        caption={(m) => (m.refusedByCode.length ? m.refusedByCode.map((c) => `${c.count} ${refusalCodeName(c.code).toLowerCase()}`).join(", ") : "nothing refused")}
         format={n}
         label={label}
         empty={empty}
@@ -73,8 +73,8 @@ export function UnsentAnswersChart({ data }: { data: UnsentAnswers }) {
       <PeriodBars
         periods={periods}
         series={[
-          { key: "answered", label: "Sent", color: OK, get: (m) => m.answered },
-          { key: "answeredByTeam", label: "By their team", color: "var(--data-teal)", get: (m) => m.answeredByTeam },
+          { key: "answered", label: "Sent", color: "var(--data-teal)", get: (m) => m.answered },
+          { key: "answeredByTeam", label: "By their team", color: "var(--data-violet)", get: (m) => m.answeredByTeam },
           { key: "replaying", label: "Replaying", color: "var(--data-sky)", get: (m) => m.replaying },
           { key: "failed", label: "Failed", color: RED, get: (m) => m.failed },
           { key: "refused", label: "Refused", color: REFUSED, get: (m) => m.refused },
@@ -87,9 +87,8 @@ export function UnsentAnswersChart({ data }: { data: UnsentAnswers }) {
   );
 }
 
-export function UnsentAnswersView({ data }: { data: UnsentAnswers }) {
+export function UnsentAnswersView({ data, brand }: { data: UnsentAnswers; brand: (brandId: string) => string }) {
   const red = data.status === "red";
-  const brand = useBrandName();
   return (
     <div className="space-y-8">
       <div className="k-card flex items-start gap-3 px-4 py-3">
@@ -172,9 +171,10 @@ export function UnsentAnswersView({ data }: { data: UnsentAnswers }) {
 
 export function UnsentAnswersPage() {
   const q = useUnsentAnswers();
+  const brand = useBrandName();
   if (q.isError && !q.data) return <Failed what="the unsent answers" />;
   if (!q.data) return <Loading />;
-  return <UnsentAnswersView data={q.data} />;
+  return <UnsentAnswersView data={q.data} brand={brand} />;
 }
 
 /** The hub's one-second read: answers not sent in the last 24 h, red when the served verdict is red. */
