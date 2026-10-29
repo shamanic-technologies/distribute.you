@@ -9,7 +9,7 @@ import { pollOptions } from "@/lib/query-options";
 import { getPipeQueue, getPublicCatalogueSteps, type PublicCatalogueStep } from "@/lib/api";
 import { personName, teamPipes, type PipeQueue, type PipeQueuePerson, type TeamPipe } from "@/lib/v2/team-work";
 import { formatCount } from "@/lib/format-number";
-import { friendlyDate, timeAgo } from "@/lib/friendly-datetime";
+import { timeAgo } from "@/lib/friendly-datetime";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useCampaigns } from "@/components/v2/use-campaigns";
@@ -75,9 +75,13 @@ export function TeamWorkBody({
     <>
       <TopBar crumbs={[{ label: "Done by your team" }]} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-          {!settled ? <Shimmer className="h-8 w-72" /> : pipes.length === 0 ? "Your team works no pipe yet" : `Your team works ${pipes.length} ${pipes.length === 1 ? "pipe" : "pipes"}`}
-        </h1>
+        {settled ? (
+          <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
+            {pipes.length === 0 ? "Your team works no pipe yet" : `Your team works ${pipes.length} ${pipes.length === 1 ? "pipe" : "pipes"}`}
+          </h1>
+        ) : (
+          <Shimmer className="h-[34px] w-72" />
+        )}
         <p className="k-fg2 mt-1 text-[14px]">Who waits on your team at each step, and how many your team moved each week.</p>
 
         {!settled ? (
@@ -131,7 +135,13 @@ function PipeCard({ brandId, pipe, steps, onOpen }: { brandId: string; pipe: Tea
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">{data ? formatCount(data.waitingCount) : <Shimmer className="h-7 w-10" />}</p>
+          {data ? (
+            <p className="text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
+              {data.unservedReason ? <span className="k-fg4">—</span> : formatCount(data.waitingCount)}
+            </p>
+          ) : (
+            <Shimmer className="ml-auto h-7 w-10" />
+          )}
           <p className="k-fg3 text-[12px]">{data?.waitingCount === 1 ? "person waiting" : "people waiting"}</p>
         </div>
       </div>
@@ -163,7 +173,10 @@ function PipeCard({ brandId, pipe, steps, onOpen }: { brandId: string; pipe: Tea
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 
+const FIRST_ROWS = 8;
+
 function Waiting({ data, onOpen }: { data: PipeQueue; onOpen: (p: PipeQueuePerson) => void }) {
+  const [all, setAll] = useState(false);
   if (data.waiting.length === 0) {
     return <EmptyNote>Nobody waits on your team here.</EmptyNote>;
   }
@@ -181,7 +194,7 @@ function Waiting({ data, onOpen }: { data: PipeQueue; onOpen: (p: PipeQueuePerso
           </tr>
         </thead>
         <tbody>
-          {data.waiting.map((p) => (
+          {(all ? data.waiting : data.waiting.slice(0, FIRST_ROWS)).map((p) => (
             <tr key={p.leadId} className="k-row k-line-subtle cursor-pointer border-b last:border-b-0" onClick={() => onOpen(p)}>
               <td className="px-3 py-2 first:pl-4">
                 <button type="button" className="flex min-w-0 items-center gap-2.5 text-left" onClick={(e) => { e.stopPropagation(); onOpen(p); }}>
@@ -199,10 +212,19 @@ function Waiting({ data, onOpen }: { data: PipeQueue; onOpen: (p: PipeQueuePerso
           ))}
         </tbody>
       </table>
-      {data.waitingCount > data.waiting.length && (
-        <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px] tabular-nums">
-          The {formatCount(data.waiting.length)} who waited longest, of {formatCount(data.waitingCount)}.
-        </p>
+      {(data.waiting.length > FIRST_ROWS || data.waitingCount > data.waiting.length) && (
+        <div className="k-fg3 k-line-subtle flex items-center justify-between border-t px-4 py-2.5 text-[12px] tabular-nums">
+          <span>
+            {data.waitingCount > data.waiting.length
+              ? `The ${formatCount(data.waiting.length)} who waited longest, of ${formatCount(data.waitingCount)}`
+              : `Longest wait first`}
+          </span>
+          {data.waiting.length > FIRST_ROWS && (
+            <button type="button" className="k-btn-ghost h-6 px-2 text-[12px]" onClick={() => setAll((v) => !v)}>
+              {all ? "Show less" : `Show ${formatCount(data.waiting.length - FIRST_ROWS)} more`}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -291,7 +313,7 @@ function PersonDrawer({ person, pipe, steps, onClose }: { person: PipeQueuePerso
           </div>
         </div>
         <p className="k-fg2 text-[13px]">
-          {person.waitingSince ? `${fromName} on ${friendlyDate(person.waitingSince)}, waiting since.` : `${fromName}, date unknown.`}
+          {person.waitingSince ? `${fromName} ${timeAgo(person.waitingSince).toLowerCase()}.` : `${fromName}, date unknown.`}
         </p>
         <LeadStatus lead={{ campaignLeadId: person.campaignLeadId, step: { key: pipe.fromKey } }} lifetimeRevenueUsd={null} />
       </div>

@@ -124,9 +124,13 @@ export function V2Ledger() {
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {l ? `${usd(gross(l.books.spend))} spent since ${dayText(l.since)}` : q.isError ? "The books could not be read" : <Shimmer className="h-8 w-72" />}
-            </h1>
+            {l || q.isError ? (
+              <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
+                {l ? `${usd(gross(l.books.spend))} spent since ${dayText(l.since)}` : "The books could not be read"}
+              </h1>
+            ) : (
+              <Shimmer className="h-[34px] w-72" />
+            )}
             <p className="k-fg2 mt-1 text-[14px]">Every run is a production order: what it used, what it made, what it cost.</p>
           </div>
           {l && <Verdict l={l} />}

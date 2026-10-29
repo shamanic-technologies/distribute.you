@@ -44,6 +44,11 @@ import { UsersIcon } from "@phosphor-icons/react/dist/csr/Users";
 import { WavesIcon } from "@phosphor-icons/react/dist/csr/Waves";
 import { YoutubeLogoIcon } from "@phosphor-icons/react/dist/csr/YoutubeLogo";
 import { catalogueFaceSrc } from "@/lib/staff-catalogue";
+import { PencilSimpleLineIcon } from "@phosphor-icons/react/dist/csr/PencilSimpleLine";
+import { SealCheckIcon } from "@phosphor-icons/react/dist/csr/SealCheck";
+import { SmileyIcon } from "@phosphor-icons/react/dist/csr/Smiley";
+import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
+import { VideoCameraIcon } from "@phosphor-icons/react/dist/csr/VideoCamera";
 import { MARK_ICONS } from "@/components/v2/catalogue-mark-icons";
 
 /**
@@ -52,6 +57,11 @@ import { MARK_ICONS } from "@/components/v2/catalogue-mark-icons";
  * the ~190KB barrel. A name not listed is logged once and drawn as a plain circle.
  */
 const CATALOGUE_ICONS: Record<string, Icon> = {
+  "pencil-simple-line": PencilSimpleLineIcon,
+  "seal-check": SealCheckIcon,
+  "smiley": SmileyIcon,
+  "users-three": UsersThreeIcon,
+  "video-camera": VideoCameraIcon,
   "address-book": AddressBookIcon,
   at: AtIcon,
   bell: BellIcon,
