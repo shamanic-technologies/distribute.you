@@ -202,3 +202,12 @@ describe("Balance = one figure per mode, its parts on one bar (owner 2026-10-29)
     expect(HERO.match(/label: "Provisioned"[^}]*tip: PROVISIONED_TIP/g) ?? []).toHaveLength(2);
   });
 });
+
+describe("a prepaid balance below $0 reads as credit left $0.00 plus the overage (owner 2026-10-29)", () => {
+  it("never says Spent on credit, states what pays the overage back", () => {
+    expect(HERO).not.toContain("Spent on credit");
+    expect(V2).not.toContain("spent on credit");
+    expect(HERO).toContain("over your credit, taken from your {nextPayment}.");
+    expect(V2).toContain('nextPayment={mode === "subscription" ? "next monthly payment" : "next top-up"}');
+  });
+});

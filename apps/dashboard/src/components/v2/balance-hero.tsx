@@ -151,6 +151,7 @@ export function CreditBalanceCard({
   provisionedCents,
   chargesCents,
   discountPct,
+  nextPayment,
 }: {
   availableCents: number;
   creditedCents: number;
@@ -158,9 +159,12 @@ export function CreditBalanceCard({
   provisionedCents: number | null;
   chargesCents: number;
   discountPct: number | null;
+  /** What pays back a balance below $0: the next top-up (prepaid) or the plan's next payment. */
+  nextPayment: string;
 }) {
-  const onCredit = availableCents < 0;
-  const heroCents = onCredit ? -availableCents : availableCents;
+  // Below $0 (a run cost more than the credit left): credit left reads $0.00 and the
+  // overage is stated with what pays it back (owner 2026-10-29: the old label read as unclear).
+  const overCents = availableCents < 0 ? -availableCents : 0;
   const parts: BarPart[] =
     spentCents !== null && provisionedCents !== null
       ? [
@@ -175,11 +179,16 @@ export function CreditBalanceCard({
   return (
     <div className="k-card p-5">
       <HeroFigure
-        label={onCredit ? "Spent on credit" : "Credit left"}
-        value={formatBillingCents(heroCents)}
-        after={!onCredit && creditedCents > 0 ? `of ${formatBillingCents(creditedCents)} added` : undefined}
+        label="Credit left"
+        value={formatBillingCents(Math.max(0, availableCents))}
+        after={overCents === 0 && creditedCents > 0 ? `of ${formatBillingCents(creditedCents)} added` : undefined}
         chip={discountPct ? `${discountPct}% off usage` : null}
       />
+      {overCents > 0 && (
+        <p className="k-fg2 mt-1 text-[13px] leading-5">
+          {formatBillingCents(overCents)} over your credit, taken from your {nextPayment}.
+        </p>
+      )}
       <div className="mt-5">
         <StackedBar parts={parts.filter((p) => p.label !== "Left")} totalCents={Math.max(creditedCents, chargesCents)} />
         <BarLegend parts={parts} />
