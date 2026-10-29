@@ -36,6 +36,12 @@ const OPS = {
 };
 
 describe("plan following: served shapes", () => {
+  it("parses the real production read of 2026-10-29 (16 following, 1 red)", () => {
+    const d = PlanFollowingSchema.parse(JSON.parse(readFileSync(join(__dirname, "fixtures", "plan-following-prod-1029.json"), "utf8")));
+    expect(d.following).toBe(16);
+    expect(d.red.map((r) => planStateWords(r.state).words)).toEqual(["plan not applied: we cannot run it"]);
+  });
+
   it("parses the staff ops read", () => {
     const d = PlanFollowingSchema.parse(OPS);
     expect(d.status).toBe("red");
@@ -67,7 +73,8 @@ describe("plan following: words", () => {
   it("says every red state in plain words, an unknown one as served", () => {
     expect(planStateWords("plan_outside_caps")).toEqual({ words: "plan not applied: it would spend outside the campaign's budget", red: true });
     for (const s of ["no_plan", "plan_unreadable", "plan_not_ready", "plan_not_runnable", "apply_failed"]) expect(planStateWords(s).red).toBe(true);
-    for (const s of ["following", "applied", "stopped"]) expect(planStateWords(s).red).toBe(false);
+    for (const s of ["following", "applied", "stopped", "switched_off"]) expect(planStateWords(s).red).toBe(false);
+    for (const s of ["plan_contradicts_brief", "restore_failed"]) expect(planStateWords(s).red).toBe(true);
     expect(planStateWords("brand_new").words).toBe("brand_new");
     expect(followsPlanWords(true)).toBe("Follows its plan");
     expect(followsPlanWords(false)).toBe("Fixed funnel");

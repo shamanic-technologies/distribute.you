@@ -118,6 +118,44 @@ export function runningUnavailable(running: FactoryRunningLine | null): string |
 
 // ─── Monitoring (staff, fleet-wide) ────────────────────────────────────────
 
+/** One side of "what would change" (features-service v0.179.452+): only the legs that differ, and the WHOLE line's figures. */
+const ChangeSideSchema = z
+  .object({
+    pipes: z.array(z.object({ legKey: z.string(), pipeId: z.string().nullable(), name: z.string() }).passthrough()),
+    text: z.string(),
+    costPerTargetUsd: num.nullable(),
+    roi: num.nullable(),
+    basis: z.string().nullable(),
+    inputsBasis: z.string().nullish(),
+    unavailableReason: z.string().nullable(),
+  })
+  .passthrough();
+export type FactoryChangeSide = z.infer<typeof ChangeSideSchema>;
+
+/**
+ * One campaign of the last pass. Since features-service v0.179.452 it carries its STATE: `problem` (red, something
+ * broken), `not_yet` (normal colours: waiting on a first price or a catalogue line), `ok`; the served one-sentence
+ * `stateDetail`; and `change` when the plan differs. Nullish: a body from an older build carries none of them.
+ */
+const MonitoringCampaignSchema = z
+  .object({
+    campaignId: z.string(),
+    orgId: z.string(),
+    brandId: z.string(),
+    salesFunnelName: z.string(),
+    status: z.string(),
+    failure: z.string().nullable(),
+    planDiffers: z.boolean().nullable(),
+    pickDiffers: z.boolean(),
+    followsPlan: z.boolean().nullish(),
+    state: z.string().nullish(),
+    stateReason: z.string().nullish(),
+    stateDetail: z.string().nullish(),
+    target: z.string().nullish(),
+    change: z.object({ running: ChangeSideSchema, best: ChangeSideSchema }).passthrough().nullish(),
+  })
+  .passthrough();
+
 const OrgDaySchema = z
   .object({
     orgId: z.string(),
@@ -127,6 +165,7 @@ const OrgDaySchema = z
     differs: num,
     judgeFailed: num,
     planFailed: num,
+    notYet: num.optional(),
   })
   .passthrough();
 
@@ -148,24 +187,15 @@ export const FactoryShadowMonitoringSchema = z
           differs: num,
           judgeFailed: num,
           planFailed: num,
+          notYet: num.optional(),
           orgs: z.array(OrgDaySchema),
         })
         .passthrough(),
     ),
-    campaigns: z.array(
-      z
-        .object({
-          campaignId: z.string(),
-          orgId: z.string(),
-          brandId: z.string(),
-          salesFunnelName: z.string(),
-          status: z.string(),
-          failure: z.string().nullable(),
-          planDiffers: z.boolean().nullable(),
-          pickDiffers: z.boolean(),
-        })
-        .passthrough(),
-    ),
+    campaigns: z.array(MonitoringCampaignSchema),
+    // The last pass's campaigns in `state: problem` (red) and `state: not_yet` (normal colours), as served.
+    problems: z.array(MonitoringCampaignSchema).optional(),
+    notYet: z.array(MonitoringCampaignSchema).optional(),
   })
   .passthrough();
 export type FactoryShadowMonitoring = z.infer<typeof FactoryShadowMonitoringSchema>;
@@ -236,12 +266,30 @@ export function pickSourceWords(source: string | null): string | null {
   return PICK_SOURCE_WORDS[source] ?? source;
 }
 
-/** The campaigns of the last pass the hub turns red on: the served status, never re-graded. */
-export function failedCampaigns(data: FactoryShadowMonitoring): FactoryShadowMonitoringCampaign[] {
-  return data.campaigns.filter((c) => c.status !== "ok");
+/** The last pass's campaigns with a real problem (red): the served `problems[]`, never re-graded. */
+export function problemCampaigns(data: FactoryShadowMonitoring): FactoryShadowMonitoringCampaign[] {
+  return data.problems ?? [];
 }
 
-/** The campaigns of the last pass whose plan or a pick differs from what runs (served flags). */
+/** The last pass's campaigns waiting on a first price or a catalogue line (normal colours): the served `notYet[]`. */
+export function notYetCampaigns(data: FactoryShadowMonitoring): FactoryShadowMonitoringCampaign[] {
+  return data.notYet ?? [];
+}
+
+/** The last pass's campaigns whose plan differs, with what would change (served `change`), in served order. */
 export function changingCampaigns(data: FactoryShadowMonitoring): FactoryShadowMonitoringCampaign[] {
-  return data.campaigns.filter((c) => c.planDiffers === true || c.pickDiffers);
+  return data.campaigns.filter((c) => c.change != null);
+}
+
+const STATE_REASON_WORDS: Record<string, string> = {
+  judge_failed: "Jev could not answer for a pipe",
+  only_line_unpriced: "its only line to the Target has no price yet",
+};
+
+/** A campaign's state in one sentence: the served `stateDetail`, else its reason code in words, else as served. */
+export function stateSentence(c: FactoryShadowMonitoringCampaign): string {
+  if (c.stateDetail) return c.stateDetail;
+  const reason = c.stateReason ?? c.failure;
+  if (!reason) return c.state ?? c.status;
+  return STATE_REASON_WORDS[reason] ?? unavailableWords(reason) ?? reason;
 }

@@ -852,17 +852,18 @@ function Hub({ base }: { base: string }) {
           error={factory.isError && !factory.data}
           cells={[
             {
+              label: "Broken",
+              // Red ONLY for a real problem (owner 2026-10-29): the served verdict.
+              value: factory.data && (
+                <span style={{ color: factory.data.verdict.red ? "var(--data-rose)" : undefined }}>{factory.data.problems?.length ?? 0}</span>
+              ),
+              note: factory.data ? (factory.data.verdict.red ? factory.data.verdict.reasons.map(verdictReasonWords).join(", ") : `${factory.data.notYet?.length ?? 0} waiting on a first price`) : undefined,
+            },
+            {
               label: "Would change",
               value: factory.data && (factory.data.series[factory.data.series.length - 1]?.differs ?? 0),
               note: "live campaigns, last day",
               bars: factory.data?.series.map((d) => d.differs),
-            },
-            {
-              label: "Verdict",
-              value: factory.data && (
-                <span style={{ color: factory.data.verdict.red ? "var(--data-rose)" : undefined }}>{factory.data.verdict.red ? "Red" : "OK"}</span>
-              ),
-              note: factory.data?.verdict.red ? factory.data.verdict.reasons.map(verdictReasonWords).join(", ") : "judge and plan ran",
             },
           ]}
         />
