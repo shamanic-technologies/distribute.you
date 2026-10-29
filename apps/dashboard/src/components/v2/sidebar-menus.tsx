@@ -724,8 +724,8 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
           <span className="k-keys hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">esc</span> to close</span>
           <span className="ml-auto tabular-nums">
             {revenue ? `${formatCount(revenue.organizations.length)} companies` : ""}
-            {revenue && buckets ? " · " : ""}
-            {buckets ? `${formatCount(buckets.counts.contacted)} people` : ""}
+            {revenue && buckets?.people?.sent != null ? " · " : ""}
+            {buckets?.people?.sent != null ? `${formatCount(buckets.people.sent)} people` : ""}
           </span>
         </div>
       </div>

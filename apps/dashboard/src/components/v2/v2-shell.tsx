@@ -198,6 +198,9 @@ function V2Sidebar() {
   // Leads found counts the people the brand's lists hold, the page's People tab (owner 2026-10-11).
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held;
+  // People badge = people who were actually SENT an email (lead-service `people.sent`), the same 73
+  // the People page's Contacted tab shows; the `contacted` bucket also counts people still queued
+  // (Beyond Logic 2026-10-29: 127 vs 73).
   const buckets = useBucketCounts(brandId).data;
   // Deals badge = the people on the Deals board's columns (every lifecycle rung but Lead found),
   // read off the same served counts and key the page reads, so the two agree.
@@ -260,7 +263,7 @@ function V2Sidebar() {
                 href={v2Href(orgId, brandId, "people")}
                 label="People"
                 active={section === "people"}
-                trailing={<Count n={buckets?.counts.contacted} />}
+                trailing={<Count n={buckets?.people?.sent} />}
               />
               <NavItem
                 indent
