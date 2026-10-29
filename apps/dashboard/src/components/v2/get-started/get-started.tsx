@@ -1251,7 +1251,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       const outOfCredit = e instanceof ApiError && (e.status === 402 || (e.status === 502 && e.body?.upstreamStatus === 402));
       setRowsNote((cur) => ({
         ...cur,
-        [id]: outOfCredit ? "Your free preview credit is used up, so we stopped finding companies." : "We could not find more companies just now.",
+        [id]: outOfCredit ? `Your ${walkAtCost ? "" : "free "}preview credit is used up, so we stopped finding companies.` : "We could not find more companies just now.",
       }));
       setRowsDone((cur) => ({ ...cur, [id]: true }));
       if (audienceRef.current?.audienceId === id && first) {
@@ -1409,7 +1409,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         ...cur,
         [angle]:
           e instanceof ApiError && e.status === 402
-            ? "Your free preview credit is used up. Your emails are written once your account is set up."
+            ? `Your ${walkAtCost ? "" : "free "}preview credit is used up. Your emails are written once your account is set up.`
             : "We could not write this example just now. Try again.",
       }));
     } finally {

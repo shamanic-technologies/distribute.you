@@ -210,7 +210,7 @@ function AtCostTopup({
       </div>
       <div>
         <p className="k-label mb-2">Automatic reload</p>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-start gap-4">
           <DollarField label="When my credit falls under" value={threshold} onChange={setThreshold} problem={checked.problems.threshold} disabled={off} />
           <DollarField label="Add" value={reload} onChange={setReload} problem={checked.problems.reload} disabled={off} />
         </div>

@@ -961,6 +961,15 @@ export function isAtCostOffer(account: { free_credit_offer?: string } | null | u
 }
 
 /**
+ * billing gives this org no free money (no match, no welcome, no referral reward):
+ * the at-cost offer and an org opened through the API (billing `isNoFreeCreditOffer`).
+ * Every referral or free credit surface is hidden for it.
+ */
+export function offersNoFreeMoney(account: { free_credit_offer?: string } | null | undefined): boolean {
+  return account?.free_credit_offer === AT_COST_OFFER || account?.free_credit_offer === "agent_api";
+}
+
+/**
  * The at-cost checkout (owner 2026-10-29: « les memes montants minimaux $10 topup, et
  * below $5 au plus bas pour retopup, et montant de retopup at least $10 de plus que le
  * seuil de reload »). Our validation only: billing refuses none of them.

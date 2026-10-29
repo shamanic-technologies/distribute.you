@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { atCostCheckout, isAtCostOffer, matchNote, topupCta, wallCopy } from "../src/lib/v2/get-started";
+import { atCostCheckout, isAtCostOffer, matchNote, offersNoFreeMoney, topupCta, wallCopy } from "../src/lib/v2/get-started";
 import { spendConsentLines } from "../src/lib/v2/spend-consent";
 
 // ONBOARDING-PREPAID-1029 (owner 2026-10-29): every org created since is billing's
@@ -88,5 +88,31 @@ describe("the wall and the dashboard walk use the at-cost checkout", () => {
     expect(walk).toContain("readWalkOffer()");
     expect(walk).toContain("wallCopy(planMonthlyUsd, postpaidArm, walkAtCost)");
     expect(src("src/app/api/anon/offer/route.ts")).toContain("getOrgFreeCreditOffer(session.orgId)");
+  });
+});
+
+describe("no referral or free credit surface for a no-free-money org", () => {
+  it("covers the at-cost and API offers only", () => {
+    expect(offersNoFreeMoney({ free_credit_offer: "prepaid_at_cost" })).toBe(true);
+    expect(offersNoFreeMoney({ free_credit_offer: "agent_api" })).toBe(true);
+    expect(offersNoFreeMoney({ free_credit_offer: "match_100" })).toBe(false);
+    expect(offersNoFreeMoney({ free_credit_offer: "legacy" })).toBe(false);
+  });
+
+  it("the account menu and the palette offer Refer a friend only when billing says so", () => {
+    const menus = src("src/components/v2/sidebar-menus.tsx");
+    expect(menus).toContain('...(freeMoney.show ? [{ href: `${base}/referral`, label: "Refer a friend"');
+    expect(menus).toContain('if (s.section === "referral" && !freeMoney.show) continue;');
+    expect(src("src/lib/use-no-free-money.ts")).toContain("show: account !== undefined && !offersNoFreeMoney(account)");
+  });
+
+  it("the referral page promises no reward and Billing shows no free credit for it", () => {
+    const page = src("src/components/v2/setup-pages.tsx");
+    const at = page.indexOf("if (offersNoFreeMoney(account)) {");
+    expect(at).toBeGreaterThan(0);
+    const from = page.indexOf("return (", at);
+    const branch = page.slice(from, page.indexOf("  return (\n    <V2Page", from));
+    expect(branch).not.toMatch(/REFERRAL_CREDIT_USD|free|credit/i);
+    expect(src("src/components/v2/billing-page.tsx")).toContain('{account && !offersNoFreeMoney(account) && (\n        <Section id="free-credit"');
   });
 });
