@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getStaffBrands, getStaffFactoryShadowMonitoring, getStaffPlanFollowing } from "@/lib/api";
@@ -11,11 +11,22 @@ import { PeriodBars, SERIES_COLORS, dayLabel } from "@/components/v2/monitoring-
 import { Failed, Loading, OK, RED } from "@/components/v2/monitoring-sending";
 import {
   changingCampaigns,
-  failedCampaigns,
+  notYetCampaigns,
+  problemCampaigns,
+  stateSentence,
   unavailableWords,
   verdictReasonWords,
+  type FactoryChangeSide,
   type FactoryShadowMonitoring,
+  type FactoryShadowMonitoringCampaign,
 } from "@/lib/factory-shadow";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { formatUsdAdaptive } from "@/lib/format-number";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { stepLabel } from "@/lib/legs";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
+import { RoiLabel } from "@/components/v2/roi-label";
+import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 
 /**
  * Monitoring > Factory plan (staff only, FACTORY-P1-DASH). features-service's GTM Factory shadow pass runs every 3 hours
@@ -57,27 +68,159 @@ function useClientNames() {
 }
 
 function Verdict({ data }: { data: FactoryShadowMonitoring }) {
+  // Red ONLY for a real problem (owner 2026-10-29: « red only if broken »): the served verdict, never re-graded.
   const red = data.verdict.red;
+  const waiting = notYetCampaigns(data).length;
   return (
     <div className="k-card flex items-start gap-3 px-4 py-3">
       <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: red ? RED : OK }} aria-hidden="true" />
       <div className="min-w-0">
         <p className="text-[14px] font-medium" style={red ? { color: RED } : undefined}>
-          {red ? `Red: ${data.verdict.reasons.map(verdictReasonWords).join("; ")}.` : "Every live campaign was judged and planned on the last pass."}
+          {red
+            ? `Broken: ${data.verdict.reasons.map(verdictReasonWords).join("; ")}.`
+            : waiting > 0
+              ? `Nothing broken. ${waiting} campaign${waiting === 1 ? " waits" : "s wait"} on a first price.`
+              : "Nothing broken: every live campaign was judged and planned."}
         </p>
         <p className="k-fg3 mt-0.5 text-[12px]">
           {data.lastPass
             ? `Last pass ${utcTime(data.lastPass.sweptAt)} UTC over ${data.lastPass.campaigns} live campaigns, every ${data.everyHours} h.`
-            : "No pass has run yet."}{" "}
-          Shadow only: nothing runs from it.
+            : "No pass has run yet."}
         </p>
       </div>
     </div>
   );
 }
 
+/** A campaign line whose sentence is the served `stateDetail`: red dot for a problem, a neutral one while it waits. */
+function StateRows({ rows, names, red }: { rows: FactoryShadowMonitoringCampaign[]; names: ReturnType<typeof useClientNames>; red: boolean }) {
+  return (
+    <table className="w-full table-fixed text-[13px]">
+      <thead>
+        <tr className="k-line-subtle border-b">
+          <th className="k-label w-[28%] px-3 py-2.5 pl-4 text-left font-medium">Campaign</th>
+          <th className="k-label w-[22%] px-3 py-2.5 text-left font-medium">Client</th>
+          <th className="k-label px-3 py-2.5 pr-4 text-left font-medium">{red ? "What is broken" : "What it waits for"}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((c) => (
+          <tr key={c.campaignId} className="k-line-subtle border-b last:border-b-0">
+            <td className="px-3 py-2 pl-4">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: red ? RED : "var(--fg-4)" }} aria-hidden="true" />
+                <span className="truncate">{c.salesFunnelName}</span>
+              </span>
+            </td>
+            <td className="k-fg2 truncate px-3 py-2">{names.brand(c.brandId)}</td>
+            <td className="px-3 py-2 pr-4" style={red ? { color: RED } : undefined}>
+              {stateSentence(c)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** One side of a change: the differing pipes as chips (served name + served pipe mark). */
+function ChangePipes({ side }: { side: FactoryChangeSide }) {
+  return (
+    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      {side.pipes.map((p, i) => (
+        <Fragment key={`${p.legKey}-${i}`}>
+          {i > 0 && <span className="k-fg3">→</span>}
+          <span className="k-chip inline-flex items-center gap-1">
+            <ServedPipeMark pipeId={p.pipeId} size={12} />
+            {p.name}
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+const usd = (v: number | null) => (v == null ? null : formatUsdAdaptive(v));
+
+/** "$3,042 → $3,413": the whole line's served $ per Target, before then after, "expected" when the served basis says so. */
+function BeforeAfter({ running, best, fmt, good }: { running: FactoryChangeSide; best: FactoryChangeSide; fmt: (s: FactoryChangeSide) => string | null; good?: (s: FactoryChangeSide) => boolean }) {
+  const cell = (s: FactoryChangeSide) => {
+    const v = fmt(s);
+    if (v == null) return <span className="k-fg3 text-[12px]">{unavailableWords(s.unavailableReason) ?? "—"}</span>;
+    return <span className={good?.(s) ? "text-[var(--run)]" : ""}>{v}</span>;
+  };
+  return (
+    <span className="inline-flex flex-wrap items-baseline justify-end gap-x-1.5 tabular-nums">
+      <span className="k-fg2">{cell(running)}</span>
+      <span className="k-fg3">→</span>
+      {cell(best)}
+      {(running.basis === "expected" || best.basis === "expected") && <span className="k-fg3 text-[11px]">expected</span>}
+    </span>
+  );
+}
+
+const COST_TIP = "What one Target costs on the whole line: each pipe's own cost per outcome times the outcomes it needs per Target. Expected until every input is measured.";
+
+function ChangeRows({ rows, names, targetLabel }: { rows: FactoryShadowMonitoringCampaign[]; names: ReturnType<typeof useClientNames>; targetLabel: (key: string | null | undefined) => string }) {
+  return (
+    <div className="k-scroll overflow-x-auto">
+      <table className="w-full min-w-[980px] text-[13px]">
+        <thead>
+          <tr className="k-line-subtle border-b">
+            <th className="k-label w-[220px] px-3 py-2.5 pl-4 text-left font-medium">Campaign</th>
+            <th className="k-label px-3 py-2.5 text-left font-medium">Runs now → Would run</th>
+            <th className="k-label w-[190px] px-3 py-2.5 text-right font-medium">
+              <span className="inline-flex justify-end">
+                <ExpectedLabel tip={COST_TIP}>$ / Target</ExpectedLabel>
+              </span>
+            </th>
+            <th className="k-label w-[150px] px-3 py-2.5 pr-4 text-right font-medium">
+              <span className="inline-flex justify-end">
+                <RoiLabel />
+              </span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => {
+            const ch = c.change!;
+            return (
+              <tr key={c.campaignId} className="k-line-subtle border-b align-top last:border-b-0">
+                <td className="px-3 py-2.5 pl-4">
+                  <p className="truncate">{c.salesFunnelName}</p>
+                  <p className="k-fg3 truncate text-[12px]">
+                    {names.brand(c.brandId)} · to {targetLabel(c.target)}
+                  </p>
+                </td>
+                <td className="space-y-1.5 px-3 py-2.5 text-[12px]">
+                  <div className="flex items-start gap-2">
+                    <span className="k-label w-[70px] shrink-0 pt-[3px]">Runs now</span>
+                    <ChangePipes side={ch.running} />
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="k-label w-[70px] shrink-0 pt-[3px]">Would run</span>
+                    <ChangePipes side={ch.best} />
+                  </div>
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <BeforeAfter running={ch.running} best={ch.best} fmt={(s) => usd(s.costPerTargetUsd)} />
+                </td>
+                <td className="px-3 py-2.5 pr-4 text-right">
+                  <BeforeAfter running={ch.running} best={ch.best} fmt={(s) => (s.roi == null ? null : formatRoi(s.roi))} good={(s) => roiIsGood(s.roi)} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function FactoryShadowView({ data }: { data: FactoryShadowMonitoring }) {
   const names = useClientNames();
+  const catalogue = useLegCatalogue();
+  const targetLabel = (key: string | null | undefined) => stepLabel(catalogue, key) ?? key ?? "its Target";
   // One bar segment per client, in the producer's order of first appearance (no sort).
   const orgIds = useMemo(() => {
     const seen = new Set<string>();
@@ -85,25 +228,48 @@ export function FactoryShadowView({ data }: { data: FactoryShadowMonitoring }) {
     return [...seen];
   }, [data.series]);
   const periods = data.series.map((d) => ({ ...d, period: d.day }));
-  const orgSeries = (pick: "differs" | "judgeFailed" | "planFailed") =>
-    orgIds.map((id, i) => ({
-      key: id,
-      label: names.org(id),
-      color: SERIES_COLORS[i % SERIES_COLORS.length],
-      get: (d: (typeof periods)[number]) => d.orgs.find((o) => o.orgId === id)?.[pick] ?? 0,
-    }));
   const short = (d: string, s?: boolean) => dayLabel(d, s ? { month: "short", day: "numeric" } : undefined);
-  const failed = failedCampaigns(data);
+  const problems = problemCampaigns(data);
+  const notYet = notYetCampaigns(data);
   const changing = changingCampaigns(data);
   return (
     <div className="space-y-8">
       <Verdict data={data} />
 
+      {/* Real problems first, red; then what only waits, in normal colours (owner 2026-10-29). */}
+      <section>
+        <SectionTitle count={problems.length}>Broken</SectionTitle>
+        <div className="k-card overflow-hidden">
+          {problems.length === 0 ? <EmptyNote>Nothing broken on the last pass.</EmptyNote> : <StateRows rows={problems} names={names} red />}
+        </div>
+      </section>
+
+      {notYet.length > 0 && (
+        <section>
+          <SectionTitle count={notYet.length}>Waiting on a first price</SectionTitle>
+          <div className="k-card overflow-hidden">
+            <StateRows rows={notYet} names={names} red={false} />
+          </div>
+        </section>
+      )}
+
+      <section>
+        <SectionTitle count={changing.length}>What would change</SectionTitle>
+        <div className="k-card overflow-hidden">
+          {changing.length === 0 ? <EmptyNote>Every live campaign already runs its best line.</EmptyNote> : <ChangeRows rows={changing} names={names} targetLabel={targetLabel} />}
+        </div>
+      </section>
+
       <section>
         <SectionTitle right={<span>per client, per day</span>}>Campaigns that would change</SectionTitle>
         <PeriodBars
           periods={periods}
-          series={orgSeries("differs")}
+          series={orgIds.map((id, i) => ({
+            key: id,
+            label: names.org(id),
+            color: SERIES_COLORS[i % SERIES_COLORS.length],
+            get: (d: (typeof periods)[number]) => d.orgs.find((o) => o.orgId === id)?.differs ?? 0,
+          }))}
           caption={(d) => `${d.differs} of ${d.campaigns} live campaigns`}
           format={(v) => v.toLocaleString("en-US")}
           label={short}
@@ -112,12 +278,13 @@ export function FactoryShadowView({ data }: { data: FactoryShadowMonitoring }) {
       </section>
 
       <section>
-        <SectionTitle right={<span>per day</span>}>Judge or plan failed</SectionTitle>
+        <SectionTitle right={<span>per day</span>}>Broken or waiting</SectionTitle>
         <PeriodBars
           periods={periods}
           series={[
             { key: "judge", label: "Judge failed", color: "var(--data-amber)", get: (d) => d.judgeFailed },
-            { key: "plan", label: "Plan failed", color: RED, get: (d) => d.planFailed },
+            { key: "plan", label: "Plan broken", color: RED, get: (d) => d.planFailed },
+            { key: "notYet", label: "Waiting on a first price", color: "var(--fg-4)", get: (d) => d.notYet ?? 0 },
           ]}
           caption={(d) => `${d.campaigns} live campaigns`}
           format={(v) => v.toLocaleString("en-US")}
@@ -125,68 +292,7 @@ export function FactoryShadowView({ data }: { data: FactoryShadowMonitoring }) {
           empty={`No pass in the last ${FACTORY_DAYS} days.`}
         />
       </section>
-
-      <section>
-        <SectionTitle count={failed.length}>Failed on the last pass</SectionTitle>
-        <div className="k-card overflow-hidden">
-          {failed.length === 0 ? (
-            <EmptyNote>None.</EmptyNote>
-          ) : (
-            <CampaignRows rows={failed.map((c) => ({ c, why: unavailableWords(c.failure) ?? c.status }))} names={names} red />
-          )}
-        </div>
-      </section>
-
-      <section>
-        <SectionTitle count={changing.length}>Would change on the last pass</SectionTitle>
-        <div className="k-card overflow-hidden">
-          {changing.length === 0 ? (
-            <EmptyNote>None.</EmptyNote>
-          ) : (
-            <CampaignRows
-              rows={changing.map((c) => ({
-                c,
-                why: [c.planDiffers === true ? "another line to its Target" : null, c.pickDiffers ? "another play on a pipe" : null].filter(Boolean).join(", "),
-              }))}
-              names={names}
-            />
-          )}
-        </div>
-      </section>
     </div>
-  );
-}
-
-function CampaignRows({
-  rows,
-  names,
-  red = false,
-}: {
-  rows: { c: FactoryShadowMonitoring["campaigns"][number]; why: string }[];
-  names: ReturnType<typeof useClientNames>;
-  red?: boolean;
-}) {
-  return (
-    <table className="w-full table-fixed text-[13px]">
-      <thead>
-        <tr className="k-line-subtle border-b">
-          <th className="k-label w-[34%] px-3 py-2.5 pl-4 text-left font-medium">Campaign</th>
-          <th className="k-label w-[26%] px-3 py-2.5 text-left font-medium">Client</th>
-          <th className="k-label px-3 py-2.5 pr-4 text-left font-medium">{red ? "Why" : "What would change"}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(({ c, why }) => (
-          <tr key={c.campaignId} className="k-line-subtle border-b last:border-b-0">
-            <td className="truncate px-3 py-2 pl-4">{c.salesFunnelName}</td>
-            <td className="k-fg2 truncate px-3 py-2">{names.brand(c.brandId)}</td>
-            <td className="px-3 py-2 pr-4" style={red ? { color: RED } : undefined}>
-              {why}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 
@@ -197,24 +303,24 @@ export function FactoryShadowPage() {
   return <FactoryShadowView data={q.data} />;
 }
 
-/** The hub's one-second read: the campaigns the last pass failed on, red when the served verdict is, the reasons under it. */
+/** The hub's one-second read: the campaigns broken on the last pass, red ONLY when the served verdict is. */
 export function FactoryShadowTile({ href }: { href: string }) {
   const q = useFactoryShadowMonitoring();
   const data = q.data;
-  const failed = data ? failedCampaigns(data) : undefined;
+  const problems = data ? problemCampaigns(data) : undefined;
   return (
-    <StatTile label="Factory plan failed" note={data?.lastPass ? `of ${data.lastPass.campaigns} live` : undefined} href={href}>
+    <StatTile label="Factory plan broken" note={data?.lastPass ? `of ${data.lastPass.campaigns} live` : undefined} href={href}>
       <Figure
         value={
           q.isError && !data ? (
             <span className="k-fg3 text-[13px]">not readable</span>
-          ) : !data || failed === undefined ? (
+          ) : !data || problems === undefined ? (
             <Shimmer className="h-6 w-16" />
           ) : (
-            <span style={{ color: data.verdict.red ? RED : undefined }}>{failed.length}</span>
+            <span style={{ color: data.verdict.red ? RED : undefined }}>{problems.length}</span>
           )
         }
-        sub={!data ? undefined : data.verdict.red ? data.verdict.reasons.map(verdictReasonWords).join(", ") : "judge and plan ran on every campaign"}
+        sub={!data ? undefined : data.verdict.red ? data.verdict.reasons.map(verdictReasonWords).join(", ") : "nothing broken"}
       />
     </StatTile>
   );
