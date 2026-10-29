@@ -1,0 +1,5 @@
+:HL["/_next/static/chunks/0db.bsjq7sa5z.css?dpl=dpl_HPu5jXrvmMUVbgZ1tZicsvW9f9Ew","style"]
+:HL["/_next/static/chunks/0-lqmdffq7-ce.css?dpl=dpl_HPu5jXrvmMUVbgZ1tZicsvW9f9Ew","style"]
+:HL["/_next/static/media/234d9015b631dab9-s.p.0_3shu4gwev1q.woff2?dpl=dpl_HPu5jXrvmMUVbgZ1tZicsvW9f9Ew","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/media/797e433ab948586e-s.p.08e28id.o-okb.woff2?dpl=dpl_HPu5jXrvmMUVbgZ1tZicsvW9f9Ew","font",{"crossOrigin":"","type":"font/woff2"}]
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"product","param":null,"prefetchHints":0,"slots":{"children":{"name":"slug","param":{"type":"d","key":"lead-enrichment-software","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300}

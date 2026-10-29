@@ -21,6 +21,6 @@
   "POST /api/experience/submit": {
     "status": 200,
     "contentType": "application/json; charset=utf-8",
-    "body": "{\"redirectTo\":\"https://auth.explee.com/oidc/auth/gfnXdbR2QB4P5M-fm2Bog\"}"
+    "body": "{\"redirectTo\":\"https://lab-explee-auth.distribute.you/oidc/auth/gfnXdbR2QB4P5M-fm2Bog\"}"
   }
 }

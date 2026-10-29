@@ -1,0 +1,5 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Xianyu">
+  <!-- Lettermark: the brand's own wordmark character on its brand colour. -->
+  <rect width="24" height="24" rx="5.5" fill="#FFE411"/>
+  <text x="12" y="12.6" fill="#1a1a1a" font-family="ui-sans-serif,system-ui,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="central">闲</text>
+</svg>
