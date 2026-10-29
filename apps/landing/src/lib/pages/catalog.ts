@@ -287,7 +287,7 @@ function priceListHtml(prices: PlatformPrice[] | null): string {
 }
 
 const DESCRIPTION =
-  "Every tool behind your cold emails, priced per unit with our margin included. Why we do not charge per email sent, and the live price list.";
+  "Every tool our AI agent uses, at the vendor's API price with 0% markup. Why we do not charge per email sent, and the live price list.";
 
 /** `prices` is null when the live read failed: the page says so instead of listing nothing. */
 export function renderCatalogPage(prices: PlatformPrice[] | null): string {
@@ -297,7 +297,7 @@ export function renderCatalogPage(prices: PlatformPrice[] | null): string {
     path: "/catalog",
     eyebrow: "Price catalog",
     h1: "What your emails cost",
-    lead: "Every tool behind your emails, billed at public catalogue prices. Our margin is included.",
+    lead: "Every tool behind your emails, at the vendor's API price with 0% markup.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -330,7 +330,7 @@ export function renderCatalogPage(prices: PlatformPrice[] | null): string {
         id: "pays-for",
         h2: "What you pay for",
         tint: true,
-        html: `<p>Your campaigns use a few tools: lead data, research, AI, sending. You pay for each tool by the unit, our margin included. Nothing else.</p>
+        html: `<p>Your campaigns use a few tools: lead data, research, AI, sending. You pay for each tool by the unit, at the vendor's price with 0% markup. One user is free, and a team is $9 per user each month.</p>
 <p>Follow-ups are reserved when the first email goes out, so you see their cost before they are sent.</p>`,
       },
       {

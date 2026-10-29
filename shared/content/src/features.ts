@@ -40,6 +40,6 @@ export const DISTRIBUTION_STEPS: DistributionStep[] = [
   {
     number: 3,
     title: "Set your caps",
-    description: "Pick a max budget or a max volume per period. You pay as you go at our public catalog prices. Replies land in your Unibox: answer them yourself or let the AI book the meeting.",
+    description: "Pick a max budget or a max volume per period. You pay as you go at the vendor's API price, 0% markup. Replies land in your Unibox: answer them yourself or let the AI book the meeting.",
   },
 ];

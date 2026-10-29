@@ -2,7 +2,7 @@
 
 **Revenue made easy.**
 
-> The platform is free. We find your buyers, email them and book your meetings.
+> Our AI agent finds your buyers, writes to them and books your meetings. Free for one user, at the API price with 0% markup.
 
 [distribute.you](https://distribute.you) | [Dashboard](https://dashboard.distribute.you)
 
@@ -10,7 +10,7 @@
 
 distribute.you is done-for-you revenue automation. Give us your URL. We find your buyers, contact them by cold email and book your meetings.
 
-Every campaign is a sales funnel campaign. You set its caps: a max budget, a max volume per period, or both. You pay as you go at the public prices on [distribute.you/catalog](https://distribute.you/catalog).
+Every campaign is a sales funnel campaign. You set its caps: a max budget, a max volume per period, or both. You pay as you go, at the vendor's API price with 0% markup, listed on [distribute.you/catalog](https://distribute.you/catalog). One user is free, and a team is $9 per user each month.
 
 ## Distribution Features
 
