@@ -14,6 +14,7 @@
  *
  * Alias-free: the unit tests import it directly.
  */
+import { agencyCompareLinks } from "./agencies";
 
 export type Buyer = "agent" | "agency";
 
@@ -42,6 +43,8 @@ export type SitePage = {
   live: boolean;
   /** In-page anchors the page's own footer lists first (its "sections"). */
   sections?: { label: string; href: string }[];
+  /** The page's own vs/alternatives cluster, listed in its footer (empty clusters are not linked). */
+  compare?: { label: string; href: string }[];
 };
 
 /** Outcome display names, in the owner's order (root CLAUDE.md POSITIONING). */
@@ -67,7 +70,15 @@ function agencyPath(slug: OutcomeSlug): string {
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/"]);
+const LIVE_PATHS = new Set<string>(["/", "/revenue-agency"]);
+
+/** The sections of the Revenue Agency page (PAGE-REVENUE-AGENCY-1029). */
+const REVENUE_AGENCY_SECTIONS = [
+  { label: "How we work", href: "/revenue-agency#how" },
+  { label: "Our data", href: "/revenue-agency#data" },
+  { label: "Price", href: "/revenue-agency#price" },
+  { label: "FAQ", href: "/revenue-agency#faq" },
+];
 
 /** The sections of the homepage, listed first in its footer. */
 const HOME_SECTIONS = [
@@ -94,6 +105,7 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o) => [
     navLabel: `${o.name} Agency`,
     description: o.line,
     live: LIVE_PATHS.has(agencyPath(o.slug)),
+    ...(o.slug === "revenue" ? { sections: REVENUE_AGENCY_SECTIONS, compare: agencyCompareLinks() } : {}),
   },
 ]);
 
@@ -105,6 +117,15 @@ export function livePages(buyer?: Buyer, pages: SitePage[] = SITE_PAGES): SitePa
 /** The catalogue page served at `path`, if any (live only). */
 export function pageAt(path: string, pages: SitePage[] = SITE_PAGES): SitePage | undefined {
   return livePages(undefined, pages).find((p) => p.path === path);
+}
+
+/**
+ * The live page that owns `path`: the page itself, or the page whose own cluster it sits
+ * under (`/revenue-agency/vs/belkins` belongs to `/revenue-agency`), so a cluster page
+ * wears its page's nav and footer.
+ */
+export function ownerPage(path: string, pages: SitePage[] = SITE_PAGES): SitePage | undefined {
+  return pageAt(path, pages) ?? livePages(undefined, pages).find((p) => p.path !== "/" && path.startsWith(`${p.path}/`));
 }
 
 /** Sitemap paths of every live outcome page (the homepage included). */

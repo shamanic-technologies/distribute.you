@@ -169,9 +169,13 @@ describe("the pages", () => {
 
   it("no em dash, never an agency", () => {
     for (const full of [page, renderIndexListPage(LIST, new Map())]) {
-      const html = full.slice(0, full.indexOf("<footer>"));
-      expect(html).not.toContain(String.fromCharCode(0x2014));
-      expect(html.toLowerCase()).not.toContain("agency");
+      // The index copy itself, between the nav and the footer: the nav's Agency menu comes
+      // from the page catalogue (owner 2026-10-29 allows the word there), not from this page.
+      const html = full.slice(full.indexOf('<nav class="nav-menu-panel">'), full.indexOf("<footer>"));
+      expect(html.length).toBeGreaterThan(1000);
+      expect(full.slice(0, full.indexOf("<footer>"))).not.toContain(String.fromCharCode(0x2014));
+      const copy = html.slice(html.indexOf("</nav>"));
+      expect(copy.toLowerCase()).not.toContain("agency");
     }
   });
 });

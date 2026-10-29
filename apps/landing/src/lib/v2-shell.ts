@@ -20,10 +20,10 @@ export const SITE = "https://distribute.you";
  * Bumped together with the homepage's link: every page reads the same stylesheet, so
  * an edit to it ships to a returning visitor only if every `?v=` moves at once.
  */
-export const V2_STYLES_VERSION = 19;
+export const V2_STYLES_VERSION = 20;
 export const V2_MAIN_VERSION = 8;
 /** The motion kit (`public/landing/v2/motion.js`): it loads GSAP only on a page with a `data-motion` element. */
-export const MOTION_VERSION = 1;
+export const MOTION_VERSION = 2;
 
 
 /** The why under a hero's lead paragraph (compare, best-for, alternatives, About...). */
@@ -86,6 +86,10 @@ export type Shell = {
   noindex?: boolean;
   /** Skip the closing CTA box (the 404 already points elsewhere). */
   noCta?: boolean;
+  /** Extra tags for the head (a page's own stylesheet, e.g. the Agency pages). */
+  head?: string;
+  /** A class on <body> scoping that stylesheet. */
+  bodyClass?: string;
 };
 
 export function shell(s: Shell): string {
@@ -118,9 +122,10 @@ ${s.noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" 
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/landing/v2/styles.css?v=${V2_STYLES_VERSION}">
+${s.head ?? ""}
 ${ld}
 </head>
-<body>
+<body${s.bodyClass ? ` class="${esc(s.bodyClass)}"` : ""}>
 ${nav(s.path)}
 ${s.body}
 ${s.noCta ? "" : ctaBox()}

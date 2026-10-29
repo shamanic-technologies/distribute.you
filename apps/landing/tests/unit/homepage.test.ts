@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
-import { withSiteChrome } from "../../src/lib/site-chrome";
+import { navHtml, withSiteChrome } from "../../src/lib/site-chrome";
 
 /**
  * The homepage, served at `/`.
@@ -36,7 +36,7 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=19"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=20"');
     expect(html).toContain('src="/landing/v2/main.js?v=9"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
@@ -150,8 +150,12 @@ describe("the offer the page states", () => {
     expect(banner?.[0]).toContain("<span data-promo-until>");
     const outside = html.replace(/<a class="promo-bar"[\s\S]*?<\/a>/, "");
     for (const gone of ["match your first", "$100 free", "from $100", "first top-up"]) expect(outside, gone).not.toContain(gone);
+    // The nav's Agency card states the Agency offer ("From $1K/month + 10% of budget",
+    // owner 2026-10-29): the self-serve offer is checked on the page's own copy.
+    const own = html.replace(navHtml("/"), "");
+    expect(own).not.toBe(html);
     for (const gone of ["$99", "/month", "free trial", "3-day", "Monthly plan", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go"]) {
-      expect(html, gone).not.toContain(gone);
+      expect(own, gone).not.toContain(gone);
     }
     // The stats band splits "$" and the figure into two spans, so "$1/day" alone missed it.
     expect(html).not.toMatch(/per day/i);
