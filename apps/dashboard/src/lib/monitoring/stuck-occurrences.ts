@@ -37,7 +37,22 @@ export const StuckOccurrencesSchema = z.object({
   queued: num,
   stuckByReason: z.array(z.object({ reason: z.string(), count: num, oldestWaitingSince: z.string() })),
   stuckOccurrences: z.array(StuckOccurrenceSchema),
-  byDay: z.array(z.object({ day: z.string(), answered: num, answeredLate: num, skipped: num, failed: num, waiting: num })),
+  byDay: z.array(
+    z.object({
+      day: z.string(),
+      answered: num,
+      answeredLate: num,
+      skipped: num,
+      failed: num,
+      waiting: num,
+      /** How long the people answered that day waited, from their fact to the answer (minutes). null = nobody answered. */
+      waitMinutes: z.object({ p50: num.nullable(), p90: num.nullable(), max: num.nullable() }),
+    }),
+  ),
+  /** How long the person waiting longest has waited now (minutes); null = nobody waits past `stuckAfterMinutes`. */
+  oldestWaitingMinutes: num.nullable(),
+  /** Waiting longer than this, even in a moving queue, is stuck (red). */
+  queuedTooLongMinutes: num,
 });
 export type StuckOccurrences = z.infer<typeof StuckOccurrencesSchema>;
 export type StuckOccurrence = z.infer<typeof StuckOccurrenceSchema>;
@@ -65,4 +80,18 @@ export function waitReasonName(reason: string): string {
 export function waitingPerson(o: Pick<StuckOccurrence, "person">): string | null {
   const p = o.person;
   return p ? p.name ?? p.email ?? p.phone ?? null : null;
+}
+
+/** A wait in minutes as people say it: "45 s", "12 min", "4.2 h", "2.1 days". Display only. */
+export function waitLabel(minutes: number): string {
+  const one = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  if (minutes < 1) return minutes === 0 ? "0 min" : `${Math.round(minutes * 60)} s`;
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  if (minutes < 48 * 60) return `${one(minutes / 60)} h`;
+  return `${one(minutes / 1440)} days`;
+}
+
+/** Red when the longest waiter has waited past the served limit; null (nobody waiting) is never red. */
+export function longestWaitIsRed(d: Pick<StuckOccurrences, "oldestWaitingMinutes" | "queuedTooLongMinutes">): boolean {
+  return d.oldestWaitingMinutes != null && d.oldestWaitingMinutes > d.queuedTooLongMinutes;
 }

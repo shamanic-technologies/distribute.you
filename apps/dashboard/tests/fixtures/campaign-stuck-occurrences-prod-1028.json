@@ -14,7 +14,12 @@
    "answeredLate": 0,
    "skipped": 9,
    "failed": 0,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-13",
@@ -22,7 +27,12 @@
    "answeredLate": 0,
    "skipped": 7,
    "failed": 0,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-14",
@@ -30,7 +40,12 @@
    "answeredLate": 3,
    "skipped": 13,
    "failed": 1,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-15",
@@ -38,7 +53,12 @@
    "answeredLate": 0,
    "skipped": 25,
    "failed": 6,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-16",
@@ -46,7 +66,12 @@
    "answeredLate": 0,
    "skipped": 347,
    "failed": 0,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-17",
@@ -54,7 +79,12 @@
    "answeredLate": 0,
    "skipped": 202,
    "failed": 0,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": null,
+    "p90": null,
+    "max": null
+   }
   },
   {
    "day": "2026-10-18",
@@ -62,7 +92,12 @@
    "answeredLate": 0,
    "skipped": 168,
    "failed": 0,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-19",
@@ -70,7 +105,12 @@
    "answeredLate": 0,
    "skipped": 133,
    "failed": 0,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-20",
@@ -78,7 +118,12 @@
    "answeredLate": 0,
    "skipped": 183,
    "failed": 1,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-21",
@@ -86,7 +131,12 @@
    "answeredLate": 0,
    "skipped": 385,
    "failed": 2,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-22",
@@ -94,7 +144,12 @@
    "answeredLate": 1,
    "skipped": 393,
    "failed": 1,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-23",
@@ -102,7 +157,12 @@
    "answeredLate": 0,
    "skipped": 78,
    "failed": 0,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-24",
@@ -110,7 +170,12 @@
    "answeredLate": 16,
    "skipped": 739,
    "failed": 1,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-25",
@@ -118,7 +183,12 @@
    "answeredLate": 3,
    "skipped": 480,
    "failed": 0,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-26",
@@ -126,7 +196,12 @@
    "answeredLate": 0,
    "skipped": 268,
    "failed": 1,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-27",
@@ -134,7 +209,12 @@
    "answeredLate": 4,
    "skipped": 423,
    "failed": 2,
-   "waiting": 0
+   "waiting": 0,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   },
   {
    "day": "2026-10-28",
@@ -142,7 +222,14 @@
    "answeredLate": 38,
    "skipped": 1052,
    "failed": 0,
-   "waiting": 50
+   "waiting": 50,
+   "waitMinutes": {
+    "p50": 1.2,
+    "p90": 8.4,
+    "max": 12.0
+   }
   }
- ]
+ ],
+ "oldestWaitingMinutes": null,
+ "queuedTooLongMinutes": 60
 }

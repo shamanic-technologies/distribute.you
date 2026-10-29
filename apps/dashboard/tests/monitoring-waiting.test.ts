@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MONITORING_PAGES, parseMonitoringPath } from "../src/lib/monitoring/monitoring";
-import { StuckOccurrencesSchema, waitReasonName, waitingPerson } from "../src/lib/monitoring/stuck-occurrences";
+import { StuckOccurrencesSchema, longestWaitIsRed, waitLabel, waitReasonName, waitingPerson } from "../src/lib/monitoring/stuck-occurrences";
 
 /**
  * REACTIVE-THROUGHPUT-1028: campaign-service stopped emailing `trigger_occurrence_stuck` (48 emails on 2026-10-28 about
@@ -20,7 +20,7 @@ describe("Monitoring > Prospects waiting: campaign-service's read parses as serv
     expect(typeof d.queued).toBe("number");
     expect(d.stuckOccurrences[0].campaignName).toBeTruthy();
     expect(d.stuckOccurrences.some((o) => o.person === null)).toBe(true);
-    expect(Object.keys(d.byDay[0]).sort()).toEqual(["answered", "answeredLate", "day", "failed", "skipped", "waiting"]);
+    expect(Object.keys(d.byDay[0]).sort()).toEqual(["answered", "answeredLate", "day", "failed", "skipped", "waitMinutes", "waiting"]);
   });
 
   it("the real production read of 2026-10-28 parses whole (ok, people queued, a daily series)", () => {
@@ -28,6 +28,33 @@ describe("Monitoring > Prospects waiting: campaign-service's read parses as serv
     expect(d.status).toBe("ok");
     expect(d.queued).toBeGreaterThan(0);
     expect(d.byDay.length).toBeGreaterThan(0);
+  });
+
+  it("the real production read of 2026-10-29 parses whole: wait per day and the longest wait now (campaign-service #820)", () => {
+    const d = StuckOccurrencesSchema.parse(JSON.parse(readFileSync(join(__dirname, "fixtures", "campaign-stuck-occurrences-prod-1029.json"), "utf8")));
+    expect(d.oldestWaitingMinutes).toBeGreaterThan(d.queuedTooLongMinutes);
+    expect(longestWaitIsRed(d)).toBe(true);
+    expect(d.byDay.some((x) => x.waitMinutes.p90 === null && x.answered === 0)).toBe(true);
+    expect(d.byDay.some((x) => (x.waitMinutes.p90 ?? 0) > 60)).toBe(true);
+  });
+
+  it("a read missing the wait fields is refused, never drawn blank", () => {
+    const { oldestWaitingMinutes: _o, ...rest } = fixture();
+    expect(StuckOccurrencesSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it("the longest wait is red only past the served limit; nobody waiting is never red", () => {
+    expect(longestWaitIsRed({ oldestWaitingMinutes: null, queuedTooLongMinutes: 60 })).toBe(false);
+    expect(longestWaitIsRed({ oldestWaitingMinutes: 45, queuedTooLongMinutes: 60 })).toBe(false);
+    expect(longestWaitIsRed({ oldestWaitingMinutes: 61, queuedTooLongMinutes: 60 })).toBe(true);
+  });
+
+  it("says a wait in plain words", () => {
+    expect(waitLabel(0)).toBe("0 min");
+    expect(waitLabel(0.5)).toBe("30 s");
+    expect(waitLabel(12.4)).toBe("12 min");
+    expect(waitLabel(250)).toBe("4.2 h");
+    expect(waitLabel(4320)).toBe("3 days");
   });
 
   it("an ok read with nobody stuck parses too", () => {
@@ -69,6 +96,9 @@ describe("Monitoring > Prospects waiting: page and hub", () => {
     expect(src).toContain("data.stuckOccurrences.map");
     expect(src).toContain("data.byDay.map");
     expect(src).toContain("d.answeredLate");
+    expect(src).toContain("d.waitMinutes.p90");
+    expect(src).toContain("d.waitMinutes.p50");
+    expect(src).toContain("longestWaitIsRed(data)");
     expect(src).not.toMatch(/\.sort\(/);
     expect(src).not.toMatch(/\.reduce\(/);
   });
