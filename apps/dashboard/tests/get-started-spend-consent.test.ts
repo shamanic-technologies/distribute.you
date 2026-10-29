@@ -60,7 +60,9 @@ describe("two statements ticked before the card is taken, one per A/B arm (owner
   });
 
   it("prepaid: the reload is required, same amount as the top-up, no switch and no warning dialog", () => {
-    const src = read("src/components/v2/get-started/prepaid-topup.tsx");
+    // The older offers' checkout only: the at-cost one makes it optional (owner 2026-10-29).
+    const file = read("src/components/v2/get-started/prepaid-topup.tsx");
+    const src = file.slice(file.indexOf("function MatchTopup("), file.indexOf("export function PrepaidTopup("));
     expect(src).toContain("reload: { thresholdUsd: DEFAULT_RELOAD_THRESHOLD_USD, amountUsd: firstParsed.usd }");
     expect(src).not.toContain("setReloadOn");
     expect(src).not.toContain("Turn off anyway");

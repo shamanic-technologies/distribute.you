@@ -109,6 +109,12 @@ export async function settleTopup(
     // issued in India takes no off-session mandate, and "Check again" looped forever).
     // A refusal is a 400 and the same card is refused every time; anything else may pass
     // on a retry.
+    // An org billing still holds to a mandatory reload (409 `auto_topup_required`) keeps it:
+    // the credit is paid, so the launch goes on with the reload on.
+    if (e instanceof ApiError && e.status === 409 && e.body?.code === "auto_topup_required") {
+      console.warn("[get-started] billing keeps the automatic reload on for this org:", e.body);
+      return { ok: true, account: acct, reloadRefused: false };
+    }
     if (e instanceof ApiError && e.status === 400) {
       console.warn("[get-started] automatic reload refused by billing, launching without it:", e.body);
       return { ok: true, account: acct, reloadRefused: true };

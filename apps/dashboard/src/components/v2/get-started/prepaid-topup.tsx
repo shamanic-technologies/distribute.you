@@ -26,8 +26,8 @@ import { SpendConsent, allTicked } from "./spend-consent";
 
 export interface TopupChoice {
   topupUsd: number;
-  /** Always set: the reload is required (owner 2026-10-11). */
-  reload: { thresholdUsd: number; amountUsd: number };
+  /** null = no automatic reload (the at-cost checkout's box unticked, owner 2026-10-29). */
+  reload: { thresholdUsd: number; amountUsd: number } | null;
   /** The statements as ticked, for billing's record. */
   consent: PaymentConsentRecord;
 }
@@ -141,8 +141,8 @@ function DollarField({
 
 /**
  * The at-cost checkout (owner 2026-10-29, every org created since): the first top-up
- * (at least $10), then the automatic reload: under $X (at least $5), add $Y (at least
- * $X + $10). Required, one step, one payment. No match, nothing free.
+ * (at least $10), then the automatic reload, OPTIONAL and ticked by default: under $X
+ * (at least $5), add $Y (at least $X + $10). One step, one payment. No match, nothing free.
  */
 function AtCostTopup({
   busy,
@@ -161,10 +161,11 @@ function AtCostTopup({
   const [firstOther, setFirstOther] = useState("");
   const [threshold, setThreshold] = useState(String(AT_COST_DEFAULT_THRESHOLD_USD));
   const [reload, setReload] = useState(String(AT_COST_DEFAULT_RELOAD_USD));
+  const [reloadOn, setReloadOn] = useState(true);
   const [ticked, setTicked] = useState([false, false]);
   const [shown, setShown] = useState(false);
 
-  const checked = atCostCheckout({ topup: first === OTHER ? firstOther : String(first), threshold, reload });
+  const checked = atCostCheckout({ topup: first === OTHER ? firstOther : String(first), threshold, reload, reloadOn });
   const off = busy || disabled;
   const topupUsd = checked.values?.topupUsd ?? AT_COST_TOPUP_CHOICES_USD[0];
   const limit = monthlyLimit === undefined ? null : monthlyLimitToSave(monthlyLimit, { kind: "prepaid", topupUsd });
@@ -172,10 +173,12 @@ function AtCostTopup({
     arm: {
       kind: "prepaid",
       topupUsd,
-      reload: {
-        thresholdUsd: checked.values?.thresholdUsd ?? AT_COST_DEFAULT_THRESHOLD_USD,
-        amountUsd: checked.values?.reloadUsd ?? AT_COST_DEFAULT_RELOAD_USD,
-      },
+      reload: reloadOn
+        ? {
+            thresholdUsd: checked.values?.thresholdUsd ?? AT_COST_DEFAULT_THRESHOLD_USD,
+            amountUsd: checked.values?.reloadUsd ?? AT_COST_DEFAULT_RELOAD_USD,
+          }
+        : null,
       ...(limit && "usd" in limit ? { limitUsd: limit.usd } : {}),
     },
   });
@@ -185,7 +188,10 @@ function AtCostTopup({
     if (!checked.values || !allTicked(ticked)) return;
     onPay({
       topupUsd: checked.values.topupUsd,
-      reload: { thresholdUsd: checked.values.thresholdUsd, amountUsd: checked.values.reloadUsd },
+      reload:
+        checked.values.thresholdUsd !== null && checked.values.reloadUsd !== null
+          ? { thresholdUsd: checked.values.thresholdUsd, amountUsd: checked.values.reloadUsd }
+          : null,
       consent: consentRecord(lines, new Date(), navigator.userAgent),
     });
   }
@@ -209,11 +215,20 @@ function AtCostTopup({
         />
       </div>
       <div>
-        <p className="k-label mb-2">Automatic reload</p>
-        <div className="flex flex-wrap items-start gap-4">
-          <DollarField label="When my credit falls under" value={threshold} onChange={setThreshold} problem={checked.problems.threshold} disabled={off} />
-          <DollarField label="Add" value={reload} onChange={setReload} problem={checked.problems.reload} disabled={off} />
-        </div>
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={reloadOn} onChange={(e) => {
+              setReloadOn(e.target.checked);
+              // The reload statement changes with it: ticked again on its new words.
+              setTicked((t) => [false, t[1]]);
+            }} disabled={off} />
+          <span className="k-fg font-medium">Reload my credit automatically</span>
+        </label>
+        {reloadOn && (
+          <div className="mt-2 flex flex-wrap items-start gap-4">
+            <DollarField label="When my credit falls under" value={threshold} onChange={setThreshold} problem={checked.problems.threshold} disabled={off} />
+            <DollarField label="Add" value={reload} onChange={setReload} problem={checked.problems.reload} disabled={off} />
+          </div>
+        )}
       </div>
       <SpendConsent lines={lines} ticked={ticked} onChange={setTicked} disabled={off} />
       <button

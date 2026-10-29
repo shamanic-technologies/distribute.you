@@ -27,7 +27,7 @@ export type ConsentArm =
    * Prepaid: the amount paid now is added again each time the credit runs out.
    * `limitUsd`: the monthly charge limit set at onboarding, named in the reload sentence.
    */
-  | { kind: "prepaid"; topupUsd: number; limitUsd?: number; reload?: { thresholdUsd: number; amountUsd: number } }
+  | { kind: "prepaid"; topupUsd: number; limitUsd?: number; reload?: { thresholdUsd: number; amountUsd: number } | null }
   /**
    * The plan: its monthly amount now; each step is $100 a month more (billing's ladder).
    * `limitUsd`: the monthly charge limit set at onboarding, named in the ladder sentence.
@@ -57,7 +57,10 @@ export function spendConsentLines(input: { arm: ConsentArm }): [ConsentLine, Con
       ? {
           // Owner 2026-10-13: the reload, the limit that bounds it, and that the customer stays in control.
           // The at-cost checkout names its own reload pair (owner 2026-10-29).
-          text: arm.reload
+          // `reload: null` = the at-cost checkout's reload box left unticked: nothing is added by itself.
+          text: arm.reload === null
+            ? "My campaigns run on the credit I add. When it runs out, they pause until I add more."
+            : arm.reload
             ? `When my credit falls under ${usd(arm.reload.thresholdUsd)}, ${usd(arm.reload.amountUsd)} is added automatically${limit(arm.limitUsd)}. My campaigns keep running on the budget I set. I can pause them anytime.`
             : `When my credit runs out, ${usd(arm.topupUsd)} is added automatically${limit(arm.limitUsd)}. My campaigns keep running on the budget I set. I can pause them anytime.`,
           link: null,
