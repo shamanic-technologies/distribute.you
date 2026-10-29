@@ -4,9 +4,9 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getStaffStuckOccurrences } from "@/lib/api";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
-import { PeriodBars, dayLabel } from "@/components/v2/monitoring-charts";
+import { DailyLines, PeriodBars, dayLabel } from "@/components/v2/monitoring-charts";
 import { Dash, Failed, Loading, OK, RED } from "@/components/v2/monitoring-sending";
-import { waitReasonName, waitingPerson, type StuckOccurrences } from "@/lib/monitoring/stuck-occurrences";
+import { longestWaitIsRed, waitLabel, waitReasonName, waitingPerson, type StuckOccurrences } from "@/lib/monitoring/stuck-occurrences";
 
 /**
  * Monitoring > Triggers > Prospects waiting (staff only, REACTIVE-THROUGHPUT-1028). campaign-service serves whether a
@@ -28,6 +28,9 @@ const people = (v: number) => `${v.toLocaleString("en-US")} ${v === 1 ? "person"
 
 export function ProspectsWaitingView({ data }: { data: StuckOccurrences }) {
   const red = data.status === "red";
+  // Axis unit only: hours once a served wait passes 2 h, so ticks read "5 h", never "16.7 h" (the values are served).
+  const unit = data.byDay.some((d) => (d.waitMinutes.p90 ?? 0) > 120) ? 60 : 1;
+  const inUnit = (m: number | null) => (m == null ? null : m / unit);
   return (
     <div className="space-y-8">
       <div className="k-card flex items-start gap-3 px-4 py-3">
@@ -63,6 +66,26 @@ export function ProspectsWaitingView({ data }: { data: StuckOccurrences }) {
           empty={`Nobody acted in the last ${WAITING_DAYS} days.`}
         />
         <p className="k-fg3 mt-2 text-[12px]">Late = answered more than {data.stuckAfterMinutes} min after the person acted.</p>
+      </section>
+
+      <section>
+        <SectionTitle right={<span>Days are UTC</span>}>How long people wait</SectionTitle>
+        <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <LongestWait data={data} />
+          <DailyLines
+            points={data.byDay}
+            lines={[
+              { key: "p90", label: "9 in 10 answered within", color: "var(--data-amber)", get: (d) => inUnit(d.waitMinutes.p90) },
+              { key: "p50", label: "Half answered within", color: "var(--data-teal)", get: (d) => inUnit(d.waitMinutes.p50) },
+              { key: "limit", label: "Red above", color: "var(--fg-3)", dashed: true, get: () => inUnit(data.queuedTooLongMinutes) },
+            ]}
+            caption={(d) => (d.waitMinutes.max == null ? "nobody answered" : `longest ${waitLabel(d.waitMinutes.max)}, ${people(d.answered)} answered`)}
+            format={(v) => waitLabel(v * unit)}
+            windows={[{ key: "all", label: `${WAITING_DAYS} days`, days: null }]}
+            empty={`Nobody was answered in the last ${WAITING_DAYS} days.`}
+            label="Wait before the answer, per day"
+          />
+        </div>
       </section>
 
       <section>
@@ -117,6 +140,23 @@ export function ProspectsWaitingView({ data }: { data: StuckOccurrences }) {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/** The one figure: how long the person waiting longest has waited now, red past the served limit. */
+function LongestWait({ data }: { data: StuckOccurrences }) {
+  const m = data.oldestWaitingMinutes;
+  const red = longestWaitIsRed(data);
+  return (
+    <div className="k-card h-fit p-4">
+      <p className="k-label">Longest wait now</p>
+      <p className="mt-2 text-[28px] font-medium leading-8 tabular-nums" style={{ color: red ? RED : undefined }}>
+        {m == null ? "Nobody" : waitLabel(m)}
+      </p>
+      <p className="k-fg3 mt-1 text-[12px]">
+        {m == null ? `Nobody waits past ${data.stuckAfterMinutes} min.` : `Red past ${waitLabel(data.queuedTooLongMinutes)}.`}
+      </p>
     </div>
   );
 }

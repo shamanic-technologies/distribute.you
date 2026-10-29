@@ -44,6 +44,7 @@ import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { TriggerReportsPage, TriggerReportsTile, useTriggerReports } from "@/components/v2/monitoring-triggers";
 import { triggerName } from "@/lib/monitoring/trigger-reports";
 import { ProspectsWaitingPage, ProspectsWaitingTile, useStuckOccurrences } from "@/components/v2/monitoring-waiting";
+import { longestWaitIsRed, waitLabel } from "@/lib/monitoring/stuck-occurrences";
 import { TriggerHealthPage, TriggerHealthTile, useTriggerHealth } from "@/components/v2/monitoring-trigger-health";
 import { redTriggers, watchedTriggers } from "@/lib/monitoring/trigger-health";
 import { UnsentAnswersPage, UnsentAnswersTile, useUnsentAnswers } from "@/components/v2/monitoring-unsent-answers";
@@ -814,7 +815,16 @@ function Hub({ base }: { base: string }) {
               value: waiting.data && <span style={{ color: waiting.data.status === "red" ? "var(--data-rose)" : undefined }}>{waiting.data.stuck.toLocaleString("en-US")}</span>,
               note: waiting.data ? `waiting over ${waiting.data.stuckAfterMinutes} min` : "waiting over 30 min",
             },
-            { label: "In a moving queue", value: waiting.data?.queued.toLocaleString("en-US"), note: "not a problem" },
+            {
+              label: "Longest wait now",
+              value: waiting.data && (
+                <span style={{ color: longestWaitIsRed(waiting.data) ? "var(--data-rose)" : undefined }}>
+                  {waiting.data.oldestWaitingMinutes == null ? "Nobody" : waitLabel(waiting.data.oldestWaitingMinutes)}
+                </span>
+              ),
+              note: "bars: 9 in 10 answered within, per day",
+              bars: waiting.data?.byDay.slice(-7).reverse().map((d) => d.waitMinutes.p90 ?? 0),
+            },
           ]}
         />
         <Card
