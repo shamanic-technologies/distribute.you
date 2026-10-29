@@ -421,7 +421,7 @@ function ProductionOrders({ orgId, brandId, steps }: { orgId: string; brandId: s
         <div className="k-scroll overflow-x-auto">
           <table className="w-full min-w-[760px] table-fixed text-[13px]">
             <colgroup>
-              <col className="w-[96px]" />
+              <col className="w-[120px]" />
               <col />
               <col className="w-[24%]" />
               <col className="w-[26%]" />
