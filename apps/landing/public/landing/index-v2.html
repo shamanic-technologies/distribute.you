@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>distribute.you. Get revenue in 24h. The platform is free</title>
-<meta name="description" content="Revenue made easy. Paste your website. We write and send your cold emails, answer the replies and book your meetings. The platform is free.">
+<title>AI Sales Agent: Revenue Automation Done For You | distribute.you</title>
+<meta name="description" content="Revenue made easy. distribute.you is the AI sales agent that finds your buyers, writes to them and books your meetings. Open source, free for one user, at the API price with 0% markup.">
 <meta name="theme-color" content="#ffffff">
 <link rel="canonical" href="https://distribute.you/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="distribute.you. Get revenue in 24h. The platform is free">
-<meta property="og:description" content="Revenue made easy. Paste your website. We write and send your cold emails, answer the replies and book your meetings. The platform is free.">
+<meta property="og:title" content="AI Sales Agent: Revenue Automation Done For You | distribute.you">
+<meta property="og:description" content="Revenue made easy. distribute.you is the AI sales agent that finds your buyers, writes to them and books your meetings. Open source, free for one user, at the API price with 0% markup.">
 <meta property="og:url" content="https://distribute.you/">
 <meta property="og:image" content="https://distribute.you/opengraph-image">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="distribute.you. Get revenue in 24h. The platform is free">
+<meta property="og:image:alt" content="distribute.you, the AI sales agent. Revenue Automation Done For You.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://distribute.you/opengraph-image">
 <link rel="preconnect" href="https://dashboard.distribute.you">
@@ -22,39 +22,73 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/landing/v2/styles.css?v=20">
-<style>
-.promo-bar { display: block; padding: 10px 16px; text-align: center; font-size: 14px; color: var(--text); background: var(--accent-50); border-bottom: 1px solid var(--accent-100); text-decoration: none; }
-.promo-bar b { margin-left: 6px; font-weight: 500; color: var(--accent); }
-.promo-bar:hover b { text-decoration: underline; }
-</style></head>
+<link rel="stylesheet" href="/landing/v2/agent.css?v=1">
+</head>
 <body>
-<a class="promo-bar" href="https://dashboard.distribute.you/get-started">Until <span data-promo-until>October 31</span>, we match your first $100. That's $100 free. <b>Start free</b></a>
 
 <!-- Nav: gojiberry floating pill, links from the page catalogue (src/lib/site-chrome.ts) -->
 <!--site-nav-->
 
-<!-- Hero: explee -->
-<section class="hero">
+<!-- Hero: explee light + the oxygen provider orbit around our WhatsApp agent -->
+<section class="hero hero-agent">
   <div class="hero-glow" aria-hidden="true"></div>
   <canvas class="hero-lines" id="hero-lines" aria-hidden="true"></canvas>
   <div class="wrap hero-inner">
-    __HOT_LEAD_ROW__
+    <div class="hero-grid">
+      <div class="hero-copy">
+        __HOT_LEAD_ROW__
 
-    <span class="eyebrow why-eyebrow">Revenue made easy.</span>
-    <h1>Get <span class="accent">revenue in 24h</span><br>With B2B Sales Meetings
-      <span class="sub">distribute.you does done-for-you revenue automation: we find your buyers, contact them by cold email and book your meetings.</span>
-    </h1>
+        <span class="eyebrow why-eyebrow">Revenue made easy.</span>
+        <h1>Revenue Automation<br><span class="accent">Done For You</span>
+          <span class="sub">distribute.you is the AI sales agent that does done-for-you revenue automation: it finds your buyers, writes to them and books your meetings, at the API price.</span>
+        </h1>
 
-    <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>You pay only for the outreach you choose to run.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free for one user. Every action at the API price, 0% markup.</div>
 
-    <form class="launch" action="https://dashboard.distribute.you/get-started" method="get" id="hero-form">
-      <div class="launch-field">
-        <input id="hero-website" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
-        <button class="btn btn-accent" type="submit"><span>Start free</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <form class="launch" action="https://dashboard.distribute.you/get-started" method="get" id="hero-form">
+          <div class="launch-field">
+            <input id="hero-website" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
+            <button class="btn btn-accent" type="submit"><span>Start free</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          </div>
+        </form>
+        <div class="hero-links">
+          <a class="no-site" href="https://dashboard.distribute.you/get-started">I don't have a website</a>
+          <a class="no-site" href="#agent">Use it from Claude Code or Grok</a>
+          <a class="no-site" href="/gtm-agency">Want our team on it? GTM Agency</a>
+        </div>
       </div>
-    </form>
-    <a class="no-site" href="https://dashboard.distribute.you/get-started">I don't have a website</a>
 
+      <div class="agent-stage" aria-label="Our AI agent, talking to you on WhatsApp, calls the tools it needs at their API price">
+        <div class="orbit-wrap" aria-hidden="true">
+          <span class="orbit-ring r1"></span><span class="orbit-ring r2"></span>
+          <span class="orbit-wave"></span><span class="orbit-wave w2"></span>
+          <div class="orbit-core"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="30" height="30">Your AI agent</div>
+          <div class="orbit" data-motion="orbit" data-motion-speed="70">
+            <span class="orbit-logo" style="--a:0deg;--i:0"><img src="https://img.logo.dev/anthropic.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:36deg;--i:1"><img src="https://img.logo.dev/apollo.io?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:72deg;--i:2"><img src="https://img.logo.dev/google.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:108deg;--i:3"><img src="https://img.logo.dev/instantly.ai?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:144deg;--i:4"><img src="https://img.logo.dev/openai.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:180deg;--i:5"><img src="https://img.logo.dev/firecrawl.dev?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:216deg;--i:6"><img src="https://img.logo.dev/deepseek.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:252deg;--i:7"><img src="https://img.logo.dev/twilio.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:288deg;--i:8"><img src="https://img.logo.dev/z.ai?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" style="--a:324deg;--i:9"><img src="https://img.logo.dev/serper.dev?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+          </div>
+        </div>
+        <div class="wa" role="img" aria-label="A WhatsApp chat: the agent reads your website, plans the day, sends and books a meeting">
+          <div class="wa-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="30" height="30"><div><b>distribute.you agent</b><small>online</small></div></div>
+          <div class="wa-body">
+            <div class="wa-row in" style="--t:0.9s"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg">I read acme.com. Your best buyers: heads of sales at B2B software.</div></div>
+            <div class="wa-row in" style="--t:2.3s"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg">40 emails today, each priced before I send. Go?</div></div>
+            <div class="wa-row out" style="--t:3.3s"><div class="wa-msg">Go!</div></div>
+            <div class="wa-row in" style="--t:4.9s"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg">Northwind Health replied: Thursday 10am works.</div></div>
+            <div class="wa-row in" style="--t:6.1s"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg booked">Meeting booked in your calendar.</div></div>
+          </div>
+          <script>/* Plays the thread once, before first paint; reduced motion keeps the final state. */if(!(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches))document.currentScript.previousElementSibling.classList.add("play");</script>
+        </div>
+      </div>
+    </div>
 
     <div class="showcase">
       <div class="showcase-label">Discover who else grows on autopilot</div>
@@ -104,11 +138,23 @@
   </div>
 </section>
 
+<!-- The offer in one line: treg.to's "0% markup · no seats · billed per call" strip -->
+<section class="offer-strip" aria-label="The offer">
+  <div class="wrap">
+    <ul class="strip" data-motion="reveal" data-motion-stagger>
+      <li><b>0%</b><span>markup on every API price</span></li>
+      <li><b>$0</b><span>for one user, hosted by us</span></li>
+      <li><b>$9</b><span>per user for teams</span></li>
+      <li><b>MIT</b><span>open source, run it yourself</span></li>
+    </ul>
+  </div>
+</section>
+
 <!-- Proof -->
 <section class="framed tint" id="proof">
   <div class="wrap">
     <div class="section-head center rv">
-      <span class="eyebrow">Real clients, real numbers</span>
+      <span class="eyebrow">Receipts from real runs</span>
       <h2 style="margin-top:16px">What our clients got back.</h2>
       <p>Live figures, read off their own dashboards.</p>
     </div>
@@ -423,89 +469,199 @@
   <div class="wrap">
     <div class="stats">
       <div class="stat rv"><div class="n"><span data-count="24">0</span><span class="u">h</span></div><div class="l">From signup to your first revenue signal</div></div>
-      <div class="stat rv"><div class="n"><span class="u">$</span><span data-count="0">0</span></div><div class="l">Platform fee. You pay only for your outreach.</div></div>
+      <div class="stat rv"><div class="n"><span data-count="0">0</span><span class="u">%</span></div><div class="l">Markup on the API price of every action.</div></div>
       <div class="stat rv"><div class="n"><span data-count="2">0</span><span class="u">min</span></div><div class="l">To launch. Onboarding is a URL and a click.</div></div>
     </div>
   </div>
 </section>
 
-<!-- Fit -->
-<section class="framed" id="fit">
+<!-- Price before the action: treg.to pricing, live from the public catalog -->
+<section class="framed" id="prices">
   <div class="wrap">
-    <div class="section-head rv">
-      <span class="eyebrow">Is it for you?</span>
-      <h2 style="margin-top:16px">Built for companies where one conversation is worth chasing.</h2>
+    <div class="section-head center" data-motion="reveal">
+      <span class="eyebrow">API price, nothing added</span>
+      <h2 style="margin-top:16px">See the price before every action.</h2>
+      <p>Every tool our agent calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
-    <div class="fit">
-      <div class="fit-card yes rv">
-        <h3>A good fit</h3>
+    <div class="prices-grid">
+      <!--action-prices-->
+      <aside class="byok" data-motion="reveal">
+        <span class="byok-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg></span>
+        <h3>Your own key always wins</h3>
+        <p>Run the open source version with your own API keys. Each vendor bills you directly, and we see nothing.</p>
+        <h3 class="byok-2">Your balance is the cap</h3>
+        <p>Hosted accounts run on a prepaid balance. Auto reload tops it up at the level you choose.</p>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- Replace the point-tool stack: oxygen #stack, prices read off each vendor's own page -->
+<section class="framed tint" id="stack">
+  <div class="wrap">
+    <div class="section-head center" data-motion="reveal">
+      <span class="eyebrow">One agent, every tool</span>
+      <h2 style="margin-top:16px">Replace the point-tool stack.</h2>
+      <p>Each tool sells you a monthly plan. Our agent calls the same kind of tools for you, only when an action runs.</p>
+    </div>
+    <div class="stack-table-wrap" data-motion="reveal">
+      <table class="stack-table">
+        <thead><tr><th>Job</th><th>Separate tool</th><th class="ours">distribute.you</th></tr></thead>
+        <tbody>
+          <tr><td>Lead data</td><td><img src="https://img.logo.dev/apollo.io?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="18" height="18">Apollo Basic <b>$49/user/month</b></td><td class="ours">At the API price, per lead</td></tr>
+          <tr><td>Enrichment and research</td><td><img src="https://img.logo.dev/clay.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="18" height="18">Clay Launch <b>$167/month</b></td><td class="ours">At the API price, per lookup</td></tr>
+          <tr><td>Email sending</td><td><img src="https://img.logo.dev/instantly.ai?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="18" height="18">Instantly Growth <b>$47/month</b></td><td class="ours">At the API price, per email</td></tr>
+          <tr><td>Mailboxes and domains</td><td><img src="https://img.logo.dev/mailforge.ai?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="18" height="18">Mailforge <b>$3/mailbox/month</b></td><td class="ours">Our own warmed domains, in the email price</td></tr>
+          <tr><td>Writing and replies</td><td>Your time, every day</td><td class="ours">Our AI agent, at the token price</td></tr>
+        </tbody>
+        <tfoot><tr><td>Every month</td><td><b>$263/month</b> before mailboxes</td><td class="ours"><b>$0/month</b> for one user, plus each action</td></tr></tfoot>
+      </table>
+      <p class="stack-source">Prices read on each vendor's pricing page on October 29, 2026: <a href="https://www.apollo.io/pricing" rel="nofollow noopener" target="_blank">Apollo</a>, <a href="https://www.clay.com/pricing" rel="nofollow noopener" target="_blank">Clay</a>, <a href="https://instantly.ai/pricing" rel="nofollow noopener" target="_blank">Instantly</a>, <a href="https://www.mailforge.ai/pricing" rel="nofollow noopener" target="_blank">Mailforge</a>. Monthly billing, entry plan.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing: origami "you pay for / always free", three plans, same features -->
+<section class="framed tint tint-both" id="pricing">
+  <div class="wrap">
+    <div class="section-head center rv">
+      <span class="eyebrow">Pricing</span>
+      <h2 style="margin-top:16px">Start free. Pay the API price.</h2>
+      <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
+    </div>
+
+    <div class="plans plans-3">
+      <article class="plan rv">
+        <span class="plan-tag"><i></i>Open source</span>
+        <div class="plan-price">Free<small>on your server</small></div>
+        <p class="plan-desc">Run it yourself and keep every byte.</p>
+        <a class="btn btn-outline btn-lg" href="https://github.com/distribute-you/gtm-factory" target="_blank" rel="noopener">View the code</a>
+        <div class="plan-included">What's included</div>
         <ul>
-          <li><i>✓</i>B2B, selling internationally</li>
-          <li><i>✓</i>Contract value above $5,000</li>
-          <li><i>✓</i>Customer lifetime revenue between $2,000 and $100,000</li>
-          <li><i>✓</i>Already making $50,000 a month or more</li>
-          <li><i>✓</i>Agencies, consultancies, B2B services, hardware and SaaS with a sales call</li>
+          <li><i></i>MIT license, every line on GitHub</li>
+          <li><i></i>Your data stays in your own database</li>
+          <li><i></i>Your own API keys, billed by each vendor</li>
+        </ul>
+      </article>
+
+      <article class="plan featured rv">
+        <span class="plan-tag"><i></i>Hosted</span>
+        <div class="plan-price">Free<small>for one user</small></div>
+        <p class="plan-desc">We host it. You pay each action at the API price.</p>
+        <a class="btn btn-accent btn-lg" href="https://dashboard.distribute.you/get-started">Start free</a>
+        <div class="plan-included">What's included</div>
+        <ul>
+          <li><i></i>Every action at the vendor's API price, 0% markup</li>
+          <li><i></i>Our AI agent talks with you on WhatsApp</li>
+          <li><i></i>Cold email from our own warmed domains</li>
+          <li><i></i>Replies answered until the meeting is booked</li>
+          <li><i></i>Templates, AI models and audiences tested side by side</li>
+          <li><i></i>A prepaid balance: start with $10, auto reload keeps it going</li>
+        </ul>
+      </article>
+
+      <article class="plan rv">
+        <span class="plan-tag"><i></i>Team</span>
+        <div class="plan-price">$9<small>per user, each month</small></div>
+        <p class="plan-desc">Your whole team in one workspace.</p>
+        <a class="btn btn-outline btn-lg" href="https://dashboard.distribute.you/get-started">Start free</a>
+        <div class="plan-included">What's included</div>
+        <ul>
+          <li><i></i>Everything in Hosted</li>
+          <li><i></i>Every teammate on the same campaigns</li>
+          <li><i></i>The same API prices, 0% markup</li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="payfor" data-motion="reveal" data-motion-stagger>
+      <div class="payfor-card">
+        <h3>You pay for</h3>
+        <ul>
+          <li>Each action, at the vendor's API price</li>
+          <li>The AI our agent uses, your WhatsApp chats included</li>
+          <li>Card fees, at the processor's own price</li>
         </ul>
       </div>
-      <div class="fit-card no rv">
-        <h3>Not a fit</h3>
+      <div class="payfor-card free">
+        <h3>Always free</h3>
         <ul>
-          <li><i>×</i>Consumer products</li>
-          <li><i>×</i>Local businesses selling in one city</li>
-          <li><i>×</i>Investment funds looking for deal flow</li>
-          <li><i>×</i>Enterprise sales with a 12-month cycle</li>
-          <li><i>×</i>Anyone who wants to send from their own mailbox</li>
+          <li>The platform, for one user</li>
+          <li>Your dashboard and every report</li>
+          <li>The open source code and every update</li>
+          <li>Exporting your leads and your data</li>
         </ul>
+      </div>
+    </div>
+
+    <a class="agency-bridge rv" href="/gtm-agency">
+      <span><b>Want our team to run it for you?</b> The GTM Agency runs your whole go-to-market. From $1K/month + 10% of budget.</span>
+      <em>See the GTM Agency</em>
+    </a>
+  </div>
+</section>
+
+<!-- Give this to your agent: treg.to's copy box -->
+<section class="framed" id="agent">
+  <div class="wrap">
+    <div class="agent-grid">
+      <div class="section-head" data-motion="reveal">
+        <span class="eyebrow">Works from your own agent</span>
+        <h2 style="margin-top:16px">Give this to your agent.</h2>
+        <p>Run distribute.you from Claude Code, Grok or any agent that speaks MCP. Same agent, same API prices.</p>
+        <div class="agent-logos">
+          <span><img src="https://img.logo.dev/claude.ai?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="20" height="20">Claude Code</span>
+          <span><img src="https://img.logo.dev/x.ai?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="20" height="20">Grok</span>
+          <span><img src="https://img.logo.dev/cursor.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="20" height="20">Cursor</span>
+          <span><img src="https://img.logo.dev/openai.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="20" height="20">ChatGPT</span>
+        </div>
+        <p class="agent-more"><a href="/docs/mcp">Read the MCP guide</a> · <a href="/docs/integrations/claude">Set up Claude Code</a></p>
+      </div>
+      <div class="copy-boxes" data-motion="reveal" data-motion-stagger>
+        <div class="copy-box">
+          <div class="copy-head"><span>Claude Code</span><button class="copy-btn" type="button" data-copy>Copy</button></div>
+          <pre><code>claude mcp add --transport http distribute https://mcp.distribute.you/mcp --header "Authorization: Bearer distrib.usr_YOUR_KEY"</code></pre>
+        </div>
+        <div class="copy-box">
+          <div class="copy-head"><span>Grok, or any agent</span><button class="copy-btn" type="button" data-copy>Copy</button></div>
+          <pre><code>Connect to the distribute.you MCP server at https://mcp.distribute.you/mcp with my API key. Then find buyers for acme.com and book me sales meetings.</code></pre>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Pricing -->
-<section class="framed tint tint-both" id="pricing">
+<!-- Open source + local hosting: modelled on n8n / PostHog / Cal.com self-host pages -->
+<section class="framed dark os" id="open-source">
   <div class="wrap">
-    <div class="section-head center rv">
-      <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">The platform is free.</h2>
-      <p>You choose how much goes to your outreach. We bill what it uses at public <a href="/catalog">catalogue prices</a>. Pause or cancel anytime.</p>
+    <div class="section-head center" data-motion="reveal">
+      <span class="eyebrow">Open source</span>
+      <h2 style="margin-top:16px">Your data stays yours.</h2>
+      <p>The GTM Factory behind distribute.you is open source under the MIT license. Host it on your own server and keep every lead, email and reply in your own database.</p>
     </div>
-
-    <div class="plans">
-      <article class="plan featured rv">
-        <span class="plan-tag"><i></i>Pro</span>
-        <div class="plan-price">Free<small>platform</small></div>
-        <p class="plan-desc">You pay only for the outreach you choose to run</p>
-        <a class="btn btn-accent btn-lg" href="https://dashboard.distribute.you/get-started">Start free</a>
-        <div class="plan-included">What's included</div>
+    <div class="os-grid">
+      <article class="os-card" data-motion="reveal">
+        <span class="os-tag">Self-host</span>
+        <h3>Your server, your keys</h3>
+        <pre class="os-code"><code><span class="p">$</span> git clone https://github.com/distribute-you/gtm-factory
+<span class="p">$</span> cd gtm-factory &amp;&amp; pnpm install</code></pre>
         <ul>
-          <li><i></i>No subscription, no seat, no setup fee</li>
-          <li><i></i>You choose how much goes to your outreach</li>
-          <li><i></i>Each action is billed at a public catalogue price</li>
-          <li><i></i>Automatic reload if you want it, or top up by hand</li>
-          <li><i></i>Pause or cancel anytime</li>
-          <li><i></i>Cold email outreach from our own warmed domains</li>
-          <li><i></i>We answer interested leads until the meeting is booked</li>
-          <li><i></i>Feedback request and market question outreach</li>
-          <li><i></i>A/B testing of email templates, AI models and audiences</li>
-          <li><i></i>Every reply, meeting and signup with its cost, in one dashboard</li>
+          <li>Every lead and reply in a Postgres you own</li>
+          <li>Every script as readable code you can change</li>
+          <li>MIT license, free forever</li>
         </ul>
+        <a class="btn btn-outline btn-lg" href="https://github.com/distribute-you/gtm-factory" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>View on GitHub</a>
       </article>
-
-      <article class="plan rv">
-        <span class="plan-tag"><i></i>Custom</span>
-        <div class="plan-price">Talk to us</div>
-        <p class="plan-desc">Fully managed cold email.</p>
-        <a class="btn btn-outline btn-lg" href="https://wa.me/33680478702?text=Hi!%20I%20want%20the%20fully%20managed%20plan.%20My%20website%20is%3A%20" target="_blank" rel="noopener">Talk to us on WhatsApp</a>
-        <div class="plan-included">What's included</div>
+      <article class="os-card hosted" data-motion="reveal">
+        <span class="os-tag">Hosted by us</span>
+        <h3>Free for one user</h3>
+        <p>We run the servers, the domains and the inboxes. Every campaign we run sharpens yours, because what one client learns is pooled with all of them.</p>
         <ul>
-          <li><i></i>Everything in Pro</li>
-          <li><i></i>Fully managed, you never log in if you don't want to</li>
-          <li><i></i>Expert advisory on offer, pricing and positioning</li>
-          <li><i></i>From $1,000 a month plus 10% of the campaign budget</li>
-          <li><i></i>About $600 of paid media per booked meeting, on average</li>
-          <li><i></i>No time commitment</li>
+          <li>Live in 2 minutes from your website</li>
+          <li>Our AI agent on your WhatsApp</li>
+          <li>Every action at the API price, 0% markup</li>
         </ul>
-        <div class="plan-foot"><b>100% refunded</b> if not satisfied with the outcome after 60 days. Service fees excluded.</div>
+        <a class="btn btn-accent btn-lg" href="https://dashboard.distribute.you/get-started">Start free</a>
       </article>
     </div>
   </div>
@@ -518,11 +674,19 @@
     <div class="faq-list rv">
       <div class="faq-item open">
         <button class="faq-q" type="button" aria-expanded="true">What do I need to get started?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><p>Just your website. Drop the URL in, we work out what you sell and who buys it, and show you the plan to confirm. Then you choose your outreach budget, and your campaign starts right away.</p></div>
+        <div class="faq-a"><p>Just your website. Drop the URL in, our agent works out what you sell and who buys it, and shows you the plan to confirm. Then you add your first $10, and your campaign starts right away.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">How much does it cost?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><p>The platform is free. You choose how much goes to your outreach, and we bill what it uses at public <a href="/catalog">catalogue prices</a>. Your dashboard shows what each reply and meeting cost you. A bigger budget reaches more leads. Automatic reload is optional. No subscription, no seat, no setup fee, pause or cancel anytime.</p></div>
+        <div class="faq-a"><p>The platform is free for one user, and $9 per user each month for a team. Each action is billed at the vendor's API price with 0% markup, from a prepaid balance. Every price is public on the <a href="/catalog">catalog</a>, and your dashboard shows what each reply and meeting came to.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" type="button" aria-expanded="false">Is it really 0% markup?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="faq-a"><p>Yes. Every account opened since October 29, 2026 pays the vendor's public API price for each action. The live list is on the <a href="/catalog">catalog</a>, and the same list is public as JSON.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" type="button" aria-expanded="false">Can I run it on my own server?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="faq-a"><p>Yes. The <a href="https://github.com/distribute-you/gtm-factory" target="_blank" rel="noopener">GTM Factory</a> is open source under the MIT license. Run it with your own API keys, and your data stays in your own database.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">Whose mailboxes send the emails? Is my reputation at risk?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -534,15 +698,15 @@
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">How much control do I have?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><p>You confirm the offer, the audiences and the emails before anything leaves, and you can pause everything in one click. Your credit is a hard cap: when it runs out, sending stops, unless you turned on automatic reload. Most clients look once a week.</p></div>
+        <div class="faq-a"><p>You confirm the offer, the audiences and the emails before anything leaves, and you can pause everything in one click. Your balance is the cap, and auto reload tops it up at the level you choose. Most clients look once a week.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">Can I bring my own leads?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><p>Yes. Upload a CSV and we run it as its own audience, with its own cost per outcome, next to the ones we find.</p></div>
+        <div class="faq-a"><p>Yes. Upload a CSV and we run it as its own audience, with its own price per outcome, next to the ones we find.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">Do you guarantee results?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><p>On the self-serve plan, we guarantee the measurement: the real cost of every outcome is always visible and the budget is always yours to stop. On the managed plan, the campaign budget you paid is refunded in full if you are not satisfied with the outcome after 60 days. Service fees are not.</p></div>
+        <div class="faq-a"><p>We guarantee the measurement: what every outcome came to is always visible, and the budget is always yours to stop. Want a team accountable for the result? The <a href="/gtm-agency">GTM Agency</a> runs it for you.</p></div>
       </div>
     </div>
   </div>
@@ -556,14 +720,14 @@
       <svg class="cta-lines r" viewBox="0 0 260 320" fill="none" stroke="#2563eb" stroke-opacity="0.35" aria-hidden="true"><path d="M20 20c60 40 80 100 60 160s-60 100-40 130"/><path d="M60 10c70 50 90 110 70 170s-70 110-50 140"/><path d="M100 0c80 60 100 120 80 180s-80 120-60 150"/><path d="M140 -10c90 70 110 130 90 190s-90 130-70 160"/></svg>
       <p class="why">Revenue made easy.</p>
       <h2>Your next <span class="accent">customers</span><br>are already out there.</h2>
-      <p class="lead">Paste your website and let the campaign find them.</p>
+      <p class="lead">Paste your website and let our agent find them.</p>
       <form class="launch" action="https://dashboard.distribute.you/get-started" method="get">
         <div class="launch-field">
           <input name="url" type="text" autocomplete="off" placeholder="https://yourwebsite.com">
           <button class="btn btn-accent" type="submit"><span>Start free</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </div>
       </form>
-      <div class="fine">Free platform · Live in 2 minutes · Cancel anytime</div>
+      <div class="fine">Free for one user · API price, 0% markup · Cancel anytime</div>
     </div>
   </div>
 </section>
@@ -584,7 +748,7 @@
     <!--site-footer-->
   </div>
 </footer>
-
-<script src="/landing/v2/main.js?v=9" defer></script>
+<script src="/landing/v2/main.js?v=10" defer></script>
+<script src="/landing/v2/motion.js?v=2" defer></script>
 </body>
 </html>

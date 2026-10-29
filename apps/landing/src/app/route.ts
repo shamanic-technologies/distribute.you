@@ -4,7 +4,8 @@ import { renderedResponse } from "@/lib/static-html";
 import { renderAssistantPage } from "@/lib/pages/assistant";
 import { renderConciergePage } from "@/lib/pages/concierge";
 import { renderInstinctPage } from "@/lib/pages/instinct";
-import { withPromoUntil } from "@/lib/promo-banner";
+import { withActionPrices } from "@/lib/pages/home-agent";
+import { fetchPlatformPrices } from "@/lib/platform-prices";
 import { withSiteChrome } from "@/lib/site-chrome";
 import {
   AB_TEST_ENABLED,
@@ -36,15 +37,17 @@ export async function GET(request: Request) {
     random: Math.random(),
   });
 
-  // `index-v2.html` is the prepaid homepage: a free platform, outreach billed at
-  // catalogue prices (owner 2026-10-06), served to `control` and crawlers. Its offer
-  // banner is dated the last day of the current month (`lib/promo-banner.ts`).
-  // `index-v2-subscription.html` is the same page sold as the $99/month plan with a
-  // 3-day free trial (owner 2026-10-10 A/B), with no banner: the match is prepaid-only.
-  // `postpaid` (owner 2026-10-13) reads the prepaid homepage too, banner included (its
-  // first $100 is matched as well); only the dashboard's onboarding differs.
-  const homepage = () =>
-    withPromoUntil(readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"), new Date());
+  // `index-v2.html` is the Revenue AI Agent page (PAGE-REVENUE-AGENT-1029, owner
+  // 2026-10-29): free for one user, every action at the API price with 0% markup, open
+  // source. Served to `control`, `postpaid` and crawlers. Its price list is READ from the
+  // public cost catalogue at render (`lib/pages/home-agent.ts`). The first-$100 match
+  // banner ended with the offer reset. `index-v2-subscription.html` is the retired
+  // $99/month page, reachable only by `?variant=subscription`.
+  const homepage = async () =>
+    withActionPrices(
+      readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"),
+      await fetchPlatformPrices("/"),
+    );
   const subscriptionHomepage = () =>
     readFileSync(join(process.cwd(), "public/landing", "index-v2-subscription.html"), "utf8");
   const page =
@@ -56,7 +59,7 @@ export async function GET(request: Request) {
         ? renderConciergePage(undefined, { at: "homepage" })
         : decision.variant === "instinct"
           ? renderInstinctPage()
-          : homepage();
+          : await homepage();
   // The hand-written pages carry `<!--site-nav-->` / `<!--site-footer-->`: the nav and
   // footer are drawn from the page catalogue, like every other page's.
   const chromed = withSiteChrome(page, "/");

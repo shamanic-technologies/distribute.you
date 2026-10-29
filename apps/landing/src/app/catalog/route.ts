@@ -1,30 +1,14 @@
-import { URLS } from "@distribute/content";
 import { renderedResponse } from "@/lib/static-html";
-import { parsePlatformPrices, renderCatalogPage, type PlatformPrice } from "@/lib/pages/catalog";
+import { renderCatalogPage } from "@/lib/pages/catalog";
+import { fetchPlatformPrices } from "@/lib/platform-prices";
 
 export const revalidate = 3600;
 
 /**
- * The live cost catalogue, through the gateway (the one public surface this landing
- * reads). A failed read renders the page with an explicit "could not be read" block
- * and logs loud: an empty list would read as "nothing is priced".
+ * The live cost catalogue, through the gateway (`lib/platform-prices.ts`). A failed
+ * read renders the page with an explicit "could not be read" block and logs loud: an
+ * empty list would read as "nothing is priced".
  */
-async function fetchPlatformPrices(): Promise<PlatformPrice[] | null> {
-  const base = (process.env.API_SERVICE_URL || URLS.api).replace(/\/$/, "");
-  try {
-    const res = await fetch(`${base}/v1/costs/platform-prices`, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    return parsePlatformPrices(await res.json());
-  } catch (err) {
-    console.error("[landing] /catalog: /v1/costs/platform-prices read failed", err);
-    return null;
-  }
-}
-
 export async function GET(request: Request) {
-  return renderedResponse(renderCatalogPage(await fetchPlatformPrices()), request);
+  return renderedResponse(renderCatalogPage(await fetchPlatformPrices("/catalog")), request);
 }
