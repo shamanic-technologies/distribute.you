@@ -82,8 +82,9 @@ describe("/lp/assistant: the value-proposition candidate homepage", () => {
       'id="pipeline"',
       'id="features"',
       'class="framed dark"',
-      'id="fit"',
+      'id="prices"',
       'id="pricing"',
+      'id="open-source"',
       'id="faq"',
     ];
     const at = order.map((m) => html.indexOf(m));

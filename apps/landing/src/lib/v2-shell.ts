@@ -21,7 +21,7 @@ export const SITE = "https://distribute.you";
  * an edit to it ships to a returning visitor only if every `?v=` moves at once.
  */
 export const V2_STYLES_VERSION = 20;
-export const V2_MAIN_VERSION = 8;
+export const V2_MAIN_VERSION = 10;
 /** The motion kit (`public/landing/v2/motion.js`): it loads GSAP only on a page with a `data-motion` element. */
 export const MOTION_VERSION = 2;
 

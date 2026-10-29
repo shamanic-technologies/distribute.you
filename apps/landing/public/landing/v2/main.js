@@ -397,4 +397,16 @@
     window.addEventListener("resize", resize);
     requestAnimationFrame(draw);
   }
+
+  /* "Give this to your agent" (treg.to): each Copy button copies the code in its box. */
+  Array.prototype.forEach.call(document.querySelectorAll("[data-copy]"), function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.closest(".copy-box").querySelector("code");
+      if (!navigator.clipboard || !code) return;
+      navigator.clipboard.writeText(code.textContent).then(function () {
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+      }, function (e) { console.error("copy failed", e); });
+    });
+  });
 })();

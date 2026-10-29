@@ -80,11 +80,13 @@ const GTM_AGENCY_SECTIONS = [
   { label: "FAQ", href: "/gtm-agency#faq" },
 ];
 
-/** The sections of the homepage, listed first in its footer. */
+/** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
 const HOME_SECTIONS = [
   { label: "How it works", href: "/#how" },
   { label: "Features", href: "/#features" },
   { label: "Pricing", href: "/#pricing" },
+  { label: "Open source", href: "/#open-source" },
+  { label: "Use from your agent", href: "/#agent" },
   { label: "FAQ", href: "/#faq" },
 ];
 

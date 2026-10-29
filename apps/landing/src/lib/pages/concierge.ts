@@ -227,7 +227,7 @@ export function renderConciergePage(
   serving: ConciergeServing = { at: "candidate" },
 ): string {
   const proofAndQuotes = between(home, "<!-- Proof -->", "<!-- How it works");
-  const stats = between(home, "<!-- Stats band", "<!-- Fit -->");
+  const stats = between(home, "<!-- Stats band", "<!-- Price before the action");
   const faq = between(home, "<!-- FAQ", "<!-- CTA");
 
   const body = `${STYLE}

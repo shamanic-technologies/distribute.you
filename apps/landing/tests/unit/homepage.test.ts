@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 import { navHtml, withSiteChrome } from "../../src/lib/site-chrome";
+import { MOTION_VERSION } from "../../src/lib/v2-shell";
 
 /**
  * The homepage, served at `/`.
@@ -37,7 +38,11 @@ describe("the homepage is self-contained", () => {
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
     expect(html).toContain('href="/landing/v2/styles.css?v=20"');
-    expect(html).toContain('src="/landing/v2/main.js?v=9"');
+    expect(html).toContain('src="/landing/v2/main.js?v=10"');
+    // PAGE-REVENUE-AGENT-1029: the AI Agent sections have their own sheet, and the page
+    // carries `data-motion` effects, so it loads the motion kit at the shell's version.
+    expect(html).toContain('href="/landing/v2/agent.css?v=1"');
+    expect(html).toContain(`src="/landing/v2/motion.js?v=${MOTION_VERSION}"`);
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
     // Nothing may reference the lab's own root paths: those resolved on `lab-distribute`
@@ -86,8 +91,10 @@ describe("the H1 says what we are, read on its own", () => {
   // 24h") leaves an answer engine unable to say what distribute.you IS. The category
   // rides inside the H1, in plain text, rendered server-side.
   it("names the category inside the h1", () => {
+    // PAGE-REVENUE-AGENT-1029: "AI sales agent" is the page's search target (1,300/month US).
     const h1 = html.slice(html.indexOf("<h1"), html.indexOf("</h1>"));
-    expect(h1).toContain("distribute.you does done-for-you revenue automation");
+    expect(h1).toContain("distribute.you is the AI sales agent that does done-for-you revenue automation");
+    expect(html).toMatch(/<title>AI Sales Agent[^<]*<\/title>/);
   });
 });
 
@@ -111,10 +118,14 @@ describe("the cost belongs to the client, never to us", () => {
     expect(copy).not.toMatch(/\bour (?:live )?cost per\b/i);
   });
 
-  it("claims no at-cost or zero-margin pricing, which would be false", () => {
-    expect(copy).not.toMatch(/\bat cost\b/i);
+  it("states the 0% markup the price list serves, in plain words", () => {
+    // Owner 2026-10-29 (OFFER-RESET-1029): accounts opened since then pay the vendor's API
+    // price x1, and the public catalogue serves that list (checked in prod before this
+    // page shipped). "No markup" became TRUE, so the page says it; "pass-through" stays
+    // jargon a buyer does not read.
+    expect(copy).toContain("0% markup");
+    expect(copy).toContain("October 29, 2026");
     expect(copy).not.toMatch(/\bpass-?through\b/i);
-    expect(copy).not.toMatch(/\bno mark-?up\b/i);
   });
 
   it("promises no result, only the measurement", () => {
@@ -137,27 +148,20 @@ describe("homepage copy discipline", () => {
 });
 
 describe("the offer the page states", () => {
-  it("leads with revenue and a free platform, the $100 match only in the banner", () => {
-    // Owner 2026-10-06: the platform is free, the outreach is billed at catalogue prices.
-    // The $99/month plan, its trial and $1/day are retired. The first-$100 match is a
-    // time-boxed banner, never the tagline or the pricing section, and the minimum
-    // top-up is never stated (not a selling point).
-    expect(html).toContain("Get revenue in 24h");
-    expect(html).toContain("The platform is free");
-    expect(html).toContain('href="/catalog"');
-    const banner = html.match(/<a class="promo-bar"[\s\S]*?<\/a>/);
-    expect(banner?.[0]).toContain("we match your first $100");
-    expect(banner?.[0]).toContain("<span data-promo-until>");
-    const outside = html.replace(/<a class="promo-bar"[\s\S]*?<\/a>/, "");
-    for (const gone of ["match your first", "$100 free", "from $100", "first top-up"]) expect(outside, gone).not.toContain(gone);
-    // The nav's Agency card states the Agency offer ("From $1K/month + 10% of budget",
-    // owner 2026-10-29): the self-serve offer is checked on the page's own copy.
+  it("sells the AI Agent offer: free for one user, the API price, Team at $9, a $10 start", () => {
+    // Owner 2026-10-29 (OFFER-RESET-1029): free open source, free hosted for one user at
+    // the API price x1, Team $9/user, a prepaid first top-up of $10. The first-$100 match,
+    // the referral program, post-paid and the $99/month plan ended for new signups.
+    for (const line of ["Revenue Automation", "Done For You", "Free for one user", "0% markup", "$9", "start with $10", 'href="/catalog"']) {
+      expect(html, line).toContain(line);
+    }
+    expect(html).not.toContain("promo-bar");
+    expect(html).not.toContain("data-promo-until");
     const own = html.replace(navHtml("/"), "");
     expect(own).not.toBe(html);
-    for (const gone of ["$99", "/month", "free trial", "3-day", "Monthly plan", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go"]) {
+    for (const gone of ["match your first", "$100 free", "first $100", "$99", "free trial", "3-day", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go", "nothing charged today", "after the spend", "referral", "Refer a friend"]) {
       expect(own, gone).not.toContain(gone);
     }
-    // The stats band splits "$" and the figure into two spans, so "$1/day" alone missed it.
     expect(html).not.toMatch(/per day/i);
   });
 
@@ -233,7 +237,7 @@ describe("the offer the page states", () => {
     expect(html.match(/<span data-founder-count[^>]*>/g)).toHaveLength(2);
     // Two rows: one under the live showcase cards (explee's trust caption), one in the footer.
     // Each carries six people and no person appears in both, so twelve faces page-wide.
-    const hero = html.slice(html.indexOf('class="hero"'), html.indexOf('id="proof"'));
+    const hero = html.slice(html.indexOf('<section class="hero'), html.indexOf('id="proof"'));
     const footer = html.slice(html.indexOf("<footer>"));
     const facesOf = (part: string) => part.match(/<img src="\/landing\/v2\/assets\/[a-z-]+\.jpe?g"/g) ?? [];
     expect(hero.match(/faces-row/g)?.length).toBe(1);
