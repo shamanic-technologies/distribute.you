@@ -8,7 +8,6 @@ import { decorateHtml, renderedResponse, staticHtml } from "@/lib/static-html";
 import { organizationJsonLd } from "@/lib/seo";
 import { renderAboutPage } from "@/lib/pages/about";
 import { renderContactPage } from "@/lib/pages/contact";
-import { renderDevelopersPage } from "@/lib/pages/developers";
 import { renderNotFoundPage } from "@/lib/pages/not-found";
 import { withSiteChrome } from "../../src/lib/site-chrome";
 
@@ -30,7 +29,6 @@ const PAGE = renderAboutPage();
 const RENDERED: Record<string, string> = {
   "about": renderAboutPage(),
   "contact": renderContactPage(),
-  "developers": renderDevelopersPage(),
   "404": renderNotFoundPage(),
 };
 
@@ -109,7 +107,6 @@ describe("every static route passes the request through", () => {
     for (const file of [
       "src/app/about/route.ts",
       "src/app/contact/route.ts",
-      "src/app/developers/route.ts",
       "src/app/[...notFound]/route.ts",
     ]) {
       expect(read(file), file).toMatch(/renderedResponse\(render\w+Page\(\), request/);
@@ -143,7 +140,6 @@ describe("Organization structured data", () => {
     "index-v2.html": staticHtml("index-v2.html"),
     about: decorateHtml(RENDERED.about),
     contact: decorateHtml(RENDERED.contact),
-    developers: decorateHtml(RENDERED.developers),
   };
   for (const page of Object.keys(DECORATED)) {
     it(`injects exactly one Organization into ${page}`, () => {
@@ -227,7 +223,7 @@ describe("trust anchor pages", () => {
     expect(home).toContain('href="/about"');
     expect(home).toContain('href="/contact"');
     // Plus the footer every rendered page carries.
-    for (const page of ["about", "contact", "developers"]) {
+    for (const page of ["about", "contact"]) {
       expect(RENDERED[page]).toContain('href="/about"');
       expect(RENDERED[page]).toContain('href="/contact"');
     }
@@ -253,7 +249,8 @@ describe("llms.txt", () => {
   });
 
   it("names the developer surfaces at their real URLs", () => {
-    expect(llms).toContain("https://docs.distribute.you/");
+    // The docs moved under the landing (SITE-FOUNDATION-1029).
+    expect(llms).toContain("https://distribute.you/docs");
     expect(llms).toContain("https://api.distribute.you/openapi.json");
     expect(llms).toContain("https://mcp.distribute.you/mcp");
     expect(llms).toContain("https://distribute.you/.well-known/mcp.json");
@@ -303,7 +300,7 @@ describe("MCP descriptor", () => {
     expect(body.servers[0].url).toBe("https://mcp.distribute.you/mcp");
     expect(body.servers[0].transport).toBe("streamable-http");
     expect(body.openapi).toBe("https://api.distribute.you/openapi.json");
-    expect(body.documentation).toContain("docs.distribute.you");
+    expect(body.documentation).toBe("https://distribute.you/docs/mcp");
   });
 
   it("tells a client to read the method skills first", async () => {

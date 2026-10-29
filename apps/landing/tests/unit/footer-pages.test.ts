@@ -7,7 +7,6 @@ vi.mock("@/lib/blog/db", () => ({ listArticles: vi.fn(async () => []) }));
 
 import { renderAboutPage } from "../../src/lib/pages/about";
 import { renderContactPage } from "../../src/lib/pages/contact";
-import { renderDevelopersPage } from "../../src/lib/pages/developers";
 import { renderNotFoundPage } from "../../src/lib/pages/not-found";
 import { renderComparePage } from "../../src/lib/compare-page";
 import { COMPETITORS } from "../../src/lib/competitors";
@@ -33,7 +32,6 @@ const home = withSiteChrome(read("public/landing/index-v2.html"), "/");
 const RENDERED = {
   about: renderAboutPage(),
   contact: renderContactPage(),
-  developers: renderDevelopersPage(),
   "404": renderNotFoundPage(),
 };
 
@@ -147,7 +145,6 @@ describe("the copy behind the footer states the current positioning", () => {
     "src/lib/site-pages.ts",
     "src/lib/pages/about.ts",
     "src/lib/pages/contact.ts",
-    "src/lib/pages/developers.ts",
     "public/llms.txt",
   ];
   // Each is a claim the homepage no longer makes, with the reason it is retired.
@@ -274,7 +271,7 @@ describe("the orphaned pages are gone, everywhere they were listed", () => {
     for (const gone of ["/pricing", "/performance", "/use-cases", "/cold-email-cost-guide", "/v3"]) {
       expect(urls).not.toContain(`https://distribute.you${gone}`);
     }
-    for (const kept of ["/about", "/contact", "/developers", "/terms", "/privacy", "/blog", "/compare"]) {
+    for (const kept of ["/about", "/contact", "/docs", "/terms", "/privacy", "/blog", "/compare"]) {
       expect(urls).toContain(`https://distribute.you${kept}`);
     }
     // /investors stays in the footer but is noindex (owner 2026-10-22: it
@@ -296,7 +293,8 @@ describe("the orphaned pages are gone, everywhere they were listed", () => {
       ["/cold-email-cost-guide/:path*", "/blog/cold-email-cost-per-positive-reply"],
       ["/cold-email-for-saas-founders/:path*", "/"],
       ["/cold-email-vs-linkedin/:path*", "/"],
-      ["/developers/:path+", "/developers"],
+      ["/developers", "/docs"],
+      ["/developers/:path+", "/docs"],
       ["/blog/digital-narratives-examples", "/blog/email-marketing-strategy"],
       ["/blog/what-is-thought-leadership-marketing", "/blog/email-marketing-strategy"],
       ["/blog/examples-of-great-press-releases", "/blog"],

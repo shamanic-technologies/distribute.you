@@ -32,8 +32,7 @@ export function renderNotFoundPage(): string {
 <li><a href="/sitemap.xml">/sitemap.xml</a>: every indexable URL on this domain.</li>
 <li><a href="/llms.txt">/llms.txt</a>: what this site is, when to use it, and the developer surfaces.</li>
 <li><a href="/.well-known/mcp.json">/.well-known/mcp.json</a>: the MCP server descriptor.</li>
-<li><a href="/developers">/developers</a>: every developer surface distribute.you publishes, on one page.</li>
-<li><a href="https://docs.distribute.you/">docs.distribute.you</a>: the developer documentation.</li>
+<li><a href="/docs">/docs</a>: the developer documentation, every surface distribute.you publishes.</li>
 <li><a href="https://api.distribute.you/openapi.json">api.distribute.you/openapi.json</a>: the public OpenAPI document.</li>
 </ul>
 <p>Every page on this domain is also served as markdown. Send <code>Accept: text/markdown</code> and you get the content without the markup.</p>`,

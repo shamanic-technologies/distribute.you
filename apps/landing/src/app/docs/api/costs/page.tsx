@@ -1,0 +1,67 @@
+import { docsMetadata } from "@/lib/docs/docs-metadata";
+import { docsHeading } from "@/lib/docs/docs-routes";
+import { CopyForLLM } from "@/components/docs/copy-for-llm";
+
+export const metadata = docsMetadata("/api/costs");
+
+const LLM_INSTRUCTIONS = `# Costs API
+
+## Cost Breakdown
+GET /v1/runs/stats/costs?groupBy=costName
+GET /v1/runs/stats/costs?groupBy=costName&brandId=brand_abc123
+groupBy values: costName, brandId, featureSlug
+
+## Delivery Stats
+GET /v1/email-gateway/stats?brandId=brand_abc123
+Returns: reply classifications (meetings booked, interested), emailsReplied, emailsDelivered, emailsSent, emailsContacted, emailsClicked, emailsBounced
+Report it outcomes first: meetings and positive replies, then the delivery rate (delivered out of sent), then volume. Bounces go last.`;
+
+export default function CostsApiPage() {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/api/costs")}</h1>
+        <CopyForLLM content={LLM_INSTRUCTIONS} />
+      </div>
+      <p className="text-base text-gray-500 mb-8">
+        Cost breakdown and delivery statistics.
+      </p>
+
+      <div className="prose">
+        <h2>Cost Breakdown</h2>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{`GET /v1/runs/stats/costs?groupBy=costName
+GET /v1/runs/stats/costs?groupBy=costName&brandId=brand_abc123
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
+        </pre>
+        <p>
+          Returns costs grouped by the specified dimension. Common groupBy values:
+          <code>costName</code>, <code>brandId</code>, <code>featureSlug</code>.
+        </p>
+
+        <h2>Delivery Stats</h2>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{`GET /v1/email-gateway/stats?brandId=brand_abc123
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
+        </pre>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{`{
+  "repliesMeetingBooked": 3,
+  "repliesInterested": 8,
+  "repliesClosed": 1,
+  "emailsReplied": 22,
+  "emailsDelivered": 460,
+  "emailsSent": 480,
+  "emailsContacted": 500,
+  "emailsClicked": 25,
+  "repliesNeutral": 5,
+  "repliesNotInterested": 3,
+  "repliesOutOfOffice": 2,
+  "repliesUnsubscribe": 0,
+  "emailsBounced": 20
+}`}</code>
+        </pre>
+      </div>
+    </div>
+  );
+}

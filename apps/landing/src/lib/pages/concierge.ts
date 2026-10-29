@@ -275,7 +275,7 @@ ${stats}
     <div class="cc-dev">
       <a class="rv" href="https://mcp.distribute.you/mcp" data-contact="mcp" data-where="developers"><b>${I.code}MCP</b><code>mcp.distribute.you/mcp</code></a>
       <a class="rv" href="https://api.distribute.you/docs" data-contact="api" data-where="developers"><b>${I.code}API</b><code>api.distribute.you/openapi.json</code></a>
-      <a class="rv" href="/developers" data-contact="developers" data-where="developers"><b>${I.code}CLI and docs</b><code>distribute.you/developers</code></a>
+      <a class="rv" href="/docs" data-contact="developers" data-where="developers"><b>${I.code}CLI and docs</b><code>distribute.you/docs</code></a>
     </div>
   </div>
 </section>

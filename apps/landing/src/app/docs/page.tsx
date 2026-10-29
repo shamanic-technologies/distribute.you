@@ -1,0 +1,165 @@
+import { docsMetadata } from "@/lib/docs/docs-metadata";
+import { docsHeading } from "@/lib/docs/docs-routes";
+import Link from "next/link";
+import { URLS, DISTRIBUTION_FEATURES } from "@distribute/content";
+import { CopyForLLM } from "@/components/docs/copy-for-llm";
+import { AgentQuickstart } from "@/components/docs/agent-quickstart";
+import { agentQuickstartMarkdown } from "@/lib/docs/agent-quickstart";
+import {
+  AUTH_HEADER_LINE,
+  CATALOG_URL,
+  CLAUDE_CODE_MCP_COMMAND,
+  CLI_NPM_URL,
+  CLI_PACKAGE,
+  DEVELOPER_HUB_URL,
+  MCP_URL,
+  PRODUCT_MODEL,
+  SKILLS_LIST_ROUTE,
+  SKILL_READ_ROUTE,
+} from "@/lib/docs/developer-surfaces";
+
+const liveFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "live");
+const comingFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "coming-soon");
+
+const channelList = liveFeatures
+  .map((f) => `- ${f.title}: ${f.description}`)
+  .join("\n");
+
+const LLM_INSTRUCTIONS = `# distribute.you Documentation
+
+${agentQuickstartMarkdown()}
+
+## What is distribute.you?
+Revenue made easy. Cold email outreach run for you, reachable from one API.
+distribute.you finds the leads, writes and sends the email, qualifies the replies
+and passes the interested ones to you.
+
+## What it does
+${channelList}
+
+## Key Concepts
+${PRODUCT_MODEL}
+
+## Method skills
+The steps our own Copilot follows, served read-only and the same for every client.
+Read them before acting: ${SKILLS_LIST_ROUTE}, then ${SKILL_READ_ROUTE} (index first).
+MCP: distribute_list_skills, distribute_read_skill.
+
+## Pricing
+Pay as you go from a prepaid balance, per action, at the public prices on ${CATALOG_URL}.
+
+## Quick Start
+1. Sign up at dashboard.distribute.you
+2. Get API key (distrib.usr_xxx format)
+3. Connect MCP (hosted, nothing to install):
+   ${CLAUDE_CODE_MCP_COMMAND}
+4. "Show me my brands"
+5. "Read acme.com and suggest who I should be targeting"
+
+## Access Methods
+- Dashboard: dashboard.distribute.you (default)
+- REST API: api.distribute.you/v1 (${AUTH_HEADER_LINE})
+- MCP Server: ${MCP_URL} (hosted, Streamable HTTP)
+- CLI: ${CLI_PACKAGE}
+- Every surface named on one page: ${DEVELOPER_HUB_URL}`;
+
+export const metadata = docsMetadata("/");
+
+export default function DocsHome() {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/")}</h1>
+        <CopyForLLM content={LLM_INSTRUCTIONS} />
+      </div>
+      <AgentQuickstart />
+      <p className="text-base text-gray-500 mb-8">
+        Revenue made easy. distribute.you finds the right people, writes personalized cold
+        email, sends it on your behalf, qualifies the replies, and forwards the good ones to
+        your inbox.
+      </p>
+
+      <div className="prose">
+        <h2>What is distribute.you?</h2>
+        <p>
+          distribute.you is an AI-powered cold email platform. One account, one API. Give it
+          your website and the offer you sell; it handles sending infrastructure,
+          deliverability, reply qualification, and what each result cost you.
+        </p>
+        <p>What we do:</p>
+        <ul>
+          {liveFeatures.map((f) => (
+            <li key={f.id}>
+              <strong>{f.title}</strong>: {f.description}
+            </li>
+          ))}
+        </ul>
+        {comingFeatures.length > 0 && (
+          <>
+            <p>Coming soon:</p>
+            <ul>
+              {comingFeatures.map((f) => (
+                <li key={f.id}>
+                  <strong>{f.title}</strong>: {f.description}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <h2>Getting Started</h2>
+        <ol>
+          <li><a href={URLS.signUp}>Create an account</a> and get your API key</li>
+          <li>Set up your brand: provide your URL, distribute.you analyzes your site automatically</li>
+          <li>Pick a sales funnel for your offer, set its caps, and start the campaign</li>
+          <li>Get notified when someone replies</li>
+        </ol>
+
+        <h2>Use distribute.you from</h2>
+
+        <h3>MCP Server (recommended)</h3>
+        <p>
+          The MCP server is hosted at <code>{MCP_URL}</code> and speaks Streamable HTTP, so there is
+          nothing to install: your client connects to a URL with your API key. Works with Claude
+          Code, Claude Desktop, Cursor, and any other MCP-compatible client. See the{" "}
+          <Link href="/docs/mcp">MCP Server docs</Link>.
+        </p>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{CLAUDE_CODE_MCP_COMMAND}</code>
+        </pre>
+
+        <h3>REST API</h3>
+        <p>
+          Call the REST API directly with one header, or drive it from a shell with the{" "}
+          <a href={CLI_NPM_URL}>{CLI_PACKAGE}</a> command line client. See the{" "}
+          <Link href="/docs/api">API Reference</Link>.
+        </p>
+
+        <h3>Dashboard</h3>
+        <p>
+          The <a href={URLS.dashboard}>dashboard</a> provides a full UI for managing brands, campaigns,
+          workflows, and billing.
+        </p>
+
+        <h2>Key Concepts</h2>
+        <p>{PRODUCT_MODEL}</p>
+
+        <h3>Method skills</h3>
+        <p>
+          The steps our own Copilot follows to organize a request (offers, sales funnels,
+          campaigns, caps, workflows) are served, read-only and the same for every client. Your
+          agent follows the same method: <code>{SKILLS_LIST_ROUTE}</code>, then{" "}
+          <code>{SKILL_READ_ROUTE}</code>, starting with <code>index</code>. Over MCP:{" "}
+          <code>distribute_list_skills</code> and <code>distribute_read_skill</code>.
+        </p>
+
+        <h2>Pricing</h2>
+        <p>
+          Pay as you go. You prepay a balance, and each action is billed at the public prices on{" "}
+          <a href={CATALOG_URL}>{CATALOG_URL.replace("https://", "")}</a>. Each campaign spends
+          only up to the caps you set. See what each result cost you in the dashboard.
+        </p>
+      </div>
+    </div>
+  );
+}

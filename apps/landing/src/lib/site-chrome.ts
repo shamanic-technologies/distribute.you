@@ -22,8 +22,8 @@ export const SIGN_UP = "https://dashboard.distribute.you/get-started";
 export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
 /** Where an Agency page's call to action goes until a booking page exists. */
 export const BOOK_A_CALL = "/contact";
-/** The developer docs. */
-export const DOCS_HREF = "https://docs.distribute.you";
+/** The developer docs, served by the landing since SITE-FOUNDATION-1029. */
+export const DOCS_HREF = "/docs";
 export const WHY = "Revenue made easy.";
 
 /** The tokens the hand-written homepage carries in place of its chrome. */
@@ -73,7 +73,7 @@ export function navModel(path: string, pages: SitePage[] = SITE_PAGES): NavModel
       href: agents[0].path,
       items: agents.map(toLink),
       // No Mac app link: `/desktop` stays unlinked and noindex (owner 2026-10-04).
-      extra: [DOCS, CATALOG, { label: "Use from Claude Code or Grok", href: "/developers" }],
+      extra: [DOCS, CATALOG, { label: "Use from Claude Code or Grok", href: "/docs/integrations/claude" }],
     });
   }
   if (agencies.length) {
@@ -144,7 +144,7 @@ const FOR_AGENTS_COLUMN: FooterColumn = {
   title: "For agents",
   links: [
     { label: "llms.txt", href: "/llms.txt" },
-    { label: "MCP server", href: "/developers#mcp" },
+    { label: "MCP server", href: "/docs/mcp" },
     DOCS,
   ],
 };
@@ -162,7 +162,6 @@ const LEGAL_COLUMN: FooterColumn = {
   links: [
     { label: "Terms", href: "/terms" },
     { label: "Privacy", href: "/privacy" },
-    { label: "Developers", href: "/developers" },
   ],
 };
 
