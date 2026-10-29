@@ -550,8 +550,8 @@ export function parseSnapshotName(v: unknown): GetStartedName | null {
 /** The MCP server an AI connects to (same host the docs and the API keys page name). */
 export const DISTRIBUTE_MCP_URL = "https://mcp.distribute.you/mcp";
 
-/** The skill an AI reads first (served by the docs app, `/skill.md`). */
-export const DISTRIBUTE_SKILL_URL = "https://docs.distribute.you/skill.md";
+/** The skill an AI reads first (served by the landing's docs, `/docs/skill.md`). */
+export const DISTRIBUTE_SKILL_URL = "https://distribute.you/docs/skill.md";
 
 /** The account-opening route an AI calls with no key (api-service `/v1/agent-signups`). */
 export const AGENT_SIGNUP_START_URL = "https://api.distribute.you/v1/agent-signups/start";
