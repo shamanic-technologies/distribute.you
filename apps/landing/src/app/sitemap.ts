@@ -7,6 +7,7 @@ import { fetchIndexList } from "@/lib/fleet-indexes";
 import { sitePagePaths } from "@/lib/site-pages";
 import { agencyClusterPaths } from "@/lib/agencies";
 import { leadgenClusterPaths } from "@/lib/lead-generation-agencies";
+import { ppcClusterPaths } from "@/lib/ppc-agencies";
 import { DOCS_ROUTES, docsUrl } from "@/lib/docs/docs-routes";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
@@ -80,6 +81,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // The Lead Generation Agency page's own vs/alternatives cluster, read from its catalogue.
   for (const path of leadgenClusterPaths()) {
+    STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
+  }
+
+  // The PPC Agency page's own vs/alternatives cluster, read from its catalogue.
+  for (const path of ppcClusterPaths()) {
     STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
   }
 
