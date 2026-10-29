@@ -136,6 +136,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffTriggerReports",
   "staffStuckOccurrences",
   "staffTriggerHealth",
+  "staffUnsentAnswers",
   // Monitoring > Connected tools: records each client tool takes in per day (CONNECTOR-INTAKE-MONITORING-1028).
   "staffConnectorIntake",
   // GTM Factory shadow (FACTORY-P1-DASH): staff-only reads, never persisted to disk.

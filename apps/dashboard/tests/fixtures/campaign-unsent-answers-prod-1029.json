@@ -1,0 +1,537 @@
+{
+  "generatedAt": "2026-10-29T13:48:25.981Z",
+  "days": 14,
+  "status": "red",
+  "redWindowHours": 24,
+  "brokenLast24h": 2,
+  "unsent": [
+    {
+      "occurrenceId": "49375712-aff1-40a8-879a-3b04e55f542c",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": {
+        "name": null,
+        "email": "person1@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 3,
+      "at": "2026-10-29T12:22:51.961Z"
+    },
+    {
+      "occurrenceId": "a503e371-d32b-4539-96c6-46d3970a3292",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": {
+        "name": null,
+        "email": "person2@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 3,
+      "at": "2026-10-29T12:22:51.961Z"
+    },
+    {
+      "occurrenceId": "0edab463-bc0b-49b4-bb22-383fa8fa4ce8",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "positive_reply_received",
+      "campaignId": "8d3d1ade-dc86-4fef-97fb-27173189470c",
+      "campaignName": "Reply Booking bbb81f67 - ai-meeting-booking - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - conversation_to_meeting_booked",
+      "person": {
+        "name": "Person 3",
+        "email": "person3@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 4,
+      "at": "2026-10-27T19:44:32.384Z"
+    },
+    {
+      "occurrenceId": "f661a44f-5b5f-4aed-a632-fc84b3de46b5",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "hot_lead",
+      "campaignId": "e81d3018-0cae-456b-90a3-0290071c6cb8",
+      "campaignName": "Lead Proposal Deals ba08bcca - ai-lead-proposal - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": null,
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 6,
+      "at": "2026-10-27T19:07:46.021Z"
+    },
+    {
+      "occurrenceId": "4a130699-112f-454a-874f-0c2f973f9e9b",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "hot_lead",
+      "campaignId": "e81d3018-0cae-456b-90a3-0290071c6cb8",
+      "campaignName": "Lead Proposal Deals ba08bcca - ai-lead-proposal - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": {
+        "name": "Person 4",
+        "email": "person4@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 4,
+      "at": "2026-10-27T17:18:25.830Z"
+    },
+    {
+      "occurrenceId": "ce068beb-343b-4740-add1-fa4739cf9afb",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "lead_event",
+      "campaignId": "94dfb79a-f5b6-4f4c-b579-57bdc91ed74d",
+      "campaignName": "Client Lead Follow-up 4627d041 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": {
+        "name": null,
+        "email": "person5@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 1,
+      "at": "2026-10-27T14:56:06.056Z"
+    },
+    {
+      "occurrenceId": "e251556f-1105-49ff-8bb1-5bcf1b15cfb4",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "lead_event",
+      "campaignId": "94dfb79a-f5b6-4f4c-b579-57bdc91ed74d",
+      "campaignName": "Client Lead Follow-up 4627d041 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": {
+        "name": null,
+        "email": "person6@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 1,
+      "at": "2026-10-27T14:56:06.056Z"
+    },
+    {
+      "occurrenceId": "b9431fba-4220-4a06-9448-8daebb54be2f",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "whatsapp_number_given",
+      "campaignId": "420e106a-b3dc-4902-90d8-0c60e068b90e",
+      "campaignName": "Cold WhatsApp Signups bb2b2d12 - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_signup",
+      "person": {
+        "name": "Person 7",
+        "email": "person7@example.com",
+        "phone": "+447700900110"
+      },
+      "state": "refused",
+      "refusalCode": "not_on_whatsapp",
+      "refusalReason": "+447700900110 is not on WhatsApp.",
+      "runs": 1,
+      "at": "2026-10-27T14:24:53.688Z"
+    },
+    {
+      "occurrenceId": "968b1fe1-0a57-4eb8-9fa9-57339d812f66",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "hot_lead",
+      "campaignId": "e81d3018-0cae-456b-90a3-0290071c6cb8",
+      "campaignName": "Lead Proposal Deals ba08bcca - ai-lead-proposal - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": null,
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 6,
+      "at": "2026-10-26T15:54:36.595Z"
+    },
+    {
+      "occurrenceId": "c44274c4-0c27-4586-a711-25eeb3ed1e9d",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": {
+        "name": null,
+        "email": "person8@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 1,
+      "at": "2026-10-24T16:24:12.451Z"
+    },
+    {
+      "occurrenceId": "2c7717ee-9620-4cc1-a701-84c300b1ce36",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "signup_not_paid_24_hours",
+      "campaignId": "59a4e3b6-b939-4540-b983-cabd5860a154",
+      "campaignName": "Signup WhatsApp c469e14a - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - signup_to_paid_client",
+      "person": {
+        "name": "Person 8",
+        "email": "person7@example.com",
+        "phone": "+447700900110"
+      },
+      "state": "refused",
+      "refusalCode": "not_on_whatsapp",
+      "refusalReason": "+447700900110 is not on WhatsApp.",
+      "runs": 2,
+      "at": "2026-10-24T06:23:35.453Z"
+    },
+    {
+      "occurrenceId": "20219d5a-76ab-482d-a26c-767beff8b22a",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "hot_lead",
+      "campaignId": "e81d3018-0cae-456b-90a3-0290071c6cb8",
+      "campaignName": "Lead Proposal Deals ba08bcca - ai-lead-proposal - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": null,
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 6,
+      "at": "2026-10-21T23:59:28.459Z"
+    },
+    {
+      "occurrenceId": "c781c544-a393-482f-acb4-2ab814382ea5",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "hot_lead",
+      "campaignId": "e81d3018-0cae-456b-90a3-0290071c6cb8",
+      "campaignName": "Lead Proposal Deals ba08bcca - ai-lead-proposal - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "person": {
+        "name": null,
+        "email": "person9@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 2,
+      "at": "2026-10-19T06:45:46.652Z"
+    },
+    {
+      "occurrenceId": "ffbd580d-af90-4225-8f67-c6496b27d18c",
+      "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+      "brandId": "ea3fb68c-3bdb-4043-958f-3fc2a9045153",
+      "offerId": "185f8a92-c47d-499a-b828-6f0b684ba68e",
+      "triggerId": "email_pushed_via_api",
+      "campaignId": "25036bda-2612-49bd-8c37-6ad267995fc0",
+      "campaignName": "API Email Meetings 7dab0d3c - email-sending - ea3fb68c-3bdb-4043-958f-3fc2a9045153 - 185f8a92-c47d-499a-b828-6f0b684ba68e - start_to_conversation",
+      "person": {
+        "name": null,
+        "email": "person10@example.com",
+        "phone": null
+      },
+      "state": "refused",
+      "refusalCode": "email_not_verified",
+      "refusalReason": "person10@example.com was not sent: our verifier's verdict is invalid (verdict_invalid); only valid, catch_all and unknown addresses are ever emailed",
+      "runs": 1,
+      "at": "2026-10-15T18:44:20.298Z"
+    },
+    {
+      "occurrenceId": "f9a08030-34f1-4d43-bc32-4b8cd8bbe50b",
+      "orgId": "06ffd332-b05d-4468-bc33-fe2789caad95",
+      "brandId": "e98cd83a-f39e-46a4-ad11-ea750f252ba7",
+      "offerId": "667b55fe-e247-480a-a127-83b7797dfc54",
+      "triggerId": "lead_found",
+      "campaignId": "bf99ff60-ec9e-4066-9b21-40355188e6c4",
+      "campaignName": "New Lead Email 602d3075 - sales-cold-email-outreach - e98cd83a-f39e-46a4-ad11-ea750f252ba7 - 667b55fe-e247-480a-a127-83b7797dfc54 - lead_found_to_conversation",
+      "person": {
+        "name": null,
+        "email": "person11@example.com",
+        "phone": null
+      },
+      "state": "refused",
+      "refusalCode": "named_lead_unwritable",
+      "refusalReason": "We only know this person's email address: no name or company was found, so we cannot write them a real email.",
+      "runs": 1,
+      "at": "2026-10-15T18:42:30.490Z"
+    },
+    {
+      "occurrenceId": "a23e1d4e-01d3-415f-87c8-a3ce890d4eef",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "positive_reply_received",
+      "campaignId": "8d3d1ade-dc86-4fef-97fb-27173189470c",
+      "campaignName": "Reply Booking bbb81f67 - ai-meeting-booking - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - conversation_to_meeting_booked",
+      "person": {
+        "name": "Staff probe (WA)",
+        "email": null,
+        "phone": "+447700900111"
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 3,
+      "at": "2026-10-15T16:52:26.237Z"
+    },
+    {
+      "occurrenceId": "94e0f03e-0456-45fa-92f5-4c0b99a982a7",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "email_pushed_via_api",
+      "campaignId": "0208f13c-e86f-47ba-a60d-7ee7cb0a501c",
+      "campaignName": "API Email Replies c4b43b2b - email-sending - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_conversation",
+      "person": {
+        "name": "Person 12",
+        "email": "person12@example.com",
+        "phone": null
+      },
+      "state": "refused",
+      "refusalCode": "recent_brand_contact",
+      "refusalReason": "person12@example.com was already emailed for brand f4d73dab-1f9d-49b2-b16e-63ecde76a5eb at 2026-10-13T19:36:16.916Z, inside the 3 months re-contact window. No email was sent and nothing was billed.",
+      "runs": 1,
+      "at": "2026-10-15T15:03:52.981Z"
+    },
+    {
+      "occurrenceId": "33eca37f-f3da-4d75-8786-0329ed8248d7",
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "offerId": "832126f3-f3f1-4601-885d-bc8e101e5680",
+      "triggerId": "positive_reply_received",
+      "campaignId": "8d3d1ade-dc86-4fef-97fb-27173189470c",
+      "campaignName": "Reply Booking bbb81f67 - ai-meeting-booking - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - conversation_to_meeting_booked",
+      "person": {
+        "name": "Person 13",
+        "email": "person13@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 1,
+      "at": "2026-10-15T15:03:31.188Z"
+    },
+    {
+      "occurrenceId": "a95a8efa-d070-4ef1-96a4-600cde026711",
+      "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+      "brandId": "ea3fb68c-3bdb-4043-958f-3fc2a9045153",
+      "offerId": "185f8a92-c47d-499a-b828-6f0b684ba68e",
+      "triggerId": "email_pushed_via_api",
+      "campaignId": "25036bda-2612-49bd-8c37-6ad267995fc0",
+      "campaignName": "API Email Meetings 7dab0d3c - email-sending - ea3fb68c-3bdb-4043-958f-3fc2a9045153 - 185f8a92-c47d-499a-b828-6f0b684ba68e - start_to_conversation",
+      "person": {
+        "name": null,
+        "email": "person14@example.com",
+        "phone": null
+      },
+      "state": "failed",
+      "refusalCode": null,
+      "refusalReason": null,
+      "runs": 1,
+      "at": "2026-10-15T14:40:47.515Z"
+    },
+    {
+      "occurrenceId": "1e7fa03b-de9a-4bae-a6ad-a45d86ec5e5c",
+      "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+      "brandId": "ea3fb68c-3bdb-4043-958f-3fc2a9045153",
+      "offerId": "185f8a92-c47d-499a-b828-6f0b684ba68e",
+      "triggerId": "email_pushed_via_api",
+      "campaignId": "25036bda-2612-49bd-8c37-6ad267995fc0",
+      "campaignName": "API Email Meetings 7dab0d3c - email-sending - ea3fb68c-3bdb-4043-958f-3fc2a9045153 - 185f8a92-c47d-499a-b828-6f0b684ba68e - start_to_conversation",
+      "person": {
+        "name": null,
+        "email": "person10@example.com",
+        "phone": null
+      },
+      "state": "refused",
+      "refusalCode": "email_not_verified",
+      "refusalReason": "person10@example.com was not sent: our verifier's verdict is invalid (verdict_invalid); only valid, catch_all and unknown addresses are ever emailed",
+      "runs": 1,
+      "at": "2026-10-15T13:52:32.503Z"
+    }
+  ],
+  "byDay": [
+    {
+      "day": "2026-10-15",
+      "answered": 5,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 4,
+      "failed": 3,
+      "refusedByCode": [
+        {
+          "code": "email_not_verified",
+          "count": 2
+        },
+        {
+          "code": "recent_brand_contact",
+          "count": 1
+        },
+        {
+          "code": "named_lead_unwritable",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "day": "2026-10-16",
+      "answered": 16,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 0,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-17",
+      "answered": 0,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 0,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-18",
+      "answered": 2,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 0,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-19",
+      "answered": 9,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 1,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-20",
+      "answered": 1,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 0,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-21",
+      "answered": 5,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 1,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-22",
+      "answered": 6,
+      "answeredByTeam": 3,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 0,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-23",
+      "answered": 6,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 0,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-24",
+      "answered": 38,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 1,
+      "failed": 1,
+      "refusedByCode": [
+        {
+          "code": "not_on_whatsapp",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "day": "2026-10-25",
+      "answered": 20,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 0,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-26",
+      "answered": 22,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 1,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-27",
+      "answered": 31,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 1,
+      "failed": 5,
+      "refusedByCode": [
+        {
+          "code": "not_on_whatsapp",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "day": "2026-10-28",
+      "answered": 233,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 0,
+      "refusedByCode": []
+    },
+    {
+      "day": "2026-10-29",
+      "answered": 468,
+      "answeredByTeam": 0,
+      "replaying": 0,
+      "refused": 0,
+      "failed": 2,
+      "refusedByCode": []
+    }
+  ]
+}
