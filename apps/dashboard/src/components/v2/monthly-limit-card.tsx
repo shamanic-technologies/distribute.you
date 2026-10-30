@@ -115,7 +115,7 @@ export function MonthlyLimitCard() {
           <Meter value={spent} max={limitCents} />
           <p className="k-fg3 mt-1.5 flex justify-between gap-3 text-[12px] tabular-nums">
             <span>
-              {formatCentsAsUsd(spent)} of {formatCentsAsUsd(limitCents, 0)} spent this month
+              {formatCentsAsUsd(spent)} of {formatCentsAsUsd(limitCents, 0)} spent (billed + provisioned) this month
             </span>
             {pending === undefined && data.remaining_cents !== null && <span>{formatCentsAsUsd(data.remaining_cents)} left</span>}
           </p>

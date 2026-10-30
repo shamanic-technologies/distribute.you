@@ -244,7 +244,7 @@ struct BillingPanel: View {
             let owed = a.amount_owed_cents.flatMap { Double($0) }.map { max(0, ($0 - 1e-9).rounded(.up)) }
             KCard {
                 HStack(spacing: 0) {
-                    Figure(label: "Current balance", value: dollars(cents: owed)).padding(12)
+                    Figure(label: "Balance due", value: dollars(cents: owed)).padding(12)
                     Figure(label: "Total credited", value: dollars(cents: Double(a.credited_cents))).padding(12)
                 }
             }

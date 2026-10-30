@@ -149,7 +149,7 @@ export function V2BillingPage() {
     : mode === null
       ? `${onCredit ? `${balanceFigure} over your credit` : `${balanceFigure} available`}.`
       : mode === "postpaid" && owed.owedCents !== null
-        ? `${MODE_COPY[mode].title}. Current balance ${formatCentsAsUsd(owed.owedCents, 2)}.`
+        ? `${MODE_COPY[mode].title}. Balance due ${formatCentsAsUsd(owed.owedCents, 2)}.`
         : `${MODE_COPY[mode].title}. ${onCredit ? `${balanceFigure} over your credit` : `${balanceFigure} available`}.`;
 
   return (
@@ -257,7 +257,7 @@ export function V2BillingPage() {
           title="Balance"
           description={
             mode === "postpaid"
-              ? "What you have spent so far, and when your card is charged."
+              ? "What is due so far, and when your card is charged."
               : "What you can still spend, and where your credit went."
           }
         >

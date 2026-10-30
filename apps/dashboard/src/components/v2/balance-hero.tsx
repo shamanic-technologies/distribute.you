@@ -74,7 +74,7 @@ function HeroFigure({ label, value, after, chip }: { label: string; value: strin
 }
 
 /**
- * Postpaid, Google Ads style: the current balance big, when the card is charged, and how far
+ * Postpaid: the balance due big (owner 2026-10-30, « Current balance » read as unclear), when the card is charged, and how far
  * the BILLED costs are toward the amount that charges it early. Only what is billed is ever
  * charged (owner 2026-10-29), so provisioned money is named beside the bar, not on it. No button.
  */
@@ -111,7 +111,7 @@ export function PostpaidOwedCard({
   return (
     <div className="k-card p-5">
       <HeroFigure
-        label="Current balance"
+        label="Balance due"
         value={formatCentsAsUsd(owed.owedCents, 2)}
         chip={discountPct ? `${discountPct}% off usage` : null}
       />
@@ -125,12 +125,9 @@ export function PostpaidOwedCard({
       )}
       <div className="mt-5">
         {line !== null && (
-          <div className="mb-2 flex items-baseline justify-between gap-3 text-[12px]">
-            <span className="k-fg3">Billed so far</span>
-            <span className="tabular-nums">
-              {formatCentsAsUsd(owed.owedCents, 2)} <span className="k-fg3">of {formatCentsAsUsd(line, 0)}</span>
-            </span>
-          </div>
+          <p className="mb-2 text-[12px] tabular-nums">
+            {formatCentsAsUsd(owed.owedCents, 2)} <span className="k-fg3">of {formatCentsAsUsd(line, 0)}</span>
+          </p>
         )}
         {line !== null && <StackedBar parts={[billed]} totalCents={line} />}
         <BarLegend parts={parts} />
