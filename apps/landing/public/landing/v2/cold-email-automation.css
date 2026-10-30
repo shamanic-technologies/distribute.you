@@ -13,7 +13,7 @@
 
 /* ---------- Hero stage: the light workflow card ---------- */
 .hero-coldmail .hero-grid { grid-template-columns: minmax(0, 1fr) 500px; }
-.hero-coldmail h1 { font-size: clamp(34px, 3.3vw, 48px); }
+.hero-coldmail h1 { font-size: clamp(34px, 3.1vw, 45px); }
 .cx-stage { position: relative; width: 500px; text-align: left; }
 .cx-flow {
   position: relative; border-radius: 22px; overflow: hidden; background: #fff;

@@ -107,7 +107,7 @@ describe("the AI SDR cluster", () => {
       expect(c.verifiedOn).toBe("2026-10-29");
       expect(html).toContain(`href="/ai-sdr/vs/${c.slug}"`);
     }
-    expect(competitorPath(competitorBySlug("instantly")!)).toBe("/compare/instantly");
+    expect(competitorPath(competitorBySlug("gojiberry")!)).toBe("/compare/gojiberry");
   });
 
   it("each vs page is canonical under /ai-sdr and wears the AI SDR breadcrumb", () => {

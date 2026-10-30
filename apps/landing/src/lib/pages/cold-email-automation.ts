@@ -349,7 +349,7 @@ function howHtml(): string {
           <p>Reads your website and writes down what you sell, to whom, and why it wins.</p>
           <div class="sdr-vis cx-pitch" aria-hidden="true">
             <div><label>You sell</label><span class="chip">Product analytics</span></div>
-            <div><label>To</label><span class="chip">Founders</span><span class="chip">Heads of Growth</span></div>
+            <div><label>To</label><span class="chip">SaaS founders</span></div>
             <div><label>Proof</label><span class="chip">Your customers</span></div>
           </div>
         </li>

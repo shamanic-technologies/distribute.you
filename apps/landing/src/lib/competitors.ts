@@ -138,7 +138,6 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     faq: [
       { q: "How much does Instantly cost?", a: "Instantly's outreach plans are Growth at $47 a month, Hypergrowth at $97 and Light Speed at $358. Lead credits for their database and AI agents are a separate subscription from $9 a month. Mailboxes and domains are bought on top." },
-      { q: "Is distribute.you a cheaper Instantly?", a: "It is a different job. Instantly is software you run; our AI agent runs the campaign for you. You never touch a mailbox, a domain or a sequence, and one user is free." },
       { q: "Can I use Instantly and distribute.you together?", a: "Yes. Some clients keep Instantly for a house list and let us run the cold outreach from our own domains, so their sending reputation is never on the line." },
       { q: "Where do the replies go?", a: "To us first. We answer the interested ones until a meeting is booked, then hand the conversation to you. You still see every reply on your dashboard, including the refusals." },
     ],
@@ -918,7 +917,7 @@ export const COMPETITORS: readonly Competitor[] = [
       { plan: "Email", price: "$39/month ($26 billed annually)", note: "5,000 emails a month, 3 warmups, 100 Lead Finder credits, unlimited contacts, email accounts, team members and email verification" },
       { plan: "Multichannel", price: "$68/month ($55 billed annually)", note: "Email and LinkedIn in one campaign: 5,000 emails a month and 1 LinkedIn account" },
       { plan: "LinkedIn", price: "$29/month", note: "1 LinkedIn account: messages, InMails, connection requests and profile visits" },
-      { plan: "Scale", price: "Custom", note: "Higher email or LinkedIn limits, priced on a call" },
+      { plan: "Scale", price: "On request", note: "Higher email or LinkedIn limits, priced on a call" },
     ],
     operatedBy: "you",
     sendingDomains: "Yours. You connect your mailboxes, or buy mailboxes and domains from them as an add-on.",
