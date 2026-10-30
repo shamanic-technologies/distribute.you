@@ -23,7 +23,7 @@ export const SITE = "https://distribute.you";
 export const V2_STYLES_VERSION = 20;
 export const V2_MAIN_VERSION = 10;
 /** The motion kit (`public/landing/v2/motion.js`): it loads GSAP only on a page with a `data-motion` element. */
-export const MOTION_VERSION = 7;
+export const MOTION_VERSION = 8;
 
 
 /** The why under a hero's lead paragraph (compare, best-for, alternatives, About...). */

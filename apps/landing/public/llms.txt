@@ -217,6 +217,11 @@ you run; we run the campaign.
 - [vs Saleshandy](https://distribute.you/cold-email-automation/vs/saleshandy)
 - [vs Woodpecker](https://distribute.you/cold-email-automation/vs/woodpecker)
 - [vs Mailshake](https://distribute.you/cold-email-automation/vs/mailshake)
+- [GTM automation](https://distribute.you/gtm-automation): our AI GTM agent, which runs your whole go-to-market, from the first buyer found to the follow up until they pay
+- [GTM automation alternatives](https://distribute.you/gtm-automation/alternatives)
+- [vs Default](https://distribute.you/gtm-automation/vs/default)
+- [vs Unify](https://distribute.you/gtm-automation/vs/unify)
+- [vs Common Room](https://distribute.you/gtm-automation/vs/common-room)
 - [vs Gojiberry](https://distribute.you/compare/gojiberry)
 - [vs Explee](https://distribute.you/compare/explee)
 - [vs Salesforge](https://distribute.you/compare/salesforge)
@@ -233,7 +238,6 @@ you run; we run the campaign.
 - [vs HeyReach](https://distribute.you/compare/heyreach)
 - [vs Waalaxy](https://distribute.you/compare/waalaxy)
 - [vs Chili Piper](https://distribute.you/compare/chili-piper)
-- [vs Default](https://distribute.you/compare/default)
 - [vs Frontrunner](https://distribute.you/compare/frontrunner)
 
 ## Rankings by audience
