@@ -267,6 +267,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "ownerTelegram",
   // The brand's connected Threads accounts (Profile page): username, type, health.
   "threadsAccounts",
+  // X accounts of a brand, the same card beside Threads (X-ACCOUNTS-1030).
+  "xAccounts",
   // Free credits committed but not yet granted, on the Billing page.
   "freeCreditPromises",
   // Brand metadata + config + small summaries.
