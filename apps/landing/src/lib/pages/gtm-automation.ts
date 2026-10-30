@@ -256,6 +256,8 @@ const STAGES_COVERED: Partial<Record<OutcomeSlug, string>> = {
   signups: "Visited to signed up to paid",
   "cold-email": "Emailed and replied",
   meetings: "Replied to meeting booked",
+  "website-visits": "Emailed to visited",
+  "paid-acquisition": "Budget to buyers",
   "lead-nurturing": "Followed up until paid",
   "customer-success": "After they pay",
 };

@@ -12,6 +12,7 @@ import type { Agency, AgencyFact } from "../agencies";
 import { esc } from "../fleet-indexes";
 import { OUR_PPC_ROW, PPC_AGENCIES, PPC_ALTERNATIVES_PATH, PPC_PAGE_PATH, ppcVsPath } from "../ppc-agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
+import { AD_MANAGEMENT_PATH } from "../ad-management-tools";
 import { callHtml } from "./gtm-agency";
 import { ppcHead } from "./ppc-agency";
 
@@ -105,7 +106,7 @@ export function renderPpcVsPage(a: Agency): string {
     <nav class="ag-links" aria-label="Other PPC agency comparisons">${others}<a href="${PPC_ALTERNATIVES_PATH}">PPC agency alternatives</a></nav>
   </div>
 </section>
-${callHtml()}`;
+${callHtml(AD_MANAGEMENT_PATH)}`;
   return shell({
     title: `distribute.you vs ${a.name}: PPC agency price and results compared`,
     description,
@@ -160,7 +161,7 @@ export function renderPpcAlternativesPage(): string {
 <section class="framed tint">
   <div class="wrap ag-cards">${cards}</div>
 </section>
-${callHtml()}`;
+${callHtml(AD_MANAGEMENT_PATH)}`;
   return shell({
     title: `PPC agency alternatives: ${names} and distribute.you`,
     description,
