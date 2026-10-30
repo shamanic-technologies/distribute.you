@@ -889,8 +889,10 @@ function ThreadItem({
 
   if (item.kind === "event") {
     // A product event the brand's own PostHog recorded (a signup walk step, owner 2026-10-15)
-    // reads as crm-service's one line: the step and what the person entered.
-    const said = item.source === "posthog" && item.event?.step === "event" ? item.text : null;
+    // reads as crm-service's one line: the step and what the person entered. A client's action
+    // on their account (campaign created, budget changed: CLIENT-ACTIVITY-1030) reads its line too.
+    const posthogLine = item.source === "posthog" && item.event?.step === "event" ? item.text : null;
+    const said = item.source === "activity" ? item.text : posthogLine;
     return (
       <div className="grid gap-1">
         <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
