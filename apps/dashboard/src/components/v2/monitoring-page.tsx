@@ -48,6 +48,9 @@ import { ProspectsWaitingPage, ProspectsWaitingTile, useStuckOccurrences } from 
 import { longestWaitIsRed, waitLabel } from "@/lib/monitoring/stuck-occurrences";
 import { TriggerHealthPage, TriggerHealthTile, useTriggerHealth } from "@/components/v2/monitoring-trigger-health";
 import { redTriggers, watchedTriggers } from "@/lib/monitoring/trigger-health";
+import { RobotIcon } from "@phosphor-icons/react/dist/csr/Robot";
+import { VendorCreditPage, VendorCreditTile, useVendorCredit } from "@/components/v2/monitoring-vendor-credit";
+import { outOfCreditVendors } from "@/lib/monitoring/vendor-credit";
 import { UnsentAnswersPage, UnsentAnswersTile, useUnsentAnswers } from "@/components/v2/monitoring-unsent-answers";
 import { PlugsConnectedIcon } from "@phosphor-icons/react/dist/csr/PlugsConnected";
 import { ConnectorIntakePage, ConnectorIntakeTile, useConnectorIntake } from "@/components/v2/monitoring-connectors";
@@ -127,7 +130,7 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "scripts" | "chat";
+type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "scripts" | "ai" | "chat";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
@@ -144,6 +147,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   tools: { name: "Connected tools", color: "var(--data-sky)", Icon: PlugsConnectedIcon, sub: "Whether every tool a client connected still brings records in" },
   factory: { name: "Factory plan", color: "var(--data-violet)", Icon: StrategyIcon, sub: "Which client campaigns would run differently if they followed their plan" },
   scripts: { name: "Scripts", color: "var(--data-teal)", Icon: CodeIcon, sub: "Whether each stored script works as well as the code it replaced" },
+  ai: { name: "AI vendors", color: "var(--data-violet)", Icon: RobotIcon, sub: "Whether every AI vendor we call still has credit" },
   chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
 };
 
@@ -187,6 +191,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "factory/plan": { section: "factory", title: "Would change", question: "Which client campaigns would change if they followed their plan?" },
   "factory/following": { section: "factory", title: "Following its plan", question: "Does every campaign switched to its plan actually run it?" },
   "scripts/engines": { section: "scripts", title: "Engines", question: "Does each script work as well as the code it replaced?" },
+  "ai/credit": { section: "ai", title: "Credit", question: "Does every AI vendor we call still have credit?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -280,6 +285,8 @@ export function V2Monitoring() {
           ? "Every org, read live from production. Days are UTC."
           : meta.section === "scripts"
           ? "Every org, read live from production, stored once a day. Days are UTC."
+          : meta.section === "ai"
+          ? "Every AI vendor chat-service calls, read live from production. Days are UTC."
           : meta.section === "chat"
           ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
           : meta.section === "ledger"
@@ -348,6 +355,7 @@ export function V2Monitoring() {
         {view.page === "factory/plan" && <FactoryShadowPage />}
         {view.page === "factory/following" && <PlanFollowingPage />}
         {view.page === "scripts/engines" && <ScriptsPage />}
+        {view.page === "ai/credit" && <VendorCreditPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -451,6 +459,8 @@ function Hub({ base }: { base: string }) {
   const factory = useFactoryShadowMonitoring();
   const following = usePlanFollowing();
   const scripts = useScriptsMonitoring();
+  const vendors = useVendorCredit();
+  const vendorsOut = vendors.data ? outOfCreditVendors(vendors.data) : undefined;
   const scriptsBroken = scripts.data ? brokenOutcomes(scripts.data) : undefined;
   const scriptGuards = scripts.data?.outcomes.flatMap((o) => (o.guard ? [o.guard.state] : [])) ?? [];
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
@@ -503,6 +513,8 @@ function Hub({ base }: { base: string }) {
         <PlanFollowingTile href={href("factory/following")} />
         {/* A stored script that fails more often than the code it replaced, or whose guard rolled the fleet back (FACTORY-P3): red here IS the alert, never an email. */}
         <ScriptsTile href={href("scripts/engines")} />
+        {/* An AI vendor that refused a call for lack of credit and has not served one since (VENDOR-CREDIT-1030, DeepSeek 2026-10-29): red here IS the alert, never an email. */}
+        <VendorCreditTile href={href("ai/credit")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -1044,6 +1056,30 @@ function Hub({ base }: { base: string }) {
               value: watchdogs.data?.checks.length,
               note: "crons reporting here, never by email",
             },
+          ]}
+        />
+        </div>
+      </Section>
+      </div>
+
+      <div>
+      <SectionTitle count={1}>AI vendors</SectionTitle>
+      <Section section="ai" count={1} grid={false}>
+        <HubChips>
+          <HubChip href={href("ai/credit")} color={vendorsOut?.length ? "var(--data-rose)" : "var(--data-violet)"} label="Credit" />
+        </HubChips>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Card
+          href={href("ai/credit")}
+          page="ai/credit"
+          error={vendors.isError && !vendors.data}
+          cells={[
+            {
+              label: "Out of credit now",
+              value: vendorsOut && <span style={{ color: vendorsOut.length ? "var(--data-rose)" : undefined }}>{vendorsOut.map((v) => v.label).join(", ") || "None"}</span>,
+              note: "calls refused for lack of credit",
+            },
+            { label: "Vendors watched", value: vendors.data?.vendors.length, note: "every AI vendor we call" },
           ]}
         />
         </div>

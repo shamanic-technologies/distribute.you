@@ -137,6 +137,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffTriggerReports",
   "staffStuckOccurrences",
   "staffTriggerHealth",
+  // Monitoring > AI vendors > Credit: which AI vendor is out of credit (VENDOR-CREDIT-1030).
+  "staffVendorCredit",
   "staffUnsentAnswers",
   // Monitoring > Connected tools: records each client tool takes in per day (CONNECTOR-INTAKE-MONITORING-1028).
   "staffConnectorIntake",

@@ -1,0 +1,1344 @@
+{
+  "vendors": [
+    {
+      "provider": "deepseek",
+      "label": "DeepSeek",
+      "outOfCredit": true,
+      "since": "2026-10-29T15:59:46.000Z",
+      "lastSeenAt": "2026-10-30T08:10:27.000Z",
+      "recoveredAt": null,
+      "fallbackModel": "glm-5.3-flash",
+      "fallbackLabel": "GLM-5.3 Flash",
+      "refusedCalls": 3,
+      "reroutedCalls": 0,
+      "sentence": "DeepSeek has no credit since Oct 29, 15:59 UTC. Calls go to GLM-5.3 Flash until a call on DeepSeek succeeds."
+    },
+    {
+      "provider": "zai",
+      "label": "Z.ai",
+      "outOfCredit": false,
+      "since": null,
+      "lastSeenAt": null,
+      "recoveredAt": null,
+      "fallbackModel": null,
+      "fallbackLabel": null,
+      "refusedCalls": 0,
+      "reroutedCalls": 0,
+      "sentence": "Z.ai has credit."
+    },
+    {
+      "provider": "moonshot",
+      "label": "Moonshot",
+      "outOfCredit": false,
+      "since": null,
+      "lastSeenAt": "2026-10-12T17:02:11.000Z",
+      "recoveredAt": "2026-10-12T18:40:03.000Z",
+      "fallbackModel": "deepseek-flash",
+      "fallbackLabel": "DeepSeek Flash",
+      "refusedCalls": 4,
+      "reroutedCalls": 4,
+      "sentence": "Moonshot has credit again since Oct 12, 18:40 UTC."
+    },
+    {
+      "provider": "openai",
+      "label": "OpenAI",
+      "outOfCredit": false,
+      "since": null,
+      "lastSeenAt": null,
+      "recoveredAt": null,
+      "fallbackModel": null,
+      "fallbackLabel": null,
+      "refusedCalls": 0,
+      "reroutedCalls": 0,
+      "sentence": "OpenAI has credit."
+    },
+    {
+      "provider": "anthropic",
+      "label": "Anthropic",
+      "outOfCredit": false,
+      "since": null,
+      "lastSeenAt": null,
+      "recoveredAt": null,
+      "fallbackModel": null,
+      "fallbackLabel": null,
+      "refusedCalls": 0,
+      "reroutedCalls": 0,
+      "sentence": "Anthropic has credit."
+    },
+    {
+      "provider": "google",
+      "label": "Google",
+      "outOfCredit": false,
+      "since": null,
+      "lastSeenAt": null,
+      "recoveredAt": null,
+      "fallbackModel": null,
+      "fallbackLabel": null,
+      "refusedCalls": 0,
+      "reroutedCalls": 0,
+      "sentence": "Google has credit."
+    }
+  ],
+  "days": [
+    {
+      "day": "2026-10-01",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-01",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-01",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-01",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-01",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-01",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-02",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-02",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-02",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-02",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-02",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-02",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-03",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-03",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-03",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-03",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-03",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-03",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-04",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-04",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-04",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-04",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-04",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-04",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-05",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-05",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-05",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-05",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-05",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-05",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-06",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-06",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-06",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-06",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-06",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-06",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-07",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-07",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-07",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-07",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-07",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-07",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-08",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-08",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-08",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-08",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-08",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-08",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-09",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-09",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-09",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-09",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-09",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-09",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-10",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-10",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-10",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-10",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-10",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-10",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-11",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-11",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-11",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-11",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-11",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-11",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-12",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-12",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-12",
+      "provider": "moonshot",
+      "outOfCredit": true,
+      "refusedCalls": 4,
+      "reroutedCalls": 4
+    },
+    {
+      "day": "2026-10-12",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-12",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-12",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-13",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-13",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-13",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-13",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-13",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-13",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-14",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-14",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-14",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-14",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-14",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-14",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-15",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-15",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-15",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-15",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-15",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-15",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-16",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-16",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-16",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-16",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-16",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-16",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-17",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-17",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-17",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-17",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-17",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-17",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-18",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-18",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-18",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-18",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-18",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-18",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-19",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-19",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-19",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-19",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-19",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-19",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-20",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-20",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-20",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-20",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-20",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-20",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-21",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-21",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-21",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-21",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-21",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-21",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-22",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-22",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-22",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-22",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-22",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-22",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-23",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-23",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-23",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-23",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-23",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-23",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-24",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-24",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-24",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-24",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-24",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-24",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-25",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-25",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-25",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-25",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-25",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-25",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-26",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-26",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-26",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-26",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-26",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-26",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-27",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-27",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-27",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-27",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-27",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-27",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-28",
+      "provider": "deepseek",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-28",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-28",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-28",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-28",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-28",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-29",
+      "provider": "deepseek",
+      "outOfCredit": true,
+      "refusedCalls": 2,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-29",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-29",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-29",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-29",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-29",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-30",
+      "provider": "deepseek",
+      "outOfCredit": true,
+      "refusedCalls": 1,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-30",
+      "provider": "zai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-30",
+      "provider": "moonshot",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-30",
+      "provider": "openai",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-30",
+      "provider": "anthropic",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    },
+    {
+      "day": "2026-10-30",
+      "provider": "google",
+      "outOfCredit": false,
+      "refusedCalls": 0,
+      "reroutedCalls": 0
+    }
+  ]
+}

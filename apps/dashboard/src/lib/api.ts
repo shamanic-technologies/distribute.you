@@ -13277,6 +13277,17 @@ export async function getStaffSophieReplies(days: number): Promise<StaffSophieRe
   return parseStaff("getStaffSophieReplies", StaffSophieReplyDaysSchema, await apiCall<unknown>(`${STAFF_SOPHIE_REPLIES_PATH}?days=${days}`));
 }
 
+// ─── Monitoring > AI vendors > Credit (VENDOR-CREDIT-1030) ───
+import { VendorCreditSchema as StaffVendorCreditSchema, type VendorCredit as StaffVendorCredit } from "./monitoring/vendor-credit";
+
+/** chat-service's stored "vendor out of credit" fact per AI provider it calls, through api-service's staff passthrough. */
+export const STAFF_VENDOR_CREDIT_PATH = "/chat/ops/vendor-credit";
+
+/** One row per provider plus one per UTC day × provider over the last `days` (1..90), with chat-service's served verdict. */
+export async function getStaffVendorCredit(days: number): Promise<StaffVendorCredit> {
+  return parseStaff("getStaffVendorCredit", StaffVendorCreditSchema, await apiCall<unknown>(`${STAFF_VENDOR_CREDIT_PATH}?days=${days}`));
+}
+
 // ─── Monitoring > Security (SEC-ADVISORIES-MONITORING-1025) ───
 import { SecurityAdvisoriesSchema as StaffSecurityAdvisoriesSchema, type SecurityAdvisories as StaffSecurityAdvisories } from "./monitoring/security-advisories";
 
