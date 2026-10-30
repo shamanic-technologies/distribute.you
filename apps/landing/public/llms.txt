@@ -196,6 +196,12 @@ you run; we run the campaign.
 - [vs HubSpot Marketing Hub](https://distribute.you/lead-nurturing-automation/vs/hubspot-marketing-hub)
 - [vs Customer.io](https://distribute.you/lead-nurturing-automation/vs/customer-io)
 - [vs Brevo](https://distribute.you/lead-nurturing-automation/vs/brevo)
+- [AI customer success](https://distribute.you/ai-customer-success): our AI customer success agent, which reads your Stripe, Clerk, PostHog or GoHighLevel and writes to each paying customer on WhatsApp when they pay, come back, stop paying or go quiet
+- [AI customer success alternatives](https://distribute.you/ai-customer-success/alternatives)
+- [vs Intercom](https://distribute.you/ai-customer-success/vs/intercom)
+- [vs Zendesk](https://distribute.you/ai-customer-success/vs/zendesk)
+- [vs HubSpot Service Hub](https://distribute.you/ai-customer-success/vs/hubspot-service-hub)
+- [vs Freshdesk](https://distribute.you/ai-customer-success/vs/freshdesk)
 - [AI lead generation](https://distribute.you/ai-lead-generation): our AI lead generation agent, which finds your leads, judges each one, checks the email and writes to them
 - [AI lead generation alternatives](https://distribute.you/ai-lead-generation/alternatives)
 - [vs Apollo.io](https://distribute.you/ai-lead-generation/vs/apollo)
