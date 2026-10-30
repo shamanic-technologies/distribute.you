@@ -77,7 +77,8 @@ export default function McpOverviewPage() {
           <code>{CLAUDE_CODE_MCP_COMMAND}</code>
         </pre>
         <p>
-          See <Link href="/docs/mcp/installation">Installation</Link> for Claude Desktop, Cursor, and
+          No key yet? The server says so and your assistant opens the account with your email and
+          phone. See <Link href="/docs/mcp/installation">Installation</Link> for Claude Desktop, Cursor, and
           every other client.
         </p>
 

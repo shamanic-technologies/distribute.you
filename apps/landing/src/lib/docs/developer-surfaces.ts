@@ -109,9 +109,16 @@ export const MCP_URL = MCP_ENDPOINT_URL;
 export const MCP_SERVER_NAME = "distribute";
 
 /**
- * Claude Code registers a remote server with an explicit transport and header.
+ * Claude Code registers a remote server with an explicit transport, and NO header: this is
+ * the command a visitor copies before they have a key. With no key the server answers with
+ * the signup steps (email + phone, a 6-digit code), and the agent opens the account itself.
+ * A placeholder key copied as-is was refused as "Invalid API key" and sent the agent to the
+ * dashboard instead (tested in a blank Claude Code, 2026-10-31).
  */
-export const CLAUDE_CODE_MCP_COMMAND = `claude mcp add --transport http ${MCP_SERVER_NAME} ${MCP_URL} --header "${AUTH_HEADER_LINE}"`;
+export const CLAUDE_CODE_MCP_COMMAND = `claude mcp add --transport http ${MCP_SERVER_NAME} ${MCP_URL}`;
+
+/** The same registration for someone who already holds a key (the agent after signup). */
+export const CLAUDE_CODE_MCP_KEYED_COMMAND = `${CLAUDE_CODE_MCP_COMMAND} --header "${AUTH_HEADER_LINE}"`;
 
 /**
  * A client whose config file takes a URL (Cursor, and any other client that

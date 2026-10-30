@@ -14,6 +14,7 @@ import {
   AUTH_HEADER_LINE,
   AUTH_HEADER_NAME,
   CLAUDE_CODE_MCP_COMMAND,
+  CLAUDE_CODE_MCP_KEYED_COMMAND,
   CLI_NPM_URL,
   CLI_PACKAGE,
   DEVELOPER_HUB_URL,
@@ -347,7 +348,9 @@ describe("the developer surfaces are spelled once", () => {
     expect(MCP_URL).toBe("https://mcp.distribute.you/mcp");
     expect(CLAUDE_CODE_MCP_COMMAND).toContain("--transport http");
     expect(CLAUDE_CODE_MCP_COMMAND).toContain(MCP_URL);
-    expect(CLAUDE_CODE_MCP_COMMAND).toContain(AUTH_HEADER_LINE);
+    // The copied command carries no key: a placeholder key is refused and hides the signup.
+    expect(CLAUDE_CODE_MCP_COMMAND).not.toContain("--header");
+    expect(CLAUDE_CODE_MCP_KEYED_COMMAND).toBe(`${CLAUDE_CODE_MCP_COMMAND} --header "${AUTH_HEADER_LINE}"`);
     expect(MCP_HTTP_CONFIG).toContain(`"url": "${MCP_URL}"`);
     expect(MCP_HTTP_CONFIG).not.toContain('"command"');
     // The stdio path is a bridge to the same URL, never a package of ours.

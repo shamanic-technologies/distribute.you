@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { SKILL_URL, SKILL_USE_CASES, agentSkillMarkdown } from "@/lib/docs/agent-skill";
 import {
   AUTH_HEADER_LINE,
-  CLAUDE_CODE_MCP_COMMAND,
+  CLAUDE_CODE_MCP_KEYED_COMMAND,
   MCP_TOOLS,
   MCP_URL,
 } from "@/lib/docs/developer-surfaces";
@@ -23,7 +23,7 @@ describe("the agent skill", () => {
   it("reads every pasted value from developer-surfaces", () => {
     expect(md).toContain(MCP_URL);
     expect(md).toContain(AUTH_HEADER_LINE);
-    expect(md).toContain(CLAUDE_CODE_MCP_COMMAND);
+    expect(md).toContain(CLAUDE_CODE_MCP_KEYED_COMMAND);
     for (const t of MCP_TOOLS) expect(md).toContain(t.name);
   });
 

@@ -8,7 +8,7 @@ import {
   API_KEY_PREFIX,
   AUTH_HEADER_LINE,
   AUTH_HEADER_NAME,
-  CLAUDE_CODE_MCP_COMMAND,
+  CLAUDE_CODE_MCP_KEYED_COMMAND,
   CLI_INSTALL_COMMAND,
   CLI_NPM_URL,
   CLI_PACKAGE,
@@ -56,7 +56,7 @@ ${curlExample("/v1/me")}
 ### MCP server (hosted, Streamable HTTP)
 Endpoint: ${MCP_URL}
 Header:   ${AUTH_HEADER_LINE}
-Claude Code: ${CLAUDE_CODE_MCP_COMMAND}
+Claude Code: ${CLAUDE_CODE_MCP_KEYED_COMMAND}
 
 ### Command line
 ${CLI_INSTALL_COMMAND}
@@ -139,7 +139,7 @@ curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
           Code:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{CLAUDE_CODE_MCP_COMMAND}</code>
+          <code>{CLAUDE_CODE_MCP_KEYED_COMMAND}</code>
         </pre>
 
         <h3>Command line</h3>
