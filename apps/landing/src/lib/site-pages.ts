@@ -28,6 +28,7 @@ import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
 import { APPOINTMENT_PAGE_PATH, appointmentCompareLinks } from "./appointment-setting-agencies";
 import { REACTIVATION_PAGE_PATH, reactivationCompareLinks } from "./reactivation-agencies";
+import { CS_PAGE_PATH, csCompareLinks } from "./customer-success-agencies";
 import { NURTURING_PAGE_PATH, nurturingCompareLinks } from "./nurturing-tools";
 
 export type Buyer = "agent" | "agency";
@@ -120,6 +121,7 @@ const LIVE_PATHS = new Set<string>([
   "/cold-email-agency",
   COLD_EMAIL_AUTOMATION_PATH,
   REACTIVATION_PAGE_PATH,
+  CS_PAGE_PATH,
   NURTURING_PAGE_PATH,
 ]);
 
@@ -177,6 +179,16 @@ const REACTIVATION_AGENCY_SECTIONS = [
   { label: "Agencies compared", href: `${REACTIVATION_PAGE_PATH}#compare` },
   { label: "Price", href: `${REACTIVATION_PAGE_PATH}#price` },
   { label: "FAQ", href: `${REACTIVATION_PAGE_PATH}#faq` },
+];
+
+/** The sections of the Customer Success Agency page (PAGE-CUSTOMER-SUCCESS-AGENCY-1030). */
+const CS_AGENCY_SECTIONS = [
+  { label: "How it works", href: `${CS_PAGE_PATH}#how` },
+  { label: "Moments we act on", href: `${CS_PAGE_PATH}#moments` },
+  { label: "Our own clients", href: `${CS_PAGE_PATH}#ours` },
+  { label: "Agencies compared", href: `${CS_PAGE_PATH}#compare` },
+  { label: "Price", href: `${CS_PAGE_PATH}#price` },
+  { label: "FAQ", href: `${CS_PAGE_PATH}#faq` },
 ];
 
 /** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
@@ -276,6 +288,7 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           ...(o.slug === "lead-nurturing"
             ? { navLabel: "Database Reactivation Agency", sections: REACTIVATION_AGENCY_SECTIONS, compare: reactivationCompareLinks() }
             : {}),
+          ...(o.slug === "customer-success" ? { sections: CS_AGENCY_SECTIONS, compare: csCompareLinks() } : {}),
         },
       ]),
 ]);

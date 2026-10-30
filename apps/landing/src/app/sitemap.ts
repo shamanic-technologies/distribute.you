@@ -11,6 +11,7 @@ import { ppcClusterPaths } from "@/lib/ppc-agencies";
 import { coldEmailClusterPaths } from "@/lib/cold-email-agencies";
 import { appointmentClusterPaths } from "@/lib/appointment-setting-agencies";
 import { reactivationClusterPaths } from "@/lib/reactivation-agencies";
+import { csClusterPaths } from "@/lib/customer-success-agencies";
 import { nurturingClusterPaths } from "@/lib/nurturing-tools";
 import { DOCS_ROUTES, docsUrl } from "@/lib/docs/docs-routes";
 
@@ -100,6 +101,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // The Database Reactivation Agency page's own vs/alternatives cluster, read from its catalogue.
   for (const path of reactivationClusterPaths()) {
+    STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
+  }
+
+  // The Customer Success Agency page's own vs/alternatives cluster, read from its catalogue.
+  for (const path of csClusterPaths()) {
     STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
   }
 
