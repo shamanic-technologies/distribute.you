@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { OpsInfraSchema, emptySendPools, refusalSentence, sendPoolVendors, sendPoolWord, utcMoment, vendorRefusals, vendorWord } from "../src/lib/monitoring/capacity";
+import { OpsInfraSchema, emptySendPools, poolWasEmpty, refusalSentence, sendPoolHistory, seriesVendors, sendPoolVendors, sendPoolWord, utcMoment, vendorRefusals, vendorWord } from "../src/lib/monitoring/capacity";
 
 /**
  * SEND-PRIMEFORGE-402-1030: on 2026-10-29 Primeforge answered 402 "active subscription required" and every cold email
@@ -97,5 +97,36 @@ describe("Capacity: the send pool", () => {
     expect(page.indexOf("<EmptySendPools />")).toBeLessThan(page.indexOf("<CapacityTiles />"));
     const hub = read("components/v2/monitoring-page.tsx");
     expect(hub).toContain('<SendPoolTile href={href("emails/capacity")} />');
+  });
+});
+
+/** SEND-POOL-VENDOR-402-1030: the Send pool card's chart reads instantly-service's stored daily series (v0.83.158). */
+describe("Capacity: the send pool over time", () => {
+  const history = [
+    {
+      pool: "shared",
+      days: [
+        { day: "2026-10-29", sendableMin: 0, sendableLast: 0, byVendor: {} },
+        { day: "2026-10-30", sendableMin: null, sendableLast: null, byVendor: null },
+        { day: "2026-10-31", sendableMin: 13, sendableLast: 15, byVendor: { primeforge: 13, gandi: 2 } },
+      ],
+    },
+  ];
+
+  it("parses the stored series; red only on a day the pool hit zero, never on a day with no sample", () => {
+    const [h] = sendPoolHistory(OpsInfraSchema.parse({ ...prod(), sendPoolHistory: history }));
+    expect(h.days.map(poolWasEmpty)).toEqual([true, false, false]);
+    expect(seriesVendors(h)).toEqual(["gandi", "primeforge"]);
+    expect(sendPoolHistory(OpsInfraSchema.parse(prod()))).toEqual([]);
+  });
+
+  it("Capacity draws the chart in the Send pool section, red only on a day at zero", () => {
+    const src = read("components/v2/monitoring-capacity.tsx");
+    const section = src.slice(src.indexOf("function SendPoolSection("), src.indexOf("export function SendPoolTile("));
+    expect(section).toContain("<DayChart");
+    expect(section).toContain("alert: poolWasEmpty(d)");
+    expect(section).not.toContain("RED");
+    const page = src.slice(src.indexOf("export function CapacityPage("));
+    expect(page).toContain("<SendPoolSection />");
   });
 });

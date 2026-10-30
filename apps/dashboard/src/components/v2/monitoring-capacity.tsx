@@ -8,7 +8,10 @@ import {
   CAPACITY_WINDOWS,
   byCountDesc,
   emptySendPools,
+  poolWasEmpty,
   poolWord,
+  sendPoolHistory,
+  seriesVendors,
   refusalSentence,
   sendPoolVendors,
   sendPoolWord,
@@ -71,7 +74,7 @@ function TileValue({ error, pending, value }: { error: boolean; pending: boolean
 // ─── Day chart (hand-drawn bars, like CountChart) ──────────────────────────
 
 type Part = { label: string; value: number | null; color: string; faded?: boolean };
-type ChartDay = { day: string; isToday: boolean; parts: Part[]; extra?: string };
+type ChartDay = { day: string; isToday: boolean; parts: Part[]; extra?: string; alert?: boolean };
 
 /**
  * Stacked bars per day, an optional dashed line (a served ceiling), today marked under its bar.
@@ -122,6 +125,7 @@ function DayChart({ title, note, days, line, legend }: { title: string; note: st
               className="flex h-full min-w-0 flex-1 flex-col-reverse"
               style={{ opacity: hover && hover !== d.day ? 0.5 : 1 }}
             >
+              {d.alert && <span className="block w-full shrink-0" style={{ height: 4, background: RED }} />}
               {d.parts.every((p) => p.value == null) ? (
                 <span className="block w-full" style={{ height: 2, background: "var(--data-track)" }} />
               ) : (
@@ -583,6 +587,55 @@ function EmptySendPools() {
   );
 }
 
+/** A vendor's bar colour in the send pool chart. Never red: red is kept for a day at zero. */
+const VENDOR_COLOR: Record<string, string> = {
+  primeforge: "var(--data-teal)",
+  gandi: "var(--data-violet)",
+  mailforge: "var(--data-sky)",
+};
+const vendorColor = (v: string) => VENDOR_COLOR[v] ?? "var(--data-amber)";
+
+/** Days of the send pool chart: the stored series serves 90, the last 30 read at a glance. */
+const SEND_POOL_CHART_DAYS = 30;
+
+/**
+ * The Send pool section of Capacity: one chart per pool, from the stored daily series. Each bar = the mailboxes ready at
+ * the day's last sample, split by vendor; a red mark under a day = the pool fell to 0 that day (every org refused).
+ */
+function SendPoolSection() {
+  const infra = useOpsInfra();
+  const series = infra.data ? sendPoolHistory(infra.data) : [];
+  if (!infra.data || !series.length) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <section>
+      <SectionTitle count={series.length}>Send pool</SectionTitle>
+      <p className="k-fg3 -mt-1 mb-3 text-[12px]">Mailboxes that can take a new email, each day. Red = the pool fell to zero that day.</p>
+      <div className="space-y-3">
+        {series.map((h) => {
+          const vendors = seriesVendors(h);
+          const days = h.days.slice(-SEND_POOL_CHART_DAYS);
+          return (
+            <DayChart
+              key={h.pool}
+              title={sendPoolWord(h.pool)}
+              note="Hover a day to read its last count per vendor and its lowest count."
+              days={days.map((d) => ({
+                day: d.day,
+                isToday: d.day === today,
+                alert: poolWasEmpty(d),
+                parts: vendors.map((v) => ({ label: vendorWord(v), value: d.byVendor ? (d.byVendor[v] ?? 0) : null, color: vendorColor(v) })),
+                extra: d.sendableMin == null ? undefined : `lowest ${d.sendableMin}`,
+              }))}
+              legend={vendors.map((v) => ({ label: vendorWord(v), value: null, color: vendorColor(v) }))}
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 /** The hub tile: how many mailboxes can take a new email now, red at zero. Nothing before instantly-service serves it. */
 export function SendPoolTile({ href }: { href: string }) {
   const infra = useOpsInfra();
@@ -614,6 +667,7 @@ export function CapacityPage({ base: _base }: { base: string }) {
     <div className="space-y-8">
       <EmptySendPools />
       <VendorRefusals />
+      <SendPoolSection />
       <CapacityTiles />
       <section>
         <SectionTitle count={infra.data?.fleet.totalAccountCount ?? null}>Fleet by state</SectionTitle>
