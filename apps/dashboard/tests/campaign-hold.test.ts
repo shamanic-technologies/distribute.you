@@ -4,6 +4,7 @@ import {
   CREDIT_RECHECK_MS,
   HOLD_RECHECK_MS,
   campaignHoldCopy,
+  holdOutlivesLimitChange,
   holdsByReason,
   readCampaignHold,
   type HoldEventInput,
@@ -95,6 +96,16 @@ describe("readCampaignHold", () => {
   it("reads the credit refusal off creditCheck, never the English reason", () => {
     const hold = readCampaignHold([creditEvent()], NOW);
     expect(hold?.reason).toBe("insufficient_credits");
+  });
+
+  it("ends a hold once a newer run passes the gate (2026-10-30, limit raised to $80/month)", () => {
+    expect(readCampaignHold([ceilingEvent(ago(10 * 60_000)), passedGate(ago(60_000))], NOW)).toBeNull();
+  });
+
+  it("keeps a hold written after the last run that passed (the limit was reached again)", () => {
+    expect(readCampaignHold([passedGate(ago(9 * 60_000)), ceilingEvent(ago(2 * 60_000))], NOW)?.reason).toBe(
+      "daily_ceiling_reached",
+    );
   });
 
   it("says nothing about a healthy campaign", () => {
@@ -240,5 +251,23 @@ describe("campaignHoldCopy", () => {
       expect(text).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}/);
       expect(text).not.toContain("—");
     }
+  });
+});
+
+describe("holdOutlivesLimitChange", () => {
+  const hold = readCampaignHold([ceilingEvent(ago(4 * 60_000))], NOW)!;
+
+  it("drops a limit hold written before the limits changed", () => {
+    expect(holdOutlivesLimitChange(hold, ago(60_000))).toBe(false);
+  });
+
+  it("keeps a limit hold written after the limits changed (a raise still not enough)", () => {
+    expect(holdOutlivesLimitChange(hold, ago(10 * 60_000))).toBe(true);
+  });
+
+  it("keeps a hold no limit change can end, and one with no change time", () => {
+    const credit = readCampaignHold([creditEvent(ago(4 * 60_000))], NOW)!;
+    expect(holdOutlivesLimitChange(credit, ago(60_000))).toBe(true);
+    expect(holdOutlivesLimitChange(hold, null)).toBe(true);
   });
 });

@@ -169,6 +169,15 @@ export function readCampaignHold(
   now: Date = new Date(),
 ): CampaignHold | null {
   let best: CampaignHold | null = null;
+  // The newest run the gate LET THROUGH: a hold written before it is over (2026-10-30, a limit
+  // raised to $80/month kept "reached its limit" on screen 20 minutes while runs were going out).
+  let lastAllowedAt = Number.NEGATIVE_INFINITY;
+  for (const e of events) {
+    if (e.event === "gate-check-result" && isRecord(e.data) && e.data.allowed === true) {
+      const at = Date.parse(e.createdAt);
+      if (Number.isFinite(at) && at > lastAllowedAt) lastAllowedAt = at;
+    }
+  }
   for (const e of events) {
     const parsed =
       e.event === "campaign-hold"
@@ -182,7 +191,23 @@ export function readCampaignHold(
     if (now.getTime() - at >= freshnessMs(parsed.reason)) continue;
     if (!best || at > Date.parse(best.at)) best = parsed;
   }
+  if (best && Date.parse(best.at) < lastAllowedAt) return null;
   return best;
+}
+
+/** The reasons a change of the campaign's max budget or max volume can end. */
+const LIMIT_REASONS = new Set<CampaignHoldReason>(["daily_ceiling_reached", "unfunded"]);
+
+/**
+ * False when the customer changed the campaign's limits AFTER the hold was written: the hold
+ * judged the old limits, and the next check (within ten minutes) judges the new ones. A raise
+ * that is still not enough is held again by that check, newer than the change, and shows again.
+ * `limitsUpdatedAt` is billing's `updatedAt` on the sales funnel caps.
+ */
+export function holdOutlivesLimitChange(hold: CampaignHold, limitsUpdatedAt: string | null | undefined): boolean {
+  if (!LIMIT_REASONS.has(hold.reason) || !limitsUpdatedAt) return true;
+  const changed = Date.parse(limitsUpdatedAt);
+  return !Number.isFinite(changed) || changed <= Date.parse(hold.at);
 }
 
 /**
