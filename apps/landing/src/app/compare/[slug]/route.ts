@@ -20,7 +20,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (!competitor) {
     return renderedResponse(renderNotFoundPage(), request, { status: 404, canonicalPath: "/404" });
   }
-  // The AI SDR agents moved under the AI SDR page's own cluster (PAGE-AI-SDR-1029):
+  // A competitor in an AI Agent page's own cluster (the AI SDRs, PAGE-AI-SDR-1029; the
+  // lead tools, PAGE-AI-LEAD-GEN-1029) is served under that page:
   // the old URL answers a permanent redirect, never a 404. Relative `Location`:
   // `request.url` is the bind address on the box.
   const path = competitorPath(competitor);

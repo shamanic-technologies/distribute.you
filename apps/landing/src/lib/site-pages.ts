@@ -16,7 +16,7 @@
  */
 import { agencyCompareLinks } from "./agencies";
 import { coldEmailCompareLinks } from "./cold-email-agencies";
-import { AI_SDR_PATH, aiSdrCompareLinks } from "./competitors";
+import { AI_LEAD_GEN_PATH, AI_SDR_PATH, aiLeadGenCompareLinks, aiSdrCompareLinks } from "./competitors";
 import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
 
@@ -69,9 +69,14 @@ export const OUTCOMES: { slug: OutcomeSlug; name: string; line: string }[] = [
 
 /**
  * An AI Agent page served at the path its buyers search for, not `/<slug>-automation`:
- * Meetings Booked is "ai sdr" (1,600 US searches a month, PAGE-AI-SDR-1029).
+ * Meetings Booked is "ai sdr" (1,600 US searches a month, PAGE-AI-SDR-1029), Lead
+ * Generation is "ai lead generation" (1,600, PAGE-AI-LEAD-GEN-1029).
  */
-const AGENT_PATH: Partial<Record<OutcomeSlug, string>> = { revenue: "/", meetings: AI_SDR_PATH };
+const AGENT_PATH: Partial<Record<OutcomeSlug, string>> = {
+  revenue: "/",
+  meetings: AI_SDR_PATH,
+  "lead-generation": AI_LEAD_GEN_PATH,
+};
 
 function agentPath(slug: OutcomeSlug): string {
   return AGENT_PATH[slug] ?? `/${slug}-automation`;
@@ -88,7 +93,7 @@ function agencyPath(slug: OutcomeSlug): string {
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, "/ppc-agency", "/cold-email-agency"]);
+const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, AI_LEAD_GEN_PATH, "/ppc-agency", "/cold-email-agency"]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
 const GTM_AGENCY_SECTIONS = [
@@ -145,10 +150,20 @@ const AI_SDR_SECTIONS = [
   { label: "FAQ", href: `${AI_SDR_PATH}#faq` },
 ];
 
+/** The sections of the AI lead generation page (Lead Generation, AI Agent buyer, PAGE-AI-LEAD-GEN-1029). */
+const AI_LEAD_GEN_SECTIONS = [
+  { label: "How it finds leads", href: `${AI_LEAD_GEN_PATH}#how` },
+  { label: "Price of a lead", href: `${AI_LEAD_GEN_PATH}#prices` },
+  { label: "Lead tools compared", href: `${AI_LEAD_GEN_PATH}#compare` },
+  { label: "Pricing", href: `${AI_LEAD_GEN_PATH}#pricing` },
+  { label: "FAQ", href: `${AI_LEAD_GEN_PATH}#faq` },
+];
+
 /** Per-page extras of the AI Agent pages: their own sections and vs/alternatives cluster. */
 const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "compare" | "compareTitle">>> = {
   revenue: { sections: HOME_SECTIONS },
   meetings: { sections: AI_SDR_SECTIONS, compare: aiSdrCompareLinks(), compareTitle: "Compare AI SDRs" },
+  "lead-generation": { sections: AI_LEAD_GEN_SECTIONS, compare: aiLeadGenCompareLinks(), compareTitle: "Compare lead tools" },
 };
 
 /**
