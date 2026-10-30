@@ -21,7 +21,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     return renderedResponse(renderNotFoundPage(), request, { status: 404, canonicalPath: "/404" });
   }
   // A competitor in an AI Agent page's own cluster (the AI SDRs, PAGE-AI-SDR-1029; the
-  // lead tools, PAGE-AI-LEAD-GEN-1029; the cold email tools, PAGE-COLD-EMAIL-AUTOMATION-1030)
+  // lead tools, PAGE-AI-LEAD-GEN-1029; the cold email tools, PAGE-COLD-EMAIL-AUTOMATION-1030; the GTM platforms,
+  // PAGE-GTM-AUTOMATION-1030)
   // is served under that page:
   // the old URL answers a permanent redirect, never a 404. Relative `Location`:
   // `request.url` is the bind address on the box.

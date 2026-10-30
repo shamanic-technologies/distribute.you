@@ -1,0 +1,158 @@
+/*
+  /gtm-automation, the GTM AI Agent page (PAGE-GTM-AUTOMATION-1030). Loaded after
+  styles.css, agent.css and ai-sdr.css (the four steps and the side by side tables), on this
+  page and its alternatives page only. Recipes, each lifted from a clone:
+  - oxygen growth-scene (clone `oxygen` branding2-assets/growth-scene.{js,css}): a tall
+    scroll track whose first child is sticky, the scroll inside the track scrubbing the
+    scene, a 2px progress line at its foot; pinned only where the whole hero fits
+    (oxygen's shortViewport), static otherwise. Here the scene is one lead walking the
+    agent's run, from found to paid, in the LIGHT variant. motion.js `pin-scrub` drives it.
+  - default.com flow canvas: the step states (Now, Done) and the token on the rail.
+  - treg.to/pricing: the price shown before the step runs (the chips on the rail).
+  The HTML is the final state (every stage done, nothing pinned); reduced motion plays nothing.
+*/
+
+/* ---------- The scroll track and the pinned hero ---------- */
+.gx-track { position: relative; padding: 0; }
+/* Pinned, the track starts under the floating nav (its 58px of flow), so the hero fills the screen from the first frame. */
+.gx-track.is-pinned { height: 300svh; margin-top: -58px; }
+.gx-track.is-pinned .gx-pin { position: sticky; top: 0; height: 100svh; display: flex; align-items: center; overflow: hidden; }
+.gx-track.is-pinned .hero-gtm { min-height: 0; width: 100%; padding: 84px 0 20px; }
+/* A div, not a section: positioned here so its overflow clips the glow (styles.css gives `section` the position). */
+.hero-gtm { position: relative; }
+.hero-gtm .hero-grid { grid-template-columns: minmax(0, 1fr) 480px; }
+.hero-gtm h1 { font-size: clamp(36px, 3.4vw, 50px); }
+.gx-showcase { padding: 8px 0 56px; }
+.gx-showcase .showcase { margin-top: 0; }
+
+/* ---------- The run card ---------- */
+.gx-stage { position: relative; width: 480px; text-align: left; }
+.gx-run {
+  --row: 62px;
+  position: relative; border-radius: 22px; overflow: hidden; background: #fff;
+  border: 1px solid var(--hair);
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04), 0 30px 60px -30px rgba(10, 20, 60, 0.35), 0 0 0 6px var(--accent-50);
+}
+.gx-run-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 18px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--hair); }
+.gx-run-h .live { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-weight: 500; }
+.gx-run-h .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px #d1fae5; }
+.gx-hint { display: none; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.is-pinned .gx-hint { display: inline; }
+
+.gx-lead { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: var(--surface); border-bottom: 1px solid var(--hair); }
+.gx-av { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #3b6ff0, #1d4ed8); box-shadow: 0 0 0 3px #fff, 0 6px 14px -6px rgba(29, 78, 216, 0.6); }
+.gx-lead b { display: block; font-weight: 500; font-size: 14px; color: var(--text); }
+.gx-lead span:not(.gx-av) { font-size: 12px; color: var(--muted); }
+.gx-lead em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--accent-text); background: var(--accent-50); border: 1px solid var(--accent-100); padding: 3px 9px; border-radius: 100px; white-space: nowrap; }
+
+/* The rail: one row per stage, each its own fixed height so the token lands on its dot. */
+.gx-rail-wrap { position: relative; padding: 10px 16px 12px; }
+.gx-rail-wrap::before { content: ""; position: absolute; left: 32px; top: calc(10px + var(--row) / 2); height: calc(var(--row) * 5); width: 2px; background: var(--hair-2); }
+/* The rail fills behind the lead as it moves down (green: every stage it passed is done). */
+.gx-rail-wrap::after { content: ""; position: absolute; left: 32px; top: calc(10px + var(--row) / 2); height: calc(var(--row) * 5); width: 2px; background: var(--good); transform-origin: top; transform: scaleY(calc(var(--s, 5) / 5)); transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.gx-rail { list-style: none; position: relative; z-index: 1; }
+.gx-st { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; height: var(--row); padding-right: 2px; transition: opacity 0.35s ease; }
+.gx-dot { position: relative; z-index: 1; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 1.5px solid var(--hair-2); color: var(--muted-2); font-size: 12px; font-weight: 600; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease; }
+.gx-dot svg { display: none; width: 14px; height: 14px; }
+.gx-txt { min-width: 0; }
+.gx-h { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gx-h b { font-weight: 500; font-size: 15px; color: var(--text); white-space: nowrap; }
+.gx-d { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gx-price { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted); padding: 1px 8px; border-radius: 100px; background: var(--surface); border: 1px solid var(--hair); }
+.gx-state { font-size: 12px; }
+.gx-state > span { display: none; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; }
+.gx-state .now { color: var(--accent-text); background: var(--accent-50); }
+.gx-state .now i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.gx-state .ok { color: #047857; background: #ecfdf5; }
+.gx-st[data-status="done"] .gx-state .ok, .gx-st[data-status="active"] .gx-state .now { display: inline-flex; }
+.gx-st[data-status="done"] .gx-dot { background: var(--good); border-color: var(--good); color: #fff; }
+.gx-st[data-status="done"] .gx-dot svg { display: block; }
+.gx-st[data-status="done"] .gx-dot .n { display: none; }
+.gx-st[data-status="active"] .gx-dot { border-color: var(--accent); color: var(--accent-text); }
+.gx-st[data-status="idle"] { opacity: 0.45; }
+.gx-st[data-status="idle"] .gx-d { visibility: hidden; }
+
+/* The token: the lead itself, riding the rail to the stage it is at. */
+.gx-token {
+  position: absolute; z-index: 2; left: 14px; top: calc(10px + var(--row) / 2 - 18px);
+  width: 36px; height: 36px; border-radius: 50%; pointer-events: none;
+  border: 2px solid var(--accent); box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.14);
+  transform: translateY(calc(var(--s, 5) * var(--row)));
+  transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.gx-run[data-stage="6"] .gx-token { border-color: var(--good); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.16); }
+
+/* The progress line under the run (oxygen's growth-progress). */
+.gx-run-f { display: flex; align-items: center; gap: 14px; padding: 12px 18px 14px; border-top: 1px solid var(--hair); font-size: 12px; color: var(--muted); }
+.gx-run-f > span:first-child { white-space: nowrap; }
+.gx-bar { position: relative; flex: 1; height: 2px; border-radius: 2px; background: var(--hair); overflow: hidden; }
+.gx-bar i { position: absolute; inset: 0; background: var(--accent); transform-origin: left; transform: scaleX(var(--p, 1)); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .gx-run-h .live i { animation: gx-live 1.8s ease-in-out infinite; }
+  .gx-st[data-status="active"] .gx-state .now i { animation: gx-live-dot 1.2s ease-in-out infinite; }
+  .gx-track.is-playing .gx-st[data-status="done"] .gx-state .ok { animation: gx-pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+  .gx-token { animation: gx-ring 2s ease-out infinite; }
+}
+@keyframes gx-live { 50% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0.08); } }
+@keyframes gx-live-dot { 50% { opacity: 0.35; } }
+@keyframes gx-pop { from { transform: scale(0.7); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes gx-ring { 0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.3); } 100% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); } }
+
+/* ---------- Every outcome, one page each ---------- */
+.gx-outs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.gx-out { display: flex; flex-direction: column; gap: 8px; padding: 22px; border-radius: 20px; background: #fff; border: 1px solid var(--hair); box-shadow: var(--shadow-card); color: var(--text); text-decoration: none; transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+.gx-out:hover { border-color: var(--accent-100); transform: translateY(-2px); box-shadow: 0 0 0 4px var(--accent-50), var(--shadow-card); }
+.gx-out-k { align-self: flex-start; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent-text); background: var(--accent-50); padding: 3px 9px; border-radius: 100px; }
+.gx-out b { margin-top: 6px; font-family: var(--font-display); font-weight: 500; font-size: 21px; line-height: 1.2; }
+.gx-out > span:not(.gx-out-k) { flex: 1; font-size: 15px; color: var(--muted); }
+.gx-out em { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-style: normal; font-size: 14px; font-weight: 500; color: var(--accent-text); }
+
+/* ---------- The four steps (ai-sdr.css carries the frame) ---------- */
+.gx-pitch > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 11px; border-radius: 12px; background: #fff; border: 1px solid var(--hair); font-size: 13px; }
+.gx-pitch label { color: var(--muted); }
+.gx-pitch .chip { padding: 3px 9px; border-radius: 100px; font-size: 11px; color: var(--accent-text); background: var(--accent-50); border: 1px solid var(--accent-100); }
+.gx-pick { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 12px; background: #fff; border: 1px solid var(--hair); font-size: 13px; color: var(--text); opacity: 0.6; }
+.gx-pick span { flex: 1; min-width: 0; }
+.gx-pick em { flex: none; font-style: normal; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 100px; color: var(--muted); background: var(--surface); }
+.gx-pick.win { opacity: 1; border-color: var(--accent-100); }
+.gx-pick.win em { color: #047857; background: #ecfdf5; }
+.gx-chan { display: flex; gap: 8px; }
+.gx-chan span { flex: 1; text-align: center; padding: 8px 6px; border-radius: 12px; font-size: 13px; font-weight: 500; background: #fff; border: 1px solid var(--hair); }
+.gx-chan .gx-mail { color: var(--accent-text); border-color: var(--accent-100); }
+.gx-chan .gx-wa { color: #047857; border-color: #a7f3d0; }
+.gx-ab { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 12px; background: #fff; border: 1px solid var(--hair); font-size: 13px; }
+.gx-ab .v { flex: none; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: var(--accent-text); background: var(--accent-50); }
+.gx-ab .t { position: relative; flex: 1; height: 6px; border-radius: 6px; background: var(--surface); overflow: hidden; }
+.gx-ab .t i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--hair-2); }
+.gx-ab.win .t i { background: var(--accent); }
+.gx-ab em { flex: none; font-style: normal; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 100px; color: #047857; background: #ecfdf5; }
+
+/* ---------- A platform, or an agent ---------- */
+.gx-platform tbody th { white-space: normal; color: var(--text); min-width: 120px; }
+.gx-platform td.ours { color: var(--accent-text); background: var(--accent-50); font-weight: 500; }
+.gx-platform thead th:last-child { color: var(--accent-text); }
+
+/* /gtm-automation/alternatives: the start and channel columns each read as a sentence. */
+.cmp-alt-table th:nth-child(3), .cmp-alt-table td:nth-child(3) { min-width: 190px; }
+.cmp-alt-table th:nth-child(4), .cmp-alt-table td:nth-child(4) { min-width: 240px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .hero-gtm .hero-grid { grid-template-columns: 1fr; }
+  .gx-stage { margin: 0 auto; }
+}
+@media (max-width: 640px) {
+  .hero-gtm h1 { font-size: 34px; }
+  .gx-stage { width: 100%; max-width: 420px; }
+  .gx-run { --row: 60px; }
+  .gx-run-h .gx-hint, .gx-lead em { display: none; }
+  .gx-rail-wrap { padding: 10px 12px 12px; }
+  .gx-rail-wrap::before, .gx-rail-wrap::after { left: 28px; }
+  .gx-token { left: 10px; }
+  .gx-st { gap: 10px; }
+  .gx-h .gx-price { display: none; }
+  /* The green dot already says done; the pill gives its room to the detail line. */
+  .gx-st[data-status="done"] .gx-state .ok { display: none; }
+  .gx-platform tbody th { padding-top: 14px; }
+}

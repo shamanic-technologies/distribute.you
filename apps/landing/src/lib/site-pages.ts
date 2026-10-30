@@ -20,16 +20,19 @@ import {
   AI_LEAD_GEN_PATH,
   AI_SDR_PATH,
   COLD_EMAIL_AUTOMATION_PATH,
+  GTM_AUTOMATION_PATH,
   aiLeadGenCompareLinks,
   aiSdrCompareLinks,
   coldEmailAutomationCompareLinks,
+  gtmAutomationCompareLinks,
 } from "./competitors";
 import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
 import { APPOINTMENT_PAGE_PATH, appointmentCompareLinks } from "./appointment-setting-agencies";
 import { REACTIVATION_PAGE_PATH, reactivationCompareLinks } from "./reactivation-agencies";
+import { CS_PAGE_PATH, csCompareLinks } from "./customer-success-agencies";
 import { NURTURING_PAGE_PATH, nurturingCompareLinks } from "./nurturing-tools";
-import { CS_PAGE_PATH, csCompareLinks } from "./cs-tools";
+import { AI_CS_PAGE_PATH, aiCsCompareLinks } from "./cs-tools";
 
 export type Buyer = "agent" | "agency";
 
@@ -88,7 +91,7 @@ const AGENT_PATH: Partial<Record<OutcomeSlug, string>> = {
   revenue: "/",
   meetings: AI_SDR_PATH,
   "lead-generation": AI_LEAD_GEN_PATH,
-  "customer-success": CS_PAGE_PATH,
+  "customer-success": AI_CS_PAGE_PATH,
 };
 
 function agentPath(slug: OutcomeSlug): string {
@@ -123,8 +126,10 @@ const LIVE_PATHS = new Set<string>([
   "/cold-email-agency",
   COLD_EMAIL_AUTOMATION_PATH,
   REACTIVATION_PAGE_PATH,
-  NURTURING_PAGE_PATH,
+  GTM_AUTOMATION_PATH,
   CS_PAGE_PATH,
+  NURTURING_PAGE_PATH,
+  AI_CS_PAGE_PATH,
 ]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
@@ -183,6 +188,16 @@ const REACTIVATION_AGENCY_SECTIONS = [
   { label: "FAQ", href: `${REACTIVATION_PAGE_PATH}#faq` },
 ];
 
+/** The sections of the Customer Success Agency page (PAGE-CUSTOMER-SUCCESS-AGENCY-1030). */
+const CS_AGENCY_SECTIONS = [
+  { label: "How it works", href: `${CS_PAGE_PATH}#how` },
+  { label: "Moments we act on", href: `${CS_PAGE_PATH}#moments` },
+  { label: "Our own clients", href: `${CS_PAGE_PATH}#ours` },
+  { label: "Agencies compared", href: `${CS_PAGE_PATH}#compare` },
+  { label: "Price", href: `${CS_PAGE_PATH}#price` },
+  { label: "FAQ", href: `${CS_PAGE_PATH}#faq` },
+];
+
 /** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
 const HOME_SECTIONS = [
   { label: "How it works", href: "/#how" },
@@ -223,12 +238,12 @@ const NURTURING_SECTIONS = [
 
 /** The sections of the AI Customer Success page (Customer Success, AI Agent buyer, PAGE-AI-CUSTOMER-SUCCESS-1030). */
 const CS_SECTIONS = [
-  { label: "How it keeps customers", href: `${CS_PAGE_PATH}#how` },
-  { label: "Moments it acts on", href: `${CS_PAGE_PATH}#moments` },
-  { label: "Price of a message", href: `${CS_PAGE_PATH}#prices` },
-  { label: "Customer success tools compared", href: `${CS_PAGE_PATH}#compare` },
-  { label: "Pricing", href: `${CS_PAGE_PATH}#pricing` },
-  { label: "FAQ", href: `${CS_PAGE_PATH}#faq` },
+  { label: "How it keeps customers", href: `${AI_CS_PAGE_PATH}#how` },
+  { label: "Moments it acts on", href: `${AI_CS_PAGE_PATH}#moments` },
+  { label: "Price of a message", href: `${AI_CS_PAGE_PATH}#prices` },
+  { label: "Customer success tools compared", href: `${AI_CS_PAGE_PATH}#compare` },
+  { label: "Pricing", href: `${AI_CS_PAGE_PATH}#pricing` },
+  { label: "FAQ", href: `${AI_CS_PAGE_PATH}#faq` },
 ];
 
 /** The sections of the cold email automation page (Sales Cold Email, AI Agent buyer, PAGE-COLD-EMAIL-AUTOMATION-1030). */
@@ -241,9 +256,20 @@ const COLD_EMAIL_AUTOMATION_SECTIONS = [
   { label: "FAQ", href: `${COLD_EMAIL_AUTOMATION_PATH}#faq` },
 ];
 
+/** The sections of the GTM automation page (GTM, AI Agent buyer, PAGE-GTM-AUTOMATION-1030). */
+const GTM_AUTOMATION_SECTIONS = [
+  { label: "From found to paid", href: `${GTM_AUTOMATION_PATH}#run` },
+  { label: "Every outcome", href: `${GTM_AUTOMATION_PATH}#outcomes` },
+  { label: "How it runs", href: `${GTM_AUTOMATION_PATH}#how` },
+  { label: "GTM platforms compared", href: `${GTM_AUTOMATION_PATH}#compare` },
+  { label: "Pricing", href: `${GTM_AUTOMATION_PATH}#pricing` },
+  { label: "FAQ", href: `${GTM_AUTOMATION_PATH}#faq` },
+];
+
 /** Per-page extras of the AI Agent pages: their own sections and vs/alternatives cluster. */
 const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "compare" | "compareTitle">>> = {
   revenue: { sections: HOME_SECTIONS },
+  gtm: { sections: GTM_AUTOMATION_SECTIONS, compare: gtmAutomationCompareLinks(), compareTitle: "Compare GTM platforms" },
   meetings: { sections: AI_SDR_SECTIONS, compare: aiSdrCompareLinks(), compareTitle: "Compare AI SDRs" },
   "lead-generation": { sections: AI_LEAD_GEN_SECTIONS, compare: aiLeadGenCompareLinks(), compareTitle: "Compare lead tools" },
   "cold-email": {
@@ -252,7 +278,7 @@ const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "com
     compareTitle: "Compare cold email tools",
   },
   "lead-nurturing": { sections: NURTURING_SECTIONS, compare: nurturingCompareLinks(), compareTitle: "Compare nurturing tools" },
-  "customer-success": { sections: CS_SECTIONS, compare: csCompareLinks(), compareTitle: "Compare customer success tools" },
+  "customer-success": { sections: CS_SECTIONS, compare: aiCsCompareLinks(), compareTitle: "Compare customer success tools" },
 };
 
 /**
@@ -291,6 +317,7 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           ...(o.slug === "lead-nurturing"
             ? { navLabel: "Database Reactivation Agency", sections: REACTIVATION_AGENCY_SECTIONS, compare: reactivationCompareLinks() }
             : {}),
+          ...(o.slug === "customer-success" ? { sections: CS_AGENCY_SECTIONS, compare: csCompareLinks() } : {}),
         },
       ]),
 ]);

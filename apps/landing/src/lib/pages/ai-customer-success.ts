@@ -31,7 +31,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import { CS_ALTERNATIVES_PATH, CS_PAGE_PATH, CS_TOOLS, OUR_CS_ROW, csVsPath } from "../cs-tools";
+import { AI_CS_ALTERNATIVES_PATH, AI_CS_PAGE_PATH, CS_TOOLS, OUR_AI_CS_ROW, aiCsVsPath } from "../cs-tools";
 import { livePages } from "../site-pages";
 import { SITE, SIGN_UP, WHY, breadcrumb, esc, shell } from "../v2-shell";
 import { AGENT_CSS_VERSION, AI_SDR_CSS_VERSION, quotesHtml } from "./ai-sdr";
@@ -402,7 +402,7 @@ export function compareHtml(): string {
   const newest = CS_TOOLS.map((t) => t.verifiedOn).sort().at(-1) ?? "";
   const rows = CS_TOOLS.map(
     (t) =>
-      `<tr><th scope="row"><a href="${csVsPath(t)}">${LOGO(t.logoDomain ?? t.domain, 20)}${esc(t.name)}</a></th><td>${esc(t.entryPrice)}</td><td>${esc(t.aiAgent)}</td><td><a class="sdr-vs" href="${csVsPath(t)}">distribute.you vs ${esc(t.name)}</a></td></tr>`,
+      `<tr><th scope="row"><a href="${aiCsVsPath(t)}">${LOGO(t.logoDomain ?? t.domain, 20)}${esc(t.name)}</a></th><td>${esc(t.entryPrice)}</td><td>${esc(t.aiAgent)}</td><td><a class="sdr-vs" href="${aiCsVsPath(t)}">distribute.you vs ${esc(t.name)}</a></td></tr>`,
   ).join("");
   const sources = CS_TOOLS.map((t) => `<a href="${esc(t.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(t.name)}</a>`).join(", ");
   return `<section class="framed tint" id="compare">
@@ -416,12 +416,12 @@ export function compareHtml(): string {
       <table class="sdr-table">
         <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">Their AI agent</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${CS_PAGE_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free for one user</td><td>${esc(OUR_CS_ROW.aiAgent)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${AI_CS_PAGE_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free for one user</td><td>${esc(OUR_AI_CS_ROW.aiAgent)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
           ${rows}
         </tbody>
       </table>
     </div>
-    <p class="stack-source">Read on each site on ${esc(verifiedLabel(newest))}: ${sources}. Gainsight, Vitally and ChurnZero publish no price. <a href="${CS_ALTERNATIVES_PATH}">Every AI customer success alternative</a>.</p>
+    <p class="stack-source">Read on each site on ${esc(verifiedLabel(newest))}: ${sources}. Gainsight, Vitally and ChurnZero publish no price. <a href="${AI_CS_ALTERNATIVES_PATH}">Every AI customer success alternative</a>.</p>
   </div>
 </section>`;
 }
@@ -560,7 +560,7 @@ export function csFaq(): { q: string; a: string }[] {
     },
     {
       q: "How is it different from Intercom, Zendesk, HubSpot Service Hub or Freshdesk?",
-      a: `Their AI agents answer the customers who write in. Ours writes to every customer first, on WhatsApp. Keep your helpdesk; each comparison is on its own page: ${CS_TOOLS.map((t) => `<a href="${csVsPath(t)}">${esc(t.name)}</a>`).join(", ")}.`,
+      a: `Their AI agents answer the customers who write in. Ours writes to every customer first, on WhatsApp. Keep your helpdesk; each comparison is on its own page: ${CS_TOOLS.map((t) => `<a href="${aiCsVsPath(t)}">${esc(t.name)}</a>`).join(", ")}.`,
     },
     ...(twin
       ? [
@@ -585,8 +585,8 @@ function faqHtml(faq: { q: string; a: string }[]): string {
       </div>`,
     )
     .join("\n      ");
-  const links = CS_TOOLS.map((t) => `<a href="${csVsPath(t)}">distribute.you vs ${esc(t.name)}</a>`)
-    .concat(`<a href="${CS_ALTERNATIVES_PATH}">AI customer success alternatives</a>`, ...(twin ? [`<a href="${twin.path}">Customer Success Agency</a>`] : []))
+  const links = CS_TOOLS.map((t) => `<a href="${aiCsVsPath(t)}">distribute.you vs ${esc(t.name)}</a>`)
+    .concat(`<a href="${AI_CS_ALTERNATIVES_PATH}">AI customer success alternatives</a>`, ...(twin ? [`<a href="${twin.path}">Customer Success Agency</a>`] : []))
     .join(" · ");
   return `<section class="framed" id="faq">
   <div class="wrap">
@@ -608,12 +608,12 @@ export const CS_DESCRIPTION =
   "Revenue made easy. AI customer success that writes to each paying customer on WhatsApp when they pay, come back or go quiet. Free for one user, 0% markup.";
 
 export function renderAiCustomerSuccessPage(): string {
-  const url = `${SITE}${CS_PAGE_PATH}`;
+  const url = `${SITE}${AI_CS_PAGE_PATH}`;
   const faq = csFaq();
   return shell({
     title: CS_TITLE,
     description: CS_DESCRIPTION,
-    path: CS_PAGE_PATH,
+    path: AI_CS_PAGE_PATH,
     head: csHead(),
     bodyClass: "cs-agent",
     body: [
@@ -649,7 +649,7 @@ export function renderAiCustomerSuccessPage(): string {
       },
       breadcrumb([
         { name: "distribute.you", path: "/" },
-        { name: "AI Customer Success", path: CS_PAGE_PATH },
+        { name: "AI Customer Success", path: AI_CS_PAGE_PATH },
       ]),
     ],
   });

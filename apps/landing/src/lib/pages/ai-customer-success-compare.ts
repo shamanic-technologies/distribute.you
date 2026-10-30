@@ -2,7 +2,7 @@
  * The AI Customer Success page's own comparison cluster (PAGE-AI-CUSTOMER-SUCCESS-1030):
  * `/ai-customer-success/alternatives` and one `/ai-customer-success/vs/<slug>` per tool in
  * `cs-tools.ts`. Every figure about a tool is read from its own site, shown with its source
- * link and the day it was read; our column is `OUR_CS_ROW`.
+ * link and the day it was read; our column is `OUR_AI_CS_ROW`.
  *
  * Light, like the AI Agent compare pages (`compare-page.ts` shape: side by side table, their
  * plans with the source, where each wins, choose X if, FAQ + FAQPage JSON-LD). Signature (refs
@@ -11,7 +11,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import { CS_ALTERNATIVES_PATH, CS_PAGE_PATH, CS_TOOLS, OUR_CS_ROW, csVsPath, type CsTool } from "../cs-tools";
+import { AI_CS_ALTERNATIVES_PATH, AI_CS_PAGE_PATH, CS_TOOLS, OUR_AI_CS_ROW, aiCsVsPath, type CsTool } from "../cs-tools";
 import { SIGN_UP, SITE, breadcrumb, esc, shell, whyLine } from "../v2-shell";
 import { csHead, verifiedLabel } from "./ai-customer-success";
 
@@ -67,11 +67,11 @@ function row(label: string, ours: string, theirs: string): string {
 }
 
 export function renderCsVsPage(t: CsTool): string {
-  const path = csVsPath(t);
+  const path = aiCsVsPath(t);
   const verified = verifiedLabel(t.verifiedOn);
   const faq = faqFor(t);
   const others = CS_TOOLS.filter((x) => x.slug !== t.slug)
-    .map((x) => `<a href="${csVsPath(x)}">distribute.you vs ${esc(x.name)}</a>`)
+    .map((x) => `<a href="${aiCsVsPath(x)}">distribute.you vs ${esc(x.name)}</a>`)
     .join(" · ");
   const prices = `<table class="roi-table cmp-prices">
     <thead><tr><th>${esc(t.name)} plan</th><th>Price</th><th>What it buys</th></tr></thead>
@@ -98,12 +98,12 @@ export function renderCsVsPage(t: CsTool): string {
       <table class="cmp-table">
         <thead><tr><th scope="col">What you are comparing</th><th scope="col" class="us">distribute.you</th><th scope="col">${esc(t.name)}</th></tr></thead>
         <tbody data-motion="reveal" data-motion-stagger>
-          ${row("Entry price", OUR_CS_ROW.entryPrice, t.entryPrice)}
-          ${row("AI agent price", OUR_CS_ROW.aiAgent, t.aiAgent)}
-          ${row("Free to start", OUR_CS_ROW.freeTier, t.freeTier)}
-          ${row("WhatsApp", OUR_CS_ROW.whatsapp, t.whatsapp)}
-          ${row("Who starts the conversation", OUR_CS_ROW.whoStarts, "Your customer, when they write in with a question")}
-          ${row("What it counts", OUR_CS_ROW.counts, "Conversations and tickets resolved")}
+          ${row("Entry price", OUR_AI_CS_ROW.entryPrice, t.entryPrice)}
+          ${row("AI agent price", OUR_AI_CS_ROW.aiAgent, t.aiAgent)}
+          ${row("Free to start", OUR_AI_CS_ROW.freeTier, t.freeTier)}
+          ${row("WhatsApp", OUR_AI_CS_ROW.whatsapp, t.whatsapp)}
+          ${row("Who starts the conversation", OUR_AI_CS_ROW.whoStarts, "Your customer, when they write in with a question")}
+          ${row("What it counts", OUR_AI_CS_ROW.counts, "Conversations and tickets resolved")}
         </tbody>
       </table>
     </div>
@@ -112,7 +112,7 @@ export function renderCsVsPage(t: CsTool): string {
 
 <section class="framed" id="pricing">
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(t.name)} pricing, and ours</h2><p>${esc(OUR_CS_ROW.pricing)}</p></div>
+    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(t.name)} pricing, and ours</h2><p>${esc(OUR_AI_CS_ROW.pricing)}</p></div>
     <div class="cmp-cols">
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
@@ -148,7 +148,7 @@ __HOT_LEAD_BAND__
   <div class="wrap">
     <div class="section-head center rv"><h2>Questions about ${esc(t.name)} and distribute.you</h2></div>
     <div class="faq-list rv">${faqList(faq)}</div>
-    <p class="cmp-more rv">More comparisons: ${others} · <a href="${CS_ALTERNATIVES_PATH}">AI customer success alternatives</a> · <a href="${CS_PAGE_PATH}">AI Customer Success</a></p>
+    <p class="cmp-more rv">More comparisons: ${others} · <a href="${AI_CS_ALTERNATIVES_PATH}">AI customer success alternatives</a> · <a href="${AI_CS_PAGE_PATH}">AI Customer Success</a></p>
   </div>
 </section>`;
 
@@ -166,7 +166,7 @@ __HOT_LEAD_BAND__
         mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
       },
       breadcrumb([
-        { name: "AI Customer Success", path: CS_PAGE_PATH },
+        { name: "AI Customer Success", path: AI_CS_PAGE_PATH },
         { name: `distribute.you vs ${t.name}`, path },
       ]),
     ],
@@ -178,10 +178,10 @@ export function renderCsAlternativesPage(): string {
   const newest = CS_TOOLS.map((t) => t.verifiedOn).sort().at(-1) ?? "";
   const rows = CS_TOOLS.map(
     (t) =>
-      `<tr><th scope="row"><a href="${csVsPath(t)}">${logo(t.logoDomain ?? t.domain, 20)}${esc(t.name)}</a></th><td>${esc(t.entryPrice)}</td><td>${esc(t.aiAgent)}</td><td><a href="${esc(t.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(t.domain)}</a></td></tr>`,
+      `<tr><th scope="row"><a href="${aiCsVsPath(t)}">${logo(t.logoDomain ?? t.domain, 20)}${esc(t.name)}</a></th><td>${esc(t.entryPrice)}</td><td>${esc(t.aiAgent)}</td><td><a href="${esc(t.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(t.domain)}</a></td></tr>`,
   ).join("");
   const cards = CS_TOOLS.map(
-    (t) => `<a class="cmp-card rv" href="${csVsPath(t)}">
+    (t) => `<a class="cmp-card rv" href="${aiCsVsPath(t)}">
     <div class="cmp-card-top">${logo(t.logoDomain ?? t.domain, 32)}<div><b>${esc(t.name)} alternative</b><small>${esc(t.entryPrice)}</small></div></div>
     <p>${esc(t.oneLiner)}</p>
   </a>`,
@@ -201,7 +201,7 @@ export function renderCsAlternativesPage(): string {
       <table class="cmp-table cmp-alt-table">
         <thead><tr><th scope="col">Tool</th><th scope="col">Entry price</th><th scope="col">Their AI agent</th><th scope="col">Source</th></tr></thead>
         <tbody data-motion="reveal" data-motion-stagger>
-          <tr class="us-row"><th scope="row"><a href="${CS_PAGE_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td class="us">${esc(OUR_CS_ROW.entryPrice)}</td><td class="us">${esc(OUR_CS_ROW.aiAgent)}</td><td class="us"><a href="/catalog">Our catalog</a></td></tr>
+          <tr class="us-row"><th scope="row"><a href="${AI_CS_PAGE_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td class="us">${esc(OUR_AI_CS_ROW.entryPrice)}</td><td class="us">${esc(OUR_AI_CS_ROW.aiAgent)}</td><td class="us"><a href="/catalog">Our catalog</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -215,7 +215,7 @@ __HOT_LEAD_BAND__`;
   return shell({
     title: `AI customer success alternatives: ${names} and distribute.you`,
     description: `The best AI customer success alternatives: ${names} and distribute.you, with prices read from each tool's own site.`,
-    path: CS_ALTERNATIVES_PATH,
+    path: AI_CS_ALTERNATIVES_PATH,
     head: csHead(),
     bodyClass: "cs-agent",
     body,
@@ -224,15 +224,15 @@ __HOT_LEAD_BAND__`;
         "@context": "https://schema.org",
         "@type": "ItemList",
         name: "AI customer success alternatives",
-        url: `${SITE}${CS_ALTERNATIVES_PATH}`,
+        url: `${SITE}${AI_CS_ALTERNATIVES_PATH}`,
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "distribute.you", url: `${SITE}${CS_PAGE_PATH}` },
-          ...CS_TOOLS.map((t, i) => ({ "@type": "ListItem", position: i + 2, name: t.name, url: `${SITE}${csVsPath(t)}` })),
+          { "@type": "ListItem", position: 1, name: "distribute.you", url: `${SITE}${AI_CS_PAGE_PATH}` },
+          ...CS_TOOLS.map((t, i) => ({ "@type": "ListItem", position: i + 2, name: t.name, url: `${SITE}${aiCsVsPath(t)}` })),
         ],
       },
       breadcrumb([
-        { name: "AI Customer Success", path: CS_PAGE_PATH },
-        { name: "Alternatives", path: CS_ALTERNATIVES_PATH },
+        { name: "AI Customer Success", path: AI_CS_PAGE_PATH },
+        { name: "Alternatives", path: AI_CS_ALTERNATIVES_PATH },
       ]),
     ],
   });

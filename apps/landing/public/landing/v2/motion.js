@@ -19,6 +19,11 @@
                                           collapses, the reply is answered; next buyer (default.com)
     <div data-motion="wa-thread">         a WhatsApp thread: typing bubble, their message, our ticks turn read;
                                           a quiet lead comes back, in a loop while on screen (explee)
+    <section data-motion="pin-scrub">     a hero that PINS while the page scrolls under it; the scroll walks the
+                                          [data-scrub-scene] through its [data-scrub-step] children (oxygen
+                                          growth-scene). Sets --p 0..1, data-stage and each step's data-status.
+    <div data-motion="post-reel">         [data-reel-grid] cards scroll in columns, alternate directions; the
+                                          [data-reel-toggle] button pauses and shows every card (oxygen posts)
     <div data-motion="signal-thread">     a signals feed beside a WhatsApp thread: each [data-beat] arrives in order,
                                           a signal lights up and the message that answers it follows (explee, light)
 
@@ -29,7 +34,7 @@
   - GSAP + ScrollTrigger (free since 2025, self-hosted under v2/vendor) load only on a page
     that carries a data-motion element, so a page without motion pays nothing.
   Ported from the clones listed in geneva-v2 .context/motion-and-pricing-refs.md (11x
-  scroll-scrub, oxygen orbit + sticky story, explee chat + rolling numbers, outrank bars,
+  scroll-scrub, oxygen growth-scene pin, oxygen orbit + sticky story, explee chat + rolling numbers, outrank bars,
   graphed beams, oxygen marquee, origami lead rows, default workflow).
 */
 (function () {
@@ -353,6 +358,123 @@
           if (tl) tl.play(); else cycle();
         },
       });
+    },
+
+    /*
+      pin-scrub (oxygen growth-scene): the section grows a scroll track (.is-pinned, the page's
+      CSS sets its height and makes its first child sticky) and the scroll position inside that
+      track becomes the scene's progress. Pinned only on a screen tall and wide enough to hold
+      the whole hero (oxygen's shortViewport); elsewhere the scene plays as it crosses the
+      viewport, unpinned. Stage k = k steps done, step k+1 active; the last stretch of the
+      track holds every step done, the final state the HTML already shows.
+    */
+    "pin-scrub": function (el, gsap) {
+      var scene = el.querySelector("[data-scrub-scene]") || el;
+      var steps = toArray(scene.querySelectorAll("[data-scrub-step]"));
+      var n = steps.length;
+      if (!n) return;
+      function paint(p) {
+        var stage = Math.min(n, Math.floor(p * (n + 1)));
+        el.style.setProperty("--p", p.toFixed(4));
+        scene.setAttribute("data-stage", String(stage));
+        scene.style.setProperty("--s", String(Math.min(stage, n - 1)));
+        steps.forEach(function (s, i) { s.setAttribute("data-status", i < stage ? "done" : i === stage ? "active" : "idle"); });
+      }
+      // The page names the screens that can hold its whole hero pinned (data-motion-pin).
+      var pinMedia = el.getAttribute("data-motion-pin") || "(min-width: 1101px) and (min-height: 700px)";
+      var mm = gsap.matchMedia();
+      mm.add({ pin: pinMedia, flow: "not all and " + pinMedia }, function (ctx) {
+        el.classList.toggle("is-pinned", !!ctx.conditions.pin);
+        el.classList.add("is-playing");
+        window.ScrollTrigger.refresh();
+        var st = ctx.conditions.pin
+          ? window.ScrollTrigger.create({ trigger: el, start: "top top", end: "bottom bottom", onUpdate: function (self) { paint(self.progress); } })
+          : window.ScrollTrigger.create({ trigger: scene, start: "top 80%", end: "bottom 35%", onUpdate: function (self) { paint(self.progress); } });
+        paint(st.progress);
+        return function () { el.classList.remove("is-pinned", "is-playing"); paint(1); };
+      });
+    },
+
+    "post-reel": function (el, gsap) {
+      // Oxygen's community posts: the cards of [data-reel-grid] split into as many columns as the
+      // grid has, each column scrolls (the middle one downward), a copy follows so the seam never
+      // shows. The [data-reel-toggle] button stops the reel and puts every card back in its plain
+      // grid (the finished HTML); a second press plays again. Paused on hover and off screen.
+      var grid = el.querySelector("[data-reel-grid]");
+      var toggle = el.querySelector("[data-reel-toggle]");
+      if (!grid) return;
+      var originals = toArray(grid.children);
+      if (!originals.length) return;
+      var paused = false, onScreen = false, hover = false, tweens = [], cols = 0, frame = 0;
+      function columns() { return getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length || 1; }
+      function sync() {
+        tweens.forEach(function (t) { if (paused || !onScreen || hover) t.pause(); else t.play(); });
+      }
+      function clear() { while (grid.firstChild) grid.removeChild(grid.firstChild); }
+      function render() {
+        tweens.forEach(function (t) { t.kill(); });
+        tweens = [];
+        el.classList.toggle("is-paused", paused);
+        el.classList.toggle("is-playing", !paused);
+        if (toggle) {
+          toggle.textContent = paused ? "Play the threads" : "Pause and show every thread";
+          toggle.setAttribute("aria-pressed", paused ? "true" : "false");
+        }
+        grid.classList.remove("is-scrolling");
+        clear();
+        originals.forEach(function (c) { grid.appendChild(c); });
+        if (paused) return;
+        cols = columns();
+        grid.classList.add("is-scrolling");
+        clear();
+        var reels = [];
+        for (var c = 0; c < cols; c++) {
+          var reel = document.createElement("div");
+          reel.className = "reel-col";
+          var track = document.createElement("div");
+          track.className = "reel-track";
+          originals.forEach(function (card, i) { if (i % cols === c) track.appendChild(card.cloneNode(true)); });
+          reel.appendChild(track);
+          grid.appendChild(reel);
+          reels.push({ reel: reel, track: track, up: c % 2 === 0 });
+        }
+        reels.forEach(function (r) {
+          var gap = parseFloat(getComputedStyle(r.track).rowGap) || 0;
+          var first = toArray(r.track.children);
+          var cycle = first.reduce(function (sum, k) { return sum + k.getBoundingClientRect().height + gap; }, 0);
+          if (!cycle) return;
+          for (var h = cycle; h < r.reel.clientHeight + cycle; h += cycle) {
+            first.forEach(function (k) {
+              var copy = k.cloneNode(true);
+              copy.setAttribute("aria-hidden", "true");
+              r.track.appendChild(copy);
+            });
+          }
+          tweens.push(gsap.fromTo(r.track, { y: r.up ? 0 : -cycle }, { y: r.up ? -cycle : 0, duration: cycle / 26, ease: "none", repeat: -1 }));
+        });
+        sync();
+      }
+      if (toggle) toggle.addEventListener("click", function () { paused = !paused; render(); });
+      grid.addEventListener("mouseenter", function () { hover = true; sync(); });
+      grid.addEventListener("mouseleave", function () { hover = false; sync(); });
+      // A keyboard visitor gets the plain grid, never a card sliding away from the focus.
+      grid.addEventListener("focusin", function () { if (!paused) { paused = true; render(); } });
+      window.addEventListener("resize", function () {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(function () {
+          if (paused) return;
+          grid.classList.remove("is-scrolling");
+          var n = columns();
+          grid.classList.add("is-scrolling");
+          if (n !== cols) render();
+        });
+      });
+      window.ScrollTrigger.create({
+        trigger: el, start: "top bottom", end: "bottom top",
+        onToggle: function (self) { onScreen = self.isActive; sync(); },
+      });
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+      else render();
     },
 
     "signal-thread": function (el, gsap) {

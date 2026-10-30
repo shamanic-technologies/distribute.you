@@ -157,6 +157,7 @@ https://distribute.you/docs
 - [Cold email agency](https://distribute.you/cold-email-agency): we find your buyers, write each email, send it from our own domains and answer every reply, from $1K a month plus 10% of budget
 - [Appointment setting agency](https://distribute.you/appointment-setting-agency): our team books B2B sales meetings in your calendar, from $1K a month plus 10% of budget
 - [Database reactivation agency](https://distribute.you/database-reactivation-agency): our team wakes your past leads by email and WhatsApp and books the ones who answer, from $1K a month plus 10% of budget
+- [Customer success agency](https://distribute.you/customer-success-agency): our team welcomes, answers and checks on your paying clients on WhatsApp, from $1K a month plus 10% of budget
 - [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live API price of every tool behind an email
 - [About](https://distribute.you/about): how we run campaigns for you, how billing works, what is guaranteed
 - [Docs](https://distribute.you/docs): the API and its OpenAPI document, how a key
@@ -190,6 +191,11 @@ you run; we run the campaign.
 - [vs DoubleTime AI](https://distribute.you/database-reactivation-agency/vs/doubletime-ai)
 - [vs SearchBerg](https://distribute.you/database-reactivation-agency/vs/searchberg)
 - [vs Niagara Stands Out](https://distribute.you/database-reactivation-agency/vs/niagara-stands-out)
+- [Customer success agency alternatives](https://distribute.you/customer-success-agency/alternatives)
+- [vs Bamboo Works](https://distribute.you/customer-success-agency/vs/bamboo-works)
+- [vs Stealth Agents](https://distribute.you/customer-success-agency/vs/stealth-agents)
+- [vs VA Masters](https://distribute.you/customer-success-agency/vs/va-masters)
+- [vs South](https://distribute.you/customer-success-agency/vs/south)
 - [Lead nurturing automation](https://distribute.you/lead-nurturing-automation): our AI lead nurturing agent, which reads your Clerk, Stripe, PostHog or GoHighLevel and writes to each lead by email or WhatsApp when they visit, sign up or pay
 - [Lead nurturing automation alternatives](https://distribute.you/lead-nurturing-automation/alternatives)
 - [vs ActiveCampaign](https://distribute.you/lead-nurturing-automation/vs/activecampaign)
@@ -217,6 +223,11 @@ you run; we run the campaign.
 - [vs Saleshandy](https://distribute.you/cold-email-automation/vs/saleshandy)
 - [vs Woodpecker](https://distribute.you/cold-email-automation/vs/woodpecker)
 - [vs Mailshake](https://distribute.you/cold-email-automation/vs/mailshake)
+- [GTM automation](https://distribute.you/gtm-automation): our AI GTM agent, which runs your whole go-to-market, from the first buyer found to the follow up until they pay
+- [GTM automation alternatives](https://distribute.you/gtm-automation/alternatives)
+- [vs Default](https://distribute.you/gtm-automation/vs/default)
+- [vs Unify](https://distribute.you/gtm-automation/vs/unify)
+- [vs Common Room](https://distribute.you/gtm-automation/vs/common-room)
 - [vs Gojiberry](https://distribute.you/compare/gojiberry)
 - [vs Explee](https://distribute.you/compare/explee)
 - [vs Salesforge](https://distribute.you/compare/salesforge)
@@ -233,7 +244,6 @@ you run; we run the campaign.
 - [vs HeyReach](https://distribute.you/compare/heyreach)
 - [vs Waalaxy](https://distribute.you/compare/waalaxy)
 - [vs Chili Piper](https://distribute.you/compare/chili-piper)
-- [vs Default](https://distribute.you/compare/default)
 - [vs Frontrunner](https://distribute.you/compare/frontrunner)
 
 ## Rankings by audience

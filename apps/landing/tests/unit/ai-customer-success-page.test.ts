@@ -11,7 +11,7 @@ import {
   renderAiCustomerSuccessPage,
 } from "../../src/lib/pages/ai-customer-success";
 import { renderCsAlternativesPage, renderCsVsPage } from "../../src/lib/pages/ai-customer-success-compare";
-import { CS_TOOLS, csClusterPaths, csVsPath } from "../../src/lib/cs-tools";
+import { CS_TOOLS, aiCsClusterPaths, aiCsVsPath } from "../../src/lib/cs-tools";
 import { footerModel, navHtml } from "../../src/lib/site-chrome";
 import { SITE_PAGES } from "../../src/lib/site-pages";
 
@@ -148,7 +148,7 @@ describe("the catalogue serves the page", () => {
     const model = footerModel("/ai-customer-success/vs/intercom");
     expect(model.variant).toBe("agent");
     const compare = model.columns.find((c) => c.title === "Compare customer success tools")!;
-    expect(compare.links.map((l) => l.href)).toEqual(csClusterPaths().slice(1).concat(csClusterPaths()[0]));
+    expect(compare.links.map((l) => l.href)).toEqual(aiCsClusterPaths().slice(1).concat(aiCsClusterPaths()[0]));
     expect(navHtml("/")).toContain('href="/ai-customer-success"><b>Customer Success Automation</b>');
   });
 
@@ -156,7 +156,7 @@ describe("the catalogue serves the page", () => {
     const { default: sitemap } = await import("@/app/sitemap");
     const urls = (await sitemap()).map((e) => e.url);
     const llms = read("public/llms.txt");
-    for (const p of ["/ai-customer-success", ...csClusterPaths()]) {
+    for (const p of ["/ai-customer-success", ...aiCsClusterPaths()]) {
       expect(urls).toContain(`https://distribute.you${p}`);
       expect(llms).toContain(`https://distribute.you${p}`);
     }
@@ -171,7 +171,7 @@ describe("the customer success tools cluster", () => {
       expect(t.verifiedOn, t.slug).toMatch(/^2026-10-\d\d$/);
       expect(t.prices.length, t.slug).toBeGreaterThan(1);
       for (const p of t.prices) expect(p.price, `${t.slug} ${p.plan}`).toMatch(/\$|On request/);
-      expect(html).toContain(`href="${csVsPath(t)}"`);
+      expect(html).toContain(`href="${aiCsVsPath(t)}"`);
     }
   });
 
@@ -182,7 +182,7 @@ describe("the customer success tools cluster", () => {
       expect(page).toContain(`<h1>distribute.you <span class="accent">vs</span> ${t.name}</h1>`);
       expect(page).toContain(`href="${t.sourceUrl}" rel="nofollow noopener"`);
       for (const p of t.prices) expect(page).toContain(p.price.replace(/&/g, "&amp;"));
-      for (const o of CS_TOOLS) if (o.slug !== t.slug) expect(page).toContain(`href="${csVsPath(o)}">distribute.you vs ${o.name}</a>`);
+      for (const o of CS_TOOLS) if (o.slug !== t.slug) expect(page).toContain(`href="${aiCsVsPath(o)}">distribute.you vs ${o.name}</a>`);
     }
   });
 
@@ -192,7 +192,7 @@ describe("the customer success tools cluster", () => {
     const ours = alt.indexOf('class="us-row"');
     expect(ours).toBeGreaterThan(0);
     for (const t of CS_TOOLS) {
-      expect(alt.indexOf(`href="${csVsPath(t)}"`)).toBeGreaterThan(ours);
+      expect(alt.indexOf(`href="${aiCsVsPath(t)}"`)).toBeGreaterThan(ours);
       expect(alt).toContain(`href="${t.sourceUrl}"`);
     }
   });

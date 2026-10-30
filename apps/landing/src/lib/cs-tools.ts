@@ -13,8 +13,8 @@
  * Alias-free: the unit tests import it directly.
  */
 
-export const CS_PAGE_PATH = "/ai-customer-success";
-export const CS_ALTERNATIVES_PATH = `${CS_PAGE_PATH}/alternatives`;
+export const AI_CS_PAGE_PATH = "/ai-customer-success";
+export const AI_CS_ALTERNATIVES_PATH = `${AI_CS_PAGE_PATH}/alternatives`;
 
 export type ToolPrice = {
   /** The plan as the tool names it. */
@@ -51,7 +51,7 @@ export type CsTool = {
 };
 
 /** How WE answer each row, stated once. */
-export const OUR_CS_ROW = {
+export const OUR_AI_CS_ROW = {
   entryPrice: "Free for one user, every action at the API price",
   aiAgent: "Every message at the vendor's API price, 0% markup",
   pricing:
@@ -164,8 +164,8 @@ export const CS_TOOLS: readonly CsTool[] = [
   },
 ];
 
-export function csVsPath(t: Pick<CsTool, "slug">): string {
-  return `${CS_PAGE_PATH}/vs/${t.slug}`;
+export function aiCsVsPath(t: Pick<CsTool, "slug">): string {
+  return `${AI_CS_PAGE_PATH}/vs/${t.slug}`;
 }
 
 export function csToolBySlug(slug: string): CsTool | undefined {
@@ -173,14 +173,14 @@ export function csToolBySlug(slug: string): CsTool | undefined {
 }
 
 /** Every page of the cluster, for the sitemap. */
-export function csClusterPaths(): string[] {
-  return [CS_ALTERNATIVES_PATH, ...CS_TOOLS.map(csVsPath)];
+export function aiCsClusterPaths(): string[] {
+  return [AI_CS_ALTERNATIVES_PATH, ...CS_TOOLS.map(aiCsVsPath)];
 }
 
 /** The links the page's footer and its FAQ close on. */
-export function csCompareLinks(): { label: string; href: string }[] {
+export function aiCsCompareLinks(): { label: string; href: string }[] {
   return [
-    ...CS_TOOLS.map((t) => ({ label: `distribute.you vs ${t.name}`, href: csVsPath(t) })),
-    { label: "AI customer success alternatives", href: CS_ALTERNATIVES_PATH },
+    ...CS_TOOLS.map((t) => ({ label: `distribute.you vs ${t.name}`, href: aiCsVsPath(t) })),
+    { label: "AI customer success alternatives", href: AI_CS_ALTERNATIVES_PATH },
   ];
 }
