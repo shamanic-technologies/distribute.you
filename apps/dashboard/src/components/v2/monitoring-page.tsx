@@ -40,6 +40,7 @@ import { ShieldCheckIcon } from "@phosphor-icons/react/dist/csr/ShieldCheck";
 import { SecurityAdvisoriesPage, SecurityAdvisoriesTile, useSecurityAdvisories } from "@/components/v2/monitoring-security";
 import { CpuIcon } from "@phosphor-icons/react/dist/csr/Cpu";
 import { BoxHealthPage, BoxHealthTile, useBoxHealth } from "@/components/v2/monitoring-box";
+import { BoxChecksPage, BoxChecksTile, useBoxChecks } from "@/components/v2/monitoring-watchdogs";
 import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { TriggerReportsPage, TriggerReportsTile, useTriggerReports } from "@/components/v2/monitoring-triggers";
 import { triggerName } from "@/lib/monitoring/trigger-reports";
@@ -138,7 +139,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Inbox placement, mailboxes, domains, and every email we sent" },
   whatsapp: { name: "WhatsApp", color: "var(--data-lime)", Icon: WhatsappLogoIcon, sub: "Whether every linked line can send, and every reply Sophie wrote left" },
   security: { name: "Security", color: "var(--data-rose)", Icon: ShieldCheckIcon, sub: "Whether our prod repos carry open security advisories" },
-  box: { name: "Box", color: "var(--data-sky)", Icon: CpuIcon, sub: "Whether the production server is overloaded, and which containers eat it" },
+  box: { name: "Box", color: "var(--data-sky)", Icon: CpuIcon, sub: "Whether the production server is overloaded, and whether its own checks pass" },
   triggers: { name: "Triggers", color: "var(--data-amber)", Icon: LightningIcon, sub: "Whether every trigger still fires, reaches its campaign, and gets its answer" },
   tools: { name: "Connected tools", color: "var(--data-sky)", Icon: PlugsConnectedIcon, sub: "Whether every tool a client connected still brings records in" },
   factory: { name: "Factory plan", color: "var(--data-violet)", Icon: StrategyIcon, sub: "Which client campaigns would run differently if they followed their plan" },
@@ -177,6 +178,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "whatsapp/sophie": { section: "whatsapp", title: "Sophie's replies", question: "Did every WhatsApp reply Sophie wrote reach the person?" },
   "security/advisories": { section: "security", title: "Advisories", question: "Does any prod repo carry an open critical or high advisory?" },
   "box/load": { section: "box", title: "Load and memory", question: "Is the production server overloaded, and which containers eat its CPU and memory?" },
+  "box/watchdogs": { section: "box", title: "Watchdogs", question: "Is every check the production server runs on itself passing?" },
   "triggers/reports": { section: "triggers", title: "Reports", question: "Did every form, WhatsApp number, positive reply and account event reach its campaign?" },
   "triggers/waiting": { section: "triggers", title: "Prospects waiting", question: "Is any prospect waiting on a blocked campaign answer?" },
   "triggers/firing": { section: "triggers", title: "Firing", question: "Is any trigger our campaigns wait on broken?" },
@@ -337,6 +339,7 @@ export function V2Monitoring() {
         {view.page === "whatsapp/sophie" && <SophieRepliesPage />}
         {view.page === "security/advisories" && <SecurityAdvisoriesPage />}
         {view.page === "box/load" && <BoxHealthPage />}
+        {view.page === "box/watchdogs" && <BoxChecksPage />}
         {view.page === "triggers/reports" && <TriggerReportsPage />}
         {view.page === "triggers/waiting" && <ProspectsWaitingPage />}
         {view.page === "triggers/firing" && <TriggerHealthPage />}
@@ -439,6 +442,7 @@ function Hub({ base }: { base: string }) {
   const recon = useLedgerReconciliation();
   const sec = useSecurityAdvisories();
   const box = useBoxHealth();
+  const watchdogs = useBoxChecks();
   const trig = useTriggerReports();
   const waiting = useStuckOccurrences();
   const firing = useTriggerHealth();
@@ -481,6 +485,8 @@ function Hub({ base }: { base: string }) {
         <SecurityAdvisoriesTile href={href("security/advisories")} />
         {/* Load over 1.5x the cores, under 1 GB free, swap over half full, a memory kill, or no sample for 20 min (BOX-OVERLOAD-1026-MONITORING): red here IS the alert. */}
         <BoxHealthTile href={href("box/load")} />
+        {/* A deploy, service, queue, Jev, own-credit or social cron that found a problem or went silent (BOX-WATCHDOGS-1030): red here IS the alert, never an email. */}
+        <BoxChecksTile href={href("box/watchdogs")} />
         {/* A form, WhatsApp number, positive reply or account event not sent to its campaign 15 min after we saw it (TRIGGER-REPORTS-MONITORING-1027): red here IS the alert. */}
         <TriggerReportsTile href={href("triggers/reports")} />
         {/* A prospect who acted still waits 30 min later on a blocked campaign answer (REACTIVE-THROUGHPUT-1028): red here IS the alert, never an email. */}
@@ -1000,9 +1006,10 @@ function Hub({ base }: { base: string }) {
 
       <div>
       <SectionTitle count={1}>Box</SectionTitle>
-      <Section section="box" count={1} grid={false}>
+      <Section section="box" count={2} grid={false}>
         <HubChips>
           <HubChip href={href("box/load")} color={box.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Load and memory" />
+          <HubChip href={href("box/watchdogs")} color={watchdogs.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Watchdogs" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -1019,6 +1026,23 @@ function Hub({ base }: { base: string }) {
               label: "Available memory",
               value: box.data && (box.data.latest ? memLabel(box.data.latest.memAvailableMb) : null),
               note: box.data?.latest ? `of ${memLabel(box.data.latest.memTotalMb)}` : "no sample",
+            },
+          ]}
+        />
+        <Card
+          href={href("box/watchdogs")}
+          page="box/watchdogs"
+          error={watchdogs.isError && !watchdogs.data}
+          cells={[
+            {
+              label: "Broken",
+              value: watchdogs.data && <span style={{ color: watchdogs.data.brokenCount > 0 ? "var(--data-rose)" : undefined }}>{watchdogs.data.brokenCount}</span>,
+              note: "found a problem or went silent",
+            },
+            {
+              label: "Watchdogs",
+              value: watchdogs.data?.checks.length,
+              note: "crons reporting here, never by email",
             },
           ]}
         />
