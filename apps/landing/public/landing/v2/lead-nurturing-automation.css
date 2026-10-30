@@ -1,0 +1,143 @@
+/*
+  /lead-nurturing-automation, the Lead Nurturing AI Agent page (PAGE-LEAD-NURTURING-AUTOMATION-1030),
+  and its vs/alternatives pages. Loaded after styles.css, agent.css and ai-sdr.css (the four
+  steps and the side by side tables). Recipes, each lifted from a clone:
+  - explee agent chat (typing dots, messages arriving in turn): the LIGHT variant of the Agency
+    twin's night thread (database-reactivation.css), in WhatsApp's own day palette;
+  - graphed live agent list: a signals feed whose current row lights up, each one answered by
+    the next message (motion.js `signal-thread` drives both columns).
+  The HTML is the FINAL state (every signal and message shown, ours read). Transforms and
+  opacity only; reduced motion plays nothing. Every class is `ln-` scoped.
+*/
+
+/* ---------- Hero ---------- */
+.hero-nurture .hero-grid { grid-template-columns: minmax(0, 1fr) 548px; }
+.hero-nurture h1 { font-size: clamp(34px, 3.3vw, 46px); }
+.ln-plugs { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.ln-plugs li { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 5px 7px; border-radius: 100px; font-size: 13px; color: var(--text); background: #fff; border: 1px solid var(--hair); }
+.ln-plugs img { border-radius: 4px; }
+.ln-faces { margin-top: 48px; }
+
+/* The stage: the signals feed beside the phone. */
+.ln-stage { display: grid; grid-template-columns: 204px minmax(0, 1fr); gap: 14px; align-items: start; width: 548px; text-align: left; }
+
+.ln-signals {
+  margin-top: 46px; border-radius: 20px; background: #fff; border: 1px solid var(--hair); overflow: hidden;
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04), 0 24px 50px -30px rgba(10, 20, 60, 0.35);
+}
+.ln-signals-h { padding: 12px 14px; font-size: 12px; border-bottom: 1px solid var(--hair); }
+.ln-signals-h .live { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-weight: 500; }
+.ln-signals-h .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px #d1fae5; }
+.ln-sig-list { list-style: none; display: grid; gap: 8px; padding: 10px; background: var(--surface); }
+.ln-sig {
+  position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 10px; align-items: center;
+  padding: 10px; border-radius: 12px; background: #fff; border: 1px solid var(--hair);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+.ln-sig img { border-radius: 6px; }
+.ln-sig b { display: block; font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.25; }
+.ln-sig small { display: block; font-size: 11px; color: var(--muted); }
+.ln-sig em { grid-column: 2; justify-self: start; font-style: normal; font-size: 11px; font-weight: 500; color: var(--accent-text); background: var(--accent-50); border: 1px solid var(--accent-100); padding: 2px 8px; border-radius: 100px; }
+.ln-sig em::before { content: "\2192\00a0"; }
+.ln-sig.is-live { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-50); }
+.ln-signals-f { padding: 10px 14px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--hair); }
+
+/* The phone: WhatsApp's day palette on a white card. */
+.ln-phone {
+  position: relative; overflow: hidden; border-radius: 26px; background: #fff; border: 1px solid var(--hair);
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04), 0 40px 80px -36px rgba(37, 99, 235, 0.45), 0 0 0 6px var(--accent-50);
+}
+.ln-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f0f2f5; border-bottom: 1px solid #e4e6e9; }
+.ln-top > div { min-width: 0; flex: 1; }
+.ln-top b { display: block; font-size: 14px; font-weight: 500; color: #111b21; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ln-top small { display: block; font-size: 12px; color: #667781; }
+.ln-av { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #2563eb, #60a5fa); }
+.ln-thread {
+  position: relative; display: flex; flex-direction: column; gap: 7px; padding: 14px 12px 16px; min-height: 452px;
+  background: radial-gradient(circle at 20% 10%, rgba(17, 27, 33, 0.035) 1px, transparent 1.5px) 0 0 / 16px 16px, #efeae2;
+}
+.ln-day { align-self: center; margin-bottom: 2px; padding: 3px 10px; border-radius: 8px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #54656f; background: #fff; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
+.ln-msg { position: relative; max-width: 84%; padding: 6px 9px 4px; border-radius: 9px; font-size: 13px; line-height: 1.4; color: #111b21; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
+.ln-msg p { margin: 0; color: inherit; font-size: inherit; }
+.ln-msg.them { align-self: flex-start; background: #fff; border-top-left-radius: 2px; }
+.ln-msg.us { align-self: flex-end; background: #d9fdd3; border-top-right-radius: 2px; }
+.ln-meta { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 1px; font-size: 10px; color: #667781; }
+.ln-ticks { width: 15px; height: 10px; color: #8696a0; transition: color 0.3s ease; }
+.ln-msg.is-read .ln-ticks { color: #53bdeb; }
+.ln-event { align-self: center; display: inline-flex; align-items: center; gap: 7px; margin: 2px 0; padding: 5px 12px; border-radius: 100px; font-size: 12px; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; }
+.ln-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18); }
+/* The typing bubble: absent from the finished state, placed in the next message's slot by motion.js. */
+.ln-typing { display: none; position: absolute; left: 12px; top: 0; gap: 4px; padding: 10px 12px; border-radius: 9px; border-top-left-radius: 2px; background: #fff; opacity: 0; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
+.ln-stage.is-playing .ln-typing { display: inline-flex; }
+.ln-typing i { width: 6px; height: 6px; border-radius: 50%; background: #8696a0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ln-typing i { animation: ln-type 1s ease-in-out infinite; }
+  .ln-typing i:nth-child(2) { animation-delay: 0.15s; }
+  .ln-typing i:nth-child(3) { animation-delay: 0.3s; }
+  .ln-signals-h .live i, .ln-dot { animation: ln-live 1.8s ease-in-out infinite; }
+  .ln-stage.is-playing .ln-sig.is-live { animation: ln-flash 1.2s ease-out; }
+}
+@keyframes ln-type { 0%, 60%, 100% { transform: none; opacity: 0.5; } 30% { transform: translateY(-3px); opacity: 1; } }
+@keyframes ln-live { 50% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0.08); } }
+@keyframes ln-flash { 0% { background-color: var(--accent-50); } 100% { background-color: #fff; } }
+
+/* ---------- The four steps (ai-sdr.css `.sdr-job`), this page's visuals ---------- */
+.ln-plugs-v { gap: 6px; }
+.ln-plug { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: #fff; border: 1px solid var(--hair); font-size: 12px; color: var(--text); }
+.ln-plug img { border-radius: 4px; }
+.ln-plug em { margin-left: auto; font-style: normal; font-size: 10px; font-weight: 600; color: #047857; }
+.sdr-lead em.ln-new { color: var(--accent-text); }
+.ln-mini { padding: 8px 10px; border-radius: 10px; font-size: 12px; line-height: 1.4; color: #111b21; background: #d9fdd3; }
+.ln-mini span { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #047857; }
+.ln-date { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--accent-100); font-size: 12px; color: var(--muted); }
+.ln-date b { font-weight: 500; color: var(--accent-text); }
+.ln-date.quiet { border-color: var(--hair); }
+.ln-date.quiet b { color: var(--muted); }
+
+/* ---------- A drip sequence vs our agent ---------- */
+.ln-contrast tbody th { white-space: normal; color: var(--text); min-width: 140px; }
+.ln-contrast td.ours { color: var(--accent-text); background: var(--accent-50); font-weight: 500; }
+.ln-contrast thead th:last-child { color: var(--accent-text); }
+
+/* ---------- Signals it acts on ---------- */
+.ln-cards { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 8px; }
+.ln-card { display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 18px; background: #fff; border: 1px solid var(--hair); }
+.ln-card img { border-radius: 6px; }
+.ln-card small { display: block; font-size: 12px; color: var(--muted); }
+.ln-card h3 { margin-top: 4px; font-size: 17px; font-weight: 500; line-height: 1.3; color: var(--text); }
+.ln-card p { margin-top: 8px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+
+/* ---------- We use it ourselves ---------- */
+.ln-own { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+.ln-own p { margin-top: 14px; color: var(--muted); }
+.ln-own-list { list-style: none; display: grid; gap: 12px; }
+.ln-own-list li { display: grid; gap: 4px; padding: 16px 18px; border-radius: 16px; background: #fff; border: 1px solid var(--hair); }
+.ln-own-list b { font-weight: 500; color: var(--text); }
+.ln-own-list span { font-size: 14px; color: var(--muted); }
+
+/* /lead-nurturing-automation/alternatives: the WhatsApp column reads as a sentence. */
+.cmp-alt-table th:nth-child(3), .cmp-alt-table td:nth-child(3) { min-width: 220px; }
+.cmp-alt-table tbody th img { vertical-align: middle; margin-right: 8px; border-radius: 4px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1180px) {
+  .hero-nurture .hero-grid { grid-template-columns: 1fr; }
+  .ln-stage { margin: 0 auto; }
+}
+@media (max-width: 860px) {
+  .ln-own { grid-template-columns: 1fr; gap: 24px; }
+}
+@media (max-width: 640px) {
+  .hero-nurture h1 { font-size: 32px; }
+  .ln-stage { width: 100%; max-width: 420px; grid-template-columns: 1fr; gap: 12px; }
+  .ln-signals { margin-top: 0; }
+  .ln-thread { min-height: 0; }
+  /* The signals sit in one row of three above the phone, so the stage stays one screen tall. */
+  .ln-sig-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 8px; }
+  .ln-sig { grid-template-columns: 1fr; justify-items: start; gap: 6px; padding: 8px; }
+  .ln-sig b { font-size: 12px; }
+  .ln-sig small, .ln-signals-f { display: none; }
+  .ln-sig em { grid-column: 1; }
+  .ln-contrast tbody th { padding-top: 14px; }
+}

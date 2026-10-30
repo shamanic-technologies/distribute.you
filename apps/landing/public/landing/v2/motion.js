@@ -18,6 +18,8 @@
                                           collapses, the reply is answered; next buyer (default.com)
     <div data-motion="wa-thread">         a WhatsApp thread: typing bubble, their message, our ticks turn read;
                                           a quiet lead comes back, in a loop while on screen (explee)
+    <div data-motion="signal-thread">     a signals feed beside a WhatsApp thread: each [data-beat] arrives in order,
+                                          a signal lights up and the message that answers it follows (explee, light)
 
   Rules every effect keeps:
   - The HTML is the FINAL state. A visitor who asks for reduced motion, a crawler, or a page
@@ -319,6 +321,63 @@
           }
         });
         tl.to({}, { duration: 3.4 }).to(msgs, { opacity: 0, duration: 0.4 });
+      }
+      window.ScrollTrigger.create({
+        trigger: el, start: "top 85%", end: "bottom top",
+        onToggle: function (self) {
+          onScreen = self.isActive;
+          if (!onScreen) { if (tl) tl.pause(); return; }
+          if (tl) tl.play(); else cycle();
+        },
+      });
+    },
+
+    "signal-thread": function (el, gsap) {
+      // A day of signals answered (explee agent chat, light): every [data-beat] arrives in its
+      // number's order. A signal row (data-kind="signal") slides in and lights up (.is-live);
+      // "them" waits behind the typing bubble [data-typing] placed in its slot; "us" turns read
+      // a beat later; an "event" pops. Opacity and transforms only, every element keeps its
+      // place. Loops while on screen, parks off it.
+      var beats = toArray(el.querySelectorAll("[data-beat]")).sort(function (a, b) {
+        return Number(a.getAttribute("data-beat")) - Number(b.getAttribute("data-beat"));
+      });
+      var typing = el.querySelector("[data-typing]");
+      var presence = el.querySelector("[data-presence]");
+      if (!beats.length || !typing) return;
+      var signals = beats.filter(function (b) { return b.getAttribute("data-kind") === "signal"; });
+      var msgs = beats.filter(function (b) { return b.getAttribute("data-kind") !== "signal"; });
+      var idle = presence ? presence.textContent : "";
+      function say(t) { return function () { if (presence) presence.textContent = t; }; }
+      function light(s) { return function () { signals.forEach(function (x) { x.classList.toggle("is-live", x === s); }); }; }
+      el.classList.add("is-playing");
+      var tl = null, onScreen = false;
+      function cycle() {
+        tl = gsap.timeline({ onComplete: function () { tl = null; if (onScreen) cycle(); } });
+        tl.call(function () {
+          msgs.forEach(function (m) { m.classList.remove("is-read"); });
+          signals.forEach(function (s) { s.classList.remove("is-live"); });
+          say(idle)();
+        }, null, 0)
+          .set(msgs, { opacity: 0, y: 10 }, 0)
+          .set(signals, { opacity: 0, x: -14 }, 0)
+          .set(typing, { opacity: 0 }, 0);
+        beats.forEach(function (b) {
+          var kind = b.getAttribute("data-kind");
+          if (kind === "signal") {
+            tl.call(light(b), null, "+=0.9")
+              .to(b, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, "<");
+          } else if (kind === "them") {
+            tl.call(function () { typing.style.top = b.offsetTop + "px"; say("typing...")(); }, null, "+=0.7")
+              .to(typing, { opacity: 1, duration: 0.2 })
+              .to(typing, { opacity: 0, duration: 0.15 }, "+=1.3")
+              .call(say(idle))
+              .to(b, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, "<");
+          } else {
+            tl.to(b, { opacity: 1, y: 0, duration: 0.4, ease: kind === "event" ? "back.out(1.6)" : "power2.out" }, "+=0.9");
+            if (kind === "us") tl.call(function () { b.classList.add("is-read"); }, null, "+=0.6");
+          }
+        });
+        tl.call(light(null), null, "+=0.8").to({}, { duration: 2.6 }).to(beats, { opacity: 0, duration: 0.4 });
       }
       window.ScrollTrigger.create({
         trigger: el, start: "top 85%", end: "bottom top",
