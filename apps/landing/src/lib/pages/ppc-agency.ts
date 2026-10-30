@@ -21,6 +21,7 @@
  * Alias-free: the unit tests render it directly.
  */
 import { EXPECTED_LABEL, esc, isExpected, statusLegend, type IndexList, type IndexSummary } from "../fleet-indexes";
+import { AD_MANAGEMENT_PATH } from "../ad-management-tools";
 import { PPC_AGENCIES, PPC_ALTERNATIVES_PATH, PPC_PAGE_PATH, ppcVsPath } from "../ppc-agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
 import { AGENCY_FEE_BASE_USD, BOOK_ATTRS, CALC_SCRIPT, agencyHead, callHtml, indexCardHtml, priceHtml } from "./gtm-agency";
@@ -340,6 +341,7 @@ function faqHtml(): string {
   const links = [
     ...PPC_AGENCIES.map((a) => `<a href="${ppcVsPath(a)}">distribute.you vs ${esc(a.name)}</a>`),
     `<a href="${PPC_ALTERNATIVES_PATH}">PPC agency alternatives</a>`,
+    `<a href="${AD_MANAGEMENT_PATH}">AI Ad Management</a>`,
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
@@ -369,7 +371,7 @@ export function renderPpcAgencyPage(list: IndexList | null, spend: MonthlySpend 
       ppcProofHtml(list),
       daysHtml(),
       priceHtml("PPC Agency", PPC_INCLUDED),
-      callHtml(),
+      callHtml(AD_MANAGEMENT_PATH),
       faqHtml(),
       CALC_SCRIPT,
     ].join("\n"),

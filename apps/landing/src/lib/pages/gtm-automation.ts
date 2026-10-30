@@ -254,6 +254,8 @@ const STAGES_COVERED: Partial<Record<OutcomeSlug, string>> = {
   "lead-generation": "Found and qualified",
   "cold-email": "Emailed and replied",
   meetings: "Replied to meeting booked",
+  "website-visits": "Emailed to visited",
+  "paid-acquisition": "Budget to buyers",
   "lead-nurturing": "Followed up until paid",
   "customer-success": "After they pay",
 };

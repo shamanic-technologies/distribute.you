@@ -158,6 +158,7 @@ https://distribute.you/docs
 - [Appointment setting agency](https://distribute.you/appointment-setting-agency): our team books B2B sales meetings in your calendar, from $1K a month plus 10% of budget
 - [Database reactivation agency](https://distribute.you/database-reactivation-agency): our team wakes your past leads by email and WhatsApp and books the ones who answer, from $1K a month plus 10% of budget
 - [Customer success agency](https://distribute.you/customer-success-agency): our team welcomes, answers and checks on your paying clients on WhatsApp, from $1K a month plus 10% of budget
+- [Website traffic agency](https://distribute.you/website-traffic-agency): our team invites your buyers to your website by email and WhatsApp and counts only human visits, from $1K a month plus 10% of budget
 - [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live API price of every tool behind an email
 - [About](https://distribute.you/about): how we run campaigns for you, how billing works, what is guaranteed
 - [Docs](https://distribute.you/docs): the API and its OpenAPI document, how a key
@@ -222,6 +223,23 @@ you run; we run the campaign.
 - [vs Default](https://distribute.you/gtm-automation/vs/default)
 - [vs Unify](https://distribute.you/gtm-automation/vs/unify)
 - [vs Common Room](https://distribute.you/gtm-automation/vs/common-room)
+- [Website traffic automation](https://distribute.you/website-traffic-automation): our AI agent, which brings the buyers you choose to your website by cold email and WhatsApp and counts only human clicks
+- [Website traffic automation alternatives](https://distribute.you/website-traffic-automation/alternatives)
+- [vs Outrank](https://distribute.you/website-traffic-automation/vs/outrank)
+- [vs Babylovegrowth](https://distribute.you/website-traffic-automation/vs/babylovegrowth)
+- [vs Blaze](https://distribute.you/website-traffic-automation/vs/blaze)
+- [vs Taplio](https://distribute.you/website-traffic-automation/vs/taplio)
+- [Website traffic agency alternatives](https://distribute.you/website-traffic-agency/alternatives)
+- [vs SaaSHero](https://distribute.you/website-traffic-agency/vs/saashero)
+- [vs Impactable](https://distribute.you/website-traffic-agency/vs/impactable)
+- [vs Powered by Search](https://distribute.you/website-traffic-agency/vs/powered-by-search)
+- [vs Kalungi](https://distribute.you/website-traffic-agency/vs/kalungi)
+- [AI ad management](https://distribute.you/ai-ad-management): our AI agent, which puts your budget into outreach to the buyers you choose and moves it to what brings human clicks; it runs no Google or Meta ad account
+- [AI ad management alternatives](https://distribute.you/ai-ad-management/alternatives)
+- [vs Optmyzr](https://distribute.you/ai-ad-management/vs/optmyzr)
+- [vs Adzooma](https://distribute.you/ai-ad-management/vs/adzooma)
+- [vs AdEspresso](https://distribute.you/ai-ad-management/vs/adespresso)
+- [vs Ryze AI](https://distribute.you/ai-ad-management/vs/ryze-ai)
 - [vs Gojiberry](https://distribute.you/compare/gojiberry)
 - [vs Explee](https://distribute.you/compare/explee)
 - [vs Salesforge](https://distribute.you/compare/salesforge)

@@ -25,6 +25,8 @@
                                           [data-reel-toggle] button pauses and shows every card (oxygen posts)
     <div data-motion="signal-thread">     a signals feed beside a WhatsApp thread: each [data-beat] arrives in order,
                                           a signal lights up and the message that answers it follows (explee, light)
+    <div data-motion="traffic-beams">     a buyers-to-site map: a dot runs from a buyer down its beam to the AI judge,
+                                          then to the site (a visit is listed) or to the scanners bin (graphed)
 
   Rules every effect keeps:
   - The HTML is the FINAL state. A visitor who asks for reduced motion, a crawler, or a page
@@ -507,6 +509,92 @@
           onScreen = self.isActive;
           if (!onScreen) { if (tl) tl.pause(); return; }
           if (tl) tl.play(); else cycle();
+        },
+      });
+    },
+
+    "traffic-beams": function (el, gsap) {
+      // Website visits as data beams (graphed infrastructure flow + agent status pulse): a dot
+      // leaves the buyer whose message was clicked, runs down its beam to the AI judge, which
+      // pulses, then on to the site (the visit is listed at the top, the oldest drops off) or
+      // down to the link scanners bin. The clicks come from the card's own JSON, in a loop while
+      // the map is on screen. Dots move on SVG attributes; the list keeps its three rows.
+      var svg = el.querySelector("svg");
+      var beams = toArray(el.querySelectorAll('[data-beam="buyer"]'));
+      var site = el.querySelector('[data-beam="site"]');
+      var drop = el.querySelector('[data-beam="drop"]');
+      var list = el.querySelector("[data-visits]");
+      var judge = el.querySelector("[data-judge]");
+      var bin = el.querySelector("[data-drop]");
+      var chips = toArray(el.querySelectorAll("[data-buyer]"));
+      var json = el.querySelector("script[data-beam-data]");
+      var data = null;
+      try { data = JSON.parse(json ? json.textContent : "null"); } catch (e) { console.error("motion kit: traffic-beams data", e); }
+      if (!svg || !beams.length || !site || !drop || !list || !data || !data.clicks || !data.clicks.length) return;
+      var NS = "http://www.w3.org/2000/svg";
+      el.classList.add("is-playing");
+      // The beams draw first, as the static beams effect does.
+      toArray(svg.querySelectorAll("path")).forEach(function (p, i) {
+        var len = p.getTotalLength();
+        gsap.fromTo(p, { strokeDasharray: len, strokeDashoffset: len }, {
+          strokeDashoffset: 0, duration: 1, delay: i * 0.08, ease: "power2.inOut",
+          scrollTrigger: { trigger: el, start: "top 85%", once: true },
+          onComplete: function () { p.style.strokeDasharray = ""; p.style.strokeDashoffset = ""; },
+        });
+      });
+      function flash(node, cls) {
+        if (!node) return;
+        node.classList.remove(cls);
+        void node.offsetWidth;
+        node.classList.add(cls);
+      }
+      function travel(tl, dot, path, at, dur) {
+        var len = path.getTotalLength(), st = { t: 0 };
+        tl.to(st, {
+          t: 1, duration: dur, ease: "power1.inOut",
+          onUpdate: function () { var pt = path.getPointAtLength(st.t * len); dot.setAttribute("cx", pt.x); dot.setAttribute("cy", pt.y); },
+        }, at);
+      }
+      function addVisit(buyer) {
+        var li = document.createElement("li");
+        li.className = "is-new";
+        var b = document.createElement("b"); b.textContent = buyer.role;
+        var s = document.createElement("span"); s.textContent = buyer.page;
+        var m = document.createElement("em"); m.textContent = "Human";
+        li.appendChild(b); li.appendChild(s); li.appendChild(m);
+        list.insertBefore(li, list.firstChild);
+        while (list.children.length > 3) list.removeChild(list.lastChild);
+        gsap.fromTo(li, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" });
+      }
+      var i = 0, tl = null, onScreen = false;
+      function cycle() {
+        var click = data.clicks[i % data.clicks.length];
+        i += 1;
+        var path = beams[click.buyer % beams.length];
+        var dot = document.createElementNS(NS, "circle");
+        dot.setAttribute("r", "5");
+        dot.setAttribute("class", "tb-dot" + (click.human ? "" : " scan"));
+        svg.appendChild(dot);
+        tl = gsap.timeline({ onComplete: function () { tl = null; if (onScreen) cycle(); } });
+        tl.call(function () { flash(chips[click.buyer], "is-live"); }, null, 0);
+        tl.fromTo(dot, { opacity: 0 }, { opacity: 1, duration: 0.2 }, 0);
+        travel(tl, dot, path, 0, 1.1);
+        tl.call(function () { flash(judge, "is-judging"); }, null, 1.1);
+        travel(tl, dot, click.human ? site : drop, 1.45, 0.55);
+        tl.call(function () {
+          if (click.human) { addVisit(data.buyers[click.buyer]); flash(el.querySelector("[data-site]"), "is-hit"); }
+          else flash(bin, "is-hit");
+        }, null, 2);
+        tl.to(dot, { opacity: 0, duration: 0.25, onComplete: function () { dot.remove(); } }, 2);
+        tl.to({}, { duration: 0.6 });
+      }
+      // Plays only while the map is on screen; parks wherever it is when it leaves.
+      window.ScrollTrigger.create({
+        trigger: el, start: "top 85%", end: "bottom top",
+        onToggle: function (self) {
+          onScreen = self.isActive;
+          if (!onScreen) { if (tl) tl.pause(); return; }
+          if (tl) tl.play(); else gsap.delayedCall(1.2, function () { if (onScreen && !tl) cycle(); });
         },
       });
     },
