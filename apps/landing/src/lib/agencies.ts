@@ -42,7 +42,7 @@ export const OUR_AGENCY_ROW = {
   pricing: "From $1K a month, plus 10% of the budget you put into your campaigns. The budget goes to the campaigns themselves.",
   contract: "One call to start. Your budget is a hard cap you set.",
   channels: "Cold email from our own domains and WhatsApp, run by our team and our AI agents.",
-  guarantee: "Every result is measured and shown: what you spent, who replied, which meetings came of it.",
+  guarantee: "6 booked meetings in 3 months or your paid media budget back. Every result is measured and shown: what you spent, who replied, which meetings came of it.",
   launch: "Live in 5 days from our first call.",
 } as const;
 

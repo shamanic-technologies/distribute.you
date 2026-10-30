@@ -34,7 +34,7 @@ import { BOOK_A_CALL } from "../site-chrome";
 import { AGENCIES, ALTERNATIVES_PATH, AGENCY_PAGE_PATH, agencyVsPath } from "../agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
 
-export const AGENCY_CSS_VERSION = 1;
+export const AGENCY_CSS_VERSION = 2;
 export const AGENCY_FEE_BASE_USD = 1000;
 export const AGENCY_FEE_SHARE = 0.1;
 /** The slider's starting budget: the fee shown before anyone moves it. */
@@ -301,8 +301,24 @@ const INCLUDED = [
   "Live in 5 days from our first call",
 ];
 
+/**
+ * The Agency guarantee (owner 2026-10-13 wording, carried by the Agency offer since 2026-10-30),
+ * stated in /terms section 4. Shown only where the page sells meetings.
+ */
+export const AGENCY_GUARANTEE = "6 booked meetings in 3 months or your paid media budget back.";
+
+/** The FAQ line that states the guarantee, the same words on every meetings page. */
+export const GUARANTEE_FAQ = {
+  q: "Is there a guarantee?",
+  a: `Yes. ${AGENCY_GUARANTEE} Our terms explain how it works.`,
+};
+
+/** The guarantee line on the price card: the promise in bold, the remedy after it. */
+const SHIELD =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>';
+
 /** The price card + slider; an outcome's Agency page passes its own name and list. */
-export function priceHtml(title = "GTM Agency", included: readonly string[] = INCLUDED): string {
+export function priceHtml(title = "GTM Agency", included: readonly string[] = INCLUDED, guarantee = false): string {
   const fee = agencyFeeUsd(DEFAULT_BUDGET_USD);
   const share = Math.round(AGENCY_FEE_SHARE * DEFAULT_BUDGET_USD);
   return `<section class="framed" id="price">
@@ -316,6 +332,7 @@ export function priceHtml(title = "GTM Agency", included: readonly string[] = IN
       <div class="ag-card feat">
         <h3>${esc(title)}</h3>
         <p class="big">From $1K<small>/month + 10% of budget</small></p>
+        ${guarantee ? `<p class="ag-guar">${SHIELD}<span><b>6 booked meetings in 3 months</b> or your paid media budget back. <a href="/terms">Terms</a></span></p>` : ""}
         <ul>${included.map((l) => `<li>${CHECK}<span>${esc(l)}</span></li>`).join("")}</ul>
         <a class="btn btn-accent btn-lg" ${BOOK_ATTRS}>Book a call</a>
       </div>
@@ -362,6 +379,7 @@ export const AGENCY_FAQ = [
     q: "What does the price cover?",
     a: "From $1K a month for our team, plus 10% of the budget you put into your campaigns. Your budget goes to the campaigns themselves.",
   },
+  GUARANTEE_FAQ,
   {
     q: "Do you replace my sales team?",
     a: "Your team stays on top of the work. We run the campaigns; your team takes the meetings and sees every lead and every reply.",
@@ -407,7 +425,7 @@ export function renderGtmAgencyPage(list: IndexList | null, monthly: MonthlyRuns
     head: agencyHead(),
     bodyClass: "ag",
     noCta: true,
-    body: [heroHtml(), storyHtml(), daysHtml(), proofHtml(list), monthlyHtml(monthly, now), priceHtml(), callHtml(), faqHtml(), CALC_SCRIPT].join("\n"),
+    body: [heroHtml(), storyHtml(), daysHtml(), proofHtml(list), monthlyHtml(monthly, now), priceHtml("GTM Agency", INCLUDED, true), callHtml(), faqHtml(), CALC_SCRIPT].join("\n"),
     jsonLd: [
       {
         "@context": "https://schema.org",

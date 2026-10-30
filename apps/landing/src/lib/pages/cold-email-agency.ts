@@ -30,7 +30,7 @@ import {
   coldEmailVsPath,
 } from "../cold-email-agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
-import { AGENCY_FEE_BASE_USD, BOOK_ATTRS, CALC_SCRIPT, agencyHead, callHtml, indexCardHtml, priceHtml } from "./gtm-agency";
+import { AGENCY_FEE_BASE_USD, BOOK_ATTRS, CALC_SCRIPT, agencyHead, GUARANTEE_FAQ, callHtml, indexCardHtml, priceHtml } from "./gtm-agency";
 
 export const COLD_EMAIL_CSS_VERSION = 1;
 
@@ -445,6 +445,7 @@ export const COLD_EMAIL_FAQ = [
     q: "What does the price cover?",
     a: "From $1K a month for our team, plus 10% of the budget you put into your campaigns. The budget pays for finding your buyers and sending to them.",
   },
+  GUARANTEE_FAQ,
   {
     q: "How fast do the first emails go out?",
     a: "Live in 5 days from our first call.",
@@ -486,7 +487,7 @@ export function renderColdEmailAgencyPage(list: IndexList | null, sending: Sendi
       proofHtml(),
       coldEmailProofHtml(list),
       daysHtml(),
-      priceHtml("Cold Email Agency", COLD_EMAIL_INCLUDED),
+      priceHtml("Cold Email Agency", COLD_EMAIL_INCLUDED, true),
       callHtml(),
       faqHtml(),
       CALC_SCRIPT,

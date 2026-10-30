@@ -28,7 +28,7 @@ import {
   leadgenVsPath,
 } from "../lead-generation-agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
-import { AGENCY_FEE_BASE_USD, BOOK_ATTRS, CALC_SCRIPT, agencyHead, callHtml, indexCardHtml, priceHtml } from "./gtm-agency";
+import { AGENCY_FEE_BASE_USD, BOOK_ATTRS, CALC_SCRIPT, agencyHead, GUARANTEE_FAQ, callHtml, indexCardHtml, priceHtml } from "./gtm-agency";
 
 export const LEADGEN_CSS_VERSION = 1;
 
@@ -329,6 +329,7 @@ export const LEADGEN_FAQ = [
     q: "What does the price cover?",
     a: "From $1K a month for our team, plus 10% of the budget you put into your campaigns. Your budget goes to finding and contacting your leads.",
   },
+  GUARANTEE_FAQ,
   {
     q: "Whose domains send the emails?",
     a: "Ours. Every email leaves from domains and inboxes we own and warm, so there is nothing to set up on your side.",
@@ -376,7 +377,7 @@ export function renderLeadGenerationAgencyPage(list: IndexList | null, delivery:
       anatomyHtml(delivery),
       leadProofHtml(list),
       daysHtml(),
-      priceHtml("Lead Generation Agency", LEADGEN_INCLUDED),
+      priceHtml("Lead Generation Agency", LEADGEN_INCLUDED, true),
       callHtml(),
       faqHtml(),
       CALC_SCRIPT,
