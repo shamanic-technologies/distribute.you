@@ -155,6 +155,7 @@ https://distribute.you/docs
 - [Pricing](https://distribute.you/#pricing): free for one user, $9 per user for a team, every action at the API price with 0% markup
 - [GTM agency](https://distribute.you/gtm-agency): our team runs your go-to-market, from $1K a month plus 10% of budget
 - [Cold email agency](https://distribute.you/cold-email-agency): we find your buyers, write each email, send it from our own domains and answer every reply, from $1K a month plus 10% of budget
+- [Appointment setting agency](https://distribute.you/appointment-setting-agency): our team books B2B sales meetings in your calendar, from $1K a month plus 10% of budget
 - [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live API price of every tool behind an email
 - [About](https://distribute.you/about): how we run campaigns for you, how billing works, what is guaranteed
 - [Docs](https://distribute.you/docs): the API and its OpenAPI document, how a key
@@ -178,6 +179,11 @@ you run; we run the campaign.
 - [vs Artisan](https://distribute.you/ai-sdr/vs/artisan)
 - [vs AiSDR](https://distribute.you/ai-sdr/vs/aisdr)
 - [vs Qualified](https://distribute.you/ai-sdr/vs/qualified)
+- [Appointment setting agency alternatives](https://distribute.you/appointment-setting-agency/alternatives)
+- [vs SalesRoads](https://distribute.you/appointment-setting-agency/vs/salesroads)
+- [vs Belkins](https://distribute.you/appointment-setting-agency/vs/belkins)
+- [vs SalesHive](https://distribute.you/appointment-setting-agency/vs/saleshive)
+- [vs Callbox](https://distribute.you/appointment-setting-agency/vs/callbox)
 - [AI lead generation](https://distribute.you/ai-lead-generation): our AI lead generation agent, which finds your leads, judges each one, checks the email and writes to them
 - [AI lead generation alternatives](https://distribute.you/ai-lead-generation/alternatives)
 - [vs Apollo.io](https://distribute.you/ai-lead-generation/vs/apollo)
