@@ -14,6 +14,8 @@
     <svg data-motion="beams">             every <path> draws, then a pulse travels along it
     <ol data-motion="lead-rows">          children drop in one by one and get .is-judged (the page's CSS flashes
                                           the verdict), then re-judges them in a loop while on screen (origami)
+    <div data-motion="mail-flow">         a workflow card: steps run, the email types, Send is pressed, the step
+                                          collapses, the reply is answered; next buyer (default.com)
 
   Rules every effect keeps:
   - The HTML is the FINAL state. A visitor who asks for reduced motion, a crawler, or a page
@@ -23,7 +25,7 @@
     that carries a data-motion element, so a page without motion pays nothing.
   Ported from the clones listed in geneva-v2 .context/motion-and-pricing-refs.md (11x
   scroll-scrub, oxygen orbit + sticky story, explee chat + rolling numbers, outrank bars,
-  graphed beams, oxygen marquee).
+  graphed beams, oxygen marquee, origami lead rows, default workflow).
 */
 (function () {
   "use strict";
@@ -209,6 +211,77 @@
       window.ScrollTrigger.create({
         trigger: el, start: "top 85%", end: "bottom top",
         onToggle: function (self) { if (self.isActive) current.play(); else current.pause(); },
+      });
+    },
+
+    "mail-flow": function (el, gsap) {
+      // A workflow that writes and sends (default.com): buyer found, researched, the email is
+      // typed, Send is pressed, the step collapses, the reply is answered; one buyer after
+      // another from the card's own JSON. Every [data-node] carries data-status idle|active|done
+      // (the page's CSS draws each), the write step opens with .is-open.
+      var nodes = toArray(el.querySelectorAll("[data-node]"));
+      var write = el.querySelector('[data-node="write"]');
+      var typeEl = el.querySelector("[data-type]");
+      var send = el.querySelector("[data-send]");
+      var cursor = el.querySelector("[data-cursor]");
+      var json = el.querySelector("script[data-leads]");
+      var leads = [];
+      try { leads = JSON.parse(json ? json.textContent : "[]"); } catch (e) { console.error("motion kit: mail-flow leads", e); }
+      if (!nodes.length || !write || !typeEl || !send || !leads.length) return;
+      function status(key, s) { return function () { var n = el.querySelector('[data-node="' + key + '"]'); if (n) n.setAttribute("data-status", s); }; }
+      function fill(lead) {
+        toArray(el.querySelectorAll("[data-field]")).forEach(function (f) {
+          var v = lead[f.getAttribute("data-field")];
+          if (typeof v === "string") f.textContent = v;
+        });
+      }
+      function aim() {
+        if (!cursor) return;
+        var b = send.getBoundingClientRect(), c = el.getBoundingClientRect();
+        gsap.fromTo(cursor, { x: b.left - c.left - 70, y: b.top - c.top + 60, opacity: 0 },
+          { x: b.left - c.left + b.width * 0.55, y: b.top - c.top + b.height * 0.5, opacity: 1, duration: 0.7, ease: "power2.inOut" });
+      }
+      el.classList.add("is-playing");
+      var i = 0, tl = null, onScreen = false;
+      function cycle() {
+        var lead = leads[i % leads.length];
+        i += 1;
+        var text = lead.body || "";
+        var st = { n: 0 };
+        tl = gsap.timeline({ onComplete: function () { tl = null; if (onScreen) cycle(); } });
+        tl.call(function () {
+          nodes.forEach(function (n) { n.setAttribute("data-status", "idle"); });
+          write.classList.remove("is-open");
+          fill(lead);
+          typeEl.textContent = "";
+        }, null, 0)
+          .call(status("found", "active"), null, 0.4).call(status("found", "done"), null, 1.3)
+          .call(status("research", "active"), null, 1.4).call(status("research", "done"), null, 2.3)
+          .call(function () { status("write", "active")(); write.classList.add("is-open"); typeEl.classList.add("is-typing"); }, null, 2.4)
+          .to(st, {
+            n: text.length, duration: Math.min(2.8, text.length * 0.022), ease: "none",
+            onUpdate: function () { typeEl.textContent = text.slice(0, Math.round(st.n)); },
+          }, 2.9)
+          .call(function () { typeEl.textContent = text; typeEl.classList.remove("is-typing"); aim(); })
+          .call(function () { send.classList.add("is-pressed"); if (cursor) cursor.classList.add("is-click"); }, null, "+=0.85")
+          .call(function () {
+            send.classList.remove("is-pressed");
+            if (cursor) { cursor.classList.remove("is-click"); gsap.to(cursor, { opacity: 0, duration: 0.3 }); }
+            status("write", "done")();
+            write.classList.remove("is-open");
+          }, null, "+=0.3")
+          .call(status("reply", "active"), null, "+=0.7")
+          .call(status("reply", "done"), null, "+=1.5")
+          .to({}, { duration: 2.8 });
+      }
+      // Plays only while the card is on screen; parks wherever it is when it leaves.
+      window.ScrollTrigger.create({
+        trigger: el, start: "top 85%", end: "bottom top",
+        onToggle: function (self) {
+          onScreen = self.isActive;
+          if (!onScreen) { if (tl) tl.pause(); return; }
+          if (tl) tl.play(); else cycle();
+        },
       });
     },
   };

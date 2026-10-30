@@ -15,6 +15,7 @@
  * Alias-free: the unit tests import it directly.
  */
 import { agencyCompareLinks } from "./agencies";
+import { coldEmailCompareLinks } from "./cold-email-agencies";
 import {
   AI_LEAD_GEN_PATH,
   AI_SDR_PATH,
@@ -112,6 +113,7 @@ const LIVE_PATHS = new Set<string>([
   AI_LEAD_GEN_PATH,
   "/ppc-agency",
   APPOINTMENT_PAGE_PATH,
+  "/cold-email-agency",
   COLD_EMAIL_AUTOMATION_PATH,
 ]);
 
@@ -130,6 +132,16 @@ const LEADGEN_AGENCY_SECTIONS = [
   { label: "Our data", href: "/lead-generation-agency#data" },
   { label: "Price", href: "/lead-generation-agency#price" },
   { label: "FAQ", href: "/lead-generation-agency#faq" },
+];
+
+/** The sections of the Cold Email Agency page (PAGE-COLD-EMAIL-AGENCY-1030). */
+const COLD_EMAIL_AGENCY_SECTIONS = [
+  { label: "How we work", href: "/cold-email-agency#how" },
+  { label: "Our sending", href: "/cold-email-agency#sending" },
+  { label: "Client results", href: "/cold-email-agency#proof" },
+  { label: "Our data", href: "/cold-email-agency#data" },
+  { label: "Price", href: "/cold-email-agency#price" },
+  { label: "FAQ", href: "/cold-email-agency#faq" },
 ];
 
 /** The sections of the PPC Agency page (PAGE-PPC-AGENCY-1029). */
@@ -228,6 +240,7 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           description: o.slug === "gtm" ? "Your GTM department, run for you" : o.line,
           live: LIVE_PATHS.has(agencyPath(o.slug)),
           ...(o.slug === "gtm" ? { sections: GTM_AGENCY_SECTIONS, compare: agencyCompareLinks() } : {}),
+          ...(o.slug === "cold-email" ? { sections: COLD_EMAIL_AGENCY_SECTIONS, compare: coldEmailCompareLinks() } : {}),
           ...(o.slug === "lead-generation" ? { sections: LEADGEN_AGENCY_SECTIONS, compare: leadgenCompareLinks() } : {}),
           ...(o.slug === "paid-acquisition" ? { navLabel: "PPC Agency", sections: PPC_AGENCY_SECTIONS, compare: ppcCompareLinks() } : {}),
           ...(o.slug === "meetings"

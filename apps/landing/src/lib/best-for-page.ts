@@ -18,11 +18,13 @@ import {
   BEST_FOR_PAGES,
   BEST_UPDATED_ON,
   bestForLinkLabel,
+  bestForPath,
   bestForQuestion,
   type BestForPage,
 } from "./best-for";
 import { bullets, faqJsonLd, faqList, liveBand, logo } from "./compare-page";
 import { SIGN_UP, SITE, breadcrumb, esc, shell, whyLine } from "./v2-shell";
+import { pageAt } from "./site-pages";
 
 const YEAR = BEST_UPDATED_ON.slice(0, 4);
 
@@ -109,12 +111,12 @@ function articleJsonLd(p: BestForPage) {
     dateModified: BEST_UPDATED_ON,
     author: { "@type": "Organization", name: "distribute.you", url: SITE },
     publisher: { "@type": "Organization", name: "distribute.you", url: SITE },
-    mainEntityOfPage: `${SITE}/best/${p.slug}`,
+    mainEntityOfPage: `${SITE}${bestForPath(p)}`,
   };
 }
 
 export function renderBestForPage(p: BestForPage): string {
-  const path = `/best/${p.slug}`;
+  const path = bestForPath(p);
   const options = rankedOptions(p);
   const body = `<section class="hero cmp-hero">
   <div class="hero-glow" aria-hidden="true"></div>
@@ -155,7 +157,7 @@ ${liveBand()}
     <div class="section-head center rv"><h2>Questions ${esc(p.audience)} ask</h2></div>
     <div class="faq-list rv">${faqList(p.faq)}</div>
     <p class="cmp-more rv">More rankings: ${BEST_FOR_PAGES.filter((o) => o.slug !== p.slug)
-      .map((o) => `<a href="/best/${o.slug}">${esc(bestForLinkLabel(o))}</a>`)
+      .map((o) => `<a href="${bestForPath(o)}">${esc(bestForLinkLabel(o))}</a>`)
       .join(" · ")} · <a href="/best">all rankings</a> · <a href="/compare">every comparison</a></p>
   </div>
 </section>`;
@@ -167,7 +169,8 @@ ${liveBand()}
     body,
     jsonLd: [
       breadcrumb([
-        { name: "Best for", path: "/best" },
+        // A ranking that lives under an outcome page sits under that page in the trail.
+        p.home ? { name: pageAt(p.home)?.navLabel ?? "distribute.you", path: p.home } : { name: "Best for", path: "/best" },
         { name: bestForLinkLabel(p), path },
       ]),
       articleJsonLd(p),
@@ -184,7 +187,7 @@ function audienceList(): string {
 
 export function renderBestForHub(): string {
   const cards = BEST_FOR_PAGES.map(
-    (p) => `<a class="cmp-card rv" href="/best/${p.slug}">
+    (p) => `<a class="cmp-card rv" href="${bestForPath(p)}">
     <div class="cmp-card-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><b>${esc(bestForLinkLabel(p))}</b><small>${esc(bestForQuestion(p))}</small></div></div>
     <p>${esc(p.usBestFor)}.</p>
   </a>`,
