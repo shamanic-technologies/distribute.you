@@ -274,7 +274,7 @@ export function sendingStatsHtml(v: SendingVolume | null): string {
 
 export const SENDING_POINTS = [
   { title: "Our domains, our inboxes", line: "We buy, warm and watch every sending domain and inbox. Nothing to set up on your side." },
-  { title: "Your domain stays yours", line: "Your own domain keeps sending your invoices, onboarding and team emails, always in the inbox." },
+  { title: "Your domain stays yours", line: "Your own domain keeps sending your invoices, onboarding and team emails, as before." },
   { title: "Replies land with us first", line: "We read and answer every reply, so a warm buyer never waits." },
   { title: "Everything on your dashboard", line: "Every email we sent, every reply and every meeting, visible to your team." },
 ];

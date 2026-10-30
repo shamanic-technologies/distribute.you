@@ -154,6 +154,7 @@ https://distribute.you/docs
 - [Home](https://distribute.you/): the AI agent, how it works, live action prices
 - [Pricing](https://distribute.you/#pricing): free for one user, $9 per user for a team, every action at the API price with 0% markup
 - [GTM agency](https://distribute.you/gtm-agency): our team runs your go-to-market, from $1K a month plus 10% of budget
+- [Cold email agency](https://distribute.you/cold-email-agency): we find your buyers, write each email, send it from our own domains and answer every reply, from $1K a month plus 10% of budget
 - [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live API price of every tool behind an email
 - [About](https://distribute.you/about): how we run campaigns for you, how billing works, what is guaranteed
 - [Docs](https://distribute.you/docs): the API and its OpenAPI document, how a key
