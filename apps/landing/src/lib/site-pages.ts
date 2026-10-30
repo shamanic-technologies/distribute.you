@@ -20,9 +20,11 @@ import {
   AI_LEAD_GEN_PATH,
   AI_SDR_PATH,
   COLD_EMAIL_AUTOMATION_PATH,
+  GTM_AUTOMATION_PATH,
   aiLeadGenCompareLinks,
   aiSdrCompareLinks,
   coldEmailAutomationCompareLinks,
+  gtmAutomationCompareLinks,
 } from "./competitors";
 import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
@@ -119,6 +121,7 @@ const LIVE_PATHS = new Set<string>([
   "/cold-email-agency",
   COLD_EMAIL_AUTOMATION_PATH,
   REACTIVATION_PAGE_PATH,
+  GTM_AUTOMATION_PATH,
 ]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
@@ -215,9 +218,20 @@ const COLD_EMAIL_AUTOMATION_SECTIONS = [
   { label: "FAQ", href: `${COLD_EMAIL_AUTOMATION_PATH}#faq` },
 ];
 
+/** The sections of the GTM automation page (GTM, AI Agent buyer, PAGE-GTM-AUTOMATION-1030). */
+const GTM_AUTOMATION_SECTIONS = [
+  { label: "From found to paid", href: `${GTM_AUTOMATION_PATH}#run` },
+  { label: "Every outcome", href: `${GTM_AUTOMATION_PATH}#outcomes` },
+  { label: "How it runs", href: `${GTM_AUTOMATION_PATH}#how` },
+  { label: "GTM platforms compared", href: `${GTM_AUTOMATION_PATH}#compare` },
+  { label: "Pricing", href: `${GTM_AUTOMATION_PATH}#pricing` },
+  { label: "FAQ", href: `${GTM_AUTOMATION_PATH}#faq` },
+];
+
 /** Per-page extras of the AI Agent pages: their own sections and vs/alternatives cluster. */
 const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "compare" | "compareTitle">>> = {
   revenue: { sections: HOME_SECTIONS },
+  gtm: { sections: GTM_AUTOMATION_SECTIONS, compare: gtmAutomationCompareLinks(), compareTitle: "Compare GTM platforms" },
   meetings: { sections: AI_SDR_SECTIONS, compare: aiSdrCompareLinks(), compareTitle: "Compare AI SDRs" },
   "lead-generation": { sections: AI_LEAD_GEN_SECTIONS, compare: aiLeadGenCompareLinks(), compareTitle: "Compare lead tools" },
   "cold-email": {

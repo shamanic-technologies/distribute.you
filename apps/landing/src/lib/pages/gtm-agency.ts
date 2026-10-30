@@ -31,6 +31,7 @@ import {
   type IndexSummary,
 } from "../fleet-indexes";
 import { BOOK_A_CALL } from "../site-chrome";
+import { SITE_PAGES } from "../site-pages";
 import { AGENCIES, ALTERNATIVES_PATH, AGENCY_PAGE_PATH, agencyVsPath } from "../agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
 
@@ -338,7 +339,8 @@ export function priceHtml(title = "GTM Agency", included: readonly string[] = IN
 /** The slider: recomputes the fee in the browser from the same two numbers the card states. */
 export const CALC_SCRIPT = `<script>(function(){var c=document.querySelector("[data-agency-calc]");if(!c)return;var b=Number(c.getAttribute("data-base")),s=Number(c.getAttribute("data-share"));var i=c.querySelector("#ag-budget"),o=c.querySelector("#ag-budget-out"),sh=c.querySelector("#ag-share-out"),f=c.querySelector("#ag-fee-out");function u(n){return "$"+Math.round(n).toLocaleString("en-US")}function d(){var v=Number(i.value);o.textContent=u(v);sh.textContent=u(s*v);f.textContent=u(b+s*v)}i.addEventListener("input",d);d()})();</script>`;
 
-export function callHtml(): string {
+/** The call box. `agentPath` is where "Just testing?" leads: the outcome's AI Agent page once it is live. */
+export function callHtml(agentPath = "/"): string {
   return `<section class="framed">
   <div class="wrap">
     <div class="ag-call" data-motion="reveal">
@@ -350,7 +352,7 @@ export function callHtml(): string {
       <div class="ag-call-side">
         <ul><li>Your market, read before the call</li><li>A plan for your first month</li><li>Live in 5 days if you go</li></ul>
         <a class="btn btn-accent" ${BOOK_ATTRS}>Book a call</a>
-        <a class="alt" href="/">Just testing? Start free</a>
+        <a class="alt" href="${agentPath}">Just testing? Start free</a>
       </div>
     </div>
   </div>
@@ -395,6 +397,11 @@ function faqHtml(): string {
 </section>`;
 }
 
+/** The AI Agent twin (`/gtm-automation`) once it is live, else the homepage. */
+function agentTwin(): string {
+  return SITE_PAGES.find((p) => p.outcome === "gtm" && p.buyer === "agent" && p.live)?.path ?? "/";
+}
+
 const DESCRIPTION =
   "Revenue made easy. A GTM agency that runs your go-to-market with data from every campaign we run. From $1K/month + 10% of budget. Book a call.";
 
@@ -407,7 +414,7 @@ export function renderGtmAgencyPage(list: IndexList | null, monthly: MonthlyRuns
     head: agencyHead(),
     bodyClass: "ag",
     noCta: true,
-    body: [heroHtml(), storyHtml(), daysHtml(), proofHtml(list), monthlyHtml(monthly, now), priceHtml(), callHtml(), faqHtml(), CALC_SCRIPT].join("\n"),
+    body: [heroHtml(), storyHtml(), daysHtml(), proofHtml(list), monthlyHtml(monthly, now), priceHtml(), callHtml(agentTwin()), faqHtml(), CALC_SCRIPT].join("\n"),
     jsonLd: [
       {
         "@context": "https://schema.org",

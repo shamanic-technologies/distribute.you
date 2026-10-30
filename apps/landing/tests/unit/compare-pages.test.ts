@@ -36,7 +36,7 @@ describe("the competitor catalogue", () => {
   it("names the competitors the owner picked, the clones and the 2026-10-16 search-demand set, and not Amplemarket", () => {
     expect(COMPETITORS.map((c) => c.slug).sort()).toEqual(
       [
-        "11x", "aisdr", "apollo", "artisan", "chili-piper", "clay", "default", "explee", "frontrunner", "gojiberry", "heyreach", "hunter", "instantly", "leadrebel", "lemlist", "lusha", "mailshake", "outreach", "parcellab", "postbeyond", "qualified", "rb2b", "reply-io", "salesforge", "saleshandy", "salesloft", "seamless-ai", "smartlead", "snov-io", "waalaxy", "warmly", "woodpecker", "zoominfo",
+        "11x", "aisdr", "apollo", "artisan", "chili-piper", "clay", "common-room", "default", "explee", "frontrunner", "gojiberry", "heyreach", "hunter", "instantly", "leadrebel", "lemlist", "lusha", "mailshake", "outreach", "parcellab", "postbeyond", "qualified", "rb2b", "reply-io", "salesforge", "saleshandy", "salesloft", "seamless-ai", "smartlead", "snov-io", "unify", "waalaxy", "warmly", "woodpecker", "zoominfo",
       ],
     );
     expect(COMPETITORS.some((c) => /amplemarket/i.test(c.name))).toBe(false);

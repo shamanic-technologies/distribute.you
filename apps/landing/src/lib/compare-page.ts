@@ -18,14 +18,18 @@ import {
   COMPARE_VERIFIED_LABEL,
   AI_LEAD_GEN_CLUSTER,
   COLD_EMAIL_AUTOMATION_CLUSTER,
+  GTM_AUTOMATION_ALSO,
+  GTM_AUTOMATION_CLUSTER,
   AI_SDR_CLUSTER,
   COMPETITORS,
   DISTRIBUTE_ROW,
   clusterAlternativesPath,
   clusterCompetitors,
   clusterOf,
+  competitorBySlug,
   competitorPath,
   isAiLeadGenCluster,
+  isGtmAutomationCluster,
   isColdEmailAutomationCluster,
   isAiSdrCluster,
   type CompareCluster,
@@ -45,6 +49,7 @@ import {
 import { AI_SDR_CSS_VERSION } from "./pages/ai-sdr";
 import { AI_LEAD_GEN_CSS_VERSION } from "./pages/ai-lead-generation";
 import { COLD_EMAIL_AUTOMATION_CSS_VERSION } from "./pages/cold-email-automation";
+import { GTM_AUTOMATION_CSS_VERSION } from "./pages/gtm-automation";
 
 export { V2_STYLES_VERSION };
 
@@ -116,6 +121,9 @@ export function comparePageDescription(c: Competitor): string {
   if (isColdEmailAutomationCluster(c)) {
     return `Looking at ${c.name} alternatives? distribute.you's cold email automation writes, sends and answers for you, free for one user. Compare prices.`;
   }
+  if (isGtmAutomationCluster(c)) {
+    return `Looking at ${c.name} alternatives? distribute.you's AI GTM agent runs your go-to-market for you, free for one user. Compare prices.`;
+  }
   return `Looking at ${c.name} alternatives? distribute.you's AI agent runs your cold email, free for one user. Compare price and cost per positive reply.`;
 }
 
@@ -129,6 +137,9 @@ function ourLine(c: Competitor): string {
   }
   if (isColdEmailAutomationCluster(c)) {
     return "distribute.you is cold email automation done for you: you paste a website, our AI agent finds your buyers, writes each email, sends it from domains we own and answers the replies.";
+  }
+  if (isGtmAutomationCluster(c)) {
+    return "distribute.you is GTM automation done for you: you paste a website, one AI agent finds your buyers, writes from domains we own, answers, books the meeting and follows up until they buy.";
   }
   return "distribute.you runs your cold email for you: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.";
 }
@@ -372,6 +383,8 @@ type AlternativesCopy = {
   /** "distribute.you AI SDR". */
   ourName: string;
   stylesheet: string;
+  /** Tools set side by side here whose own page sits in another cluster (Clay on the GTM page). */
+  also?: readonly string[];
 };
 
 const AI_SDR_ALTERNATIVES: AlternativesCopy = {
@@ -441,6 +454,42 @@ const COLD_EMAIL_AUTOMATION_ALTERNATIVES: AlternativesCopy = {
   stylesheet: `/landing/v2/cold-email-automation.css?v=${COLD_EMAIL_AUTOMATION_CSS_VERSION}`,
 };
 
+const GTM_AUTOMATION_ALTERNATIVES_FAQ = [
+  {
+    q: "What is the best GTM automation alternative for a founder?",
+    a: "distribute.you, if you want your go-to-market run rather than a platform to staff: one AI agent finds your buyers, writes from domains we own, answers, books the meeting and follows up, free for one user at the API price with 0% markup.",
+  },
+  {
+    q: "Which GTM platforms publish their price?",
+    a: "Default publishes its annual plans and seats, Unify its free, Base and Pro plans, Clay its plans, and Common Room its Essential plan. distribute.you prints every action's price on its catalog.",
+  },
+  {
+    q: "Do these platforms send the emails for me?",
+    a: "Mostly not: they enrich, score, route or sequence, and your reps or your sequencer do the sending. distribute.you sends from mailboxes and domains we own and warm, and answers the replies.",
+  },
+  {
+    q: "Is there an open source GTM automation tool?",
+    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free for one user.",
+  },
+];
+
+const GTM_AUTOMATION_ALTERNATIVES: AlternativesCopy = {
+  cluster: GTM_AUTOMATION_CLUSTER,
+  rowLabel: "Platform",
+  sub: (names) => `${names} and distribute.you all help a team run its go-to-market. Here is what each one costs and how you start, read from their own sites.`,
+  seeOurs: "See our GTM automation",
+  tableHead: "Price, start and channels for each GTM platform",
+  faq: GTM_AUTOMATION_ALTERNATIVES_FAQ,
+  ourName: "distribute.you GTM automation",
+  stylesheet: `/landing/v2/gtm-automation.css?v=${GTM_AUTOMATION_CSS_VERSION}`,
+  also: GTM_AUTOMATION_ALSO,
+};
+
+/** `/gtm-automation/alternatives`: the GTM platforms side by side, every figure read from their own site. */
+export function renderGtmAutomationAlternativesPage(): string {
+  return renderClusterAlternativesPage(GTM_AUTOMATION_ALTERNATIVES);
+}
+
 /** `/cold-email-automation/alternatives`: the cold email tools side by side, every figure read from their own site. */
 export function renderColdEmailAutomationAlternativesPage(): string {
   return renderClusterAlternativesPage(COLD_EMAIL_AUTOMATION_ALTERNATIVES);
@@ -460,7 +509,8 @@ function renderClusterAlternativesPage(copy: AlternativesCopy): string {
   const { cluster } = copy;
   const PAGE = cluster.path;
   const ALT = clusterAlternativesPath(cluster);
-  const list = clusterCompetitors(cluster);
+  const also = (copy.also ?? []).map((slug) => competitorBySlug(slug)).filter((c): c is Competitor => !!c);
+  const list = [...clusterCompetitors(cluster), ...also];
   const verified = new Date(`${list.map((c) => c.verifiedOn).sort().at(-1)}T12:00:00Z`).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",

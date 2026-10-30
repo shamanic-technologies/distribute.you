@@ -18,6 +18,9 @@
                                           collapses, the reply is answered; next buyer (default.com)
     <div data-motion="wa-thread">         a WhatsApp thread: typing bubble, their message, our ticks turn read;
                                           a quiet lead comes back, in a loop while on screen (explee)
+    <section data-motion="pin-scrub">     a hero that PINS while the page scrolls under it; the scroll walks the
+                                          [data-scrub-scene] through its [data-scrub-step] children (oxygen
+                                          growth-scene). Sets --p 0..1, data-stage and each step's data-status.
 
   Rules every effect keeps:
   - The HTML is the FINAL state. A visitor who asks for reduced motion, a crawler, or a page
@@ -26,7 +29,7 @@
   - GSAP + ScrollTrigger (free since 2025, self-hosted under v2/vendor) load only on a page
     that carries a data-motion element, so a page without motion pays nothing.
   Ported from the clones listed in geneva-v2 .context/motion-and-pricing-refs.md (11x
-  scroll-scrub, oxygen orbit + sticky story, explee chat + rolling numbers, outrank bars,
+  scroll-scrub, oxygen growth-scene pin, oxygen orbit + sticky story, explee chat + rolling numbers, outrank bars,
   graphed beams, oxygen marquee, origami lead rows, default workflow).
 */
 (function () {
@@ -327,6 +330,41 @@
           if (!onScreen) { if (tl) tl.pause(); return; }
           if (tl) tl.play(); else cycle();
         },
+      });
+    },
+
+    /*
+      pin-scrub (oxygen growth-scene): the section grows a scroll track (.is-pinned, the page's
+      CSS sets its height and makes its first child sticky) and the scroll position inside that
+      track becomes the scene's progress. Pinned only on a screen tall and wide enough to hold
+      the whole hero (oxygen's shortViewport); elsewhere the scene plays as it crosses the
+      viewport, unpinned. Stage k = k steps done, step k+1 active; the last stretch of the
+      track holds every step done, the final state the HTML already shows.
+    */
+    "pin-scrub": function (el, gsap) {
+      var scene = el.querySelector("[data-scrub-scene]") || el;
+      var steps = toArray(scene.querySelectorAll("[data-scrub-step]"));
+      var n = steps.length;
+      if (!n) return;
+      function paint(p) {
+        var stage = Math.min(n, Math.floor(p * (n + 1)));
+        el.style.setProperty("--p", p.toFixed(4));
+        scene.setAttribute("data-stage", String(stage));
+        scene.style.setProperty("--s", String(Math.min(stage, n - 1)));
+        steps.forEach(function (s, i) { s.setAttribute("data-status", i < stage ? "done" : i === stage ? "active" : "idle"); });
+      }
+      // The page names the screens that can hold its whole hero pinned (data-motion-pin).
+      var pinMedia = el.getAttribute("data-motion-pin") || "(min-width: 1101px) and (min-height: 700px)";
+      var mm = gsap.matchMedia();
+      mm.add({ pin: pinMedia, flow: "not all and " + pinMedia }, function (ctx) {
+        el.classList.toggle("is-pinned", !!ctx.conditions.pin);
+        el.classList.add("is-playing");
+        window.ScrollTrigger.refresh();
+        var st = ctx.conditions.pin
+          ? window.ScrollTrigger.create({ trigger: el, start: "top top", end: "bottom bottom", onUpdate: function (self) { paint(self.progress); } })
+          : window.ScrollTrigger.create({ trigger: scene, start: "top 80%", end: "bottom 35%", onUpdate: function (self) { paint(self.progress); } });
+        paint(st.progress);
+        return function () { el.classList.remove("is-pinned", "is-playing"); paint(1); };
       });
     },
   };
