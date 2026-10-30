@@ -20,6 +20,7 @@ import { AI_LEAD_GEN_PATH, AI_SDR_PATH, aiLeadGenCompareLinks, aiSdrCompareLinks
 import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
 import { APPOINTMENT_PAGE_PATH, appointmentCompareLinks } from "./appointment-setting-agencies";
+import { REACTIVATION_PAGE_PATH, reactivationCompareLinks } from "./reactivation-agencies";
 
 export type Buyer = "agent" | "agency";
 
@@ -86,11 +87,13 @@ function agentPath(slug: OutcomeSlug): string {
 /**
  * An Agency page served at the path its buyers search for, not `/<slug>-agency`:
  * Paid Acquisition is "ppc agency" (5,400 US searches a month, PAGE-PPC-AGENCY-1029),
- * Meetings Booked is "appointment setting agency" (320 to 390, PAGE-APPOINTMENT-AGENCY-1030).
+ * Meetings Booked is "appointment setting agency" (320 to 390, PAGE-APPOINTMENT-AGENCY-1030),
+ * Lead Nurturing is "database reactivation" (70, CPC $33.75, PAGE-DATABASE-REACTIVATION-AGENCY-1030).
  */
 const AGENCY_PATH: Partial<Record<OutcomeSlug, string>> = {
   "paid-acquisition": "/ppc-agency",
   meetings: APPOINTMENT_PAGE_PATH,
+  "lead-nurturing": REACTIVATION_PAGE_PATH,
 };
 
 function agencyPath(slug: OutcomeSlug): string {
@@ -98,7 +101,7 @@ function agencyPath(slug: OutcomeSlug): string {
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, AI_LEAD_GEN_PATH, "/ppc-agency", APPOINTMENT_PAGE_PATH, "/cold-email-agency"]);
+const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, AI_LEAD_GEN_PATH, "/ppc-agency", APPOINTMENT_PAGE_PATH, "/cold-email-agency", REACTIVATION_PAGE_PATH]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
 const GTM_AGENCY_SECTIONS = [
@@ -144,6 +147,16 @@ const APPOINTMENT_AGENCY_SECTIONS = [
   { label: "Agencies compared", href: `${APPOINTMENT_PAGE_PATH}#compare` },
   { label: "Price", href: `${APPOINTMENT_PAGE_PATH}#price` },
   { label: "FAQ", href: `${APPOINTMENT_PAGE_PATH}#faq` },
+];
+
+/** The sections of the Database Reactivation Agency page (PAGE-DATABASE-REACTIVATION-AGENCY-1030). */
+const REACTIVATION_AGENCY_SECTIONS = [
+  { label: "How we reactivate", href: `${REACTIVATION_PAGE_PATH}#how` },
+  { label: "Signals we act on", href: `${REACTIVATION_PAGE_PATH}#signals` },
+  { label: "Our data", href: `${REACTIVATION_PAGE_PATH}#data` },
+  { label: "Agencies compared", href: `${REACTIVATION_PAGE_PATH}#compare` },
+  { label: "Price", href: `${REACTIVATION_PAGE_PATH}#price` },
+  { label: "FAQ", href: `${REACTIVATION_PAGE_PATH}#faq` },
 ];
 
 /** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
@@ -213,6 +226,9 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           ...(o.slug === "paid-acquisition" ? { navLabel: "PPC Agency", sections: PPC_AGENCY_SECTIONS, compare: ppcCompareLinks() } : {}),
           ...(o.slug === "meetings"
             ? { navLabel: "Appointment Setting Agency", sections: APPOINTMENT_AGENCY_SECTIONS, compare: appointmentCompareLinks() }
+            : {}),
+          ...(o.slug === "lead-nurturing"
+            ? { navLabel: "Database Reactivation Agency", sections: REACTIVATION_AGENCY_SECTIONS, compare: reactivationCompareLinks() }
             : {}),
         },
       ]),

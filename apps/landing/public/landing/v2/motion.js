@@ -16,6 +16,8 @@
                                           the verdict), then re-judges them in a loop while on screen (origami)
     <div data-motion="mail-flow">         a workflow card: steps run, the email types, Send is pressed, the step
                                           collapses, the reply is answered; next buyer (default.com)
+    <div data-motion="wa-thread">         a WhatsApp thread: typing bubble, their message, our ticks turn read;
+                                          a quiet lead comes back, in a loop while on screen (explee)
 
   Rules every effect keeps:
   - The HTML is the FINAL state. A visitor who asks for reduced motion, a crawler, or a page
@@ -275,6 +277,49 @@
           .to({}, { duration: 2.8 });
       }
       // Plays only while the card is on screen; parks wherever it is when it leaves.
+      window.ScrollTrigger.create({
+        trigger: el, start: "top 85%", end: "bottom top",
+        onToggle: function (self) {
+          onScreen = self.isActive;
+          if (!onScreen) { if (tl) tl.pause(); return; }
+          if (tl) tl.play(); else cycle();
+        },
+      });
+    },
+
+    "wa-thread": function (el, gsap) {
+      // A WhatsApp thread where a quiet lead comes back (explee agent chat): each [data-msg]
+      // arrives in turn; before a message of theirs the typing bubble [data-typing] sits in its
+      // slot and the header [data-presence] reads "typing", ours turn read a beat later. Every
+      // message keeps its place (opacity only, no reflow). Loops while on screen, parks off it.
+      var msgs = toArray(el.querySelectorAll("[data-msg]"));
+      var typing = el.querySelector("[data-typing]");
+      var presence = el.querySelector("[data-presence]");
+      if (!msgs.length || !typing) return;
+      var idle = presence ? presence.textContent : "";
+      function say(t) { return function () { if (presence) presence.textContent = t; }; }
+      el.classList.add("is-playing");
+      var tl = null, onScreen = false;
+      function cycle() {
+        tl = gsap.timeline({ onComplete: function () { tl = null; if (onScreen) cycle(); } });
+        tl.call(function () { msgs.forEach(function (m) { m.classList.remove("is-read"); }); say(idle)(); }, null, 0)
+          .set(msgs, { opacity: 0, y: 10 }, 0)
+          .set(typing, { opacity: 0 }, 0);
+        msgs.forEach(function (m) {
+          var from = m.getAttribute("data-msg");
+          if (from === "them") {
+            tl.call(function () { typing.style.top = m.offsetTop + "px"; say("typing...")(); }, null, "+=0.7")
+              .to(typing, { opacity: 1, duration: 0.2 })
+              .to(typing, { opacity: 0, duration: 0.15 }, "+=1.4")
+              .call(say("online"))
+              .to(m, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, "<");
+          } else {
+            tl.to(m, { opacity: 1, y: 0, duration: 0.4, ease: from === "event" ? "back.out(1.6)" : "power2.out" }, "+=0.9");
+            if (from === "us") tl.call(function () { m.classList.add("is-read"); }, null, "+=0.7");
+          }
+        });
+        tl.to({}, { duration: 3.4 }).to(msgs, { opacity: 0, duration: 0.4 });
+      }
       window.ScrollTrigger.create({
         trigger: el, start: "top 85%", end: "bottom top",
         onToggle: function (self) {

@@ -1,0 +1,157 @@
+/*
+  Database Reactivation Agency (PAGE-DATABASE-REACTIVATION-AGENCY-1030, /database-reactivation-agency),
+  layered on agency.css. Recipes, each lifted from a clone:
+  - explee agent chat: a WhatsApp thread where a lead quiet since March comes back, typing
+    bubble, read ticks, a meeting booked (motion.js `wa-thread`), with the CRM card in front;
+  - oxygen feature-showcase: the darker sticky story (agency.css), on a deeper slab;
+  - oxygen #stack: the side by side table, each agency figure read on their own site.
+  The HTML is the FINAL state (every message shown, ours read). Transforms and opacity only;
+  reduced motion plays nothing.
+*/
+
+/* ---------- Hero ---------- */
+.dra-hero .ag-hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); }
+.dra-hero h1 { font-size: clamp(38px, 4.4vw, 58px); }
+.dra-plugs { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.dra-plugs li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 100px; font-size: 13px; color: rgba(255, 255, 255, 0.82); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+.dra-plugs img { border-radius: 4px; }
+
+/* The phone: WhatsApp's own night palette, inside our slab. */
+.dra-phone-wrap { position: relative; padding: 0 0 70px; max-width: 460px; width: 100%; justify-self: center; }
+.dra-phone {
+  position: relative; overflow: hidden; border-radius: 30px;
+  background: #0b141a; border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 50px 100px -40px rgba(37, 99, 235, 0.55), 0 0 0 8px rgba(255, 255, 255, 0.03);
+}
+.wa-top { display: flex; align-items: center; gap: 12px; padding: 16px 18px; background: #202c33; }
+.wa-top > div { min-width: 0; flex: 1; }
+.wa-top b { display: block; font-size: 15px; font-weight: 500; color: #e9edef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-top small { display: block; font-size: 12px; color: #8696a0; }
+.wa-top img { opacity: 0.9; }
+.wa-av { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #2b5be0, #7c3aed); }
+.wa-thread {
+  position: relative; display: flex; flex-direction: column; gap: 8px; padding: 18px 16px 96px; min-height: 420px;
+  background: radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.025) 1px, transparent 1.5px) 0 0 / 18px 18px, #0b141a;
+}
+.wa-day { align-self: center; margin: 4px 0; padding: 4px 12px; border-radius: 8px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #8696a0; background: #182229; }
+.wa-msg { position: relative; max-width: 82%; padding: 8px 10px 6px; border-radius: 10px; font-size: 14px; line-height: 1.42; color: #e9edef; }
+.wa-msg p { margin: 0; color: inherit; font-size: inherit; }
+.wa-msg.them { align-self: flex-start; background: #202c33; border-top-left-radius: 2px; }
+.wa-msg.us { align-self: flex-end; background: #005c4b; border-top-right-radius: 2px; }
+.wa-msg.old { opacity: 0.55; }
+.wa-meta { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 2px; font-size: 11px; color: rgba(233, 237, 239, 0.6); }
+.wa-ticks { width: 16px; height: 11px; color: rgba(233, 237, 239, 0.6); transition: color 0.3s ease; }
+.wa-msg.is-read .wa-ticks { color: #53bdeb; }
+.wa-event { align-self: center; display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 14px; border-radius: 100px; font-size: 13px; color: #b9f5d8; background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); }
+.dra-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18); }
+/* The typing bubble: absent from the finished state, placed in the next message's slot by motion.js. */
+.wa-typing { display: none; position: absolute; left: 16px; top: 0; gap: 4px; padding: 12px 14px; border-radius: 10px; border-top-left-radius: 2px; background: #202c33; opacity: 0; }
+.dra-phone-wrap.is-playing .wa-typing { display: inline-flex; }
+.wa-typing i { width: 6px; height: 6px; border-radius: 50%; background: #8696a0; }
+
+/* The CRM card in front of the phone: the same lead, moved from dormant to booked. */
+.dra-crm {
+  position: absolute; left: -46px; bottom: 0; z-index: 2; width: 340px; display: grid; gap: 8px; padding: 14px 16px;
+  border-radius: 18px; background: rgba(14, 20, 36, 0.94); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.9);
+}
+.dra-crm-h { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--soft); }
+.dra-crm-h img { border-radius: 4px; }
+.dra-crm-row { display: flex; flex-wrap: nowrap; align-items: baseline; gap: 6px 10px; font-size: 13px; }
+.dra-crm-row span { flex: none; width: 52px; color: rgba(255, 255, 255, 0.5); }
+.dra-crm-row s { color: rgba(255, 255, 255, 0.45); }
+.dra-crm-row b { font-weight: 500; color: #fff; }
+.dra-crm-row.now b { color: #b9f5d8; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .wa-typing i { animation: dra-type 1s ease-in-out infinite; }
+  .wa-typing i:nth-child(2) { animation-delay: 0.15s; }
+  .wa-typing i:nth-child(3) { animation-delay: 0.3s; }
+  .dra-dot { animation: dra-live 1.8s ease-in-out infinite; }
+}
+@keyframes dra-type { 0%, 60%, 100% { transform: none; opacity: 0.5; } 30% { transform: translateY(-3px); opacity: 1; } }
+@keyframes dra-live { 50% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0.05); } }
+
+/* ---------- Darker sticky story ---------- */
+.dra-story { background: radial-gradient(ellipse 60% 50% at 85% 50%, rgba(37, 99, 235, 0.16), transparent 70%), #04060b; }
+.dra-stage { background: radial-gradient(ellipse 80% 70% at 50% 0%, rgba(37, 99, 235, 0.22), transparent 70%), #03050a; }
+.dra-plugs-grid { display: grid; gap: 10px; }
+.dra-plug { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.dra-plug img { border-radius: 6px; }
+.dra-plug b { display: block; font-weight: 500; font-size: 14px; color: #fff; }
+.dra-plug small { display: block; font-size: 12px; color: var(--soft); }
+.dra-plug em { margin-left: auto; font-style: normal; font-size: 12px; padding: 3px 10px; border-radius: 100px; color: #b9f5d8; background: rgba(16, 185, 129, 0.16); }
+.dra-stage .ag-row.dim { opacity: 0.5; }
+.dra-stage .ag-row em.wait { color: rgba(255, 255, 255, 0.7); background: rgba(255, 255, 255, 0.08); }
+.dra-wa-mini { align-self: flex-end; max-width: 86%; padding: 10px 12px; border-radius: 12px; border-top-right-radius: 2px; font-size: 13px; color: #e9edef; background: #005c4b; }
+.dra-wa-mini span { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(233, 237, 239, 0.7); }
+.dra-events { list-style: none; display: grid; gap: 12px; padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.dra-events li { position: relative; padding-left: 26px; }
+.dra-events li::before { content: ""; position: absolute; left: 4px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: rgba(110, 160, 255, 0.5); }
+.dra-events li:not(:last-child)::after { content: ""; position: absolute; left: 8.5px; top: 20px; width: 1px; height: calc(100% - 6px); background: rgba(255, 255, 255, 0.14); }
+.dra-events li.hot::before { background: #22c55e; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2); }
+.dra-events b { display: block; font-weight: 500; font-size: 14px; color: #fff; }
+.dra-events small { display: block; font-size: 12px; color: var(--soft); }
+.dra-next { display: grid; gap: 4px; padding: 14px 16px; border-radius: 14px; background: rgba(37, 99, 235, 0.14); border: 1px solid rgba(110, 160, 255, 0.3); }
+.dra-next b { font-weight: 500; font-size: 14px; color: #fff; }
+.dra-next span { font-size: 13px; color: var(--soft); }
+
+/* ---------- Signals ---------- */
+.dra-signals { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: center; }
+.dra-signals > div > p { margin-top: 14px; max-width: 520px; }
+.dra-sig { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; margin-top: 30px; }
+.dra-sig li { display: flex; gap: 14px; }
+.dra-sig .k { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: var(--accent-text); background: var(--accent-50); border: 1px solid var(--accent-100); }
+.dra-sig h3 { font-size: 18px; }
+.dra-sig p { margin-top: 2px; font-size: 15px; }
+.dra-conn { padding: 26px; border-radius: 24px; background: #fff; border: 1px solid var(--hair); box-shadow: 0 0 0 4px var(--accent-50), 0 40px 80px -40px rgba(37, 99, 235, 0.45); }
+.dra-conn h3 { font-size: 18px; }
+.dra-conn ul { list-style: none; display: grid; gap: 4px; margin: 16px 0; }
+.dra-conn li { display: grid; grid-template-columns: 22px auto 1fr; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--hair); font-size: 15px; }
+.dra-conn li img { border-radius: 5px; }
+.dra-conn li b { font-weight: 500; color: var(--text); }
+.dra-conn li span { justify-self: end; text-align: right; font-size: 13px; color: var(--muted); }
+.dra-conn > p { font-size: 14px; }
+
+/* ---------- We use it ourselves ---------- */
+.dra-own { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; padding: 40px; border-radius: 28px; background: var(--ink); color: #fff; }
+.dra-own h2 { color: #fff; }
+.dra-own p { margin-top: 14px; color: var(--soft); }
+.dra-own-list { list-style: none; display: grid; gap: 12px; }
+.dra-own-list li { display: grid; gap: 4px; padding: 16px 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.09); }
+.dra-own-list b { font-weight: 500; color: #fff; }
+.dra-own-list span { font-size: 14px; color: var(--soft); }
+
+/* ---------- Agencies compared ---------- */
+.dra-table { max-width: 980px; margin: 0 auto; }
+.dra-table tbody th a { display: inline-flex; align-items: center; gap: 10px; color: var(--text); white-space: nowrap; }
+.dra-table tbody th img { border-radius: 5px; }
+.dra-table td a { white-space: nowrap; }
+.dra-table tr.ours th { background: var(--accent-50); }
+#compare .ag-src { max-width: 980px; margin-left: auto; margin-right: auto; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .dra-crm { left: -12px; }
+}
+@media (max-width: 960px) {
+  .dra-hero .ag-hero-grid, .dra-signals, .dra-own { grid-template-columns: 1fr; }
+  .dra-own { gap: 28px; }
+}
+@media (max-width: 640px) {
+  .dra-phone-wrap { padding: 0; }
+  .wa-thread { min-height: 0; padding: 14px 12px 18px; }
+  .wa-msg { max-width: 88%; }
+  .dra-crm { position: relative; left: auto; width: auto; margin: -24px 12px 0; }
+  .dra-sig { grid-template-columns: 1fr; }
+  .dra-own { padding: 26px 22px; }
+  .dra-conn li { grid-template-columns: 22px 1fr; }
+  .dra-conn li span { grid-column: 2; justify-self: start; text-align: left; }
+  .dra-table .ag-table { min-width: 0; }
+  .dra-table .ag-table thead { display: none; }
+  .dra-table .ag-table, .dra-table .ag-table tbody { display: block; }
+  .dra-table .ag-table tr { display: grid; grid-template-columns: 1fr; border-bottom: 1px solid var(--hair); }
+  .dra-table .ag-table th, .dra-table .ag-table td { border-bottom: 0; padding: 8px 16px; }
+  .dra-table .ag-table tbody th { padding-top: 14px; width: auto; }
+  .dra-table .ag-table td:last-child { padding-bottom: 14px; }
+}

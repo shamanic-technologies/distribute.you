@@ -10,6 +10,7 @@ import { leadgenClusterPaths } from "@/lib/lead-generation-agencies";
 import { ppcClusterPaths } from "@/lib/ppc-agencies";
 import { coldEmailClusterPaths } from "@/lib/cold-email-agencies";
 import { appointmentClusterPaths } from "@/lib/appointment-setting-agencies";
+import { reactivationClusterPaths } from "@/lib/reactivation-agencies";
 import { DOCS_ROUTES, docsUrl } from "@/lib/docs/docs-routes";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
@@ -93,6 +94,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // The Appointment Setting Agency page's own vs/alternatives cluster, read from its catalogue.
   for (const path of appointmentClusterPaths()) {
+    STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
+  }
+
+  // The Database Reactivation Agency page's own vs/alternatives cluster, read from its catalogue.
+  for (const path of reactivationClusterPaths()) {
     STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
   }
 
