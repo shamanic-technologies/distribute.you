@@ -35,6 +35,9 @@ import { NURTURING_PAGE_PATH, nurturingCompareLinks } from "./nurturing-tools";
 import { TRAFFIC_AUTOMATION_PATH, trafficToolCompareLinks } from "./traffic-tools";
 import { TRAFFIC_AGENCY_PATH, trafficAgencyCompareLinks } from "./traffic-agencies";
 import { AD_MANAGEMENT_PATH, adToolCompareLinks } from "./ad-management-tools";
+import { AI_CS_PAGE_PATH, aiCsCompareLinks } from "./cs-tools";
+import { SIGNUP_PAGE_PATH, signupCompareLinks } from "./signup-tools";
+import { UA_PAGE_PATH, uaCompareLinks } from "./user-acquisition-agencies";
 
 export type Buyer = "agent" | "agency";
 
@@ -86,8 +89,10 @@ export const OUTCOMES: { slug: OutcomeSlug; name: string; line: string }[] = [
 /**
  * An AI Agent page served at the path its buyers search for, not `/<slug>-automation`:
  * Meetings Booked is "ai sdr" (1,600 US searches a month, PAGE-AI-SDR-1029), Lead
- * Generation is "ai lead generation" (1,600, PAGE-AI-LEAD-GEN-1029), Paid Acquisition is
- * "ai ad management" (20, CPC $30.31, PAGE-TRAFFIC-1030).
+ * Generation is "ai lead generation" (1,600, PAGE-AI-LEAD-GEN-1029), Customer Success is
+ * "ai customer success" (40 to 50, CPC $69, PAGE-AI-CUSTOMER-SUCCESS-1030), Signups is "signup
+ * automation" (PAGE-SIGNUP-AUTOMATION-1030; the slug is plural, the search is not), Paid
+ * Acquisition is "ai ad management" (20, CPC $30.31, PAGE-TRAFFIC-1030).
  */
 const AGENT_PATH: Partial<Record<OutcomeSlug, string>> = {
   revenue: "/",
@@ -95,6 +100,8 @@ const AGENT_PATH: Partial<Record<OutcomeSlug, string>> = {
   "lead-generation": AI_LEAD_GEN_PATH,
   "website-visits": TRAFFIC_AUTOMATION_PATH,
   "paid-acquisition": AD_MANAGEMENT_PATH,
+  "customer-success": AI_CS_PAGE_PATH,
+  signups: SIGNUP_PAGE_PATH,
 };
 
 function agentPath(slug: OutcomeSlug): string {
@@ -106,6 +113,7 @@ function agentPath(slug: OutcomeSlug): string {
  * Paid Acquisition is "ppc agency" (5,400 US searches a month, PAGE-PPC-AGENCY-1029),
  * Meetings Booked is "appointment setting agency" (320 to 390, PAGE-APPOINTMENT-AGENCY-1030),
  * Lead Nurturing is "database reactivation" (70, CPC $33.75, PAGE-DATABASE-REACTIVATION-AGENCY-1030),
+ * Signups is "user acquisition agency" (20 to 40, PAGE-USER-ACQUISITION-AGENCY-1030),
  * Website Visits is "website traffic agency" (10 to 20, never "seo agency", PAGE-TRAFFIC-1030).
  */
 const AGENCY_PATH: Partial<Record<OutcomeSlug, string>> = {
@@ -113,6 +121,7 @@ const AGENCY_PATH: Partial<Record<OutcomeSlug, string>> = {
   meetings: APPOINTMENT_PAGE_PATH,
   "lead-nurturing": REACTIVATION_PAGE_PATH,
   "website-visits": TRAFFIC_AGENCY_PATH,
+  signups: UA_PAGE_PATH,
 };
 
 function agencyPath(slug: OutcomeSlug): string {
@@ -137,6 +146,9 @@ const LIVE_PATHS = new Set<string>([
   TRAFFIC_AUTOMATION_PATH,
   TRAFFIC_AGENCY_PATH,
   AD_MANAGEMENT_PATH,
+  AI_CS_PAGE_PATH,
+  SIGNUP_PAGE_PATH,
+  UA_PAGE_PATH,
 ]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
@@ -215,6 +227,25 @@ const TRAFFIC_AGENCY_SECTIONS = [
   { label: "FAQ", href: `${TRAFFIC_AGENCY_PATH}#faq` },
 ];
 
+/** The sections of the User Acquisition Agency page (Signups, Agency buyer, PAGE-USER-ACQUISITION-AGENCY-1030). */
+const UA_AGENCY_SECTIONS = [
+  { label: "How we work", href: `${UA_PAGE_PATH}#how` },
+  { label: "The four steps", href: `${UA_PAGE_PATH}#legs` },
+  { label: "Agencies compared", href: `${UA_PAGE_PATH}#compare` },
+  { label: "Price", href: `${UA_PAGE_PATH}#price` },
+  { label: "FAQ", href: `${UA_PAGE_PATH}#faq` },
+];
+
+/** The sections of the Signup Automation page (Signups, AI Agent buyer, PAGE-SIGNUP-AUTOMATION-1030). */
+const SIGNUP_SECTIONS = [
+  { label: "How it gets signups", href: `${SIGNUP_PAGE_PATH}#path` },
+  { label: "Tools it reads", href: `${SIGNUP_PAGE_PATH}#tools` },
+  { label: "Price of the work", href: `${SIGNUP_PAGE_PATH}#prices` },
+  { label: "Signup tools compared", href: `${SIGNUP_PAGE_PATH}#compare` },
+  { label: "Pricing", href: `${SIGNUP_PAGE_PATH}#pricing` },
+  { label: "FAQ", href: `${SIGNUP_PAGE_PATH}#faq` },
+];
+
 /** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
 const HOME_SECTIONS = [
   { label: "How it works", href: "/#how" },
@@ -251,6 +282,16 @@ const NURTURING_SECTIONS = [
   { label: "Nurturing tools compared", href: `${NURTURING_PAGE_PATH}#compare` },
   { label: "Pricing", href: `${NURTURING_PAGE_PATH}#pricing` },
   { label: "FAQ", href: `${NURTURING_PAGE_PATH}#faq` },
+];
+
+/** The sections of the AI Customer Success page (Customer Success, AI Agent buyer, PAGE-AI-CUSTOMER-SUCCESS-1030). */
+const CS_SECTIONS = [
+  { label: "How it keeps customers", href: `${AI_CS_PAGE_PATH}#how` },
+  { label: "Moments it acts on", href: `${AI_CS_PAGE_PATH}#moments` },
+  { label: "Price of a message", href: `${AI_CS_PAGE_PATH}#prices` },
+  { label: "Customer success tools compared", href: `${AI_CS_PAGE_PATH}#compare` },
+  { label: "Pricing", href: `${AI_CS_PAGE_PATH}#pricing` },
+  { label: "FAQ", href: `${AI_CS_PAGE_PATH}#faq` },
 ];
 
 /** The sections of the cold email automation page (Sales Cold Email, AI Agent buyer, PAGE-COLD-EMAIL-AUTOMATION-1030). */
@@ -317,6 +358,8 @@ const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "com
     compare: adToolCompareLinks(),
     compareTitle: "Compare AI ad tools",
   },
+  "customer-success": { sections: CS_SECTIONS, compare: aiCsCompareLinks(), compareTitle: "Compare customer success tools" },
+  signups: { sections: SIGNUP_SECTIONS, compare: signupCompareLinks(), compareTitle: "Compare signup tools" },
 };
 
 /**
@@ -358,6 +401,9 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           ...(o.slug === "customer-success" ? { sections: CS_AGENCY_SECTIONS, compare: csCompareLinks() } : {}),
           ...(o.slug === "website-visits"
             ? { navLabel: "Website Traffic Agency", sections: TRAFFIC_AGENCY_SECTIONS, compare: trafficAgencyCompareLinks() }
+            : {}),
+          ...(o.slug === "signups"
+            ? { navLabel: "User Acquisition Agency", sections: UA_AGENCY_SECTIONS, compare: uaCompareLinks() }
             : {}),
         },
       ]),

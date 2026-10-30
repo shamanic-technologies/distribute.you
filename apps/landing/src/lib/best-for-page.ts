@@ -13,7 +13,7 @@
  * Every figure about a competitor (entry price, source URL, verified-on date) is read
  * from `competitors.ts` here; nothing in this file or in `best-for.ts` restates one.
  */
-import { COMPETITORS, DISTRIBUTE_ROW, competitorBySlug, competitorPath, type Competitor } from "./competitors";
+import { COMPETITORS, DISTRIBUTE_ROW, competitorBySlug, competitorLogo, competitorPath, type Competitor } from "./competitors";
 import {
   BEST_FOR_PAGES,
   BEST_UPDATED_ON,
@@ -22,7 +22,7 @@ import {
   bestForQuestion,
   type BestForPage,
 } from "./best-for";
-import { bullets, faqJsonLd, faqList, liveBand, logo } from "./compare-page";
+import { bullets, faqJsonLd, faqList, liveBand } from "./compare-page";
 import { SIGN_UP, SITE, breadcrumb, esc, shell, whyLine } from "./v2-shell";
 import { pageAt } from "./site-pages";
 
@@ -72,7 +72,7 @@ function ourItem(p: BestForPage): string {
 
 function rankedItem(rank: number, c: Competitor, bestFor: string): string {
   return `<li class="best-item rv">
-    <div class="cmp-card-top"><span class="best-rank">${rank}</span>${logo(c.domain, 32)}<div><b>${esc(c.name)}</b><small>${esc(c.entryPrice)}</small></div></div>
+    <div class="cmp-card-top"><span class="best-rank">${rank}</span>${competitorLogo(c, 32)}<div><b>${esc(c.name)}</b><small>${esc(c.entryPrice)}</small></div></div>
     <p><strong>Best for:</strong> ${esc(bestFor)}.</p>
     <p>${esc(c.oneLiner)} ${esc(operatedByLabel(c))}.</p>
     <p class="cmp-source">Price read from <a href="${esc(c.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(c.domain)}</a> on ${longDate(c.verifiedOn)}. <a href="${competitorPath(c)}">distribute.you vs ${esc(c.name)}</a></p>
