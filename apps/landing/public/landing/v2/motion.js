@@ -4,7 +4,8 @@
 
     <div data-motion="reveal">            fade and rise on enter (children stagger with data-motion-stagger)
     <span data-motion="count-up">$4.21    counts up to the number already printed
-    <div data-motion="marquee">           children loop sideways, pause on hover
+    <div data-motion="marquee">           children loop sideways (data-motion-axis="y": upward, data-motion-reverse),
+                                          pause on hover and on a [data-motion-pause="<id>"] button
     <div data-motion="sticky-story">      pins, steps through [data-step] children (adds .is-active)
     <div data-motion="scrub">             sets --scrub 0..1 as the element crosses the viewport
     <div data-motion="orbit">             children (centred at left/top 50%) circle the centre, kept upright
@@ -93,10 +94,15 @@
     },
 
     marquee: function (el, gsap) {
+      // data-motion-axis="y" rolls the children upward (a feed); data-motion-reverse runs the
+      // other way. A <button data-motion-pause="<this element's id>"> anywhere on the page
+      // pauses and resumes it (aria-pressed), so a visitor can stop a loop that never ends.
+      var vertical = el.getAttribute("data-motion-axis") === "y";
       var track = document.createElement("div");
       track.style.display = "flex";
+      track.style.flexDirection = vertical ? "column" : "row";
       track.style.gap = getComputedStyle(el).gap || "0px";
-      track.style.width = "max-content";
+      if (!vertical) track.style.width = "max-content";
       toArray(el.children).forEach(function (c) { track.appendChild(c); });
       toArray(track.children).forEach(function (c) {
         var copy = c.cloneNode(true);
@@ -105,9 +111,26 @@
       });
       el.style.overflow = "hidden";
       el.appendChild(track);
-      var tween = gsap.to(track, { xPercent: -50, ease: "none", duration: Number(el.getAttribute("data-motion-speed")) || 40, repeat: -1 });
+      el.classList.add("is-playing");
+      var to = {}, from = {};
+      to[vertical ? "yPercent" : "xPercent"] = -50;
+      from[vertical ? "yPercent" : "xPercent"] = 0;
+      var reverse = el.hasAttribute("data-motion-reverse");
+      var tween = gsap.fromTo(track, reverse ? to : from, Object.assign({}, reverse ? from : to, {
+        ease: "none", duration: Number(el.getAttribute("data-motion-speed")) || 40, repeat: -1,
+      }));
+      var held = false;
       el.addEventListener("mouseenter", function () { tween.pause(); });
-      el.addEventListener("mouseleave", function () { tween.resume(); });
+      el.addEventListener("mouseleave", function () { if (!held) tween.resume(); });
+      var btn = el.id ? document.querySelector('[data-motion-pause="' + el.id + '"]') : null;
+      if (btn) {
+        btn.hidden = false;
+        btn.addEventListener("click", function () {
+          held = !held;
+          btn.setAttribute("aria-pressed", String(held));
+          if (held) tween.pause(); else tween.resume();
+        });
+      }
     },
 
     "sticky-story": function (el, gsap) {

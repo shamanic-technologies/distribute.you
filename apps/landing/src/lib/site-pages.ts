@@ -32,6 +32,7 @@ import { APPOINTMENT_PAGE_PATH, appointmentCompareLinks } from "./appointment-se
 import { REACTIVATION_PAGE_PATH, reactivationCompareLinks } from "./reactivation-agencies";
 import { CS_PAGE_PATH, csCompareLinks } from "./customer-success-agencies";
 import { NURTURING_PAGE_PATH, nurturingCompareLinks } from "./nurturing-tools";
+import { AI_CS_PAGE_PATH, aiCsCompareLinks } from "./cs-tools";
 
 export type Buyer = "agent" | "agency";
 
@@ -83,12 +84,14 @@ export const OUTCOMES: { slug: OutcomeSlug; name: string; line: string }[] = [
 /**
  * An AI Agent page served at the path its buyers search for, not `/<slug>-automation`:
  * Meetings Booked is "ai sdr" (1,600 US searches a month, PAGE-AI-SDR-1029), Lead
- * Generation is "ai lead generation" (1,600, PAGE-AI-LEAD-GEN-1029).
+ * Generation is "ai lead generation" (1,600, PAGE-AI-LEAD-GEN-1029), Customer Success is
+ * "ai customer success" (40 to 50, CPC $69, PAGE-AI-CUSTOMER-SUCCESS-1030).
  */
 const AGENT_PATH: Partial<Record<OutcomeSlug, string>> = {
   revenue: "/",
   meetings: AI_SDR_PATH,
   "lead-generation": AI_LEAD_GEN_PATH,
+  "customer-success": AI_CS_PAGE_PATH,
 };
 
 function agentPath(slug: OutcomeSlug): string {
@@ -126,6 +129,7 @@ const LIVE_PATHS = new Set<string>([
   GTM_AUTOMATION_PATH,
   CS_PAGE_PATH,
   NURTURING_PAGE_PATH,
+  AI_CS_PAGE_PATH,
 ]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
@@ -232,6 +236,16 @@ const NURTURING_SECTIONS = [
   { label: "FAQ", href: `${NURTURING_PAGE_PATH}#faq` },
 ];
 
+/** The sections of the AI Customer Success page (Customer Success, AI Agent buyer, PAGE-AI-CUSTOMER-SUCCESS-1030). */
+const CS_SECTIONS = [
+  { label: "How it keeps customers", href: `${AI_CS_PAGE_PATH}#how` },
+  { label: "Moments it acts on", href: `${AI_CS_PAGE_PATH}#moments` },
+  { label: "Price of a message", href: `${AI_CS_PAGE_PATH}#prices` },
+  { label: "Customer success tools compared", href: `${AI_CS_PAGE_PATH}#compare` },
+  { label: "Pricing", href: `${AI_CS_PAGE_PATH}#pricing` },
+  { label: "FAQ", href: `${AI_CS_PAGE_PATH}#faq` },
+];
+
 /** The sections of the cold email automation page (Sales Cold Email, AI Agent buyer, PAGE-COLD-EMAIL-AUTOMATION-1030). */
 const COLD_EMAIL_AUTOMATION_SECTIONS = [
   { label: "How it writes", href: `${COLD_EMAIL_AUTOMATION_PATH}#how` },
@@ -264,6 +278,7 @@ const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "com
     compareTitle: "Compare cold email tools",
   },
   "lead-nurturing": { sections: NURTURING_SECTIONS, compare: nurturingCompareLinks(), compareTitle: "Compare nurturing tools" },
+  "customer-success": { sections: CS_SECTIONS, compare: aiCsCompareLinks(), compareTitle: "Compare customer success tools" },
 };
 
 /**

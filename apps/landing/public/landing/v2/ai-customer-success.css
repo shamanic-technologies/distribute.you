@@ -1,0 +1,131 @@
+/*
+  /ai-customer-success, the Customer Success AI Agent page (PAGE-AI-CUSTOMER-SUCCESS-1030),
+  and its vs/alternatives pages. Loaded after styles.css, agent.css and ai-sdr.css (the four
+  steps and the side by side tables). Recipe lifted from a clone:
+  - oxygen community posts (a post marquee with a pause toggle): LIGHT and vertical here, a feed
+    of WhatsApp moments with paying customers rolling upward on a white card (motion.js
+    `marquee`, data-motion-axis="y"). The Agency twin's reel is dark and sideways.
+  The HTML is the FINAL state (the first moments shown, still). Transforms and opacity only;
+  reduced motion plays nothing and the pause toggle stays hidden. Every class is `acs-` scoped.
+*/
+
+/* ---------- Hero ---------- */
+.hero-cs .hero-grid { grid-template-columns: minmax(0, 1fr) 440px; }
+.hero-cs h1 { font-size: clamp(34px, 3.3vw, 46px); }
+.acs-plugs { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.acs-plugs li { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 5px 7px; border-radius: 100px; font-size: 13px; color: var(--text); background: #fff; border: 1px solid var(--hair); }
+.acs-plugs img { border-radius: 4px; }
+.acs-faces { margin-top: 48px; }
+
+/* The stage: a white card, a header, the feed, a footer line. */
+.acs-stage {
+  position: relative; width: 440px; text-align: left; overflow: hidden;
+  border-radius: 24px; background: #fff; border: 1px solid var(--hair);
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04), 0 40px 80px -36px rgba(37, 99, 235, 0.45), 0 0 0 6px var(--accent-50);
+}
+.acs-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f0f2f5; border-bottom: 1px solid #e4e6e9; }
+.acs-top > div { flex: 1; min-width: 0; }
+.acs-top b { display: block; font-size: 14px; font-weight: 500; color: #111b21; }
+.acs-top small { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #667781; }
+.acs-top small i { width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18); }
+.acs-top img { border-radius: 4px; }
+.acs-pause:not([hidden]) {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  background: #fff; border: 1px solid #d9dde1; color: #54656f;
+}
+.acs-pause:hover { color: #111b21; border-color: #b8bec4; }
+.acs-pause:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Pause = two bars; when pressed (paused), a play triangle. */
+.acs-pause .p { width: 10px; height: 11px; border-left: 3px solid currentColor; border-right: 3px solid currentColor; }
+.acs-pause[aria-pressed="true"] .p { width: 0; height: 0; border-left: 9px solid currentColor; border-right: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; margin-left: 3px; }
+
+.acs-feed {
+  position: relative; height: 468px; overflow: hidden; padding: 0 12px;
+  background: radial-gradient(circle at 20% 10%, rgba(17, 27, 33, 0.035) 1px, transparent 1.5px) 0 0 / 16px 16px, #efeae2;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 28px, #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 28px, #000 calc(100% - 44px), transparent 100%);
+}
+/* Spacing lives on each card (never a flex gap), so the duplicated half loops with no jump. */
+.acs-moment {
+  display: flex; flex-direction: column; gap: 7px; margin: 12px 0 0; padding: 12px 12px 12px;
+  border-radius: 16px; background: rgba(255, 255, 255, 0.72); border: 1px solid rgba(17, 27, 33, 0.06);
+  box-shadow: 0 1px 2px rgba(11, 20, 26, 0.06);
+}
+.acs-moment header { display: flex; align-items: center; gap: 9px; }
+.acs-moment header b { font-size: 13px; font-weight: 500; color: #111b21; }
+.acs-av { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #2563eb, #60a5fa); }
+.acs-signal { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; color: var(--text); }
+.acs-signal img { border-radius: 4px; }
+.acs-signal span { font-weight: 500; }
+.acs-signal small { margin-left: auto; font-size: 11px; color: #667781; }
+.acs-clock { display: inline-grid; place-items: center; width: 14px; height: 14px; color: var(--accent-text); }
+.acs-clock svg { width: 14px; height: 14px; }
+.acs-clock.big, .acs-clock.big svg { width: 24px; height: 24px; }
+.acs-bubble { position: relative; max-width: 88%; padding: 6px 9px 5px; border-radius: 9px; font-size: 13px; line-height: 1.4; color: #111b21; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
+.acs-bubble p { margin: 0; color: inherit; font-size: inherit; }
+.acs-bubble.us { align-self: flex-end; background: #d9fdd3; border-top-right-radius: 2px; }
+.acs-bubble.them { align-self: flex-start; background: #fff; border-top-left-radius: 2px; }
+.acs-meta { display: flex; justify-content: flex-end; margin-top: 1px; }
+.acs-ticks { width: 15px; height: 10px; color: #53bdeb; }
+.acs-happy { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 100px; font-size: 12px; font-weight: 500; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; }
+.acs-happy i { width: 6px; height: 6px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18); }
+.acs-foot { padding: 10px 14px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--hair); background: #fff; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .acs-top small i, .acs-happy i { animation: acs-live 1.8s ease-in-out infinite; }
+}
+@keyframes acs-live { 50% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0.08); } }
+
+/* ---------- The four steps (ai-sdr.css `.sdr-job`), this page's visuals ---------- */
+.acs-plugs-v { gap: 6px; }
+.acs-plug { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: #fff; border: 1px solid var(--hair); font-size: 12px; color: var(--text); }
+.acs-plug img { border-radius: 4px; }
+.acs-plug em { margin-left: auto; font-style: normal; font-size: 10px; font-weight: 600; color: #047857; }
+.sdr-lead em.acs-new { color: var(--accent-text); }
+.acs-mini { padding: 8px 10px; border-radius: 10px; font-size: 12px; line-height: 1.4; color: #111b21; background: #d9fdd3; }
+.acs-mini.them { background: #fff; border: 1px solid var(--hair); }
+.acs-mini span { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #047857; }
+.acs-date { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--accent-100); font-size: 12px; color: var(--muted); }
+.acs-date b { font-weight: 500; color: var(--accent-text); }
+.acs-date.happy { border-color: #a7f3d0; background: #ecfdf5; }
+.acs-date.happy b { color: #065f46; }
+
+/* ---------- A support bot vs our agent ---------- */
+.acs-contrast tbody th { white-space: normal; color: var(--text); min-width: 140px; }
+.acs-contrast td.ours { color: var(--accent-text); background: var(--accent-50); font-weight: 500; }
+.acs-contrast thead th:last-child { color: var(--accent-text); }
+
+/* ---------- Moments it acts on ---------- */
+.acs-cards { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 8px; }
+.acs-card { display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 18px; background: #fff; border: 1px solid var(--hair); }
+.acs-card img { border-radius: 6px; }
+.acs-card small { display: block; font-size: 12px; color: var(--muted); }
+.acs-card h3 { margin-top: 4px; font-size: 17px; font-weight: 500; line-height: 1.3; color: var(--text); }
+.acs-card p { margin-top: 8px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+
+/* ---------- What it counts ---------- */
+.acs-own { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+.acs-own p { margin-top: 14px; color: var(--muted); }
+.acs-own-list { list-style: none; display: grid; gap: 12px; }
+.acs-own-list li { display: grid; gap: 4px; padding: 16px 18px; border-radius: 16px; background: #fff; border: 1px solid var(--hair); }
+.acs-own-list b { font-weight: 500; color: var(--text); }
+.acs-own-list span { font-size: 14px; color: var(--muted); }
+
+/* /ai-customer-success/alternatives: the AI agent column reads as a sentence. */
+.cmp-alt-table th:nth-child(3), .cmp-alt-table td:nth-child(3) { min-width: 220px; }
+.cmp-alt-table tbody th img { vertical-align: middle; margin-right: 8px; border-radius: 4px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1180px) {
+  .hero-cs .hero-grid { grid-template-columns: 1fr; }
+  .acs-stage { margin: 0 auto; }
+}
+@media (max-width: 860px) {
+  .acs-own { grid-template-columns: 1fr; gap: 24px; }
+}
+@media (max-width: 640px) {
+  .hero-cs h1 { font-size: 32px; }
+  .acs-stage { width: 100%; max-width: 420px; }
+  .acs-feed { height: 400px; }
+  .acs-contrast tbody th { padding-top: 14px; }
+}
