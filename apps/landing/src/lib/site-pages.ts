@@ -18,6 +18,7 @@ import { agencyCompareLinks } from "./agencies";
 import { AI_LEAD_GEN_PATH, AI_SDR_PATH, aiLeadGenCompareLinks, aiSdrCompareLinks } from "./competitors";
 import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
+import { APPOINTMENT_PAGE_PATH, appointmentCompareLinks } from "./appointment-setting-agencies";
 
 export type Buyer = "agent" | "agency";
 
@@ -83,16 +84,20 @@ function agentPath(slug: OutcomeSlug): string {
 
 /**
  * An Agency page served at the path its buyers search for, not `/<slug>-agency`:
- * Paid Acquisition is "ppc agency" (5,400 US searches a month, PAGE-PPC-AGENCY-1029).
+ * Paid Acquisition is "ppc agency" (5,400 US searches a month, PAGE-PPC-AGENCY-1029),
+ * Meetings Booked is "appointment setting agency" (320 to 390, PAGE-APPOINTMENT-AGENCY-1030).
  */
-const AGENCY_PATH: Partial<Record<OutcomeSlug, string>> = { "paid-acquisition": "/ppc-agency" };
+const AGENCY_PATH: Partial<Record<OutcomeSlug, string>> = {
+  "paid-acquisition": "/ppc-agency",
+  meetings: APPOINTMENT_PAGE_PATH,
+};
 
 function agencyPath(slug: OutcomeSlug): string {
   return AGENCY_PATH[slug] ?? `/${slug}-agency`;
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, AI_LEAD_GEN_PATH, "/ppc-agency"]);
+const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, AI_LEAD_GEN_PATH, "/ppc-agency", APPOINTMENT_PAGE_PATH]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
 const GTM_AGENCY_SECTIONS = [
@@ -118,6 +123,16 @@ const PPC_AGENCY_SECTIONS = [
   { label: "Our data", href: "/ppc-agency#data" },
   { label: "Price", href: "/ppc-agency#price" },
   { label: "FAQ", href: "/ppc-agency#faq" },
+];
+
+/** The sections of the Appointment Setting Agency page (PAGE-APPOINTMENT-AGENCY-1030). */
+const APPOINTMENT_AGENCY_SECTIONS = [
+  { label: "Real clients", href: `${APPOINTMENT_PAGE_PATH}#clients` },
+  { label: "How we set meetings", href: `${APPOINTMENT_PAGE_PATH}#how` },
+  { label: "Our data", href: `${APPOINTMENT_PAGE_PATH}#data` },
+  { label: "Agencies compared", href: `${APPOINTMENT_PAGE_PATH}#compare` },
+  { label: "Price", href: `${APPOINTMENT_PAGE_PATH}#price` },
+  { label: "FAQ", href: `${APPOINTMENT_PAGE_PATH}#faq` },
 ];
 
 /** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
@@ -184,6 +199,9 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           ...(o.slug === "gtm" ? { sections: GTM_AGENCY_SECTIONS, compare: agencyCompareLinks() } : {}),
           ...(o.slug === "lead-generation" ? { sections: LEADGEN_AGENCY_SECTIONS, compare: leadgenCompareLinks() } : {}),
           ...(o.slug === "paid-acquisition" ? { navLabel: "PPC Agency", sections: PPC_AGENCY_SECTIONS, compare: ppcCompareLinks() } : {}),
+          ...(o.slug === "meetings"
+            ? { navLabel: "Appointment Setting Agency", sections: APPOINTMENT_AGENCY_SECTIONS, compare: appointmentCompareLinks() }
+            : {}),
         },
       ]),
 ]);
