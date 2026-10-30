@@ -7,8 +7,12 @@ import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components
 import {
   CAPACITY_WINDOWS,
   byCountDesc,
+  emptySendPools,
   poolWord,
   refusalSentence,
+  sendPoolVendors,
+  sendPoolWord,
+  sendPools,
   signed,
   stackHeight,
   utcMoment,
@@ -548,10 +552,67 @@ export function VendorRefusalTile({ href }: { href: string }) {
   );
 }
 
+// ─── An empty send pool (SEND-POOL-VENDOR-402-1030) ────────────────────────
+
+/** The sentence for an empty pool: who it stops. */
+const emptyPoolSentence = (pool: string) =>
+  pool === "shared"
+    ? "No mailbox can take a new email: every org's new emails are refused."
+    : `No mailbox can take a new email for ${pool}: its new emails are refused.`;
+
+/**
+ * One red card per send pool no new email can leave from (2026-10-29: 35 addresses "in production", 0 the sender could
+ * use, every org refused for a day with nothing red). Nothing when every pool has a mailbox.
+ */
+function EmptySendPools() {
+  const infra = useOpsInfra();
+  const empty = infra.data ? emptySendPools(infra.data) : [];
+  if (!empty.length) return null;
+  return (
+    <section className="space-y-3">
+      {empty.map((p) => (
+        <div key={p.pool} className="k-card p-4">
+          <p className="inline-flex items-center gap-2 text-[14px] font-medium" style={{ color: RED }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: RED }} />
+            {emptyPoolSentence(p.pool)}
+          </p>
+          <p className="k-fg3 mt-2 text-[12px]">A mailbox counts when it is in production, we hold its password and we read its replies.</p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** The hub tile: how many mailboxes can take a new email now, red at zero. Nothing before instantly-service serves it. */
+export function SendPoolTile({ href }: { href: string }) {
+  const infra = useOpsInfra();
+  const pools = infra.data ? sendPools(infra.data) : [];
+  if (!pools.length) return null;
+  const empty = infra.data ? emptySendPools(infra.data) : [];
+  const shared = pools.find((p) => p.pool === "shared") ?? pools[0];
+  return (
+    <StatTile label="Send pool" note="mailboxes ready" href={href}>
+      <Figure value={<span style={empty.length ? { color: RED } : undefined}>{shared.sendable}</span>} />
+      {empty.length ? (
+        empty.map((p) => (
+          <p key={p.pool} className="mt-1 text-[12px]" style={{ color: RED }}>
+            {emptyPoolSentence(p.pool)}
+          </p>
+        ))
+      ) : (
+        <p className="k-fg2 mt-1 text-[12px]">
+          {sendPoolWord(shared.pool)} sends from {sendPoolVendors(shared)}.
+        </p>
+      )}
+    </StatTile>
+  );
+}
+
 export function CapacityPage({ base: _base }: { base: string }) {
   const infra = useOpsInfra();
   return (
     <div className="space-y-8">
+      <EmptySendPools />
       <VendorRefusals />
       <CapacityTiles />
       <section>
