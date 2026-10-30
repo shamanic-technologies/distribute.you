@@ -1,0 +1,148 @@
+/*
+  Cold Email Agency (PAGE-COLD-EMAIL-AGENCY-1030, /cold-email-agency), layered on agency.css.
+  - hero workflow card (default.com home2 flow canvas, clone `default` index.html: nodes with a
+    state slot "Triggering -> Triggered", a spinner while active, a check when done, edges that
+    march while a node runs): buyer found, research, the email typed and sent (the step collapses),
+    the reply answered;
+  - darker sticky story (deeper slab), sending section (our domains vs yours), live sending stats.
+  The HTML is the FINAL state (every node done, the email written); motion.js `mail-flow` replays it.
+*/
+
+/* ---------- Hero workflow card ---------- */
+.ce-hero .ag-hero-grid { grid-template-columns: 1fr 1.02fr; }
+.ce-hero h1 { font-size: clamp(40px, 4.9vw, 64px); }
+.ce-flow {
+  position: relative; border-radius: 24px; overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)), #070b16;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 40px 90px -40px rgba(37, 99, 235, 0.55), 0 0 0 1px rgba(110, 160, 255, 0.06) inset;
+}
+.ce-flow::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 90% 40% at 50% 0%, rgba(37, 99, 235, 0.26), transparent 75%); pointer-events: none; }
+.ce-flow-h { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; font-size: 13px; color: rgba(255, 255, 255, 0.6); border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.ce-flow-h .live { display: inline-flex; align-items: center; gap: 8px; color: #fff; font-weight: 500; }
+.ce-flow-h .live i { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18); }
+
+/* Fixed height: a step that opens or collapses moves the steps below it inside the card, never the page. */
+.ce-nodes { position: relative; list-style: none; display: grid; align-content: start; gap: 18px; padding: 18px; height: 584px; }
+.ce-node {
+  position: relative; padding: 12px 14px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff; font-size: 14px;
+  transition: border-color 0.35s ease, background-color 0.35s ease, opacity 0.35s ease;
+}
+/* The edge into each step: faint while waiting, marching while the step runs, solid once done. */
+.ce-node + .ce-node::before {
+  content: ""; position: absolute; left: 30px; top: -19px; width: 2px; height: 18px;
+  background: rgba(110, 160, 255, 0.85);
+}
+.ce-node[data-status="idle"]::before { background: rgba(255, 255, 255, 0.12); }
+.ce-node[data-status="active"]::before { background: repeating-linear-gradient(180deg, var(--glow) 0 4px, transparent 4px 8px); background-size: 2px 8px; }
+.ce-node[data-status="active"] { border-color: rgba(110, 160, 255, 0.55); background-color: rgba(37, 99, 235, 0.1); }
+.ce-node[data-status="idle"] { opacity: 0.45; }
+.ce-node-h { display: flex; align-items: center; gap: 10px; }
+.ce-node-h b { font-weight: 500; }
+.ce-ic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #2b5be0, #7c3aed); }
+.ce-ic svg { width: 16px; height: 16px; }
+.ce-st { margin-left: auto; flex: none; font-size: 12px; }
+.ce-st > span { display: none; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; }
+.ce-st .a { color: #c6d6ff; background: rgba(110, 160, 255, 0.14); }
+.ce-st .d { color: #b9f5d8; background: rgba(34, 197, 94, 0.14); }
+.ce-st .d svg { width: 11px; height: 11px; }
+.ce-node[data-status="active"] .ce-st .a, .ce-node[data-status="done"] .ce-st .d { display: inline-flex; }
+.ce-st .spin { width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(198, 214, 255, 0.35); border-top-color: #c6d6ff; }
+/* `.ce-flow p` beats agency.css `.ag-dark p` (the soft white every dark paragraph wears). */
+.ce-flow .ce-sub { margin: 6px 0 0 40px; font-size: 13px; color: rgba(255, 255, 255, 0.62); }
+.ce-node[data-status="idle"] .ce-sub, .ce-node[data-status="active"] .ce-sub { visibility: hidden; }
+
+/* The write step: the draft opens while writing; once sent, the step collapses to one line. */
+.ce-sent-line { display: none; }
+.ce-flow .ce-node[data-node="write"][data-status="done"]:not(.is-open) .ce-sent-line { display: block; visibility: visible; color: #b9f5d8; }
+.ce-body { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease; }
+.ce-body > .ce-draft { min-height: 0; overflow: hidden; }
+.ce-node.is-open .ce-body { grid-template-rows: 1fr; opacity: 1; }
+.ce-draft { margin-top: 12px; border-radius: 12px; background: #fff; color: var(--text); box-shadow: 0 24px 50px -28px rgba(0, 0, 0, 0.9); }
+.ce-draft-h { display: grid; gap: 2px; padding: 12px 14px 10px; border-bottom: 1px solid var(--hair); font-size: 12px; color: var(--muted); }
+.ce-draft-h b { color: var(--text); font-weight: 500; }
+.ce-flow .ce-type { min-height: 66px; padding: 12px 14px 4px; font-size: 14px; line-height: 1.5; color: #333; }
+.ce-type.is-typing::after { content: ""; display: inline-block; width: 2px; height: 1.05em; margin-left: 1px; vertical-align: -2px; background: var(--accent); animation: ce-caret 0.9s steps(1) infinite; }
+.ce-draft-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px 12px; font-size: 12px; color: var(--muted-2); }
+.ce-send { display: inline-flex; align-items: center; padding: 7px 16px; border-radius: 100px; font-size: 13px; font-weight: 500; color: #fff; background: var(--accent); transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease; }
+.ce-send.is-pressed { transform: scale(0.92); background: var(--accent-600); box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.25); }
+/* The reply step: their reply, our answer, the meeting; shown once the step is done. */
+.ce-thread { display: grid; gap: 8px; margin: 10px 0 0 40px; }
+.ce-node[data-node="reply"]:not([data-status="done"]) .ce-thread { display: none; }
+.ce-flow .ce-msg { max-width: 86%; padding: 8px 12px; border-radius: 14px; font-size: 13px; line-height: 1.4; }
+.ce-flow .ce-msg.them { justify-self: start; color: #fff; background: rgba(255, 255, 255, 0.08); border-bottom-left-radius: 4px; }
+.ce-flow .ce-msg.us { justify-self: end; color: #fff; background: var(--accent); border-bottom-right-radius: 4px; }
+.ce-booked { justify-self: start; display: inline-flex; padding: 4px 11px; border-radius: 100px; font-size: 12px; color: #b9f5d8; background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(34, 197, 94, 0.32); }
+.ce-cursor { position: absolute; left: 0; top: 0; z-index: 3; opacity: 0; pointer-events: none; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)); transition: scale 0.12s ease; }
+.ce-cursor.is-click { scale: 0.85; }
+@media (prefers-reduced-motion: no-preference) {
+  .ce-flow-h .live i { animation: ce-live 1.8s ease-in-out infinite; }
+  .ce-node[data-status="active"] .ce-st .spin { animation: ce-spin 0.8s linear infinite; }
+  .ce-node[data-status="active"]::before { animation: ce-march 0.6s linear infinite; }
+  .ce-flow.is-playing .ce-node[data-status="done"] .ce-st .d { animation: ce-pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+  .ce-flow.is-playing .ce-thread > * { animation: ce-rise 0.45s ease-out both; }
+  .ce-flow.is-playing .ce-thread > :nth-child(2) { animation-delay: 0.5s; }
+  .ce-flow.is-playing .ce-thread > :nth-child(3) { animation-delay: 1s; }
+}
+@keyframes ce-live { 50% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0.06); } }
+@keyframes ce-spin { to { transform: rotate(360deg); } }
+@keyframes ce-march { to { background-position: 0 8px; } }
+@keyframes ce-pop { 0% { transform: scale(0.7); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes ce-caret { 50% { opacity: 0; } }
+@keyframes ce-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Darker sticky story ---------- */
+.ce-story { background: radial-gradient(ellipse 60% 50% at 85% 50%, rgba(37, 99, 235, 0.16), transparent 70%), #04060b; }
+.ce-stage { background: radial-gradient(ellipse 80% 70% at 50% 0%, rgba(37, 99, 235, 0.22), transparent 70%), #03050a; }
+.ce-stage mark { padding: 0 3px; border-radius: 4px; color: inherit; background: #dbeafe; }
+.ce-inboxes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ce-inbox { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; font-size: 13px; color: #fff; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.ce-inbox i { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.ce-yours { display: grid; gap: 2px; margin-top: 6px; padding: 12px 14px; border-radius: 12px; font-size: 13px; color: var(--soft); border: 1px dashed rgba(255, 255, 255, 0.18); }
+.ce-yours b { color: #fff; font-weight: 500; }
+
+/* ---------- Our sending ---------- */
+.ce-sending { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+.ce-sending > div > p { margin-top: 14px; max-width: 480px; }
+.ce-points { list-style: none; display: grid; gap: 18px; margin-top: 30px; }
+.ce-points li { display: flex; gap: 14px; }
+.ce-points .k { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: var(--accent-text); background: var(--accent-50); border: 1px solid var(--accent-100); }
+.ce-points h3 { font-size: 18px; }
+.ce-points p { margin-top: 2px; font-size: 15px; }
+.ce-split { display: grid; gap: 14px; padding: 26px; border-radius: 24px; background: #fff; border: 1px solid var(--hair); box-shadow: 0 0 0 4px var(--accent-50), 0 40px 80px -40px rgba(37, 99, 235, 0.45); }
+.ce-lane { padding: 16px 18px; border-radius: 16px; }
+.ce-lane .lbl { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.ce-lane-rows { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ce-lane-rows span { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 100px; font-size: 13px; }
+.ce-lane-rows i { width: 7px; height: 7px; border-radius: 50%; }
+.ce-lane.us { background: var(--accent-50); border: 1px solid var(--accent-100); }
+.ce-lane.us .lbl { color: var(--accent-text); }
+.ce-lane.us .ce-lane-rows span { background: #fff; color: var(--text); border: 1px solid var(--accent-100); }
+.ce-lane.us .ce-lane-rows i { background: var(--accent); }
+.ce-lane.you { background: #f8fafc; border: 1px solid var(--hair); }
+.ce-lane.you .lbl { color: var(--muted); }
+.ce-lane.you .ce-lane-rows span { background: #fff; color: var(--muted); border: 1px solid var(--hair); }
+.ce-lane.you .ce-lane-rows i { background: #22c55e; }
+.ce-stats { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; padding-top: 6px; }
+.ce-stats div { display: grid; gap: 2px; }
+.ce-stats b { font-family: var(--font-display); font-weight: 400; font-size: 34px; letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
+.ce-stats span { font-size: 13px; color: var(--muted); }
+.ce-stats-note { font-size: 12px; color: var(--muted-2); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .ce-hero .ag-hero-grid, .ce-sending { grid-template-columns: 1fr; }
+  .ce-flow { max-width: 560px; width: 100%; margin: 0 auto; }
+}
+@media (max-width: 640px) {
+  .ce-nodes { padding: 12px; gap: 14px; height: 620px; }
+  .ce-node + .ce-node::before { top: -15px; height: 14px; }
+  .ce-flow-h span:last-child { display: none; }
+  .ce-flow .ce-sub, .ce-thread { margin-left: 0; }
+  .ce-flow .ce-type { font-size: 13px; }
+  .ce-split { padding: 18px; }
+  .ce-stats { grid-template-columns: 1fr; }
+  .ce-stats b { font-size: 30px; }
+}

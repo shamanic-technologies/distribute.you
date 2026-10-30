@@ -7,6 +7,7 @@ import {
   BEST_FOR_PAGES,
   BEST_UPDATED_ON,
   bestForLinkLabel,
+  bestForPath,
   bestForPaths,
 } from "../../src/lib/best-for";
 import { bestForHeading, renderBestForHub, renderBestForPage } from "../../src/lib/best-for-page";
@@ -125,14 +126,14 @@ describe("every page", () => {
       expect(visible).not.toMatch(/cold email (tool|software|platform) (is|called) distribute/i);
       expect(html).toContain("__HOT_LEAD_BAND__");
       expect(html.replace("__HOT_LEAD_BAND__", "")).not.toMatch(/__[A-Z_]+__/);
-      expect(html).toContain(`<link rel="canonical" href="https://distribute.you/best/${p.slug}">`);
+      expect(html).toContain(`<link rel="canonical" href="https://distribute.you${bestForPath(p)}">`);
     });
   }
 
   it("the hub links every page in raw HTML", () => {
     const hub = renderBestForHub();
     expect(prose(hub)).not.toContain("—");
-    for (const p of BEST_FOR_PAGES) expect(hub).toContain(`href="/best/${p.slug}"`);
+    for (const p of BEST_FOR_PAGES) expect(hub).toContain(`href="${bestForPath(p)}"`);
   });
 });
 
@@ -147,7 +148,7 @@ describe("the lists that name the cluster equal the catalogue", () => {
     const llms = read("public/llms.txt");
     expect(llms).toContain("(https://distribute.you/best)");
     for (const p of BEST_FOR_PAGES) {
-      expect(llms).toContain(`[${bestForLinkLabel(p)}](https://distribute.you/best/${p.slug})`);
+      expect(llms).toContain(`[${bestForLinkLabel(p)}](https://distribute.you${bestForPath(p)})`);
     }
   });
 
@@ -159,7 +160,7 @@ describe("the lists that name the cluster equal the catalogue", () => {
       expect(footer).toContain("<h4>Best for</h4>");
       expect(footer).toContain('href="/best">All rankings</a>');
       for (const p of BEST_FOR_PAGES) {
-        expect(footer).toContain(`href="/best/${p.slug}">${bestForLinkLabel(p)}</a>`);
+        expect(footer).toContain(`href="${bestForPath(p)}">${bestForLinkLabel(p)}</a>`);
       }
     }
     expect(home).toContain(`href="/landing/v2/styles.css?v=${V2_STYLES_VERSION}"`);
@@ -185,7 +186,7 @@ describe("served through the pipeline", () => {
     const { renderedResponse } = await import("@/lib/static-html");
     const p = BEST_FOR_PAGES[0];
     const res = await renderedResponse(renderBestForPage(p), new Request("https://distribute.you/best/x"), {
-      canonicalPath: `/best/${p.slug}`,
+      canonicalPath: bestForPath(p),
     });
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -194,7 +195,7 @@ describe("served through the pipeline", () => {
     const md = await renderedResponse(
       renderBestForPage(p),
       new Request("https://distribute.you/best/x", { headers: { accept: "text/markdown" } }),
-      { canonicalPath: `/best/${p.slug}` },
+      { canonicalPath: bestForPath(p) },
     );
     expect(md.headers.get("content-type")).toContain("text/markdown");
     expect(await md.text()).toContain(bestForHeading(p));

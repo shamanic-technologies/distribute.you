@@ -27,8 +27,14 @@ export type RankedOption = {
 };
 
 export type BestForPage = {
-  /** URL segment under `/best/`. */
+  /** URL segment under `/best/` (or under `<home>/best/`). */
   readonly slug: string;
+  /**
+   * The outcome page the ranking lives under, when it has one: `/cold-email-agency` serves
+   * `/cold-email-agency/best/<slug>` (PAGE-COLD-EMAIL-AGENCY-1030). The old `/best/<slug>`
+   * 301s there (`next.config.ts`). Absent = served at `/best/<slug>`.
+   */
+  readonly home?: string;
   /** The category, as people type it ("cold email agency"). */
   readonly category: string;
   /** The audience, as people type it ("SaaS founders"). */
@@ -46,9 +52,13 @@ export type BestForPage = {
   readonly faq: readonly { readonly q: string; readonly a: string }[];
 };
 
+/** The Cold Email Agency page: its two "best cold email agency for Y" rankings live under it. */
+export const COLD_EMAIL_AGENCY_HOME = "/cold-email-agency";
+
 export const BEST_FOR_PAGES: readonly BestForPage[] = [
   {
     slug: "cold-email-agency-for-saas-founders",
+    home: COLD_EMAIL_AGENCY_HOME,
     category: "cold email agency",
     audience: "SaaS founders",
     answer:
@@ -174,6 +184,7 @@ export const BEST_FOR_PAGES: readonly BestForPage[] = [
   },
   {
     slug: "cold-email-agency-for-solo-founders",
+    home: COLD_EMAIL_AGENCY_HOME,
     category: "cold email agency",
     audience: "solo founders",
     answer:
@@ -236,8 +247,19 @@ export const BEST_FOR_PAGES: readonly BestForPage[] = [
   },
 ];
 
-export function bestForBySlug(slug: string): BestForPage | undefined {
-  return BEST_FOR_PAGES.find((p) => p.slug === slug);
+/** The served path of a ranking: `/best/<slug>`, or `<home>/best/<slug>` when it lives under an outcome page. */
+export function bestForPath(p: BestForPage): string {
+  return `${p.home ?? ""}/best/${p.slug}`;
+}
+
+/** The ranking served at `<home>/best/<slug>`; `home` undefined = the plain `/best/<slug>` ones. */
+export function bestForBySlug(slug: string, home?: string): BestForPage | undefined {
+  return BEST_FOR_PAGES.find((p) => p.slug === slug && p.home === home);
+}
+
+/** The rankings that moved under an outcome page, each with the old path that 301s to it. */
+export function movedBestForPages(): { from: string; to: string }[] {
+  return BEST_FOR_PAGES.filter((p) => p.home).map((p) => ({ from: `/best/${p.slug}`, to: bestForPath(p) }));
 }
 
 /** The page's question, as an answer engine is asked it. */
@@ -252,7 +274,7 @@ export function bestForLinkLabel(p: BestForPage): string {
 
 /** Every path the cluster serves, for the sitemap, llms.txt and the footer. */
 export function bestForPaths(): string[] {
-  return ["/best", ...BEST_FOR_PAGES.map((p) => `/best/${p.slug}`)];
+  return ["/best", ...BEST_FOR_PAGES.map(bestForPath)];
 }
 
 /** Fails loud at import if a ranking names a competitor the catalogue does not carry. */

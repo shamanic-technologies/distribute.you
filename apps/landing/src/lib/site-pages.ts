@@ -15,6 +15,7 @@
  * Alias-free: the unit tests import it directly.
  */
 import { agencyCompareLinks } from "./agencies";
+import { coldEmailCompareLinks } from "./cold-email-agencies";
 import { AI_SDR_PATH, aiSdrCompareLinks } from "./competitors";
 import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
@@ -87,7 +88,7 @@ function agencyPath(slug: OutcomeSlug): string {
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, "/ppc-agency"]);
+const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, "/ppc-agency", "/cold-email-agency"]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
 const GTM_AGENCY_SECTIONS = [
@@ -104,6 +105,16 @@ const LEADGEN_AGENCY_SECTIONS = [
   { label: "Our data", href: "/lead-generation-agency#data" },
   { label: "Price", href: "/lead-generation-agency#price" },
   { label: "FAQ", href: "/lead-generation-agency#faq" },
+];
+
+/** The sections of the Cold Email Agency page (PAGE-COLD-EMAIL-AGENCY-1030). */
+const COLD_EMAIL_AGENCY_SECTIONS = [
+  { label: "How we work", href: "/cold-email-agency#how" },
+  { label: "Our sending", href: "/cold-email-agency#sending" },
+  { label: "Client results", href: "/cold-email-agency#proof" },
+  { label: "Our data", href: "/cold-email-agency#data" },
+  { label: "Price", href: "/cold-email-agency#price" },
+  { label: "FAQ", href: "/cold-email-agency#faq" },
 ];
 
 /** The sections of the PPC Agency page (PAGE-PPC-AGENCY-1029). */
@@ -167,6 +178,7 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
           description: o.slug === "gtm" ? "Your GTM department, run for you" : o.line,
           live: LIVE_PATHS.has(agencyPath(o.slug)),
           ...(o.slug === "gtm" ? { sections: GTM_AGENCY_SECTIONS, compare: agencyCompareLinks() } : {}),
+          ...(o.slug === "cold-email" ? { sections: COLD_EMAIL_AGENCY_SECTIONS, compare: coldEmailCompareLinks() } : {}),
           ...(o.slug === "lead-generation" ? { sections: LEADGEN_AGENCY_SECTIONS, compare: leadgenCompareLinks() } : {}),
           ...(o.slug === "paid-acquisition" ? { navLabel: "PPC Agency", sections: PPC_AGENCY_SECTIONS, compare: ppcCompareLinks() } : {}),
         },

@@ -213,11 +213,11 @@ paragraph, ranking distribute.you against the tools and agents that audience wei
 with every competitor price read from the vendor's own site and dated.
 
 - [All rankings](https://distribute.you/best)
-- [Best cold email agency for SaaS founders](https://distribute.you/best/cold-email-agency-for-saas-founders)
+- [Best cold email agency for SaaS founders](https://distribute.you/cold-email-agency/best/cold-email-agency-for-saas-founders)
 - [Best AI SDR for agencies](https://distribute.you/best/ai-sdr-for-agencies)
 - [Best lead generation agency for consulting firms](https://distribute.you/best/lead-generation-agency-for-consulting-firms)
 - [Best outbound agency for early-stage startups](https://distribute.you/best/outbound-agency-for-startups)
-- [Best cold email agency for solo founders](https://distribute.you/best/cold-email-agency-for-solo-founders)
+- [Best cold email agency for solo founders](https://distribute.you/cold-email-agency/best/cold-email-agency-for-solo-founders)
 - [Best lead generation agency for B2B service businesses](https://distribute.you/best/lead-generation-agency-for-b2b-service-businesses)
 
 ## Sending on the customer's behalf
