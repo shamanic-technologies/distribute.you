@@ -8,8 +8,12 @@ import {
   CAPACITY_WINDOWS,
   byCountDesc,
   poolWord,
+  refusalSentence,
   signed,
   stackHeight,
+  utcMoment,
+  vendorRefusals,
+  vendorWord,
   whole,
   type CapacityWindow,
   type SendForecastDay,
@@ -19,6 +23,7 @@ import {
   Failed,
   InboxCell,
   Loading,
+  RED,
   StatusWord,
   TD,
   TDR,
@@ -43,7 +48,7 @@ import {
 
 const ONCE = { staleTime: 60_000, retry: false } as const;
 
-function useOpsInfra() {
+export function useOpsInfra() {
   return useAuthQuery(["staffOpsInfra"], getStaffOpsInfra, ONCE);
 }
 function useSendForecast() {
@@ -499,10 +504,55 @@ function ReconcileTable() {
   );
 }
 
+// ─── A mailbox vendor refusing us (SEND-PRIMEFORGE-402-1030) ───────────────
+
+/**
+ * One card per vendor refusing our API: its mailboxes send nothing until it answers again. Drawn
+ * only when instantly-service serves a refusal; nothing at all otherwise (an empty or absent field).
+ */
+function VendorRefusals() {
+  const infra = useOpsInfra();
+  const refusals = infra.data ? vendorRefusals(infra.data) : [];
+  if (!refusals.length) return null;
+  return (
+    <section className="space-y-3">
+      {refusals.map((r) => (
+        <div key={r.vendor} className="k-card p-4">
+          <p className="inline-flex items-center gap-2 text-[14px] font-medium" style={{ color: RED }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: RED }} />
+            {refusalSentence(r)}
+          </p>
+          <p className="k-label mt-3">{vendorWord(r.vendor)} answered</p>
+          <p className="k-inset k-mono mt-1 break-words rounded-[8px] px-3 py-2 text-[12px]">{r.error}</p>
+          <p className="k-fg3 mt-2 text-[12px] tabular-nums">Last refused at {utcMoment(r.lastSeenAt)}. Turns normal the moment {vendorWord(r.vendor)} answers again.</p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** The hub tile: shown only while a vendor refuses us, red, naming it. Nothing otherwise. */
+export function VendorRefusalTile({ href }: { href: string }) {
+  const infra = useOpsInfra();
+  const refusals = infra.data ? vendorRefusals(infra.data) : [];
+  if (!refusals.length) return null;
+  return (
+    <StatTile label="Mailbox vendors" note="refusing us" href={href}>
+      <Figure value={<span style={{ color: RED }}>{refusals.map((r) => vendorWord(r.vendor)).join(", ")}</span>} />
+      {refusals.map((r) => (
+        <p key={r.vendor} className="k-fg2 mt-1 text-[12px]">
+          {refusalSentence(r)}
+        </p>
+      ))}
+    </StatTile>
+  );
+}
+
 export function CapacityPage({ base: _base }: { base: string }) {
   const infra = useOpsInfra();
   return (
     <div className="space-y-8">
+      <VendorRefusals />
       <CapacityTiles />
       <section>
         <SectionTitle count={infra.data?.fleet.totalAccountCount ?? null}>Fleet by state</SectionTitle>

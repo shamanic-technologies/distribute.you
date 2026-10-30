@@ -1,0 +1,126 @@
+{
+  "asOf": "2026-10-19T17:14:01.611Z",
+  "fleet": {
+    "dailyCapacity": 1004,
+    "healthyAccountCount": 38,
+    "totalAccountCount": 252,
+    "blockedDomainCount": 5,
+    "queuedSteps": 2237,
+    "byLifecycle": {
+      "in_recovery": 220,
+      "deactivated_by_user": 10,
+      "deactivated_by_instantly": 26,
+      "in_production": 60
+    }
+  },
+  "pools": [
+    {
+      "pool": "gandi-relay",
+      "mailboxes": 48,
+      "addresses": 165,
+      "byLifecycle": {
+        "in_recovery": 160,
+        "deactivated_by_user": 5
+      },
+      "dailyCapacity": 0,
+      "inProduction": 0,
+      "queuedSteps": 54,
+      "volume7d": {
+        "outreach": 183,
+        "warmup": 4810,
+        "seed": 3397,
+        "repliesIn": 9,
+        "bouncesIn": 0,
+        "bounceRatePerMille": 0
+      },
+      "inboxPctMean": 23.2
+    },
+    {
+      "pool": "google-workspace",
+      "mailboxes": 85,
+      "addresses": 85,
+      "byLifecycle": {
+        "in_production": 38,
+        "in_recovery": 47
+      },
+      "dailyCapacity": 1004,
+      "inProduction": 38,
+      "queuedSteps": 2183,
+      "volume7d": {
+        "outreach": 3614,
+        "warmup": 4693,
+        "seed": 2742,
+        "repliesIn": 36,
+        "bouncesIn": 70,
+        "bounceRatePerMille": 19.4
+      },
+      "inboxPctMean": 87
+    },
+    {
+      "pool": "mailforge-relay",
+      "mailboxes": 10,
+      "addresses": 2,
+      "byLifecycle": {
+        "deactivated_by_instantly": 2
+      },
+      "dailyCapacity": 0,
+      "inProduction": 0,
+      "queuedSteps": 0,
+      "volume7d": {
+        "outreach": 0,
+        "warmup": 0,
+        "seed": 0,
+        "repliesIn": 0,
+        "bouncesIn": 0,
+        "bounceRatePerMille": null
+      },
+      "inboxPctMean": 0
+    },
+    {
+      "pool": "unknown",
+      "mailboxes": 50,
+      "addresses": 0,
+      "byLifecycle": {},
+      "dailyCapacity": 0,
+      "inProduction": 0,
+      "queuedSteps": 0,
+      "volume7d": {
+        "outreach": 0,
+        "warmup": 0,
+        "seed": 0,
+        "repliesIn": 0,
+        "bouncesIn": 0,
+        "bounceRatePerMille": null
+      },
+      "inboxPctMean": null
+    }
+  ],
+  "exclusions": {
+    "domainPolicy": [
+      {
+        "domain": "arcadiaquest.org",
+        "reason": "brand",
+        "note": "Legacy brand domain (cancelled DFY order leftover)"
+      },
+      {
+        "domain": "distribute.you",
+        "reason": "brand",
+        "note": "Primary brand domain \u2014 never send cold from it"
+      },
+      {
+        "domain": "growthagency.dev",
+        "reason": "brand",
+        "note": "Live Vercel product domain"
+      }
+    ],
+    "featureReservations": []
+  },
+  "vendorRefusals": [
+    {
+      "vendor": "primeforge",
+      "error": "402 - {\"message\":\"active subscription required\"}",
+      "since": "2026-10-29T15:02:11.000Z",
+      "lastSeenAt": "2026-10-30T09:41:37.000Z"
+    }
+  ]
+}

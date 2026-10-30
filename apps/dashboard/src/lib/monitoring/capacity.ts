@@ -56,6 +56,23 @@ export const OpsInfraSchema = z.object({
     domainPolicy: z.array(z.object({ domain: z.string(), reason: z.string(), note: z.string().nullable() })),
     featureReservations: z.array(z.object({ accountEmail: z.string(), featureSlug: z.string() })),
   }),
+  /**
+   * Mailbox vendors refusing our API right now (SEND-PRIMEFORGE-402-1030): their mailboxes are out
+   * of the send pool, every other vendor sends on. Empty = every vendor answered. Optional: an
+   * instantly-service older than v0.83.153 does not serve it, and that reads as nothing refused.
+   */
+  vendorRefusals: z
+    .array(
+      z.object({
+        vendor: z.string(),
+        // The vendor's answer, verbatim.
+        error: z.string(),
+        // First refusal of the current streak, then the latest one (ISO).
+        since: z.string(),
+        lastSeenAt: z.string(),
+      }),
+    )
+    .optional(),
 });
 export type OpsInfra = z.infer<typeof OpsInfraSchema>;
 export type OpsPool = OpsInfra["pools"][number];
@@ -69,6 +86,25 @@ const POOL_WORD: Record<string, string> = {
   unknown: "Not attributed",
 };
 export const poolWord = (pool: string) => POOL_WORD[pool] ?? pool;
+
+// ─── Vendor refusals (SEND-PRIMEFORGE-402-1030) ────────────────────────────
+
+export type VendorRefusal = NonNullable<OpsInfra["vendorRefusals"]>[number];
+
+/** Every vendor refusing us, as served. An older instantly-service serves no field: nothing refused. */
+export const vendorRefusals = (infra: OpsInfra): VendorRefusal[] => infra.vendorRefusals ?? [];
+
+/** A mailbox vendor by its brand name. Unknown prints as served. */
+const VENDOR_WORD: Record<string, string> = { primeforge: "Primeforge", mailforge: "Mailforge", gandi: "Gandi" };
+export const vendorWord = (vendor: string) => VENDOR_WORD[vendor] ?? vendor;
+
+/** A served ISO instant as staff read it: "Oct 29, 15:02 UTC". */
+export const utcMoment = (iso: string) =>
+  `${new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" })} UTC`;
+
+/** The one-line read of a refusal: who refuses, since when, and what it stops. */
+export const refusalSentence = (r: VendorRefusal) =>
+  `${vendorWord(r.vendor)} refuses us since ${utcMoment(r.since)}: its mailboxes send nothing, every other vendor keeps sending.`;
 
 /** Served counts per state, largest first, for display. Sorting only. */
 export function byCountDesc(counts: Record<string, number>): Array<[string, number]> {

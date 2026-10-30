@@ -29,7 +29,8 @@ import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimpl
 import { ChatCircleIcon } from "@phosphor-icons/react/dist/csr/ChatCircle";
 import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { SkillsView } from "@/components/v2/monitoring-skills";
-import { CapacityPage, RulesPage } from "@/components/v2/monitoring-capacity";
+import { CapacityPage, RulesPage, VendorRefusalTile, useOpsInfra } from "@/components/v2/monitoring-capacity";
+import { vendorRefusals } from "@/lib/monitoring/capacity";
 import { BlocklistsPage } from "@/components/v2/monitoring-blocklists";
 import { ThreadsPage } from "@/components/v2/monitoring-threads";
 import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/components/v2/monitoring-whatsapp";
@@ -460,6 +461,8 @@ function Hub({ base }: { base: string }) {
   const following = usePlanFollowing();
   const scripts = useScriptsMonitoring();
   const vendors = useVendorCredit();
+  const opsInfra = useOpsInfra();
+  const mailboxVendorsRefusing = opsInfra.data ? vendorRefusals(opsInfra.data).length > 0 : false;
   const vendorsOut = vendors.data ? outOfCreditVendors(vendors.data) : undefined;
   const scriptsBroken = scripts.data ? brokenOutcomes(scripts.data) : undefined;
   const scriptGuards = scripts.data?.outcomes.flatMap((o) => (o.guard ? [o.guard.state] : [])) ?? [];
@@ -515,6 +518,8 @@ function Hub({ base }: { base: string }) {
         <ScriptsTile href={href("scripts/engines")} />
         {/* An AI vendor that refused a call for lack of credit and has not served one since (VENDOR-CREDIT-1030, DeepSeek 2026-10-29): red here IS the alert, never an email. */}
         <VendorCreditTile href={href("ai/credit")} />
+        {/* A mailbox vendor refusing our API, its mailboxes out of the send pool (SEND-PRIMEFORGE-402-1030, Primeforge 402 on 2026-10-29): shown only while one refuses, red here IS the alert, never an email. */}
+        <VendorRefusalTile href={href("emails/capacity")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -530,7 +535,7 @@ function Hub({ base }: { base: string }) {
           <HubChip href={href("emails/placement-tests")} color="var(--data-rose)" label="Placement tests" />
           <HubChip href={href("emails/warmup")} color="var(--data-lime)" label="Warmup" />
           <HubChip href={href("emails/queued")} color="var(--accent)" label="Queued sequences" />
-          <HubChip href={href("emails/capacity")} color="var(--data-sky)" label="Capacity" />
+          <HubChip href={href("emails/capacity")} color={mailboxVendorsRefusing ? "var(--data-rose)" : "var(--data-sky)"} label="Capacity" />
           <HubChip href={href("emails/blocklists")} color="var(--data-rose)" label="Blocklists" />
           <HubChip href={href("emails/threads")} color="var(--data-violet)" label="Threads" />
           <HubChip href={href("emails/rules")} color="var(--data-teal)" label="Rules" />
