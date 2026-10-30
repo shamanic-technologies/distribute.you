@@ -70,6 +70,7 @@ import { CampaignResultCells } from "@/components/v2/offer-campaigns";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { CampaignHoldNote, useCampaignHolds } from "@/components/v2/campaign-hold";
+import { holdOutlivesLimitChange } from "@/lib/campaign-hold";
 import { PipeSections } from "@/components/v2/pipe-sections";
 import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts } from "@/components/v2/spend-charts";
 import { PeoplePage } from "@/components/v2/people-page";
@@ -835,6 +836,8 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
         {/* "Not funded yet" above already says what an unfunded hold would. */}
         {holds
           .filter((g) => !(notFunded && g.hold.reason === "unfunded"))
+          // A limit changed since the hold was written: the hold judged the old one.
+          .filter((g) => holdOutlivesLimitChange(g.hold, c?.updatedAt))
           .map((g) => (
             <CampaignHoldNote
               key={g.hold.reason}
