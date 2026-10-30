@@ -108,7 +108,9 @@ export function DailyLines<P extends { day: string }>({
   const T = 8;
   const B = 4;
   const vals = shown.flatMap((d) => lines.map((l) => l.get(d)).filter((v): v is number => v != null));
-  const ticks = niceTicks(Math.min(...vals, 0), Math.max(...vals, 0.01));
+  // A series flat at zero (0 jobs overdue all day) gets a 0..1 axis: a 0..0.01 one printed "0" on every tick.
+  const hi = Math.max(...vals, 0);
+  const ticks = niceTicks(Math.min(...vals, 0), hi > 0 ? hi : 1);
   const lo = ticks[0];
   const top = ticks[ticks.length - 1];
   const x = (i: number) => (i / (shown.length - 1)) * W;

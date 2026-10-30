@@ -2054,6 +2054,8 @@ export const STAFF_MONITORING_PATHS = {
   securityAdvisories: "/features/audit/security-advisories",
   // The production box's load, memory, swap and top containers + the served red/green verdict (features-service, BOX-OVERLOAD-1026-MONITORING).
   boxHealth: "/features/audit/box-health",
+  // Every box watchdog's latest run, verdict and daily series (features-service, BOX-WATCHDOGS-1030): they report here, never by email.
+  boxChecks: "/features/audit/box-checks",
   // Every crm-service trigger report (form, WhatsApp number, positive reply, account event): sent, skipped or stuck + the served verdict (crm-service, TRIGGER-REPORTS-MONITORING-1027).
   triggerReports: "/crm/ops/trigger-reports",
   // Prospects waiting on a blocked campaign answer, queued ones, and a daily answer series + the served verdict (campaign-service, REACTIVE-THROUGHPUT-1028).
@@ -13194,6 +13196,15 @@ import { BoxHealthSchema as StaffBoxHealthSchema, type BoxHealth as StaffBoxHeal
 /** The production box's samples over the last `days` UTC days, with features-service's served verdict (api-service #1384). */
 export async function getStaffBoxHealth(days: number): Promise<StaffBoxHealth> {
   return parseStaff("getStaffBoxHealth", StaffBoxHealthSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.boxHealth}?days=${days}`));
+}
+
+// ─── Monitoring > Box > Watchdogs (BOX-WATCHDOGS-1030) ───
+import { BoxChecksSchema as StaffBoxChecksSchema, EXPECTED_BOX_CHECKS, type BoxChecks as StaffBoxChecks } from "./monitoring/box-checks";
+
+/** Every box watchdog's runs over the last `days` UTC days with features-service's served verdict; `expect` makes a silent one read "not yet". */
+export async function getStaffBoxChecks(days: number): Promise<StaffBoxChecks> {
+  const expect = Object.keys(EXPECTED_BOX_CHECKS).join(",");
+  return parseStaff("getStaffBoxChecks", StaffBoxChecksSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.boxChecks}?days=${days}&expect=${expect}`));
 }
 
 // ─── Monitoring > Triggers (TRIGGER-REPORTS-MONITORING-1027) ───
