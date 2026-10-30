@@ -1,0 +1,161 @@
+/*
+  Appointment Setting Agency (PAGE-APPOINTMENT-AGENCY-1030, /appointment-setting-agency), layered on
+  agency.css. Recipes, each lifted from a clone:
+  - gojiberry "books demos": the calendar that fills up (styles.css `.cal`, main.js stages), here
+    on the darker Agency slab: a night calendar, each meeting popping in as it is booked, and a
+    stack of "booked" toasts in front of it (explee agent chat timing, played once);
+  - oxygen feature-showcase: the darker sticky story (agency.css), on a deeper slab;
+  - explee live showcase cards (styles.css), the homepage client cards;
+  - oxygen #stack: the side by side table, each agency figure read on their own site.
+  The HTML is the FINAL state (the full week, every toast shown). Transforms and opacity only;
+  reduced motion plays nothing.
+*/
+
+/* ---------- Hero: the night calendar ---------- */
+.asa-hero .ag-hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr); }
+.asa-hero h1 { font-size: clamp(40px, 4.8vw, 62px); }
+.asa-hero .hero-stats { justify-content: flex-start; margin: 26px 0 0; padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.asa-hero .hstat { font-size: 14px; }
+.asa-hero .hstat b { color: #fff; font-family: var(--font-display); font-weight: 400; font-size: 22px; letter-spacing: -0.02em; font-variant-numeric: normal; }
+.asa-hero .hstat-l { color: var(--soft); }
+
+.asa-cal-wrap { position: relative; padding: 0 0 132px; }
+.asa-cal-card {
+  position: relative; padding: 14px; border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)), #070b16;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 40px 90px -40px rgba(37, 99, 235, 0.6), 0 0 0 1px rgba(110, 160, 255, 0.06) inset;
+}
+.asa-cal-card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(ellipse 90% 40% at 50% 0%, rgba(37, 99, 235, 0.24), transparent 75%); pointer-events: none; }
+.asa-cal-top { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 6px 14px; }
+.asa-cal-title { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-display); font-size: 16px; color: #fff; }
+.asa-cal-title img { border-radius: 4px; }
+.asa-cal-week { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #b9f5d8; padding: 5px 11px; border-radius: 100px; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); white-space: nowrap; }
+.asa-cal-week i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18); }
+
+.asa-cal-card .cal { position: relative; background: rgba(255, 255, 255, 0.02); border-color: rgba(255, 255, 255, 0.08); box-shadow: none; }
+.asa-cal-card .cal-days { background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.08); }
+.asa-cal-card .cal-days span { color: rgba(255, 255, 255, 0.55); }
+.asa-cal-card .cal-hours { border-color: rgba(255, 255, 255, 0.08); }
+.asa-cal-card .cal-hours span { color: rgba(255, 255, 255, 0.38); }
+.asa-cal-card .cal-grid { grid-template-rows: repeat(6, 50px); }
+.asa-cal-card .cal-grid i { border-color: rgba(255, 255, 255, 0.06); }
+.asa-cal-card .cal-ev { border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 8px 20px -12px rgba(0, 0, 0, 0.9); transform: scale(0.86); transition: opacity 0.45s ease, transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1.3); }
+.asa-cal-card .cal-ev b { color: #fff; }
+.asa-cal-card .cal-ev span { color: rgba(255, 255, 255, 0.72); }
+.asa-cal-card .cal-ev.ta { background: rgba(59, 130, 246, 0.34); }
+.asa-cal-card .cal-ev.tb { background: rgba(245, 158, 11, 0.3); }
+.asa-cal-card .cal-ev.tc { background: rgba(16, 185, 129, 0.3); }
+.asa-cal-card .cal-ev.td { background: rgba(139, 92, 246, 0.36); }
+.asa-cal-card .cal-ev.te { background: rgba(236, 72, 153, 0.3); }
+/* Each meeting pops in as it is booked (the opacity per stage lives in styles.css). */
+.asa-cal-card .cal[data-cal-stage="1"] .cal-ev[data-stage="1"],
+.asa-cal-card .cal[data-cal-stage="2"] .cal-ev:is([data-stage="1"], [data-stage="2"]),
+.asa-cal-card .cal[data-cal-stage="3"] .cal-ev:is([data-stage="1"], [data-stage="2"], [data-stage="3"]),
+.asa-cal-card .cal[data-cal-stage="4"] .cal-ev:not([data-stage="5"]),
+.asa-cal-card .cal[data-cal-stage="5"] .cal-ev { transform: none; }
+
+/* The bookings, toasted in front of the calendar's lower right corner. */
+.asa-toasts { position: absolute; right: -18px; bottom: 0; z-index: 2; width: 280px; list-style: none; display: grid; gap: 8px; }
+.asa-toasts li {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px;
+  background: rgba(14, 20, 36, 0.92); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.9);
+}
+.asa-toasts b { display: block; font-size: 14px; font-weight: 500; color: #fff; }
+.asa-toasts small { display: block; font-size: 12px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.asa-toasts li > div { min-width: 0; }
+.asa-tick { flex: none; position: relative; width: 26px; height: 26px; border-radius: 50%; background: rgba(34, 197, 94, 0.18); border: 1px solid rgba(34, 197, 94, 0.45); }
+.asa-tick::after { content: ""; position: absolute; left: 9px; top: 5px; width: 6px; height: 11px; border: solid #4ade80; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .asa-toasts li { animation: asa-toast-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1.15) var(--t) both; }
+  .asa-cal-week i { animation: asa-live 1.8s ease-in-out infinite; }
+}
+@keyframes asa-toast-in { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes asa-live { 50% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0.05); } }
+
+/* ---------- Real clients ---------- */
+.asa-showcase { max-width: 760px; margin-top: 0; }
+
+/* ---------- Darker sticky story ---------- */
+.asa-story { background: radial-gradient(ellipse 60% 50% at 85% 50%, rgba(37, 99, 235, 0.16), transparent 70%), #04060b; }
+.asa-stage { background: radial-gradient(ellipse 80% 70% at 50% 0%, rgba(37, 99, 235, 0.22), transparent 70%), #03050a; }
+.asa-icp { display: grid; gap: 14px; padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.asa-icp div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.asa-icp label { width: 86px; font-size: 12px; color: rgba(255, 255, 255, 0.55); }
+.asa-icp .chip { padding: 4px 10px; border-radius: 100px; font-size: 12px; color: #fff; background: rgba(110, 160, 255, 0.14); border: 1px solid rgba(110, 160, 255, 0.28); }
+.asa-invite { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 16px; background: #fff; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8); }
+.asa-invite b { display: block; font-weight: 500; font-size: 15px; color: var(--text); }
+.asa-invite small { display: block; font-size: 12px; color: var(--muted); }
+.asa-invite em { display: inline-block; margin-top: 8px; font-style: normal; font-size: 11px; font-weight: 600; color: #fff; background: var(--good); padding: 3px 9px; border-radius: 100px; }
+.asa-day { flex: none; width: 46px; padding: 5px 0; border-radius: 11px; text-align: center; background: var(--accent); color: #fff; font-family: var(--font-display); font-size: 19px; line-height: 1.1; }
+.asa-day small { display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); }
+.asa-note { display: grid; gap: 4px; padding: 14px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.09); }
+.asa-note b { font-weight: 500; font-size: 14px; color: #fff; }
+.asa-note span { font-size: 13px; line-height: 1.5; color: var(--soft); }
+
+/* ---------- Every meeting ---------- */
+.asa-meeting { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+.asa-meeting > div > p { margin-top: 14px; max-width: 480px; }
+.asa-parts { list-style: none; display: grid; gap: 18px; margin-top: 30px; }
+.asa-parts li { display: flex; gap: 14px; }
+.asa-parts .k { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: var(--accent-text); background: var(--accent-50); border: 1px solid var(--accent-100); }
+.asa-parts h3 { font-size: 18px; }
+.asa-parts p { margin-top: 2px; font-size: 15px; }
+.asa-card { padding: 26px; border-radius: 24px; background: #fff; border: 1px solid var(--hair); box-shadow: 0 0 0 4px var(--accent-50), 0 40px 80px -40px rgba(37, 99, 235, 0.45); }
+.asa-card-h { display: flex; align-items: center; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--hair); }
+.asa-card-h b { display: block; font-weight: 500; color: var(--text); }
+.asa-card-h small { display: block; font-size: 13px; color: var(--muted); }
+.asa-card-h em { margin-left: auto; flex: none; font-style: normal; font-size: 12px; font-weight: 500; padding: 4px 11px; border-radius: 100px; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; }
+.asa-card dl { display: grid; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--hair); }
+.asa-card dt { font-size: 12px; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.asa-card dd { margin-top: 3px; font-size: 15px; color: var(--text); }
+.asa-trail { list-style: none; display: grid; gap: 10px; padding-top: 18px; }
+.asa-trail li { position: relative; padding-left: 24px; font-size: 14px; color: var(--muted); }
+.asa-trail li::before { content: ""; position: absolute; left: 4px; top: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--hair-2); }
+.asa-trail li:not(:last-child)::after { content: ""; position: absolute; left: 8px; top: 17px; width: 1px; height: 14px; background: var(--hair-2); }
+.asa-trail li.hot { color: var(--text); font-weight: 500; }
+.asa-trail li.hot::before { background: #22c55e; box-shadow: 0 0 0 4px #dcfce7; }
+
+/* ---------- Agencies compared ---------- */
+.asa-table { max-width: 980px; margin: 0 auto; }
+.asa-table tbody th a { display: inline-flex; align-items: center; gap: 10px; color: var(--text); white-space: nowrap; }
+.asa-table tbody th img { border-radius: 5px; }
+.asa-table td a { white-space: nowrap; }
+.asa-table tr.ours th { background: var(--accent-50); }
+#compare .ag-src { max-width: 980px; margin-left: auto; margin-right: auto; }
+
+/* ---------- Bridge to the AI SDR ---------- */
+.asa-bridge { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 30px; border-radius: 22px; background: var(--ink); color: rgba(255, 255, 255, 0.72); font-size: 16px; text-decoration: none; border: 1px solid rgba(255, 255, 255, 0.08); transition: transform 0.3s; }
+.asa-bridge b { color: #fff; font-weight: 500; }
+.asa-bridge em { flex: none; font-style: normal; color: #fff; padding: 10px 18px; border-radius: 100px; border: 1px solid rgba(255, 255, 255, 0.25); }
+.asa-bridge:hover { transform: translateY(-2px); }
+.asa-bridge:hover em { border-color: #fff; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .asa-toasts { right: 0; }
+}
+@media (max-width: 960px) {
+  .asa-hero .ag-hero-grid, .asa-meeting { grid-template-columns: 1fr; }
+  .asa-cal-wrap { max-width: 600px; width: 100%; margin: 0 auto; }
+}
+@media (max-width: 640px) {
+  .asa-cal-wrap { padding: 0; }
+  .asa-cal-card { padding: 10px; }
+  .asa-cal-card .cal-grid { grid-template-rows: repeat(6, 42px); }
+  .asa-cal-week { display: none; }
+  .asa-toasts { position: relative; right: auto; width: auto; margin: -28px 12px 0; }
+  .asa-toasts li:nth-child(n + 2) { display: none; }
+  .asa-hero .hero-stats { column-gap: 22px; }
+  .asa-bridge { flex-direction: column; align-items: flex-start; padding: 22px; }
+  .asa-table .ag-table { min-width: 0; }
+  .asa-table .ag-table thead { display: none; }
+  .asa-table .ag-table, .asa-table .ag-table tbody { display: block; }
+  .asa-table .ag-table tr { display: grid; grid-template-columns: 1fr; border-bottom: 1px solid var(--hair); }
+  .asa-table .ag-table th, .asa-table .ag-table td { border-bottom: 0; padding: 8px 16px; }
+  .asa-table .ag-table tbody th { padding-top: 14px; width: auto; }
+  .asa-table .ag-table td:last-child { padding-bottom: 14px; }
+}

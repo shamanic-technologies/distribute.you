@@ -20,6 +20,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
+import { APPOINTMENT_PAGE_PATH } from "../appointment-setting-agencies";
 import { AI_SDR_ALTERNATIVES_PATH, AI_SDR_PATH, aiSdrCompetitors, competitorPath } from "../competitors";
 import { SITE, SIGN_UP, WHY, breadcrumb, esc, shell } from "../v2-shell";
 
@@ -179,7 +180,7 @@ function heroHtml(): string {
         <div class="hero-links">
           <a class="no-site" href="#compare">Compare AI SDRs</a>
           <a class="no-site" href="#agent">Use it from Claude Code or Grok</a>
-          <a class="no-site" href="/gtm-agency">Want our team on it? GTM Agency</a>
+          <a class="no-site" href="${APPOINTMENT_PAGE_PATH}">Want our team on it? Appointment Setting Agency</a>
         </div>
       </div>
 
@@ -476,9 +477,9 @@ function plansHtml(): string {
         </ul>
       </article>
     </div>
-    <a class="agency-bridge rv" href="/gtm-agency">
-      <span><b>Want our team to book them for you?</b> The GTM Agency runs your whole go-to-market. From $1K/month + 10% of budget.</span>
-      <em>See the GTM Agency</em>
+    <a class="agency-bridge rv" href="${APPOINTMENT_PAGE_PATH}">
+      <span><b>Want our team to book them for you?</b> Our Appointment Setting Agency sets your meetings. From $1K/month + 10% of budget.</span>
+      <em>See the Appointment Setting Agency</em>
     </a>
   </div>
 </section>`;
