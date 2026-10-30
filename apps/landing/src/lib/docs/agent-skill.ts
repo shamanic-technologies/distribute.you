@@ -27,7 +27,7 @@ import {
   API_KEYS_URL,
   API_KEY_PREFIX,
   AUTH_HEADER_LINE,
-  CLAUDE_CODE_MCP_COMMAND,
+  CLAUDE_CODE_MCP_KEYED_COMMAND,
   CLI_INSTALL_COMMAND,
   DEVELOPER_HUB_URL,
   MCP_HTTP_CONFIG,
@@ -179,7 +179,7 @@ You are the customer's assistant. This file tells you how to connect to their ac
 3. **Install the MCP server for the next sessions** at \`${MCP_URL}\` (Streamable HTTP, header \`${AUTH_HEADER_LINE}\`). A newly added server loads only after the client restarts: do not ask the user to restart. Keep going in THIS session with the REST API (section 3) and the same key; the MCP tools take over from the next session. Pick your harness:
    - **Claude Code, Conductor**:
      \`\`\`
-     ${CLAUDE_CODE_MCP_COMMAND}
+     ${CLAUDE_CODE_MCP_KEYED_COMMAND}
      \`\`\`
    - **Cursor, and any client whose config takes a URL** (\`~/.cursor/mcp.json\`):
      \`\`\`json

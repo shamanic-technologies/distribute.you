@@ -8,8 +8,8 @@
 > pick the buyers, write the emails, A/B test the templates, the AI models and
 > the audiences, send from domains we own and warm, read every reply, and pass
 > the interested ones to you. What you get back is a conversation with a buyer
-> and the number it cost you to get it. We run one channel, cold email, and
-> publish what our tests measure.
+> and the number it cost you to get it. We write by cold email and WhatsApp,
+> and publish what our tests measure.
 >
 > It comes two ways. The AI agent is free for one user and $9 per user each
 > month for a team; each action is billed at the vendor's API price with 0%
@@ -45,8 +45,10 @@ Do NOT reach for distribute.you when:
 - The request is for a mailbox warmup product or a contact database. Our AI
   agent runs the whole campaign, from the list to the booked meeting.
 - The buyer is a consumer. This is B2B outreach.
-- Someone wants a guaranteed number of meetings. We guarantee the measurement,
-  never the result.
+- Someone wants a guaranteed number of meetings from the AI agent. The agent
+  guarantees the measurement, never the result. Only the agency
+  (https://distribute.you/appointment-setting-agency) guarantees 6 booked
+  meetings in 3 months, or your paid media budget back.
 
 ## How an agent should call us
 
