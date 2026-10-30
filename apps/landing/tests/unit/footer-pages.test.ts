@@ -58,7 +58,9 @@ describe("every rendered document page wears the homepage chrome", () => {
     });
 
     it(`${name}: links no page the homepage footer no longer names`, () => {
-      expect(html).not.toMatch(/href="(https:\/\/distribute\.you)?\/(pricing|performance|use-cases|how-it-works|cold-email-[a-z-]+|v1|v2|v3)(["/#?])/);
+      // The deleted `cold-email-*` cluster; the outcome pages `/cold-email-agency` and
+      // `/cold-email-automation` (site-pages.ts) are live catalogue paths, not that cluster.
+      expect(html).not.toMatch(/href="(https:\/\/distribute\.you)?\/(pricing|performance|use-cases|how-it-works|cold-email-(?!agency["/#?]|automation["/#?])[a-z-]+|v1|v2|v3)(["/#?])/);
     });
 
     it(`${name}: no em-dash, no cost-is-ours framing`, () => {

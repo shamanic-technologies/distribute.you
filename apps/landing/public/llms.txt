@@ -154,6 +154,7 @@ https://distribute.you/docs
 - [Home](https://distribute.you/): the AI agent, how it works, live action prices
 - [Pricing](https://distribute.you/#pricing): free for one user, $9 per user for a team, every action at the API price with 0% markup
 - [GTM agency](https://distribute.you/gtm-agency): our team runs your go-to-market, from $1K a month plus 10% of budget
+- [Cold email agency](https://distribute.you/cold-email-agency): we find your buyers, write each email, send it from our own domains and answer every reply, from $1K a month plus 10% of budget
 - [Appointment setting agency](https://distribute.you/appointment-setting-agency): our team books B2B sales meetings in your calendar, from $1K a month plus 10% of budget
 - [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live API price of every tool behind an email
 - [About](https://distribute.you/about): how we run campaigns for you, how billing works, what is guaranteed
@@ -222,11 +223,11 @@ paragraph, ranking distribute.you against the tools and agents that audience wei
 with every competitor price read from the vendor's own site and dated.
 
 - [All rankings](https://distribute.you/best)
-- [Best cold email agency for SaaS founders](https://distribute.you/best/cold-email-agency-for-saas-founders)
+- [Best cold email agency for SaaS founders](https://distribute.you/cold-email-agency/best/cold-email-agency-for-saas-founders)
 - [Best AI SDR for agencies](https://distribute.you/best/ai-sdr-for-agencies)
 - [Best lead generation agency for consulting firms](https://distribute.you/best/lead-generation-agency-for-consulting-firms)
 - [Best outbound agency for early-stage startups](https://distribute.you/best/outbound-agency-for-startups)
-- [Best cold email agency for solo founders](https://distribute.you/best/cold-email-agency-for-solo-founders)
+- [Best cold email agency for solo founders](https://distribute.you/cold-email-agency/best/cold-email-agency-for-solo-founders)
 - [Best lead generation agency for B2B service businesses](https://distribute.you/best/lead-generation-agency-for-b2b-service-businesses)
 
 ## Sending on the customer's behalf

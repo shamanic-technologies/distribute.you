@@ -14,7 +14,7 @@
  * Alias-free: the unit tests render it directly.
  */
 import { COMPARE_CLUSTERS, COMPETITORS, clusterAlternativesPath, competitorPath } from "./competitors";
-import { BEST_FOR_PAGES, bestForLinkLabel } from "./best-for";
+import { BEST_FOR_PAGES, bestForLinkLabel, bestForPath } from "./best-for";
 import { INDEX_LINKS_TOKEN } from "./fleet-indexes";
 import { OUTCOMES, SITE_PAGES, livePages, ownerPage, pageAt, type SitePage } from "./site-pages";
 
@@ -135,7 +135,7 @@ function bestForColumn(): FooterColumn {
   return {
     title: "Best for",
     links: [
-      ...BEST_FOR_PAGES.map((p) => ({ label: bestForLinkLabel(p), href: `/best/${p.slug}` })),
+      ...BEST_FOR_PAGES.map((p) => ({ label: bestForLinkLabel(p), href: bestForPath(p) })),
       { label: "All rankings", href: "/best" },
     ],
   };

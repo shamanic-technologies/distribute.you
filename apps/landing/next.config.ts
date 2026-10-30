@@ -98,6 +98,11 @@ const nextConfig: NextConfig = {
       { source: "/blog/journalism-pitch-example", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/influencer-discovery-tools", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/text-messages-to-email", destination: "/blog", permanent: true, missing: offLab },
+      // The two "best cold email agency for Y" rankings moved under the Cold Email Agency
+      // page (PAGE-COLD-EMAIL-AGENCY-1030); `best-for.ts` `movedBestForPages()` is the list,
+      // `cold-email-agency-page.test.ts` pins one 301 per moved page here.
+      { source: "/best/cold-email-agency-for-saas-founders", destination: "/cold-email-agency/best/cold-email-agency-for-saas-founders", statusCode: 301, missing: offLab },
+      { source: "/best/cold-email-agency-for-solo-founders", destination: "/cold-email-agency/best/cold-email-agency-for-solo-founders", statusCode: 301, missing: offLab },
       { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false, missing: offLab },
       { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false, missing: offLab },
     ];
