@@ -208,7 +208,7 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("The referred account\n          receives no referral credit.");
     expect(terms).not.toContain("each side");
     expect(terms).toContain("is an acquisition agency delivered as a service");
-    expect(terms).toContain('const LAST_UPDATED = "October 29, 2026"');
+    expect(terms).toContain('const LAST_UPDATED = "October 30, 2026"');
   });
 
   it("the terms disclose the card authorization hold, and say it is not a charge", () => {
@@ -219,7 +219,7 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("we\n          then use it toward your payment, only for what you owe");
   });
 
-  it("the terms state the billing the product runs: catalogue prices, prepaid credit, no refund but the managed guarantee", () => {
+  it("the terms state the billing the product runs: catalogue prices, prepaid credit, no refund but the two guarantees", () => {
     const terms = read("src/app/terms/page.tsx");
     expect(terms).toContain("our public catalogue price, our margin included");
     // OFFER-RESET-1029: accounts since 2026-10-29 are prepaid at the vendor's list price, older ones keep theirs.
@@ -227,7 +227,8 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("vendor&apos;s list price for that tool, with no markup added");
     expect(terms).toContain("Automatic reload is required for as long as you use the");
     expect(terms).toContain("None of these earlier\n          offers is open to accounts created on or after October 29, 2026.");
-    expect(terms).toContain("for managed plans started before October 29, 2026");
+    expect(terms).toContain("guarantee, for managed\n          plans started before October 29, 2026.");
+    expect(terms).toContain("the GTM agency guarantee, for GTM agency plans started on or");
     expect(terms).toContain("change any catalogue price at any time, without notice");
     expect(terms).toContain("<strong>Prepaid credit.</strong>");
     expect(terms).toContain("we reserve the cost of its follow-ups");
@@ -243,8 +244,8 @@ describe("the copy behind the footer states the current positioning", () => {
 
   it("the homepage sells no managed plan and promises no refund: the managed plan is the GTM Agency", () => {
     // PAGE-REVENUE-AGENT-1029 (owner 2026-10-29): `/` is the AI Agent page. The managed
-    // plan (and its 60-day guarantee in the terms) is sold by the Agency page, which the
-    // homepage links instead of restating.
+    // plan (and its guarantees in the terms, 2026-10-30) is sold by the Agency pages, which
+    // the homepage links instead of restating.
     const home = read("public/landing/index-v2.html");
     expect(home).not.toMatch(/refund/i);
     expect(home).toContain('href="/gtm-agency"');

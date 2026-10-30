@@ -26,7 +26,7 @@ export const OUR_APPOINTMENT_ROW = {
   pricing: "From $1K a month, plus 10% of the budget you put into your campaigns. The budget goes to reaching your buyers.",
   contract: "One call to start. Your budget is a hard cap you set.",
   channels: "Cold email from our own domains and WhatsApp. Our team runs your account, our AI agents write and answer.",
-  guarantee: "Every meeting is shown on your dashboard with what it cost, and what a meeting costs across all our clients is public.",
+  guarantee: "6 booked meetings in 3 months or your paid media budget back. Every meeting is shown on your dashboard with what it cost, and what a meeting costs across all our clients is public.",
   launch: "Live in 5 days from our first call.",
 } as const;
 

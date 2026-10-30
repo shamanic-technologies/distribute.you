@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "October 29, 2026";
+const LAST_UPDATED = "October 30, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -307,8 +307,22 @@ const SECTIONS: SectionDef[] = [
           refunded, whatever the payment method or plan: prepaid credit,
           automatic reload, post-paid charges, monthly plan payments (including
           the first payment after a free trial), automatic plan upgrades, or service fees. Unused or expired
-          credit is not refunded. The only exception is the managed plan
-          guarantee below, for managed plans started before October 29, 2026.
+          credit is not refunded. The only exceptions are the two guarantees
+          below: the GTM agency guarantee, for GTM agency plans started on or
+          after October 29, 2026, and the managed plan guarantee, for managed
+          plans started before October 29, 2026. The AI agent (self-serve)
+          offer carries no guarantee.
+        </p>
+        <p>
+          <strong>GTM agency guarantee.</strong> On a GTM agency plan started
+          on or after October 29, 2026, we promise 6 booked meetings in 3
+          months or your paid media budget back. If fewer than 6 meetings are
+          booked for you within the first 3 months of your plan, tell us at{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-400 underline">
+            {SUPPORT_EMAIL}
+          </a>{" "}
+          and we refund 100% of the campaign budget you paid (your paid media
+          budget). Service fees are not refunded.
         </p>
         <p>
           <strong>Managed plan (earlier offers).</strong> On a managed plan
@@ -405,8 +419,9 @@ const SECTIONS: SectionDef[] = [
           infrastructure is shared across customers, the conduct of other
           customers and the conduct of recipients can affect deliverability,
           inbox placement, blacklisting, and account suspension on third-party
-          platforms. We do not guarantee delivery, reply rates,
-          inbox placement, or any specific outcome. We may pause, throttle,
+          platforms. Apart from the guarantees in Section 4, we do not
+          guarantee delivery, reply rates, inbox placement, or any specific
+          outcome. We may pause, throttle,
           re-route, or suspend any outreach (including yours) at any time if
           we determine, in our sole discretion, that doing so is necessary to
           protect the integrity of our infrastructure or the interests of
@@ -657,7 +672,8 @@ const SECTIONS: SectionDef[] = [
     body: (
       <>
         <p className="uppercase tracking-wide">
-          The Service is provided &ldquo;as is&rdquo; and &ldquo;as
+          Except for the guarantees in Section 4, the Service is provided
+          &ldquo;as is&rdquo; and &ldquo;as
           available&rdquo;, without warranties of any kind, whether express,
           implied, statutory, or otherwise, including without limitation
           warranties of merchantability, fitness for a particular purpose,
