@@ -218,6 +218,7 @@
   .tb-who small, .tb-judge small { display: none; }
   .tb-chip { gap: 0.4em; padding: 0 0.45em; border-radius: 9px; }
   .tb-via { width: 1.9em; height: 1.9em; border-radius: 6px; }
+  .tb-visits li:nth-child(n+3) { display: none; }
   .tb-h span:last-child { display: none; }
   .am-cols { display: none; }
   .am-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; }
