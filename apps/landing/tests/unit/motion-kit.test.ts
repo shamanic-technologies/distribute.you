@@ -12,7 +12,7 @@ const ROOT = path.resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8");
 const kit = read("public/landing/v2/motion.js");
 
-const EFFECTS = ["reveal", "count-up", "marquee", "sticky-story", "scrub", "orbit", "typewriter", "chat", "bar-grow", "beams", "lead-rows", "mail-flow", "wa-thread", "signal-thread", "pin-scrub"];
+const EFFECTS = ["reveal", "count-up", "marquee", "sticky-story", "scrub", "orbit", "typewriter", "chat", "bar-grow", "beams", "lead-rows", "mail-flow", "wa-thread", "post-reel", "signal-thread", "pin-scrub"];
 
 describe("the motion kit", () => {
   it("names every effect the outcome pages call", () => {
