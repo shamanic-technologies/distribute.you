@@ -27,6 +27,7 @@ import {
   clusterCompetitors,
   clusterOf,
   competitorBySlug,
+  competitorLogo,
   competitorPath,
   isAiLeadGenCluster,
   isGtmAutomationCluster,
@@ -183,7 +184,7 @@ export function renderComparePage(c: Competitor): string {
   <div class="hero-glow" aria-hidden="true"></div>
   <div class="wrap hero-inner">
     <span class="eyebrow">${esc(CATEGORY_LABEL[c.category])} · Verified ${COMPARE_VERIFIED_LABEL}</span>
-    <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${logo(c.domain)}</span></div>
+    <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${competitorLogo(c)}</span></div>
     <h1>distribute.you <span class="accent">vs</span> ${esc(c.name)}</h1>
     <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} ${ourLine(c)}</p>
     ${whyLine()}
@@ -291,7 +292,7 @@ function competitorCard(c: Competitor, verb: "vs" | "alternative"): string {
   const href = competitorPath(c);
   const label = verb === "vs" ? `distribute.you vs ${esc(c.name)}` : `${esc(c.name)} alternative`;
   return `<a class="cmp-card rv" href="${href}">
-    <div class="cmp-card-top">${logo(c.domain, 32)}<div><b>${label}</b><small>${esc(c.entryPrice)}</small></div></div>
+    <div class="cmp-card-top">${competitorLogo(c, 32)}<div><b>${label}</b><small>${esc(c.entryPrice)}</small></div></div>
     <p>${esc(c.oneLiner)}</p>
   </a>`;
 }

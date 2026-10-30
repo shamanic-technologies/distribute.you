@@ -29,6 +29,7 @@
 import {
   GTM_AUTOMATION_ALTERNATIVES_PATH,
   GTM_AUTOMATION_PATH,
+  competitorLogo,
   competitorPath,
   gtmAutomationTableCompetitors,
 } from "../competitors";
@@ -252,6 +253,7 @@ function stripHtml(): string {
 const STAGES_COVERED: Partial<Record<OutcomeSlug, string>> = {
   revenue: "Found to meeting booked",
   "lead-generation": "Found and qualified",
+  signups: "Visited to signed up to paid",
   "cold-email": "Emailed and replied",
   meetings: "Replied to meeting booked",
   "lead-nurturing": "Followed up until paid",
@@ -422,7 +424,7 @@ export function compareHtml(): string {
   const rows = list
     .map(
       (c) =>
-        `<tr><th scope="row"><a href="${competitorPath(c)}">${LOGO(c.domain, 20)}${esc(c.name)}</a></th><td>${esc(c.entryPrice)}</td><td>${esc(c.freeTier)}</td><td><a class="sdr-vs" href="${competitorPath(c)}">distribute.you vs ${esc(c.name)}</a></td></tr>`,
+        `<tr><th scope="row"><a href="${competitorPath(c)}">${competitorLogo(c, 20)}${esc(c.name)}</a></th><td>${esc(c.entryPrice)}</td><td>${esc(c.freeTier)}</td><td><a class="sdr-vs" href="${competitorPath(c)}">distribute.you vs ${esc(c.name)}</a></td></tr>`,
     )
     .join("");
   const sources = list.map((c) => `<a href="${esc(c.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(c.name)}</a>`).join(", ");

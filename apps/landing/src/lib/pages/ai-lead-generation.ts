@@ -26,7 +26,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import { AI_LEAD_GEN_ALTERNATIVES_PATH, AI_LEAD_GEN_PATH, aiLeadGenCompetitors, competitorPath } from "../competitors";
+import { AI_LEAD_GEN_ALTERNATIVES_PATH, AI_LEAD_GEN_PATH, aiLeadGenCompetitors, competitorLogo, competitorPath } from "../competitors";
 import { SITE, SIGN_UP, WHY, breadcrumb, esc, shell } from "../v2-shell";
 import { catalogSections, type PlatformPrice } from "./catalog";
 import { AGENT_CSS_VERSION, AI_SDR_CSS_VERSION, proofHtml, quotesHtml } from "./ai-sdr";
@@ -376,7 +376,7 @@ export function compareHtml(): string {
   const rows = list
     .map(
       (c) =>
-        `<tr><th scope="row"><a href="${competitorPath(c)}">${LOGO(c.domain, 20)}${esc(c.name)}</a></th><td>${esc(c.entryPrice)}</td><td>${esc(c.leads)}</td><td><a class="sdr-vs" href="${competitorPath(c)}">distribute.you vs ${esc(c.name)}</a></td></tr>`,
+        `<tr><th scope="row"><a href="${competitorPath(c)}">${competitorLogo(c, 20)}${esc(c.name)}</a></th><td>${esc(c.entryPrice)}</td><td>${esc(c.leads)}</td><td><a class="sdr-vs" href="${competitorPath(c)}">distribute.you vs ${esc(c.name)}</a></td></tr>`,
     )
     .join("");
   const sources = list.map((c) => `<a href="${esc(c.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(c.name)}</a>`).join(", ");

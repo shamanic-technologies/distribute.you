@@ -26,6 +26,8 @@
                                           [data-reel-toggle] button pauses and shows every card (oxygen posts)
     <div data-motion="signal-thread">     a signals feed beside a WhatsApp thread: each [data-beat] arrives in order,
                                           a signal lights up and the message that answers it follows (explee, light)
+    <div data-motion="signup-roll">       an odometer: each [data-roll] counter rolls its digits up by one as each
+                                          [data-beat] that names it (data-adds) lands in the feed (explee rolling numbers)
 
   Rules every effect keeps:
   - The HTML is the FINAL state. A visitor who asks for reduced motion, a crawler, or a page
@@ -523,6 +525,88 @@
           }
         });
         tl.call(light(null), null, "+=0.8").to({}, { duration: 2.6 }).to(beats, { opacity: 0, duration: 0.4 });
+      }
+      window.ScrollTrigger.create({
+        trigger: el, start: "top 85%", end: "bottom top",
+        onToggle: function (self) {
+          onScreen = self.isActive;
+          if (!onScreen) { if (tl) tl.pause(); return; }
+          if (tl) tl.play(); else cycle();
+        },
+      });
+    },
+
+    "signup-roll": function (el, gsap) {
+      // Explee's rolling numbers, as an odometer: every [data-roll] counter is cut into digit
+      // windows, each a strip 0..9 that slides (yPercent) to its digit. The [data-beat] feed rows
+      // arrive in order; a row with data-adds="<key>" rolls that counter up by one and flashes it.
+      // The HTML is the final state (every row shown, every counter at its printed total, which is
+      // the count of rows that add to it), so the loop starts each counter that many below.
+      // Transforms and opacity only. Loops while on screen, parks off it.
+      var beats = toArray(el.querySelectorAll("[data-beat]"));
+      var counters = {};
+      toArray(el.querySelectorAll("[data-roll]")).forEach(function (c) {
+        var key = c.getAttribute("data-roll");
+        var end = parseInt(c.textContent.replace(/[^0-9]/g, ""), 10);
+        if (isNaN(end)) return;
+        var adds = beats.filter(function (b) { return b.getAttribute("data-adds") === key; }).length;
+        var width = String(end).length;
+        c.setAttribute("aria-label", String(end));
+        c.textContent = "";
+        var strips = [];
+        for (var i = 0; i < width; i++) {
+          var win = document.createElement("span");
+          win.className = "roll-d";
+          win.setAttribute("aria-hidden", "true");
+          var strip = document.createElement("span");
+          strip.className = "roll-s";
+          for (var d = 0; d < 10; d++) {
+            var digit = document.createElement("span");
+            digit.textContent = String(d);
+            strip.appendChild(digit);
+          }
+          win.appendChild(strip);
+          c.appendChild(win);
+          strips.push(strip);
+        }
+        counters[key] = { el: c, end: end, start: Math.max(0, end - adds), value: end, strips: strips, width: width };
+      });
+      function show(k, value, duration) {
+        var digits = String(value);
+        while (digits.length < k.width) digits = " " + digits;
+        k.value = value;
+        k.strips.forEach(function (s, i) {
+          var ch = digits.charAt(i);
+          // A leading blank keeps its window (no layout shift) but shows nothing.
+          gsap.to(s.parentNode, { opacity: ch === " " ? 0 : 1, duration: duration ? 0.2 : 0 });
+          gsap.to(s, { yPercent: ch === " " ? 0 : -10 * Number(ch), duration: duration, ease: "back.out(1.4)" });
+        });
+      }
+      Object.keys(counters).forEach(function (key) { show(counters[key], counters[key].end, 0); });
+      if (!beats.length) return;
+      el.classList.add("is-playing");
+      var tl = null, onScreen = false;
+      function cycle() {
+        tl = gsap.timeline({ onComplete: function () { tl = null; if (onScreen) cycle(); } });
+        tl.call(function () {
+          Object.keys(counters).forEach(function (key) { show(counters[key], counters[key].start, 0.5); });
+          beats.forEach(function (b) { b.classList.remove("is-new"); });
+        }, null, 0).set(beats, { opacity: 0, y: -10 }, 0);
+        beats.forEach(function (b) {
+          var k = counters[b.getAttribute("data-adds")];
+          tl.to(b, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, "+=1.1")
+            .call(function () {
+              beats.forEach(function (x) { x.classList.toggle("is-new", x === b); });
+              if (!k) return;
+              show(k, k.value + 1, 0.7);
+              k.el.classList.remove("is-bump");
+              void k.el.offsetWidth;
+              k.el.classList.add("is-bump");
+            }, null, "<0.15");
+        });
+        tl.call(function () { beats.forEach(function (b) { b.classList.remove("is-new"); }); }, null, "+=1.4")
+          .to({}, { duration: 2.4 })
+          .to(beats, { opacity: 0, duration: 0.4, stagger: 0.03 });
       }
       window.ScrollTrigger.create({
         trigger: el, start: "top 85%", end: "bottom top",
