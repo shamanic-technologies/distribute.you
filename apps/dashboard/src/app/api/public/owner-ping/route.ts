@@ -104,13 +104,16 @@ export async function POST(req: NextRequest) {
   if (body.event === "started" && body.domain) {
     const apolloUrl = process.env.APOLLO_SERVICE_URL?.trim();
     const apolloKey = process.env.APOLLO_SERVICE_API_KEY?.trim();
-    if (!apolloUrl || !apolloKey) {
-      console.error("[dashboard/owner-ping] APOLLO_SERVICE_URL or APOLLO_SERVICE_API_KEY is not set");
+    const brandUrl = process.env.BRAND_SERVICE_URL?.trim();
+    const brandKey = process.env.BRAND_SERVICE_API_KEY?.trim();
+    if (!apolloUrl || !apolloKey || !brandUrl || !brandKey) {
+      console.error("[dashboard/owner-ping] APOLLO_SERVICE_URL, APOLLO_SERVICE_API_KEY, BRAND_SERVICE_URL or BRAND_SERVICE_API_KEY is not set");
       lines.push(`Company lookup failed for ${escapeHtml(body.domain)}`);
     } else {
       lines.push(
         ...(await fetchCompanyLines(
           { url: apolloUrl, apiKey: apolloKey },
+          { url: brandUrl, apiKey: brandKey },
           {
             domain: body.domain,
             email: user?.primaryEmailAddress?.emailAddress ?? null,

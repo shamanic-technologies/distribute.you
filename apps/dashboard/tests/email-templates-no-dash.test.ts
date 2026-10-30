@@ -36,10 +36,13 @@ describe("out-of-credit dunning family", () => {
     "credit-depleted-blocked",
     "credit-depleted-followup-3d-blocked",
     "credit-depleted-followup-10d-blocked",
+    "credit-depleted-postpaid",
+    "credit-depleted-followup-3d-postpaid",
+    "credit-depleted-followup-10d-postpaid",
   ];
   const family = EMAIL_TEMPLATES.filter((t) => t.name.startsWith("credit-depleted"));
 
-  it("registers all six, each once (byte-equal to billing-service's eventTypes)", () => {
+  it("registers all nine, each once (byte-equal to billing-service's eventTypes)", () => {
     expect(family.map((t) => t.name).sort()).toEqual([...names].sort());
   });
 
@@ -60,6 +63,10 @@ describe("out-of-credit dunning family", () => {
       if (t.name.endsWith("-blocked")) {
         expect(t.textBody).not.toContain("Turn on auto top-up");
         expect(t.textBody).toContain("Your bank doesn't allow automatic top-ups");
+      } else if (t.name.endsWith("-postpaid")) {
+        // Postpaid pays what it spent: no credit to add, no top-up to turn on.
+        expect(t.textBody).not.toMatch(/top-up|add credit/i);
+        expect(t.textBody).toContain("balance due");
       } else {
         expect(t.textBody).toContain("Turn on auto top-up");
       }

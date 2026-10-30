@@ -116,6 +116,6 @@ describe("owner-ping route: company block on 'entered their site' (owner 2026-10
   });
 
   it("the visit recap keeps using the same lookup", () => {
-    expect(src("src/lib/visit-recap-job.ts")).toContain('fetchCompanyLines({ url: config.apolloServiceUrl');
+    expect(src("src/lib/visit-recap-job.ts")).toContain("{ url: config.apolloServiceUrl, apiKey: config.apolloServiceApiKey }");
   });
 });

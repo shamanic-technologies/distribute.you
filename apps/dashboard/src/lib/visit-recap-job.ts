@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isStaffEmail } from "./owner-ping";
 import {
+  escapeHtml,
   firmographicLines,
   RETURNING_LOOKBACK_DAYS,
   visitClerkUserId,
@@ -223,6 +224,34 @@ export function companyLines(res: FirmographicsResponse, email: string | null = 
   }, email);
 }
 
+const ResolveByDomainResponseSchema = z.object({
+  brands: z.array(z.object({ domain: z.string(), name: z.string().nullable() })),
+});
+
+/**
+ * Apollo knows nothing, but the company may still be OURS: the onboarding reads the
+ * site the visitor typed and names the brand (brand-service), so the recap says that
+ * name instead of "No company found" (owner 2026-10-30, larund.com: named "Larund" on
+ * the onboarding, "No company found" on Telegram).
+ */
+export function brandNameLines(domain: string, name: string | null): string[] {
+  return name ? [`${escapeHtml(name)} (${domain}), not in Apollo`] : [`No company found for ${domain}`];
+}
+
+/** Our own name for a domain, from brand-service. Null when it holds none yet. */
+async function brandNameForDomain(brand: { url: string; apiKey: string }, domain: string): Promise<string | null> {
+  const res = await fetch(`${brand.url.replace(/\/$/, "")}/internal/brands/resolve-by-domain`, {
+    method: "POST",
+    headers: { "x-api-key": brand.apiKey, "content-type": "application/json" },
+    body: JSON.stringify({ domains: [domain] }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`brand-service resolve-by-domain ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const parsed = ResolveByDomainResponseSchema.safeParse(await res.json());
+  if (!parsed.success) throw new Error(`brand-service answered an unexpected shape: ${parsed.error.message}`);
+  return parsed.data.brands[0]?.name ?? null;
+}
+
 export interface CompanyLookupPerson {
   domain: string;
   email?: string | null;
@@ -238,6 +267,7 @@ export interface CompanyLookupPerson {
  */
 export async function fetchCompanyLines(
   apollo: { url: string; apiKey: string },
+  brand: { url: string; apiKey: string },
   person: CompanyLookupPerson,
   logTag: string,
 ): Promise<string[]> {
@@ -257,6 +287,9 @@ export async function fetchCompanyLines(
     if (!res.ok) throw new Error(`apollo-service ${res.status}: ${(await res.text()).slice(0, 300)}`);
     const parsed = FirmographicsResponseSchema.safeParse(await res.json());
     if (!parsed.success) throw new Error(`apollo-service answered an unexpected shape: ${parsed.error.message}`);
+    if (!parsed.data.company && parsed.data.noCompanyReason !== "personal_email_domain") {
+      return brandNameLines(person.domain, await brandNameForDomain(brand, person.domain));
+    }
     return companyLines(parsed.data, person.email ?? null);
   } catch (err) {
     console.error(`[${logTag}] company lookup failed for ${person.domain}:`, err);
@@ -267,7 +300,12 @@ export async function fetchCompanyLines(
 async function lookupCompany(config: Config, events: VisitEvent[], account: VisitAccount | null): Promise<string[]> {
   const person = visitPerson(events, account);
   if (!person) return [];
-  return fetchCompanyLines({ url: config.apolloServiceUrl, apiKey: config.apolloServiceApiKey }, person, "dashboard/visit-recap");
+  return fetchCompanyLines(
+    { url: config.apolloServiceUrl, apiKey: config.apolloServiceApiKey },
+    { url: config.brandServiceUrl, apiKey: config.brandServiceApiKey },
+    person,
+    "dashboard/visit-recap",
+  );
 }
 
 const ResolveResponseSchema = z.object({ orgId: z.string() });
