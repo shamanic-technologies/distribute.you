@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { OpsInfraSchema, refusalSentence, utcMoment, vendorRefusals, vendorWord } from "../src/lib/monitoring/capacity";
+import { OpsInfraSchema, emptySendPools, refusalSentence, sendPoolVendors, sendPoolWord, utcMoment, vendorRefusals, vendorWord } from "../src/lib/monitoring/capacity";
 
 /**
  * SEND-PRIMEFORGE-402-1030: on 2026-10-29 Primeforge answered 402 "active subscription required" and every cold email
@@ -55,6 +55,47 @@ describe("Capacity: a mailbox vendor refusing us", () => {
     const hub = page.slice(page.indexOf("function Hub("), page.indexOf("function Section("));
     expect(hub).toContain('<VendorRefusalTile href={href("emails/capacity")} />');
     expect(hub.indexOf("<VendorRefusalTile")).toBeLessThan(hub.indexOf("<Section "));
-    expect(hub).toContain('color={mailboxVendorsRefusing ? "var(--data-rose)" : "var(--data-sky)"} label="Capacity"');
+    expect(hub).toContain('color={mailboxVendorsRefusing || sendPoolEmpty ? "var(--data-rose)" : "var(--data-sky)"} label="Capacity"');
+  });
+});
+
+/**
+ * SEND-POOL-VENDOR-402-1030: from 2026-10-29 15:00 UTC every org's new emails were refused for a day while Capacity read
+ * "35 addresses in production". instantly-service v0.83.157 serves `sendPools` (the sender's own selection) and keeps a
+ * refusing vendor's mailboxes on its last listing. Zero in a pool = red on the hub and a card on Capacity.
+ */
+describe("Capacity: the send pool", () => {
+  const withPools = (sendPools: unknown) => OpsInfraSchema.parse({ ...prod(), sendPools });
+
+  it("a pool at zero is empty, a pool with mailboxes is not, an absent field is no pool", () => {
+    expect(emptySendPools(withPools([{ pool: "shared", sendable: 0, byVendor: {} }])).map((p) => p.pool)).toEqual(["shared"]);
+    expect(emptySendPools(withPools([{ pool: "shared", sendable: 13, byVendor: { primeforge: 13 } }]))).toEqual([]);
+    expect(emptySendPools(OpsInfraSchema.parse(prod()))).toEqual([]);
+  });
+
+  it("names who sends and from which vendors, largest first", () => {
+    const [p] = withPools([{ pool: "shared", sendable: 15, byVendor: { gandi: 2, primeforge: 13 } }]).sendPools!;
+    expect(sendPoolWord(p.pool)).toBe("Every org");
+    expect(sendPoolVendors(p)).toBe("13 Primeforge, 2 Gandi");
+  });
+
+  it("a refusing vendor sending on its stored list says so", () => {
+    const [r] = vendorRefusals(OpsInfraSchema.parse({
+      ...fixture(),
+      vendorRefusals: [{ ...fixture().vendorRefusals[0], lastListingAt: "2026-10-29T11:22:12.532Z", lastListingMailboxes: 131 }],
+    }));
+    expect(refusalSentence(r)).toBe("Primeforge refuses us since Oct 29, 15:02 UTC: its 131 mailboxes keep sending on the list it gave us Oct 29, 11:22 UTC.");
+  });
+
+  it("the hub tile turns red at zero and Capacity draws the card first, never an email", () => {
+    const src = read("components/v2/monitoring-capacity.tsx");
+    const tile = src.slice(src.indexOf("export function SendPoolTile("), src.indexOf("export function CapacityPage("));
+    expect(tile).toContain("color: RED");
+    expect(tile).toContain("emptySendPools(infra.data)");
+    const page = src.slice(src.indexOf("export function CapacityPage("));
+    expect(page.indexOf("<EmptySendPools />")).toBeGreaterThan(-1);
+    expect(page.indexOf("<EmptySendPools />")).toBeLessThan(page.indexOf("<CapacityTiles />"));
+    const hub = read("components/v2/monitoring-page.tsx");
+    expect(hub).toContain('<SendPoolTile href={href("emails/capacity")} />');
   });
 });

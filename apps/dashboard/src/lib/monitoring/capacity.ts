@@ -70,6 +70,25 @@ export const OpsInfraSchema = z.object({
         // First refusal of the current streak, then the latest one (ISO).
         since: z.string(),
         lastSeenAt: z.string(),
+        // SEND-POOL-VENDOR-402-1030 (instantly-service v0.83.157): when the stored listing its mailboxes keep sending
+        // on was fetched, null = none stored and its mailboxes are out of the pool. Absent on an older deploy.
+        lastListingAt: z.string().nullish(),
+        lastListingMailboxes: z.number().optional(),
+      }),
+    )
+    .optional(),
+  /**
+   * What the sender can hand a NEW email to right now, per send pool, read through the sender's own selection
+   * (SEND-POOL-VENDOR-402-1030). `shared` = the pool every org sends from; any other name = a feature with mailboxes
+   * reserved to it. `sendable: 0` = every org on that pool has its new emails refused. Optional: absent before v0.83.157.
+   */
+  sendPools: z
+    .array(
+      z.object({
+        pool: z.string(),
+        sendable: z.number(),
+        // Sendable mailboxes per vendor, as served.
+        byVendor: z.record(z.string(), z.number()),
       }),
     )
     .optional(),
@@ -104,7 +123,28 @@ export const utcMoment = (iso: string) =>
 
 /** The one-line read of a refusal: who refuses, since when, and what it stops. */
 export const refusalSentence = (r: VendorRefusal) =>
-  `${vendorWord(r.vendor)} refuses us since ${utcMoment(r.since)}: its mailboxes send nothing, every other vendor keeps sending.`;
+  r.lastListingAt && r.lastListingMailboxes
+    ? `${vendorWord(r.vendor)} refuses us since ${utcMoment(r.since)}: its ${r.lastListingMailboxes} mailboxes keep sending on the list it gave us ${utcMoment(r.lastListingAt)}.`
+    : `${vendorWord(r.vendor)} refuses us since ${utcMoment(r.since)}: its mailboxes send nothing, every other vendor keeps sending.`;
+
+// ─── Send pools (SEND-POOL-VENDOR-402-1030) ────────────────────────────────
+
+export type SendPool = NonNullable<OpsInfra["sendPools"]>[number];
+
+/** Every send pool as served; an older instantly-service serves none. */
+export const sendPools = (infra: OpsInfra): SendPool[] => infra.sendPools ?? [];
+
+/** The pools no new email can go out from: every org on them is refused. */
+export const emptySendPools = (infra: OpsInfra): SendPool[] => sendPools(infra).filter((p) => p.sendable === 0);
+
+/** Who sends from a pool, in words. A reserved pool prints its feature as served. */
+export const sendPoolWord = (pool: string) => (pool === "shared" ? "Every org" : pool);
+
+/** A pool's mailboxes per vendor, largest first: "13 Primeforge, 2 Gandi". Sorting and lookup only. */
+export const sendPoolVendors = (p: SendPool) =>
+  byCountDesc(p.byVendor)
+    .map(([v, n]) => `${n} ${vendorWord(v)}`)
+    .join(", ");
 
 /** Served counts per state, largest first, for display. Sorting only. */
 export function byCountDesc(counts: Record<string, number>): Array<[string, number]> {
