@@ -24,6 +24,7 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { CompanyLogo } from "@/components/company-logo";
 import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
 import { ThreadsAccountsCard } from "@/components/v2/threads-accounts-card";
+import { XAccountsCard } from "@/components/v2/x-accounts-card";
 import {
   INTEGRATIONS,
   isStripeProvider,
@@ -153,6 +154,9 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
   // Threads accounts sit with the other accounts (owner 2026-10-28: "under your Account like
   // other connection" = this "Accounts and AI" tab, never the Profile page).
   rows.push(<ThreadsAccountsCard key="threads" bare />);
+  // X accounts beside Threads, same card (owner 2026-10-30 « Ajoute l'intégration X ici »): a dead login
+  // is a Reconnect button here, never a script on a Mac.
+  rows.push(<XAccountsCard key="x" bare />);
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
   return (

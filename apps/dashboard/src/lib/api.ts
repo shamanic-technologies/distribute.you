@@ -1279,6 +1279,101 @@ export async function disconnectThreadsAccount(accountId: string, token?: string
   return apiCall<unknown>(`/orgs/threads/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
 }
 
+// ==================== X ACCOUNTS (social-service, X-ACCOUNTS-1030) ====================
+//
+// Any member connects any number of X accounts to a brand, each typed (Pro (AI),
+// Pro (human), Personal (human)). social-service owns the X login; the dashboard
+// starts it with the fixed redirect URI (`lib/x-connect.ts`) and relays `code` +
+// `state` back. `accountTypeLabel` and `health` are served: never re-derived here.
+
+const XAccountTypeSchema = z.enum(["pro_human", "personal_human", "pro_ai"]);
+
+const XAccountSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  xUserId: z.string(),
+  username: z.string(),
+  name: z.string().nullable(),
+  profileImageUrl: z.string().nullable(),
+  profileUrl: z.string(),
+  accountType: XAccountTypeSchema,
+  accountTypeLabel: z.string(),
+  health: z.enum(["connected", "needs_reconnect"]),
+  healthReason: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type XAccount = z.infer<typeof XAccountSchema>;
+
+const XConnectStartResponseSchema = z.object({
+  authorizationUrl: z.string().url(),
+  state: z.string(),
+  expiresAt: z.string(),
+});
+export type XConnectStart = z.infer<typeof XConnectStartResponseSchema>;
+
+export async function listXAccounts(brandId: string, token?: string): Promise<XAccount[]> {
+  const raw = await apiCall<unknown>(`/orgs/x/accounts?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = z.object({ accounts: z.array(XAccountSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listXAccounts response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("listXAccounts returned an unexpected shape");
+  }
+  return parsed.data.accounts;
+}
+
+export async function startXConnect(
+  input: { brandId: string; accountType: z.infer<typeof XAccountTypeSchema>; redirectUri: string },
+  token?: string,
+): Promise<XConnectStart> {
+  // brandId in the query too: identity values reach downstream services from headers/query only.
+  const raw = await apiCall<unknown>(`/orgs/x/auth/start?brandId=${encodeURIComponent(input.brandId)}`, {
+    token,
+    method: "POST",
+    body: input,
+  });
+  const parsed = XConnectStartResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] startXConnect response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("startXConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function finishXConnect(
+  input: { code: string; state: string },
+  token?: string,
+): Promise<{ account: XAccount; created: boolean }> {
+  const raw = await apiCall<unknown>(`/orgs/x/auth/callback`, { token, method: "POST", body: input });
+  const parsed = z.object({ account: XAccountSchema, created: z.boolean() }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] finishXConnect response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("finishXConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function setXAccountType(
+  accountId: string,
+  accountType: z.infer<typeof XAccountTypeSchema>,
+  token?: string,
+): Promise<XAccount> {
+  const raw = await apiCall<unknown>(`/orgs/x/accounts/${encodeURIComponent(accountId)}`, {
+    token,
+    method: "PATCH",
+    body: { accountType },
+  });
+  const parsed = z.object({ account: XAccountSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] setXAccountType response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("setXAccountType returned an unexpected shape");
+  }
+  return parsed.data.account;
+}
+
+export async function disconnectXAccount(accountId: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(`/orgs/x/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
+}
+
 // ==================== POSTHOG + STRIPE + CLERK, read-only sources of Conversations ====================
 //
 // Same two-write connect as GoHighLevel: the credential goes to key-service under the
