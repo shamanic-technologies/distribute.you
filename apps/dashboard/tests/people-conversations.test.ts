@@ -406,6 +406,8 @@ describe("a signup walk step on the Unibox thread (owner 2026-10-15)", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/integrations-conversations.tsx"), "utf8");
     const fn = src.slice(src.indexOf("function ThreadItem("), src.indexOf("function PersonTag("));
     expect(fn).toContain('item.source === "posthog" && item.event?.step === "event" ? item.text : null');
+    // A client's account action (CLIENT-ACTIVITY-1030) shows its crm-service line too.
+    expect(fn).toContain('item.source === "activity" ? item.text');
     expect(fn).toContain("{said ? <p");
   });
 });

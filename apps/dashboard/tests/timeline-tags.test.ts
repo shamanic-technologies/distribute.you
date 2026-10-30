@@ -27,6 +27,12 @@ describe("Unibox timeline tags (owner 2026-10-08)", () => {
     expect(timelineTag(ev("payment_attempt")).tone).toBe("neutral");
     expect(timelineTag(ev("stripe_customer_created")).tone).toBe("neutral");
   });
+  it("names a client's account actions (CLIENT-ACTIVITY-1030)", () => {
+    expect(timelineTag(ev("campaign_created"))).toMatchObject({ label: "Campaign created", tone: "won" });
+    expect(timelineTag(ev("campaign_updated"))).toMatchObject({ label: "Campaign edited", tone: "neutral" });
+    expect(timelineTag(ev("campaign_paused")).tone).toBe("lost");
+    expect(timelineTag(ev("campaign_budget_changed"))).toMatchObject({ label: "Budget changed", tone: "hot", icon: "money" });
+  });
   it("keeps a step it does not know, in its producer word, neutral", () => {
     expect(timelineTag(ev("brand_new_step"))).toEqual({ label: "Brand new step", tone: "neutral", icon: "dot" });
     expect(timelineTag(ev(null)).label).toBe("Event");

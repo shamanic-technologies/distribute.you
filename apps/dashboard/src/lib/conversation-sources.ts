@@ -46,6 +46,8 @@ const SOURCE_MARK: Record<string, SourceMark> = {
   // Our own product emails (welcome, "You're live") and what the client set up with us read as ours.
   transactional: DISTRIBUTE,
   onboarding: { ...DISTRIBUTE, name: "Account setup" },
+  // What a client did on their account (campaign created, budget changed; crm-service CLIENT-ACTIVITY-1030).
+  activity: { ...DISTRIBUTE, name: "Account" },
   stripe: vendor("stripe", "Stripe", "stripe.com"),
   gohighlevel: vendor("gohighlevel", "GoHighLevel", "gohighlevel.com"),
   // A contact list the client uploaded (crm-service's "added to CRM" event for an import).

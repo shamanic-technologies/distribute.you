@@ -54,6 +54,13 @@ const STEP_TAGS: Record<string, Omit<TimelineTag, "label"> & { label?: string }>
   became_customer: { tone: "won", icon: "money", label: "Became a customer" },
   // The whole record of what a client set up with us (crm-service ONBOARDING-FICHE-1027).
   onboarding_record: { tone: "neutral", icon: "check", label: "Account setup" },
+  // What a client did on their account (crm-service CLIENT-ACTIVITY-1030, owner 2026-10-30).
+  campaign_created: { tone: "won", icon: "check", label: "Campaign created" },
+  campaign_updated: { tone: "neutral", icon: "dot", label: "Campaign edited" },
+  campaign_paused: { tone: "lost", icon: "dot", label: "Campaign paused" },
+  campaign_resumed: { tone: "won", icon: "check", label: "Campaign resumed" },
+  campaign_stopped: { tone: "lost", icon: "lost", label: "Campaign stopped" },
+  campaign_budget_changed: { tone: "hot", icon: "money", label: "Budget changed" },
 };
 
 function words(s: string): string {
