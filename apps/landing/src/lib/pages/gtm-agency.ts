@@ -35,7 +35,7 @@ import { SITE_PAGES } from "../site-pages";
 import { AGENCIES, ALTERNATIVES_PATH, AGENCY_PAGE_PATH, agencyVsPath } from "../agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
 
-export const AGENCY_CSS_VERSION = 2;
+export const AGENCY_CSS_VERSION = 3;
 export const AGENCY_FEE_BASE_USD = 1000;
 export const AGENCY_FEE_SHARE = 0.1;
 /** The slider's starting budget: the fee shown before anyone moves it. */

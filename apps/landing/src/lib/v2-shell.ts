@@ -20,8 +20,8 @@ export const SITE = "https://distribute.you";
  * Bumped together with the homepage's link: every page reads the same stylesheet, so
  * an edit to it ships to a returning visitor only if every `?v=` moves at once.
  */
-export const V2_STYLES_VERSION = 20;
-export const V2_MAIN_VERSION = 10;
+export const V2_STYLES_VERSION = 21;
+export const V2_MAIN_VERSION = 11;
 /** The motion kit (`public/landing/v2/motion.js`): it loads GSAP only on a page with a `data-motion` element. */
 export const MOTION_VERSION = 11;
 

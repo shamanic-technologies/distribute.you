@@ -234,7 +234,9 @@
   .ag-orbit { --orbit-r: 122px; }
   .ag-core { width: 100px; height: 100px; font-size: 13px; }
   .ag-core img { width: 26px; height: 26px; }
-  .ag-chip { padding: 6px 10px; font-size: 12px; }
+  /* Eight chips on a 122px ring: two-line labels keep neighbours apart (MOBILE-POLISH-1031). */
+  .ag-chip { max-width: 84px; padding: 5px 9px; gap: 0; font-size: 11.5px; line-height: 1.15; white-space: normal; text-align: center; justify-content: center; border-radius: 12px; }
+  .ag-chip i { display: none; }
   .ag-proof-list { padding-left: 40px; }
   .ag-proof-list::before, .ag-proof-list::after { left: 11px; }
   .ag-ix::before { left: -36px; }
@@ -260,3 +262,9 @@
 .ag-guar svg { flex: none; width: 20px; height: 20px; margin-top: 0; color: var(--accent); }
 .ag-guar b { color: var(--text); font-weight: 600; }
 .ag-guar a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+@media (max-width: 360px) {
+  /* 320px phones: a smaller ring with narrower chips stays inside the screen (MOBILE-POLISH-1031). */
+  .ag-orbit { --orbit-r: 112px; }
+  .ag-chip { max-width: 72px; padding: 4px 7px; font-size: 10.5px; }
+  .ag-core { width: 88px; height: 88px; font-size: 12px; }
+}

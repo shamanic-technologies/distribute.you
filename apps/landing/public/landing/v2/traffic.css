@@ -226,4 +226,13 @@
   .am-budget { flex-direction: column; align-items: flex-start; gap: 10px; }
   .am-split { flex-basis: auto; width: 100%; }
   .am-f span:last-child { display: none; }
+  /* The weekly visitor table reads as one card per visitor on a phone (MOBILE-POLISH-1031). */
+  .tr-week { overflow: visible; border: 0; border-radius: 0; background: none; }
+  .tr-week .ag-table { min-width: 0; display: block; }
+  .tr-week .ag-table thead { display: none; }
+  .tr-week .ag-table tbody { display: grid; gap: 12px; }
+  .tr-week .ag-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 16px; border-radius: 16px; border: 1px solid var(--hair); background: #fff; }
+  .tr-week .ag-table th, .tr-week .ag-table td { padding: 0; border: 0; width: auto; }
+  .tr-week .ag-table tbody th { grid-column: 1 / -1; }
+  .tr-week .ag-table td::before { content: attr(data-label); display: block; margin-bottom: 4px; font-size: 12px; color: var(--muted); }
 }

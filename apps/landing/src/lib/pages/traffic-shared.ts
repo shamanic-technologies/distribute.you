@@ -32,7 +32,7 @@ import {
 import { SIGN_UP, esc } from "../v2-shell";
 import { AGENT_CSS_VERSION, AI_SDR_CSS_VERSION } from "./ai-sdr";
 
-export const TRAFFIC_CSS_VERSION = 1;
+export const TRAFFIC_CSS_VERSION = 2;
 
 export const LOGO = (domain: string, size = 28) =>
   `<img src="https://img.logo.dev/${domain}?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="${size}" height="${size}">`;

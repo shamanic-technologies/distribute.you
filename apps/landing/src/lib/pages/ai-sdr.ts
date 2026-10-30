@@ -24,7 +24,7 @@ import { APPOINTMENT_PAGE_PATH } from "../appointment-setting-agencies";
 import { AI_SDR_ALTERNATIVES_PATH, AI_SDR_PATH, aiSdrCompetitors, competitorLogo, competitorPath } from "../competitors";
 import { SITE, SIGN_UP, WHY, breadcrumb, esc, shell } from "../v2-shell";
 
-export const AI_SDR_CSS_VERSION = 1;
+export const AI_SDR_CSS_VERSION = 2;
 /** agent.css is the homepage's own sheet (WhatsApp thread, offer strip, plans, copy box). */
 export const AGENT_CSS_VERSION = 1;
 
