@@ -621,7 +621,7 @@ function PostpaidPay({ account, onDone, onCancel }: { account: BillingAccount; o
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-900 mb-2">
-        {owes ? `Current balance: ${formatCentsAsUsd(owed.owedCents ?? 0, 2)}` : "Your campaigns run on credit"}
+        {owes ? `Balance due: ${formatCentsAsUsd(owed.owedCents ?? 0, 2)}` : "Your campaigns run on credit"}
       </h2>
       <p className="text-gray-600 text-sm mb-4">
         {owes

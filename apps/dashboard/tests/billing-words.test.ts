@@ -3,7 +3,7 @@ import { execSync } from "node:child_process";
 import { join } from "node:path";
 
 // Owner 2026-10-21: « You OWE est vraiment une tournure de phrase dégueulasse ». Billing copy
-// follows Google Ads / Google Cloud: "Current balance", "No balance due".
+// follows Google Ads / Google Cloud: "Balance due" (owner 2026-10-30), "No balance due".
 describe("billing copy never says 'you owe'", () => {
   it("no app source carries 'You owe' / 'Owed now' in copy", () => {
     const root = join(__dirname, "../..");
