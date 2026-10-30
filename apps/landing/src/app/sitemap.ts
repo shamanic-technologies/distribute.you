@@ -13,6 +13,8 @@ import { appointmentClusterPaths } from "@/lib/appointment-setting-agencies";
 import { reactivationClusterPaths } from "@/lib/reactivation-agencies";
 import { csClusterPaths } from "@/lib/customer-success-agencies";
 import { nurturingClusterPaths } from "@/lib/nurturing-tools";
+import { signupClusterPaths } from "@/lib/signup-tools";
+import { uaClusterPaths } from "@/lib/user-acquisition-agencies";
 import { DOCS_ROUTES, docsUrl } from "@/lib/docs/docs-routes";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
@@ -111,6 +113,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // The Lead Nurturing Automation page's own vs/alternatives cluster, read from its catalogue.
   for (const path of nurturingClusterPaths()) {
+    STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
+  }
+
+  // The Signup Automation and User Acquisition Agency pages' own vs/alternatives clusters.
+  for (const path of [...signupClusterPaths(), ...uaClusterPaths()]) {
     STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 3 ? 0.7 : 0.8 });
   }
 

@@ -39,6 +39,11 @@ export type Competitor = {
   readonly name: string;
   /** Registrable domain, for the logo and the outbound link. */
   readonly domain: string;
+  /**
+   * The logo logo.dev serves is WHITE on a transparent background (Default's), so it vanishes on
+   * our white tables: `competitorLogo` draws it on a dark tile instead.
+   */
+  readonly logoOnDark?: boolean;
   readonly category: Category;
   /** How they describe themselves, paraphrased from their own site. */
   readonly oneLiner: string;
@@ -1572,6 +1577,7 @@ export const COMPETITORS: readonly Competitor[] = [
     slug: "default",
     name: "Default",
     domain: "default.com",
+    logoOnDark: true,
     category: "inbound-routing",
     oneLiner: "The inbound engine for go-to-market teams: one platform to manage workflows, enrich records, route leads and schedule meetings.",
     sourceUrl: "https://www.default.com/pricing",
@@ -1940,4 +1946,18 @@ export const COMPARE_VERIFIED_LABEL = monthLabel(
 /** "October 2026". UTC, so the label does not depend on the server's zone. */
 export function monthLabel(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+/** Same publishable token the homepage and the dashboard bundle carry. */
+const LOGO_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
+
+/**
+ * A competitor's logo, `size` px square. A white logo (`logoOnDark`) sits on a dark tile, else it
+ * renders blank on a white page (Default on /gtm-automation, fixed PAGE-SIGNUP-AUTOMATION-1030).
+ */
+export function competitorLogo(c: Pick<Competitor, "domain" | "logoOnDark">, size = 40): string {
+  const tile = c.logoOnDark
+    ? ` style="background:#0a0a0a;border-radius:${Math.max(4, Math.round(size / 5))}px;padding:${Math.max(2, Math.round(size / 8))}px;box-sizing:border-box"`
+    : "";
+  return `<img src="https://img.logo.dev/${c.domain}?token=${LOGO_TOKEN}&size=${size * 2}&format=png" alt="" width="${size}" height="${size}"${tile}>`;
 }

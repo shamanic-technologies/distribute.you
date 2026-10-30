@@ -31,6 +31,7 @@ import {
   COLD_EMAIL_AUTOMATION_ALTERNATIVES_PATH,
   COLD_EMAIL_AUTOMATION_PATH,
   coldEmailAutomationCompetitors,
+  competitorLogo,
   competitorPath,
 } from "../competitors";
 import { SITE_PAGES } from "../site-pages";
@@ -463,7 +464,7 @@ export function compareHtml(): string {
   const rows = list
     .map(
       (c) =>
-        `<tr><th scope="row"><a href="${competitorPath(c)}">${LOGO(c.domain, 20)}${esc(c.name)}</a></th><td>${esc(c.entryPrice)}</td><td>${esc(c.freeTier)}</td><td><a class="sdr-vs" href="${competitorPath(c)}">distribute.you vs ${esc(c.name)}</a></td></tr>`,
+        `<tr><th scope="row"><a href="${competitorPath(c)}">${competitorLogo(c, 20)}${esc(c.name)}</a></th><td>${esc(c.entryPrice)}</td><td>${esc(c.freeTier)}</td><td><a class="sdr-vs" href="${competitorPath(c)}">distribute.you vs ${esc(c.name)}</a></td></tr>`,
     )
     .join("");
   const sources = list.map((c) => `<a href="${esc(c.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(c.name)}</a>`).join(", ");

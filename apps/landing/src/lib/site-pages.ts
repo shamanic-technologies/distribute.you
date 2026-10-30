@@ -32,6 +32,8 @@ import { APPOINTMENT_PAGE_PATH, appointmentCompareLinks } from "./appointment-se
 import { REACTIVATION_PAGE_PATH, reactivationCompareLinks } from "./reactivation-agencies";
 import { CS_PAGE_PATH, csCompareLinks } from "./customer-success-agencies";
 import { NURTURING_PAGE_PATH, nurturingCompareLinks } from "./nurturing-tools";
+import { SIGNUP_PAGE_PATH, signupCompareLinks } from "./signup-tools";
+import { UA_PAGE_PATH, uaCompareLinks } from "./user-acquisition-agencies";
 
 export type Buyer = "agent" | "agency";
 
@@ -83,12 +85,14 @@ export const OUTCOMES: { slug: OutcomeSlug; name: string; line: string }[] = [
 /**
  * An AI Agent page served at the path its buyers search for, not `/<slug>-automation`:
  * Meetings Booked is "ai sdr" (1,600 US searches a month, PAGE-AI-SDR-1029), Lead
- * Generation is "ai lead generation" (1,600, PAGE-AI-LEAD-GEN-1029).
+ * Generation is "ai lead generation" (1,600, PAGE-AI-LEAD-GEN-1029), Signups is "signup
+ * automation" (PAGE-SIGNUP-AUTOMATION-1030; the slug is plural, the search is not).
  */
 const AGENT_PATH: Partial<Record<OutcomeSlug, string>> = {
   revenue: "/",
   meetings: AI_SDR_PATH,
   "lead-generation": AI_LEAD_GEN_PATH,
+  signups: SIGNUP_PAGE_PATH,
 };
 
 function agentPath(slug: OutcomeSlug): string {
@@ -99,12 +103,14 @@ function agentPath(slug: OutcomeSlug): string {
  * An Agency page served at the path its buyers search for, not `/<slug>-agency`:
  * Paid Acquisition is "ppc agency" (5,400 US searches a month, PAGE-PPC-AGENCY-1029),
  * Meetings Booked is "appointment setting agency" (320 to 390, PAGE-APPOINTMENT-AGENCY-1030),
- * Lead Nurturing is "database reactivation" (70, CPC $33.75, PAGE-DATABASE-REACTIVATION-AGENCY-1030).
+ * Lead Nurturing is "database reactivation" (70, CPC $33.75, PAGE-DATABASE-REACTIVATION-AGENCY-1030),
+ * Signups is "user acquisition agency" (20 to 40, PAGE-USER-ACQUISITION-AGENCY-1030).
  */
 const AGENCY_PATH: Partial<Record<OutcomeSlug, string>> = {
   "paid-acquisition": "/ppc-agency",
   meetings: APPOINTMENT_PAGE_PATH,
   "lead-nurturing": REACTIVATION_PAGE_PATH,
+  signups: UA_PAGE_PATH,
 };
 
 function agencyPath(slug: OutcomeSlug): string {
@@ -126,6 +132,8 @@ const LIVE_PATHS = new Set<string>([
   GTM_AUTOMATION_PATH,
   CS_PAGE_PATH,
   NURTURING_PAGE_PATH,
+  SIGNUP_PAGE_PATH,
+  UA_PAGE_PATH,
 ]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
@@ -192,6 +200,25 @@ const CS_AGENCY_SECTIONS = [
   { label: "Agencies compared", href: `${CS_PAGE_PATH}#compare` },
   { label: "Price", href: `${CS_PAGE_PATH}#price` },
   { label: "FAQ", href: `${CS_PAGE_PATH}#faq` },
+];
+
+/** The sections of the User Acquisition Agency page (Signups, Agency buyer, PAGE-USER-ACQUISITION-AGENCY-1030). */
+const UA_AGENCY_SECTIONS = [
+  { label: "How we work", href: `${UA_PAGE_PATH}#how` },
+  { label: "The four steps", href: `${UA_PAGE_PATH}#legs` },
+  { label: "Agencies compared", href: `${UA_PAGE_PATH}#compare` },
+  { label: "Price", href: `${UA_PAGE_PATH}#price` },
+  { label: "FAQ", href: `${UA_PAGE_PATH}#faq` },
+];
+
+/** The sections of the Signup Automation page (Signups, AI Agent buyer, PAGE-SIGNUP-AUTOMATION-1030). */
+const SIGNUP_SECTIONS = [
+  { label: "How it gets signups", href: `${SIGNUP_PAGE_PATH}#path` },
+  { label: "Tools it reads", href: `${SIGNUP_PAGE_PATH}#tools` },
+  { label: "Price of the work", href: `${SIGNUP_PAGE_PATH}#prices` },
+  { label: "Signup tools compared", href: `${SIGNUP_PAGE_PATH}#compare` },
+  { label: "Pricing", href: `${SIGNUP_PAGE_PATH}#pricing` },
+  { label: "FAQ", href: `${SIGNUP_PAGE_PATH}#faq` },
 ];
 
 /** The sections of the homepage (the Revenue AI Agent page, PAGE-REVENUE-AGENT-1029), listed first in its footer. */
@@ -264,6 +291,7 @@ const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "com
     compareTitle: "Compare cold email tools",
   },
   "lead-nurturing": { sections: NURTURING_SECTIONS, compare: nurturingCompareLinks(), compareTitle: "Compare nurturing tools" },
+  signups: { sections: SIGNUP_SECTIONS, compare: signupCompareLinks(), compareTitle: "Compare signup tools" },
 };
 
 /**
@@ -303,6 +331,9 @@ export const SITE_PAGES: SitePage[] = OUTCOMES.flatMap((o): SitePage[] => [
             ? { navLabel: "Database Reactivation Agency", sections: REACTIVATION_AGENCY_SECTIONS, compare: reactivationCompareLinks() }
             : {}),
           ...(o.slug === "customer-success" ? { sections: CS_AGENCY_SECTIONS, compare: csCompareLinks() } : {}),
+          ...(o.slug === "signups"
+            ? { navLabel: "User Acquisition Agency", sections: UA_AGENCY_SECTIONS, compare: uaCompareLinks() }
+            : {}),
         },
       ]),
 ]);
