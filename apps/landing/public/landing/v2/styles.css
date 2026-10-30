@@ -868,3 +868,32 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 [data-motion="sticky-story"] [data-step]:not(.is-active) { opacity: 0.35; }
 @media (prefers-reduced-motion: reduce) { .motion-dots i { animation: none; } [data-motion="sticky-story"] [data-step]:not(.is-active) { opacity: 1; } }
 .foot .brand { display: inline-flex; font-size: 20px; color: var(--text); padding: 0; }
+
+/* Phone footer (MOBILE-POLISH-1031): main.js adds .foot-fold and turns each column title into
+   a button, so the long link columns fold into one tappable row each. Without JS every link
+   shows, and crawlers read every link either way. */
+.foot h4 button { all: unset; cursor: text; }
+@media (max-width: 640px) {
+  .foot.foot-fold { grid-template-columns: 1fr; gap: 0; }
+  .foot.foot-fold .foot-brand { margin-bottom: 20px; }
+  .foot.foot-fold > div:not(.foot-brand) { border-top: 1px solid var(--hair); }
+  .foot.foot-fold > div:not(.foot-brand):last-child { border-bottom: 1px solid var(--hair); }
+  .foot.foot-fold h4 { margin: 0; font-size: 16px; }
+  .foot-fold h4 button { all: unset; box-sizing: border-box; display: flex; width: 100%; align-items: center; justify-content: space-between; min-height: 48px; cursor: pointer; color: var(--text); }
+  .foot-fold h4 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .foot-fold h4 button::after { content: ""; width: 8px; height: 8px; margin-right: 4px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-2px) rotate(45deg); transition: transform 0.2s ease; }
+  .foot-fold h4 button[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
+  .foot-fold h4 + ul { padding-bottom: 16px; }
+  .foot-fold .is-folded > ul { display: none; }
+}
+
+/* 320px phones (MOBILE-POLISH-1031): the wordmark kept shrinking under "Log in". */
+.nav-pill .brand { flex-shrink: 0; white-space: nowrap; }
+@media (max-width: 360px) {
+  .nav-pill { padding: 0 4px 0 10px; }
+  .nav-pill .brand { font-size: 14px; gap: 5px; }
+  .nav-right { gap: 2px; }
+  .nav-right .btn { padding: 0 8px; }
+  .nav-right .btn-ghost { padding: 0 4px; }
+  .nav-menu summary { width: 32px; height: 32px; }
+}

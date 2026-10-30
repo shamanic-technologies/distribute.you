@@ -101,7 +101,7 @@
   .sdr-cal-card { width: 100%; padding: 10px; }
   .sdr-cal-card .cal-grid { grid-template-rows: repeat(6, 40px); }
   .sdr-stage .wa { position: relative; right: auto; bottom: auto; width: 100%; max-width: 330px; height: 330px; margin-top: -40px; }
-  .sdr-steps { grid-template-columns: 1fr; }
+  .sdr-steps { grid-template-columns: minmax(0, 1fr); }
   .sdr-step p { min-height: 0; }
   .sdr-table, .sdr-table tbody { display: block; }
   .sdr-table thead { display: none; }

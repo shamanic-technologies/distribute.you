@@ -398,6 +398,38 @@
     requestAnimationFrame(draw);
   }
 
+  /* Phone footer (MOBILE-POLISH-1031): each link column folds behind its title on a phone.
+     The HTML stays the open list (crawlers, no JS); the fold is only added here. */
+  Array.prototype.forEach.call(document.querySelectorAll(".foot"), function (foot) {
+    var phone = window.matchMedia("(max-width: 640px)");
+    var cols = [];
+    Array.prototype.forEach.call(foot.children, function (col) {
+      var h = col.querySelector(":scope > h4");
+      if (!h || col.classList.contains("foot-brand")) return;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = h.textContent;
+      h.textContent = "";
+      h.appendChild(btn);
+      btn.addEventListener("click", function () {
+        var open = col.classList.toggle("is-folded") === false;
+        btn.setAttribute("aria-expanded", String(open));
+      });
+      cols.push({ col: col, btn: btn });
+    });
+    if (!cols.length) return;
+    function apply() {
+      cols.forEach(function (c) {
+        c.col.classList.toggle("is-folded", phone.matches);
+        c.btn.setAttribute("aria-expanded", String(!phone.matches));
+        if (phone.matches) c.btn.removeAttribute("tabindex"); else c.btn.setAttribute("tabindex", "-1");
+      });
+    }
+    foot.classList.add("foot-fold");
+    apply();
+    phone.addEventListener("change", apply);
+  });
+
   /* "Give this to your agent" (treg.to): each Copy button copies the code in its box. */
   Array.prototype.forEach.call(document.querySelectorAll("[data-copy]"), function (btn) {
     btn.addEventListener("click", function () {

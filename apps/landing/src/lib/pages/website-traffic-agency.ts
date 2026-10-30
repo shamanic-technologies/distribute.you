@@ -131,7 +131,7 @@ export const WEEK_ROWS = [
 function weekHtml(): string {
   const rows = WEEK_ROWS.map(
     (r) =>
-      `<tr><th scope="row"><b>${esc(r.who)}</b><small>${esc(r.org)}</small></th><td><code>${esc(r.page)}</code></td><td>${esc(r.via)}</td><td><span class="tr-human">Human</span></td><td>${esc(r.next)}</td></tr>`,
+      `<tr><th scope="row"><b>${esc(r.who)}</b><small>${esc(r.org)}</small></th><td data-label="Page"><code>${esc(r.page)}</code></td><td data-label="Invited by">${esc(r.via)}</td><td data-label="Judged"><span class="tr-human">Human</span></td><td data-label="Next">${esc(r.next)}</td></tr>`,
   ).join("");
   return `<section class="framed" id="visits">
   <div class="wrap">
