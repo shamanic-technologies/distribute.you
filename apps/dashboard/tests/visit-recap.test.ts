@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { companyDomain, countryLabel, firmographicLines, formatAgo, formatDuration, guessRole, sourceLine, stageOf, visitClerkUserId, visitPerson, visitRecap, type VisitAccount, type VisitEvent } from "../src/lib/visit-recap";
-import { companyLines, ENDED_VISITS_SQL, rowToEvent, rowToVisit } from "../src/lib/visit-recap-job";
+import { brandNameLines, companyLines, ENDED_VISITS_SQL, rowToEvent, rowToVisit } from "../src/lib/visit-recap-job";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
@@ -268,6 +268,15 @@ describe("visit recap firmographics (owner 2026-10-04: who is the company behind
   it("says so when Apollo knows no company, and stays quiet on a personal email domain", () => {
     expect(companyLines(served({ company: null, noCompanyReason: "not_found", person: null, personMatched: null }))).toEqual(["No company found for acme.com"]);
     expect(companyLines(served({ domain: "gmail.com", company: null, noCompanyReason: "personal_email_domain", person: null, personMatched: null }))).toEqual([]);
+  });
+
+  it("names the company from our own brand when Apollo knows none (larund.com, 2026-10-30)", () => {
+    expect(brandNameLines("larund.com", "Larund")).toEqual(["Larund (larund.com), not in Apollo"]);
+    expect(brandNameLines("acme.com", "A&B")).toEqual(["A&amp;B (acme.com), not in Apollo"]);
+    expect(brandNameLines("acme.com", null)).toEqual(["No company found for acme.com"]);
+    const job = read("src/lib/visit-recap-job.ts");
+    expect(job).toContain("/internal/brands/resolve-by-domain");
+    expect(job).toContain('noCompanyReason !== "personal_email_domain"');
   });
 
   it("calls apollo-service directly with its own key, never Apollo", () => {

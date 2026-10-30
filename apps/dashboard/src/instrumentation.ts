@@ -49,6 +49,9 @@ const TEXT_SIGNOFF = `\n\n--\ndistribute.you\n${BRAND_WHY}`;
 const DUNNING_BUTTON = "Send the next batch";
 const DUNNING_AUTO_TOPUP = "Turn on auto top-up while you're there so the next batch never has to wait.";
 const DUNNING_BLOCKED_CARD = "Your bank doesn't allow automatic top-ups, so add credit whenever your balance runs low and your outreach keeps going.";
+// Postpaid accounts have no credit to add and no top-up to turn on: they pay what they
+// spent (owner 2026-10-30, LBVisible got "Add credit" + "Turn on auto top-up").
+const DUNNING_POSTPAID_CARD = "Keep your card on file and we charge it as you spend, so the next batch never has to wait.";
 
 function founderEmail(name: string, subject: string, paragraphs: string[]) {
   return {
@@ -66,13 +69,17 @@ ${paragraphs.map((p) => `      <p style="${P}">${p}</p>`).join("\n")}
 }
 
 function dunningTemplates() {
-  const steps: { name: string; subject: string; paragraphs: string[] }[] = [
+  const steps: { name: string; subject: string; paragraphs: string[]; postpaid: string[] }[] = [
     {
       name: "credit-depleted",
       subject: "All your outreach went out",
       paragraphs: [
         "Every email your balance covered has gone out to your prospects. Any reply still comes straight to you.",
         "Add credit and the next batch goes out to new decision-makers at the companies you target. Everything is set up, so it picks up where it left off.",
+      ],
+      postpaid: [
+        "Every email your credit line covered has gone out to your prospects. Any reply still comes straight to you.",
+        "Settle your balance due and the next batch goes out to new decision-makers at the companies you target. Everything is set up, so it picks up where it left off.",
       ],
     },
     {
@@ -82,6 +89,10 @@ function dunningTemplates() {
         "Your last batch went out in full, and your campaigns are set up for the next one.",
         "It goes out as soon as you add credit, to new decision-makers at the companies you target.",
       ],
+      postpaid: [
+        "Your last batch went out in full, and your campaigns are set up for the next one.",
+        "The next batch goes out as soon as your balance due is settled, to new decision-makers at the companies you target.",
+      ],
     },
     {
       name: "credit-depleted-followup-10d",
@@ -90,11 +101,16 @@ function dunningTemplates() {
         "Your campaigns are set up exactly as you left them, audiences and emails included.",
         "Add credit and the next batch goes out to new decision-makers at the companies you target.",
       ],
+      postpaid: [
+        "Your campaigns are set up exactly as you left them, audiences and emails included.",
+        "Settle your balance due and the next batch goes out to new decision-makers at the companies you target.",
+      ],
     },
   ];
-  return steps.flatMap(({ name, subject, paragraphs }) => [
+  return steps.flatMap(({ name, subject, paragraphs, postpaid }) => [
     founderEmail(name, subject, [...paragraphs, DUNNING_AUTO_TOPUP]),
     founderEmail(`${name}-blocked`, subject, [...paragraphs, DUNNING_BLOCKED_CARD]),
+    founderEmail(`${name}-postpaid`, subject, [...postpaid, DUNNING_POSTPAID_CARD]),
   ]);
 }
 
