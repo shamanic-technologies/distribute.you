@@ -17,6 +17,7 @@ import {
   CATEGORY_LABEL,
   COMPARE_VERIFIED_LABEL,
   AI_LEAD_GEN_CLUSTER,
+  COLD_EMAIL_AUTOMATION_CLUSTER,
   AI_SDR_CLUSTER,
   COMPETITORS,
   DISTRIBUTE_ROW,
@@ -25,6 +26,7 @@ import {
   clusterOf,
   competitorPath,
   isAiLeadGenCluster,
+  isColdEmailAutomationCluster,
   isAiSdrCluster,
   type CompareCluster,
   monthLabel,
@@ -42,6 +44,7 @@ import {
 } from "./v2-shell";
 import { AI_SDR_CSS_VERSION } from "./pages/ai-sdr";
 import { AI_LEAD_GEN_CSS_VERSION } from "./pages/ai-lead-generation";
+import { COLD_EMAIL_AUTOMATION_CSS_VERSION } from "./pages/cold-email-automation";
 
 export { V2_STYLES_VERSION };
 
@@ -110,6 +113,9 @@ export function comparePageDescription(c: Competitor): string {
   if (isAiLeadGenCluster(c)) {
     return `Looking at ${c.name} alternatives? distribute.you's AI lead generation agent finds, checks and contacts your leads, free for one user. Compare prices.`;
   }
+  if (isColdEmailAutomationCluster(c)) {
+    return `Looking at ${c.name} alternatives? distribute.you's cold email automation writes, sends and answers for you, free for one user. Compare prices.`;
+  }
   return `Looking at ${c.name} alternatives? distribute.you's AI agent runs your cold email, free for one user. Compare price and cost per positive reply.`;
 }
 
@@ -120,6 +126,9 @@ function ourLine(c: Competitor): string {
   }
   if (isAiLeadGenCluster(c)) {
     return "distribute.you is the AI lead generation agent: you paste a website, our agent finds your leads, judges each one, checks the email and writes to them from domains we own.";
+  }
+  if (isColdEmailAutomationCluster(c)) {
+    return "distribute.you is cold email automation done for you: you paste a website, our AI agent finds your buyers, writes each email, sends it from domains we own and answers the replies.";
   }
   return "distribute.you runs your cold email for you: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.";
 }
@@ -401,6 +410,41 @@ const AI_LEAD_GEN_ALTERNATIVES: AlternativesCopy = {
   ourName: "distribute.you AI lead generation",
   stylesheet: `/landing/v2/ai-lead-generation.css?v=${AI_LEAD_GEN_CSS_VERSION}`,
 };
+
+const COLD_EMAIL_AUTOMATION_ALTERNATIVES_FAQ = [
+  {
+    q: "What is the best cold email automation alternative for a founder?",
+    a: "distribute.you, if you want the emails written, sent and answered rather than a tool to run: our AI agent finds your buyers from your website, writes each email, sends it from domains we own and answers the replies, free for one user at the API price with 0% markup.",
+  },
+  {
+    q: "Which cold email tools publish their price?",
+    a: "Instantly, Smartlead, Lemlist, Reply.io, Saleshandy, Woodpecker and Mailshake all publish the price of each plan. distribute.you prints every action's price on its catalog.",
+  },
+  {
+    q: "Do I need my own mailboxes and domains?",
+    a: "With the tools above, yes: you buy them, set them up and warm them, or buy them as an add-on. distribute.you sends from mailboxes and domains we own and warm, so your company domain never sends cold email.",
+  },
+  {
+    q: "Is there an open source cold email automation tool?",
+    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free for one user.",
+  },
+];
+
+const COLD_EMAIL_AUTOMATION_ALTERNATIVES: AlternativesCopy = {
+  cluster: COLD_EMAIL_AUTOMATION_CLUSTER,
+  rowLabel: "Tool",
+  sub: (names) => `${names} and distribute.you all help you send cold email. Here is what each one costs and how you start, read from their own sites.`,
+  seeOurs: "See our cold email automation",
+  tableHead: "Price, start and channels for each cold email tool",
+  faq: COLD_EMAIL_AUTOMATION_ALTERNATIVES_FAQ,
+  ourName: "distribute.you cold email automation",
+  stylesheet: `/landing/v2/cold-email-automation.css?v=${COLD_EMAIL_AUTOMATION_CSS_VERSION}`,
+};
+
+/** `/cold-email-automation/alternatives`: the cold email tools side by side, every figure read from their own site. */
+export function renderColdEmailAutomationAlternativesPage(): string {
+  return renderClusterAlternativesPage(COLD_EMAIL_AUTOMATION_ALTERNATIVES);
+}
 
 /** `/ai-sdr/alternatives`: the AI SDR agents side by side, every figure read from their own site. */
 export function renderAiSdrAlternativesPage(): string {

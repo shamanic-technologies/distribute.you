@@ -15,7 +15,14 @@
  * Alias-free: the unit tests import it directly.
  */
 import { agencyCompareLinks } from "./agencies";
-import { AI_LEAD_GEN_PATH, AI_SDR_PATH, aiLeadGenCompareLinks, aiSdrCompareLinks } from "./competitors";
+import {
+  AI_LEAD_GEN_PATH,
+  AI_SDR_PATH,
+  COLD_EMAIL_AUTOMATION_PATH,
+  aiLeadGenCompareLinks,
+  aiSdrCompareLinks,
+  coldEmailAutomationCompareLinks,
+} from "./competitors";
 import { leadgenCompareLinks } from "./lead-generation-agencies";
 import { ppcCompareLinks } from "./ppc-agencies";
 import { APPOINTMENT_PAGE_PATH, appointmentCompareLinks } from "./appointment-setting-agencies";
@@ -97,7 +104,16 @@ function agencyPath(slug: OutcomeSlug): string {
 }
 
 /** Pages that are served today. Everything else waits for its own PR. */
-const LIVE_PATHS = new Set<string>(["/", "/gtm-agency", "/lead-generation-agency", AI_SDR_PATH, AI_LEAD_GEN_PATH, "/ppc-agency", APPOINTMENT_PAGE_PATH]);
+const LIVE_PATHS = new Set<string>([
+  "/",
+  "/gtm-agency",
+  "/lead-generation-agency",
+  AI_SDR_PATH,
+  AI_LEAD_GEN_PATH,
+  "/ppc-agency",
+  APPOINTMENT_PAGE_PATH,
+  COLD_EMAIL_AUTOMATION_PATH,
+]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
 const GTM_AGENCY_SECTIONS = [
@@ -163,11 +179,26 @@ const AI_LEAD_GEN_SECTIONS = [
   { label: "FAQ", href: `${AI_LEAD_GEN_PATH}#faq` },
 ];
 
+/** The sections of the cold email automation page (Sales Cold Email, AI Agent buyer, PAGE-COLD-EMAIL-AUTOMATION-1030). */
+const COLD_EMAIL_AUTOMATION_SECTIONS = [
+  { label: "How it writes", href: `${COLD_EMAIL_AUTOMATION_PATH}#how` },
+  { label: "Sending", href: `${COLD_EMAIL_AUTOMATION_PATH}#sending` },
+  { label: "Price of an email", href: `${COLD_EMAIL_AUTOMATION_PATH}#prices` },
+  { label: "Cold email tools compared", href: `${COLD_EMAIL_AUTOMATION_PATH}#compare` },
+  { label: "Pricing", href: `${COLD_EMAIL_AUTOMATION_PATH}#pricing` },
+  { label: "FAQ", href: `${COLD_EMAIL_AUTOMATION_PATH}#faq` },
+];
+
 /** Per-page extras of the AI Agent pages: their own sections and vs/alternatives cluster. */
 const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "compare" | "compareTitle">>> = {
   revenue: { sections: HOME_SECTIONS },
   meetings: { sections: AI_SDR_SECTIONS, compare: aiSdrCompareLinks(), compareTitle: "Compare AI SDRs" },
   "lead-generation": { sections: AI_LEAD_GEN_SECTIONS, compare: aiLeadGenCompareLinks(), compareTitle: "Compare lead tools" },
+  "cold-email": {
+    sections: COLD_EMAIL_AUTOMATION_SECTIONS,
+    compare: coldEmailAutomationCompareLinks(),
+    compareTitle: "Compare cold email tools",
+  },
 };
 
 /**

@@ -100,23 +100,24 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "cold-email-tool",
     oneLiner: "A cold email sending platform with unlimited mailbox connections, built-in warmup and a B2B lead database.",
     sourceUrl: "https://instantly.ai/pricing",
-    verifiedOn: "2026-09-07",
-    pricingModel: "Monthly subscription per workspace. Mailboxes and domains are bought separately.",
+    verifiedOn: "2026-10-30",
+    pricingModel: "Monthly subscription for outreach, sized on emails and uploaded contacts. Lead credits are a second subscription; mailboxes and domains are bought separately.",
     entryPrice: "$47/month",
     prices: [
-      { plan: "Growth", price: "$47/month", note: "5,000 emails and 1,000 uploaded contacts a month, unlimited mailboxes and warmup" },
-      { plan: "Starter bundle", price: "$94/month", note: "5,000 emails, 1,000 contacts, 1,500 lead credits" },
-      { plan: "Scale bundle", price: "$194/month", note: "100,000 emails, 25,000 contacts, 5,000 lead credits" },
-      { plan: "Agency bundle", price: "$555/month", note: "500,000 emails, 100,000 contacts, 10,000 lead credits" },
+      { plan: "Growth", price: "$47/month", note: "5,000 emails and 1,000 uploaded contacts a month, unlimited email accounts and warmup" },
+      { plan: "Hypergrowth", price: "$97/month", note: "125,000 emails and 25,000 uploaded contacts a month, replies answered inside their Unibox" },
+      { plan: "Light Speed", price: "$358/month", note: "500,000 emails and 100,000 uploaded contacts a month, private servers and IP rotation" },
+      { plan: "Instantly Credits", price: "From $9/month", note: "150 credits a month for lead search and their AI agents, a separate subscription" },
+      { plan: "Done-for-you accounts", price: "From $4/month per account", note: "Plus $15 a year per domain, pre-warmed Google accounts at $10 a month" },
     ],
     operatedBy: "you",
     sendingDomains: "Yours. You buy the domains and mailboxes, connect them, and let their warmup run.",
     leads: "Their 450M+ contact database, on credits, or your own upload.",
-    replies: "Land in their Unibox for you to answer. An AI reply agent is on the bundles.",
+    replies: "Land in their Unibox for you to answer. Their AI Reply Agent spends 5 credits per reply.",
     channels: "Email.",
     costPerMeetingPublished: false,
-    freeTier: "14-day trial.",
-    contract: "Monthly or annual, about 10% off annual.",
+    freeTier: "14-day free trial, no card: 250 contacts and 1,000 emails.",
+    contract: "Monthly or annual, cheaper annual.",
     whereTheyWin: [
       "Volume. Half a million emails a month on the top plan, from as many mailboxes as you connect.",
       "Control. Every sequence, every send window and every warmup setting is yours to tune.",
@@ -136,7 +137,8 @@ export const COMPETITORS: readonly Competitor[] = [
       "You would rather be charged for what a campaign spent than for a seat.",
     ],
     faq: [
-      { q: "Is distribute.you a cheaper Instantly?", a: "No. Instantly is software you run; distribute.you runs the campaign for you. You never touch a mailbox, a domain or a sequence." },
+      { q: "How much does Instantly cost?", a: "Instantly's outreach plans are Growth at $47 a month, Hypergrowth at $97 and Light Speed at $358. Lead credits for their database and AI agents are a separate subscription from $9 a month. Mailboxes and domains are bought on top." },
+      { q: "Is distribute.you a cheaper Instantly?", a: "It is a different job. Instantly is software you run; our AI agent runs the campaign for you. You never touch a mailbox, a domain or a sequence, and one user is free." },
       { q: "Can I use Instantly and distribute.you together?", a: "Yes. Some clients keep Instantly for a house list and let us run the cold outreach from our own domains, so their sending reputation is never on the line." },
       { q: "Where do the replies go?", a: "To us first. We answer the interested ones until a meeting is booked, then hand the conversation to you. You still see every reply on your dashboard, including the refusals." },
     ],
@@ -340,14 +342,14 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "cold-email-tool",
     oneLiner: "A cold email sending platform with unlimited mailboxes, a shared warmup pool and agency client workspaces.",
     sourceUrl: "https://www.smartlead.ai/pricing",
-    verifiedOn: "2026-10-04",
+    verifiedOn: "2026-10-30",
     pricingModel: "Monthly subscription by contacts and sends. Mailboxes and domains are paid on top.",
     entryPrice: "$39/month",
     prices: [
-      { plan: "Base", price: "$39/month ($32.50 billed yearly)", note: "2,000 contacts, 6,000 emails a month, unlimited mailboxes" },
-      { plan: "Pro", price: "$94/month ($78.30 billed yearly)", note: "30,000 contacts, 90,000 emails a month" },
-      { plan: "Unlimited Smart", price: "$174/month ($144.50 billed yearly)", note: "Unlimited contacts, 150,000 emails a month" },
-      { plan: "Unlimited Prime", price: "$379/month ($314.60 billed yearly)", note: "Unlimited contacts, 500,000 emails a month, 3 dedicated servers" },
+      { plan: "Base", price: "$39/month ($32 billed yearly)", note: "2,000 contacts, 6,000 emails a month, unlimited mailboxes" },
+      { plan: "Pro", price: "$94/month ($78 billed yearly)", note: "30,000 contacts, 90,000 emails a month" },
+      { plan: "Unlimited Smart", price: "$174/month ($144 billed yearly)", note: "Unlimited contacts, 150,000 emails a month" },
+      { plan: "Unlimited Prime", price: "$379/month ($315 billed yearly)", note: "Unlimited contacts, 500,000 emails a month, 3 client workspaces included" },
       { plan: "Mailboxes", price: "From $3.99/mailbox/month", note: "Plus $13 to $19 per domain a year, bought through their partners" },
       { plan: "Client workspace", price: "$29/month each", note: "White label for agencies, from the Pro plan" },
     ],
@@ -357,8 +359,8 @@ export const COMPETITORS: readonly Competitor[] = [
     replies: "Land in their master inbox for you to answer.",
     channels: "Email.",
     costPerMeetingPublished: false,
-    freeTier: "14-day trial.",
-    contract: "Monthly or annual, about 17% off annual.",
+    freeTier: "Free trial on every plan, no credit card.",
+    contract: "Monthly or annual, 17% off annual.",
     whereTheyWin: [
       "Cheap volume: half a million sends a month on the top plan.",
       "Client workspaces built for agencies running many accounts.",
@@ -378,8 +380,8 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to be charged on spend, not on a plan tier you have to size.",
     ],
     faq: [
-      { q: "How much does Smartlead cost?", a: "Smartlead has four plans: Base at $39 a month, Pro at $94, Unlimited Smart at $174 and Unlimited Prime at $379. Yearly billing takes about 17% off. Mailboxes cost extra, from $3.99 each a month plus $13 to $19 per domain a year, and each agency client workspace is $29 a month." },
-      { q: "Smartlead is $39 a month. How can distribute.you compete on price?", a: "Different things are being priced. $39 buys the sending software; you still buy mailboxes, a list and someone's time. distribute.you is free for one user, and the outreach budget you choose covers all of it." },
+      { q: "How much does Smartlead cost?", a: "Smartlead has four plans: Base at $39 a month, Pro at $94, Unlimited Smart at $174 and Unlimited Prime at $379. Yearly billing takes 17% off. Mailboxes cost extra, from $3.99 each a month plus $13 to $19 per domain a year, and each agency client workspace is $29 a month." },
+      { q: "Smartlead is $39 a month. How can distribute.you compete on price?", a: "Different things are being priced. $39 buys the sending software; you still buy mailboxes, a list and someone's time. distribute.you is free for one user, and each action, from finding a buyer to sending the email, is billed at the API price with 0% markup." },
       { q: "I run an agency. Which should I use?", a: "If your team runs client outbound by hand, Smartlead's workspaces are made for you. If you want to resell outbound without staffing it, distribute.you runs each client brand as its own campaign." },
     ],
   },
@@ -390,21 +392,21 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "cold-email-tool",
     oneLiner: "A multichannel outreach platform with email, LinkedIn, calls and a 650M-lead database, sold per user.",
     sourceUrl: "https://www.lemlist.com/pricing",
-    verifiedOn: "2026-09-07",
+    verifiedOn: "2026-10-30",
     pricingModel: "Per user per month, email-only or multichannel.",
     entryPrice: "$69/month",
     prices: [
       { plan: "Email", price: "$69/month ($55 annual)", note: "50,000 emails a month, unlimited users, warmup, lead database" },
-      { plan: "Multichannel", price: "$109/user/month ($87 annual)", note: "Unlimited emails and messages, LinkedIn, SMS, WhatsApp, dialer" },
+      { plan: "Multichannel", price: "$109/user/month ($87 annual)", note: "Unlimited emails and messages, LinkedIn, SMS, a dialer, WhatsApp as an add-on" },
       { plan: "Enterprise", price: "On request", note: "Roles, SSO, dedicated manager" },
     ],
     operatedBy: "you",
     sendingDomains: "Yours, connected to their deliverability hub.",
     leads: "Their 650M+ database on credits, or your upload.",
     replies: "Land in their unified inbox for you to answer.",
-    channels: "Email, LinkedIn, SMS, WhatsApp, calls.",
+    channels: "Email, LinkedIn, SMS, calls, WhatsApp as an add-on.",
     costPerMeetingPublished: false,
-    freeTier: "14-day trial.",
+    freeTier: "14-day free trial.",
     contract: "Monthly or annual per user.",
     whereTheyWin: [
       "Five channels in one sequence.",
@@ -426,7 +428,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     faq: [
       { q: "Lemlist does LinkedIn and calls. Does distribute.you?", a: "Not yet. We run cold email and measure every outcome; other channels are added once we can measure them the same way." },
-      { q: "Is distribute.you cheaper than Lemlist?", a: "For one person, Lemlist is $69 a month plus your time. distribute.you is free for one user, every dollar you choose spent on your campaign, with the work included." },
+      { q: "Is distribute.you cheaper than Lemlist?", a: "For one person, Lemlist is $69 a month plus your time. distribute.you is free for one user, and each action is billed at the API price with 0% markup, with the work included." },
       { q: "Can I keep Lemlist for my house list?", a: "Yes. Many clients keep a tool for warm contacts and let us run cold outreach from our own domains." },
     ],
   },
@@ -811,12 +813,12 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "cold-email-tool",
     oneLiner: "A sales engagement platform and cold email outreach software with unlimited mailboxes, warmup, multichannel sequences and an AI SDR called Jason.",
     sourceUrl: "https://reply.io/pricing/",
-    verifiedOn: "2026-10-16",
+    verifiedOn: "2026-10-30",
     pricingModel: "Per user per month, email-only or multichannel, with LinkedIn and calls sold per account and an AI SDR plan on top.",
     entryPrice: "$49/user/month (annual)",
     prices: [
-      { plan: "Email Volume", price: "From $49/user/month, billed annually", note: "1,000 active contacts a month, unlimited mailboxes and emails, warmup, 50 live data credits a month" },
-      { plan: "Multichannel", price: "From $89/user/month, billed annually", note: "Unlimited active contacts, 10 mailboxes, email, LinkedIn, calls and SMS, onboarding with a CSM" },
+      { plan: "Email Volume", price: "From $49/user/month billed annually, $59 paid monthly", note: "1,000 active contacts a month, unlimited mailboxes and emails, warmup, 50 live data credits a month" },
+      { plan: "Multichannel", price: "From $89/user/month billed annually, $99 paid monthly", note: "Unlimited active contacts, 10 mailboxes, email, LinkedIn, calls and SMS, onboarding with a CSM" },
       { plan: "Jason AI SDR", price: "From $500/month", note: "An AI SDR that searches contacts, personalizes messages and drafts responses around the clock" },
       { plan: "LinkedIn add-on", price: "$69/month per account", note: "Connection requests, messages and InMails, on the Email Volume plan" },
       { plan: "Calls and SMS add-on", price: "$29/month per account", note: "Built-in dialer, automated SMS, call transcripts" },
@@ -860,7 +862,7 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "cold-email-tool",
     oneLiner: "An all-in-one cold outreach platform with unlimited email accounts, warmup, multichannel sequences and an 852M+ contact database.",
     sourceUrl: "https://www.saleshandy.com/pricing",
-    verifiedOn: "2026-10-16",
+    verifiedOn: "2026-10-30",
     pricingModel: "Monthly subscription by plan tier, sized on active prospects, emails a month and users. Ready-made mailboxes and domains are an add-on.",
     entryPrice: "$34/month (annual)",
     prices: [
@@ -909,27 +911,25 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "cold-email-tool",
     oneLiner: "A cold email and LinkedIn outreach tool for businesses that do outbound, with free warmup, email verification and unlimited team members.",
     sourceUrl: "https://woodpecker.co/pricing/",
-    verifiedOn: "2026-10-16",
-    pricingModel: "Monthly price set by how many prospects you contact each month. LinkedIn, extra warmups, mailboxes and the agency panel are add-ons.",
-    entryPrice: "$35/month",
+    verifiedOn: "2026-10-30",
+    pricingModel: "Monthly price per plan, set by how many emails you send. More emails, extra warmups, mailboxes and the agency panel are add-ons; Scale is priced on a call.",
+    entryPrice: "$39/month",
     prices: [
-      { plan: "500 contacted prospects", price: "$35/month ($280 billed yearly)", note: "8,000 emails a month, 2 warmups, unlimited email accounts, team members and email verification" },
-      { plan: "2,000 contacted prospects", price: "$67/month ($536 billed yearly)", note: "32,000 emails a month, 6 warmups" },
-      { plan: "4,000 contacted prospects", price: "$99/month ($792 billed yearly)", note: "64,000 emails a month, 10 warmups" },
-      { plan: "10,000 contacted prospects", price: "$188/month ($1,504 billed yearly)", note: "160,000 emails a month, 20 warmups" },
-      { plan: "LinkedIn outreach", price: "$29/month per LinkedIn account", note: "Invites, messages and profile visits inside the same campaigns, cloud-based" },
-      { plan: "Agency panel", price: "$27/month per active client", note: "A sub-account per client, roles, view-only client access" },
+      { plan: "Email", price: "$39/month ($26 billed annually)", note: "5,000 emails a month, 3 warmups, 100 Lead Finder credits, unlimited contacts, email accounts, team members and email verification" },
+      { plan: "Multichannel", price: "$68/month ($55 billed annually)", note: "Email and LinkedIn in one campaign: 5,000 emails a month and 1 LinkedIn account" },
+      { plan: "LinkedIn", price: "$29/month", note: "1 LinkedIn account: messages, InMails, connection requests and profile visits" },
+      { plan: "Scale", price: "Custom", note: "Higher email or LinkedIn limits, priced on a call" },
     ],
     operatedBy: "you",
-    sendingDomains: "Yours. You connect your mailboxes, or buy pre-configured addresses from $4 to $6 a month each.",
+    sendingDomains: "Yours. You connect your mailboxes, or buy mailboxes and domains from them as an add-on.",
     leads: "Their Lead Finder database on credits, or your own upload.",
     replies: "Land in their centralized inbox for you to answer.",
     channels: "Email and LinkedIn.",
     costPerMeetingPublished: false,
-    freeTier: "14-day free trial, no credit card.",
+    freeTier: "14-day free trial or 500 cold emails, whichever comes first, no credit card.",
     contract: "Monthly or annual, 33% off annual.",
     whereTheyWin: [
-      "Clear pricing: you pay by prospects contacted, with team members and email accounts free.",
+      "Clear pricing: you pay by emails sent, with team members, contacts and email accounts free.",
       "Free email verification and warmup built in, which keeps lists clean and inboxes healthy.",
       "A strong agency panel for teams running outbound for many clients.",
     ],
@@ -947,7 +947,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want every campaign A/B tested for you, with the results on your dashboard.",
     ],
     faq: [
-      { q: "How much does Woodpecker cost?", a: "Woodpecker prices by contacted prospects a month. Contacting 500 prospects costs $35 a month, 2,000 costs $67, 4,000 costs $99 and 10,000 costs $188. Annual billing saves 33%. LinkedIn outreach is $29 a month per account and the agency panel is $27 a month per active client." },
+      { q: "How much does Woodpecker cost?", a: "Woodpecker's Email plan is $39 a month for 5,000 emails, or $26 a month billed annually. Multichannel, with one LinkedIn account, is $68 a month ($55 annually), and LinkedIn alone is $29 a month. Scale is priced on a call. Annual billing saves 33%." },
       { q: "Is distribute.you a Woodpecker alternative?", a: "Yes, if you want the outreach done for you. Woodpecker is a tool your team uses to send cold email and LinkedIn messages. distribute.you runs your cold email for you: we find the buyers, write, send from our own domains and answer the interested replies." },
       { q: "Who writes the emails?", a: "In Woodpecker, you or your team write each campaign. With distribute.you, we write them from your website and A/B test every campaign, and you can review it all on the dashboard or never log in." },
     ],
@@ -959,12 +959,12 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "cold-email-tool",
     oneLiner: "An AI powered sales engagement and B2B lead platform: email automation that lands in inboxes, gets replies and books meetings, with a dialer and a data finder built in.",
     sourceUrl: "https://mailshake.com/pricing/",
-    verifiedOn: "2026-10-16",
+    verifiedOn: "2026-10-30",
     pricingModel: "Monthly or yearly subscription, billed by the number of users you buy. Data Finder and ready-to-use mailboxes are paid add-ons.",
     entryPrice: "$29/month",
     prices: [
       { plan: "Starter", price: "$29/month ($25 billed yearly)", note: "1 email address, 1,500 sends a month, unlimited contacts and warmup, 50 data finder credits" },
-      { plan: "Email Outreach", price: "$49/month ($45 billed yearly)", note: "2 email addresses, unlimited sends, email rotation, unified inbox, CRM integrations" },
+      { plan: "Email Outreach", price: "$49/month ($45 billed yearly)", note: "2 email addresses, unlimited sends, 50 data finder credits, unified inbox, CRM integrations" },
       { plan: "Sales Engagement", price: "$99/month ($85 billed yearly)", note: "10 email addresses, 5 phone numbers and a power dialer, 2,500 data finder credits" },
       { plan: "Agency Plan", price: "On request", note: "All of Sales Engagement with unlimited email addresses, through their sales team" },
       { plan: "Data Finder", price: "$19/month ($17 billed yearly)", note: "Add-on to find decision makers' contact details by role, location or company" },
@@ -1710,9 +1710,21 @@ export const AI_LEAD_GEN_ALTERNATIVES_PATH = `${AI_LEAD_GEN_PATH}/alternatives`;
 /** The lead tools searchers weigh against "ai lead generation", each price published on their site. */
 export const AI_LEAD_GEN_SLUGS: readonly string[] = ["apollo", "clay", "seamless-ai", "lusha"];
 
+/** The cold email automation page (Sales Cold Email, AI Agent buyer, PAGE-COLD-EMAIL-AUTOMATION-1030). */
+export const COLD_EMAIL_AUTOMATION_PATH = "/cold-email-automation";
+export const COLD_EMAIL_AUTOMATION_ALTERNATIVES_PATH = `${COLD_EMAIL_AUTOMATION_PATH}/alternatives`;
+
+/** The cold email tools searchers weigh against "cold email automation", each price published on their site. */
+export const COLD_EMAIL_AUTOMATION_SLUGS: readonly string[] = ["instantly", "smartlead", "lemlist", "reply-io", "saleshandy", "woodpecker", "mailshake"];
+
 export const AI_SDR_CLUSTER: CompareCluster = { path: AI_SDR_PATH, name: "AI SDR", slugs: AI_SDR_SLUGS };
 export const AI_LEAD_GEN_CLUSTER: CompareCluster = { path: AI_LEAD_GEN_PATH, name: "AI lead generation", slugs: AI_LEAD_GEN_SLUGS };
-export const COMPARE_CLUSTERS: readonly CompareCluster[] = [AI_SDR_CLUSTER, AI_LEAD_GEN_CLUSTER];
+export const COLD_EMAIL_AUTOMATION_CLUSTER: CompareCluster = {
+  path: COLD_EMAIL_AUTOMATION_PATH,
+  name: "Cold email automation",
+  slugs: COLD_EMAIL_AUTOMATION_SLUGS,
+};
+export const COMPARE_CLUSTERS: readonly CompareCluster[] = [AI_SDR_CLUSTER, AI_LEAD_GEN_CLUSTER, COLD_EMAIL_AUTOMATION_CLUSTER];
 
 /** The cluster a competitor's page sits in, if any. */
 export function clusterOf(c: Pick<Competitor, "slug">): CompareCluster | undefined {
@@ -1746,6 +1758,15 @@ export function isAiLeadGenCluster(c: Pick<Competitor, "slug">): boolean {
   return clusterOf(c) === AI_LEAD_GEN_CLUSTER;
 }
 
+/** The cold email automation page's own competitors, in that order. */
+export function coldEmailAutomationCompetitors(): Competitor[] {
+  return clusterCompetitors(COLD_EMAIL_AUTOMATION_CLUSTER);
+}
+
+export function isColdEmailAutomationCluster(c: Pick<Competitor, "slug">): boolean {
+  return clusterOf(c) === COLD_EMAIL_AUTOMATION_CLUSTER;
+}
+
 /** Where a competitor's comparison page is served. Every link to one reads this. */
 export function competitorPath(c: Pick<Competitor, "slug">): string {
   const k = clusterOf(c);
@@ -1766,6 +1787,10 @@ export function aiSdrCompareLinks(): { label: string; href: string }[] {
 
 export function aiLeadGenCompareLinks(): { label: string; href: string }[] {
   return clusterCompareLinks(AI_LEAD_GEN_CLUSTER);
+}
+
+export function coldEmailAutomationCompareLinks(): { label: string; href: string }[] {
+  return clusterCompareLinks(COLD_EMAIL_AUTOMATION_CLUSTER);
 }
 
 /** Every path the cluster serves, for the sitemap and llms.txt. */
