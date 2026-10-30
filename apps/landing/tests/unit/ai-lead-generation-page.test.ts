@@ -191,7 +191,7 @@ describe("the AI lead generation cluster", () => {
       expect(c.verifiedOn).toBe("2026-10-29");
       expect(html).toContain(`href="/ai-lead-generation/vs/${c.slug}"`);
     }
-    expect(competitorPath(competitorBySlug("instantly")!)).toBe("/compare/instantly");
+    expect(competitorPath(competitorBySlug("gojiberry")!)).toBe("/compare/gojiberry");
     expect(competitorPath(competitorBySlug("11x")!)).toBe("/ai-sdr/vs/11x");
   });
 
