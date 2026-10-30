@@ -30,10 +30,11 @@ import {
   REACTIVATION_PAGE_PATH,
   reactivationVsPath,
 } from "../reactivation-agencies";
+import { NURTURING_PAGE_PATH } from "../nurturing-tools";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
 import { AGENCY_FEE_BASE_USD, BOOK_ATTRS, CALC_SCRIPT, agencyHead, callHtml, indexCardHtml, priceHtml } from "./gtm-agency";
 
-export const REACTIVATION_CSS_VERSION = 1;
+export const REACTIVATION_CSS_VERSION = 2;
 
 /** The Agency stylesheet plus this page's own layer. */
 export function reactivationHead(): string {
@@ -111,7 +112,7 @@ function heroHtml(): string {
         <a class="btn btn-accent btn-lg" ${BOOK_ATTRS}>Book a call</a>
         <a class="btn btn-lg btn-ghost-d" href="#how">See how it works</a>
       </div>
-      <p class="ag-price-line"><b>From $1K/month + 10% of budget.</b> Live in 5 days.</p>
+      <p class="ag-price-line"><b>From $1K/month + 10% of budget.</b> Live in 5 days. <a href="${NURTURING_PAGE_PATH}">Rather run it yourself? Lead Nurturing Automation, free for one user.</a></p>
       <ul class="dra-plugs" aria-label="Tools we connect to">${CONNECTORS.map((c) => `<li>${LOGO(c.domain, 18)}${esc(c.name)}</li>`).join("")}</ul>
     </div>
     ${threadHtml()}
@@ -350,6 +351,7 @@ function faqHtml(): string {
   const links = [
     ...REACTIVATION_AGENCIES.map((a) => `<a href="${reactivationVsPath(a)}">distribute.you vs ${esc(a.name)}</a>`),
     `<a href="${REACTIVATION_ALTERNATIVES_PATH}">Database reactivation agency alternatives</a>`,
+    `<a href="${NURTURING_PAGE_PATH}">Lead Nurturing Automation</a>`,
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
