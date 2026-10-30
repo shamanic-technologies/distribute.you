@@ -27,7 +27,7 @@ export const OUR_COLD_EMAIL_ROW = {
   pricing: "From $1K a month, plus 10% of the budget you put into your campaigns. The budget pays for finding your buyers and sending to them.",
   contract: "One call to start. Your budget is a hard cap you set.",
   channels: "Cold email from our own domains and inboxes, every reply answered by our AI agents and our team.",
-  guarantee: "Every email, reply and booked meeting is counted on your dashboard, with what it came to.",
+  guarantee: "6 booked meetings in 3 months or your paid media budget back. Every email, reply and booked meeting is counted on your dashboard, with what it came to.",
   launch: "Live in 5 days from our first call.",
 } as const;
 

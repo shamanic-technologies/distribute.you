@@ -23,7 +23,7 @@ export const OUR_LEADGEN_ROW = {
   pricing: "From $1K a month, plus 10% of the budget you put into your campaigns. The budget goes to finding and contacting your leads.",
   contract: "One call to start. Your budget is a hard cap you set.",
   channels: "Leads found and judged by our AI agents, then contacted by cold email from our own domains and on WhatsApp.",
-  guarantee: "Every lead is shown with the reason it fits, and every reply and visit it brings is counted.",
+  guarantee: "6 booked meetings in 3 months or your paid media budget back. Every lead is shown with the reason it fits, and every reply and visit it brings is counted.",
   launch: "First leads in 5 days from our first call.",
 } as const;
 
