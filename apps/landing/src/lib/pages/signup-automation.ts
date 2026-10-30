@@ -460,7 +460,7 @@ function agentHtml(): string {
       <div class="copy-boxes" data-motion="reveal" data-motion-stagger>
         <div class="copy-box">
           <div class="copy-head"><span>Claude Code</span><button class="copy-btn" type="button" data-copy>Copy</button></div>
-          <pre><code>claude mcp add --transport http distribute https://mcp.distribute.you/mcp --header "Authorization: Bearer distrib.usr_YOUR_KEY"</code></pre>
+          <pre><code>claude mcp add --transport http distribute https://mcp.distribute.you/mcp</code></pre>
         </div>
         <div class="copy-box">
           <div class="copy-head"><span>Then ask</span><button class="copy-btn" type="button" data-copy>Copy</button></div>

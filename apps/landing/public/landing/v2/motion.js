@@ -6,7 +6,8 @@
     <span data-motion="count-up">$4.21    counts up to the number already printed
     <div data-motion="marquee">           children loop sideways (data-motion-axis="y": upward, data-motion-reverse),
                                           pause on hover and on a [data-motion-pause="<id>"] button
-    <div data-motion="sticky-story">      pins, steps through [data-step] children (adds .is-active)
+    <div data-motion="sticky-story">      steps through [data-step] children (adds .is-active) as each crosses the
+                                          reading line; the page keeps scrolling, nothing pins
     <div data-motion="scrub">             sets --scrub 0..1 as the element crosses the viewport
     <div data-motion="orbit">             children (centred at left/top 50%) circle the centre, kept upright
     <p data-motion="typewriter">          types its own text
@@ -140,12 +141,19 @@
     "sticky-story": function (el, gsap) {
       var steps = toArray(el.querySelectorAll("[data-step]"));
       if (!steps.length) return;
-      steps.forEach(function (s, i) { s.classList.toggle("is-active", i === 0); });
+      function activate(at) { steps.forEach(function (s, i) { s.classList.toggle("is-active", i === at); }); }
+      activate(0);
+      // No pin (owner 2026-10-31: a section frozen for 2.4 screens read as "scrolling is
+      // broken", worst on mobile where the scene panel is hidden). Each step lights up
+      // when it reaches the reading line, and the page scrolls on under the visitor.
+      // The active step is the last one whose top has passed the line, read on every update
+      // (a fast wheel jumps past a whole step between two frames: a per-step toggle missed it).
       window.ScrollTrigger.create({
-        trigger: el, start: "top top", end: "+=" + steps.length * 60 + "%", pin: true,
-        onUpdate: function (self) {
-          var at = Math.min(steps.length - 1, Math.floor(self.progress * steps.length));
-          steps.forEach(function (s, i) { s.classList.toggle("is-active", i === at); });
+        trigger: el, start: "top bottom", end: "bottom top",
+        onUpdate: function () {
+          var line = window.innerHeight * 0.65, at = 0;
+          steps.forEach(function (s, i) { if (s.getBoundingClientRect().top <= line) at = i; });
+          activate(at);
         },
       });
     },
