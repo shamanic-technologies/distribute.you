@@ -92,6 +92,25 @@ export const OpsInfraSchema = z.object({
       }),
     )
     .optional(),
+  /**
+   * The same per pool, per UTC day over 90 days, stored by instantly-service (`send_pool_daily`, a sample every 15 min,
+   * v0.83.158). `sendableMin` = the day's lowest sample (a few hours at 0 read 0); null on a day with no sample.
+   */
+  sendPoolHistory: z
+    .array(
+      z.object({
+        pool: z.string(),
+        days: z.array(
+          z.object({
+            day: z.string(),
+            sendableMin: z.number().nullable(),
+            sendableLast: z.number().nullable(),
+            byVendor: z.record(z.string(), z.number()).nullable(),
+          }),
+        ),
+      }),
+    )
+    .optional(),
 });
 export type OpsInfra = z.infer<typeof OpsInfraSchema>;
 export type OpsPool = OpsInfra["pools"][number];
@@ -139,6 +158,18 @@ export const emptySendPools = (infra: OpsInfra): SendPool[] => sendPools(infra).
 
 /** Who sends from a pool, in words. A reserved pool prints its feature as served. */
 export const sendPoolWord = (pool: string) => (pool === "shared" ? "Every org" : pool);
+
+export type SendPoolHistory = NonNullable<OpsInfra["sendPoolHistory"]>[number];
+export type SendPoolDay = SendPoolHistory["days"][number];
+
+/** Every pool's stored daily series, as served; an older instantly-service serves none. */
+export const sendPoolHistory = (infra: OpsInfra): SendPoolHistory[] => infra.sendPoolHistory ?? [];
+
+/** A day the pool fell to zero at least once: red. A day with no sample is not a zero. */
+export const poolWasEmpty = (d: SendPoolDay) => d.sendableMin === 0;
+
+/** The vendors of a series, in the order their mailboxes appear first in it (stable bar colours). */
+export const seriesVendors = (h: SendPoolHistory): string[] => [...new Set(h.days.flatMap((d) => Object.keys(d.byVendor ?? {})))].sort();
 
 /** A pool's mailboxes per vendor, largest first: "13 Primeforge, 2 Gandi". Sorting and lookup only. */
 export const sendPoolVendors = (p: SendPool) =>
