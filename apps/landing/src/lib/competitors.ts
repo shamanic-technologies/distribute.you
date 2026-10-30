@@ -1573,9 +1573,9 @@ export const COMPETITORS: readonly Competitor[] = [
     name: "Default",
     domain: "default.com",
     category: "inbound-routing",
-    oneLiner: "Marketing infrastructure for go-to-market teams: one platform to manage workflows, enrich records, route leads and schedule meetings.",
+    oneLiner: "The inbound engine for go-to-market teams: one platform to manage workflows, enrich records, route leads and schedule meetings.",
     sourceUrl: "https://www.default.com/pricing",
-    verifiedOn: "2026-10-16",
+    verifiedOn: "2026-10-30",
     pricingModel: "Annual platform plan with included enrichment credits and workflow runs, plus a yearly price per user seat.",
     entryPrice: "$12,000/year",
     prices: [
@@ -1586,7 +1586,7 @@ export const COMPETITORS: readonly Competitor[] = [
       { plan: "Extra enrichment credits", price: "$0.10 per credit", note: "One credit is one call to one data provider" },
     ],
     operatedBy: "you",
-    sendingDomains: "Not a cold email sender. Outbound sequences run through the tools you connect.",
+    sendingDomains: "Not a cold email sender. Its workflows add leads to the sequences you run in the tools you connect.",
     leads: "Leads that already reach you: form fills, website visitors, product signups, plus your CRM records.",
     replies: "Handled by your reps. Default routes and books the meeting with the right owner.",
     channels: "Inbound forms, lead routing, scheduling, enrichment and workflows across your CRM.",
@@ -1661,7 +1661,102 @@ export const COMPETITORS: readonly Competitor[] = [
       { q: "Is distribute.you a Frontrunner alternative?", a: "For cold email, yes. Frontrunner gives your team AI agents that act across your GTM stack. distribute.you runs your cold email for you: we find the buyers, write and send from our own domains, and answer the interested replies until the meeting is booked." },
       { q: "Do I need my own sales tools to get started?", a: "Not with distribute.you. We bring the lists, the mailboxes and the sending, and the software is optional. Frontrunner works on top of the CRM, sequencers and inboxes you already have, so the agents are only as wide as your stack." },
     ],
-  }
+  },
+  {
+    slug: "unify",
+    name: "Unify",
+    domain: "unifygtm.com",
+    category: "sales-engagement",
+    oneLiner: "Outbound agents for every rep: AI prospecting on a database of 1.1B+ people and 65M+ companies, with signals, sequences and a dialer.",
+    sourceUrl: "https://www.unifygtm.com/pricing",
+    verifiedOn: "2026-10-30",
+    pricingModel: "Per seat per month, with credits for enrichment. A free plan, monthly Base and Pro plans, and a custom Business plan billed annually.",
+    entryPrice: "Free plan, then $20/seat/month",
+    prices: [
+      { plan: "Free", price: "$0, free forever", note: "Limited credits, up to 3 seats, 1 mailbox per seat, 100 records per search" },
+      { plan: "Base", price: "$20/seat/month, billed monthly", note: "800 credits per seat a month, AI email copywriting, job change and hiring signals, phone and email enrichment" },
+      { plan: "Pro", price: "$60/seat/month, billed monthly", note: "2,400 credits per seat a month, read-only HubSpot and Salesforce sync, Slack notifications" },
+      { plan: "Business", price: "On request, billed annually", note: "A custom credit pool, managed Gmail and Outlook mailboxes, website intent and product signals, a power dialer" },
+    ],
+    operatedBy: "their AI agent",
+    sendingDomains: "One mailbox per seat on Free, Base and Pro. Managed Gmail and Outlook mailboxes, with warmup and rotation, on the custom Business plan.",
+    leads: "Their database of 1.1B+ people and 65M+ companies from 40+ data sources, with signals such as job changes, funding, hiring and web visits.",
+    replies: "Their site does not say who answers. Your reps work the email, call and social tasks of each sequence.",
+    channels: "Email, calls and social tasks in one sequence.",
+    costPerMeetingPublished: false,
+    freeTier: "Free forever plan with limited credits, and a 14-day Pro trial with no card.",
+    contract: "Base and Pro billed monthly; Business billed annually.",
+    whereTheyWin: [
+      "A big database: 1.1B+ people and 65M+ companies, enriched through 40+ data sources.",
+      "Signals your reps can act on: job changes, funding, hiring, web visits and tech stack.",
+      "A real free plan, and paid seats from $20 a month.",
+    ],
+    whereWeWin: [
+      "We run the whole go-to-market: we find the buyers, write, send from our own domains, answer and book the meeting, so no rep has to work a queue.",
+      "Sending comes with every plan, from domains we own and warm, with nothing to set up.",
+      "One user is free, every action is at the API price with 0% markup, and the code is open source.",
+    ],
+    chooseThemIf: [
+      "You have reps who will work sequences, calls and social tasks every day.",
+      "You want a large contact database inside a sales engagement tool.",
+    ],
+    chooseUsIf: [
+      "You are a founder without a sales team, and want buyers contacted and answered for you.",
+      "You would rather pay each action at the API price than a seat.",
+    ],
+    faq: [
+      { q: "How much does Unify cost?", a: "Unify has a free plan with limited credits. Base is $20 per seat a month with 800 credits per seat, Pro is $60 per seat a month with 2,400 credits per seat, and Business is a custom plan billed annually with managed mailboxes." },
+      { q: "Is distribute.you a Unify alternative?", a: "Yes, if you want the work done rather than tools for reps. Unify gives your reps AI agents, a database and sequences to work. distribute.you runs your go-to-market for you: we find the buyers, write and send from our own domains, and answer the interested replies until the meeting is booked." },
+      { q: "Do I need my own mailboxes?", a: "With distribute.you, no: we send from mailboxes and domains we own and warm, on every plan. Unify includes one mailbox per seat, and managed mailboxes on its custom Business plan." },
+    ],
+  },
+  {
+    slug: "common-room",
+    name: "Common Room",
+    domain: "commonroom.io",
+    category: "data-platform",
+    oneLiner: "Buyer intelligence that turns intent into pipeline: signals, a 400M+ contact directory and AI agents in one platform.",
+    sourceUrl: "https://www.commonroom.io/pricing/",
+    verifiedOn: "2026-10-30",
+    pricingModel: "Annual plans with seats, contacts and AI credits included. Essential has a published price; Advanced and Enterprise are custom.",
+    entryPrice: "$2,500/month, billed annually",
+    prices: [
+      { plan: "Essential", price: "$2,500/month, billed annually", note: "5 seats, up to 100k contacts, 5k RoomieAI research credits, 2.5k Prospector credits, a shared CSM" },
+      { plan: "Advanced", price: "On request", note: "15 seats, up to 250k contacts, 7.5k research credits, 7.5k Prospector credits, a dedicated CSM" },
+      { plan: "Enterprise", price: "On request", note: "30 seats, up to 750k contacts, 10k research credits, 15k Prospector credits, every integration" },
+    ],
+    operatedBy: "you",
+    sendingDomains: "Not a sender itself. Sequences run in the sales engagement platform you connect, such as Outreach.",
+    leads: "Signals from your website, community, social, job changes and product, plus a 400M+ contact directory with waterfall enrichment.",
+    replies: "Handled by your reps, in the sales engagement platform you connect.",
+    channels: "Signals and alerts in Salesforce, Slack, email and a browser extension; outreach through your sequencer.",
+    costPerMeetingPublished: false,
+    freeTier: "None listed. Start with a demo.",
+    contract: "Billed annually.",
+    whereTheyWin: [
+      "Signals from many places at once: website visits, community, social, job changes and product usage.",
+      "Research and scoring on every account, inside Salesforce and Slack.",
+      "An MCP server on every plan, so your own agents can read their data.",
+    ],
+    whereWeWin: [
+      "We act on the buyer, not only spot them: we write, send from our own domains, answer and book the meeting.",
+      "One user is free and every action is at the API price with 0% markup, with no annual plan.",
+      "Nothing to connect: sending, replies and follow up come with the agent.",
+    ],
+    chooseThemIf: [
+      "You have a sales team and many signal sources, and want them scored and routed.",
+      "You run a community or a product with lots of activity to read.",
+    ],
+    chooseUsIf: [
+      "You want new buyers contacted and answered this week, without a sales team.",
+      "You want to start free and pay as you go.",
+    ],
+    faq: [
+      { q: "How much does Common Room cost?", a: "Essential is $2,500 a month, billed annually, with 5 seats, up to 100k contacts and 5k research credits. Advanced and Enterprise are priced on request." },
+      { q: "Is distribute.you a Common Room alternative?", a: "For outbound, yes. Common Room finds and scores buyers for your reps to work in their own tools. distribute.you does the work: we find the buyers, write and send from our own domains, and answer the interested replies until the meeting is booked." },
+      { q: "Can I use Common Room and distribute.you together?", a: "Yes. Common Room keeps reading the signals your website and community send. distribute.you reaches the buyers who have not shown up yet, and books the interested ones." },
+    ],
+  },
 ];
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -1716,6 +1811,19 @@ export const COLD_EMAIL_AUTOMATION_ALTERNATIVES_PATH = `${COLD_EMAIL_AUTOMATION_
 /** The cold email tools searchers weigh against "cold email automation", each price published on their site. */
 export const COLD_EMAIL_AUTOMATION_SLUGS: readonly string[] = ["instantly", "smartlead", "lemlist", "reply-io", "saleshandy", "woodpecker", "mailshake"];
 
+/** The GTM automation page (GTM, AI Agent buyer, PAGE-GTM-AUTOMATION-1030), the umbrella of the AI Agent pages. */
+export const GTM_AUTOMATION_PATH = "/gtm-automation";
+export const GTM_AUTOMATION_ALTERNATIVES_PATH = `${GTM_AUTOMATION_PATH}/alternatives`;
+
+/**
+ * The GTM platforms searchers weigh against "gtm automation", each price published on their
+ * site. Clay, a GTM platform too, stays in the AI lead generation cluster; the GTM page links it there.
+ */
+export const GTM_AUTOMATION_SLUGS: readonly string[] = ["default", "unify", "common-room"];
+
+/** GTM tools compared on the GTM page whose own page lives in another cluster. */
+export const GTM_AUTOMATION_ALSO: readonly string[] = ["clay"];
+
 export const AI_SDR_CLUSTER: CompareCluster = { path: AI_SDR_PATH, name: "AI SDR", slugs: AI_SDR_SLUGS };
 export const AI_LEAD_GEN_CLUSTER: CompareCluster = { path: AI_LEAD_GEN_PATH, name: "AI lead generation", slugs: AI_LEAD_GEN_SLUGS };
 export const COLD_EMAIL_AUTOMATION_CLUSTER: CompareCluster = {
@@ -1723,7 +1831,13 @@ export const COLD_EMAIL_AUTOMATION_CLUSTER: CompareCluster = {
   name: "Cold email automation",
   slugs: COLD_EMAIL_AUTOMATION_SLUGS,
 };
-export const COMPARE_CLUSTERS: readonly CompareCluster[] = [AI_SDR_CLUSTER, AI_LEAD_GEN_CLUSTER, COLD_EMAIL_AUTOMATION_CLUSTER];
+export const GTM_AUTOMATION_CLUSTER: CompareCluster = { path: GTM_AUTOMATION_PATH, name: "GTM automation", slugs: GTM_AUTOMATION_SLUGS };
+export const COMPARE_CLUSTERS: readonly CompareCluster[] = [
+  AI_SDR_CLUSTER,
+  AI_LEAD_GEN_CLUSTER,
+  COLD_EMAIL_AUTOMATION_CLUSTER,
+  GTM_AUTOMATION_CLUSTER,
+];
 
 /** The cluster a competitor's page sits in, if any. */
 export function clusterOf(c: Pick<Competitor, "slug">): CompareCluster | undefined {
@@ -1766,6 +1880,20 @@ export function isColdEmailAutomationCluster(c: Pick<Competitor, "slug">): boole
   return clusterOf(c) === COLD_EMAIL_AUTOMATION_CLUSTER;
 }
 
+/** The GTM automation page's own competitors, in that order. */
+export function gtmAutomationCompetitors(): Competitor[] {
+  return clusterCompetitors(GTM_AUTOMATION_CLUSTER);
+}
+
+/** The GTM tools the GTM page sets side by side: its own cluster, then the ones compared on another page. */
+export function gtmAutomationTableCompetitors(): Competitor[] {
+  return [...gtmAutomationCompetitors(), ...GTM_AUTOMATION_ALSO.map((slug) => competitorBySlug(slug)).filter((c): c is Competitor => !!c)];
+}
+
+export function isGtmAutomationCluster(c: Pick<Competitor, "slug">): boolean {
+  return clusterOf(c) === GTM_AUTOMATION_CLUSTER;
+}
+
 /** Where a competitor's comparison page is served. Every link to one reads this. */
 export function competitorPath(c: Pick<Competitor, "slug">): string {
   const k = clusterOf(c);
@@ -1790,6 +1918,10 @@ export function aiLeadGenCompareLinks(): { label: string; href: string }[] {
 
 export function coldEmailAutomationCompareLinks(): { label: string; href: string }[] {
   return clusterCompareLinks(COLD_EMAIL_AUTOMATION_CLUSTER);
+}
+
+export function gtmAutomationCompareLinks(): { label: string; href: string }[] {
+  return clusterCompareLinks(GTM_AUTOMATION_CLUSTER);
 }
 
 /** Every path the cluster serves, for the sitemap and llms.txt. */
