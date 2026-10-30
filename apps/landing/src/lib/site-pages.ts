@@ -29,6 +29,7 @@ import { ppcCompareLinks } from "./ppc-agencies";
 import { APPOINTMENT_PAGE_PATH, appointmentCompareLinks } from "./appointment-setting-agencies";
 import { REACTIVATION_PAGE_PATH, reactivationCompareLinks } from "./reactivation-agencies";
 import { CS_PAGE_PATH, csCompareLinks } from "./customer-success-agencies";
+import { NURTURING_PAGE_PATH, nurturingCompareLinks } from "./nurturing-tools";
 
 export type Buyer = "agent" | "agency";
 
@@ -121,6 +122,7 @@ const LIVE_PATHS = new Set<string>([
   COLD_EMAIL_AUTOMATION_PATH,
   REACTIVATION_PAGE_PATH,
   CS_PAGE_PATH,
+  NURTURING_PAGE_PATH,
 ]);
 
 /** The sections of the GTM Agency page (PAGE-REVENUE-AGENCY-1029, moved to /gtm-agency). */
@@ -217,6 +219,16 @@ const AI_LEAD_GEN_SECTIONS = [
   { label: "FAQ", href: `${AI_LEAD_GEN_PATH}#faq` },
 ];
 
+/** The sections of the Lead Nurturing Automation page (Lead Nurturing, AI Agent buyer, PAGE-LEAD-NURTURING-AUTOMATION-1030). */
+const NURTURING_SECTIONS = [
+  { label: "How it nurtures", href: `${NURTURING_PAGE_PATH}#how` },
+  { label: "Signals it acts on", href: `${NURTURING_PAGE_PATH}#signals` },
+  { label: "Price of a message", href: `${NURTURING_PAGE_PATH}#prices` },
+  { label: "Nurturing tools compared", href: `${NURTURING_PAGE_PATH}#compare` },
+  { label: "Pricing", href: `${NURTURING_PAGE_PATH}#pricing` },
+  { label: "FAQ", href: `${NURTURING_PAGE_PATH}#faq` },
+];
+
 /** The sections of the cold email automation page (Sales Cold Email, AI Agent buyer, PAGE-COLD-EMAIL-AUTOMATION-1030). */
 const COLD_EMAIL_AUTOMATION_SECTIONS = [
   { label: "How it writes", href: `${COLD_EMAIL_AUTOMATION_PATH}#how` },
@@ -237,6 +249,7 @@ const AGENT_EXTRAS: Partial<Record<OutcomeSlug, Pick<SitePage, "sections" | "com
     compare: coldEmailAutomationCompareLinks(),
     compareTitle: "Compare cold email tools",
   },
+  "lead-nurturing": { sections: NURTURING_SECTIONS, compare: nurturingCompareLinks(), compareTitle: "Compare nurturing tools" },
 };
 
 /**

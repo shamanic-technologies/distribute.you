@@ -12,6 +12,8 @@
 /* ---------- Hero ---------- */
 .dra-hero .ag-hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); }
 .dra-hero h1 { font-size: clamp(38px, 4.4vw, 58px); }
+.dra-hero .ag-price-line a { color: rgba(255, 255, 255, 0.86); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, 0.3); }
+.dra-hero .ag-price-line a:hover { color: #fff; }
 .dra-plugs { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
 .dra-plugs li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 100px; font-size: 13px; color: rgba(255, 255, 255, 0.82); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
 .dra-plugs img { border-radius: 4px; }

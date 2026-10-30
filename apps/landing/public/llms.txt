@@ -196,6 +196,12 @@ you run; we run the campaign.
 - [vs Stealth Agents](https://distribute.you/customer-success-agency/vs/stealth-agents)
 - [vs VA Masters](https://distribute.you/customer-success-agency/vs/va-masters)
 - [vs South](https://distribute.you/customer-success-agency/vs/south)
+- [Lead nurturing automation](https://distribute.you/lead-nurturing-automation): our AI lead nurturing agent, which reads your Clerk, Stripe, PostHog or GoHighLevel and writes to each lead by email or WhatsApp when they visit, sign up or pay
+- [Lead nurturing automation alternatives](https://distribute.you/lead-nurturing-automation/alternatives)
+- [vs ActiveCampaign](https://distribute.you/lead-nurturing-automation/vs/activecampaign)
+- [vs HubSpot Marketing Hub](https://distribute.you/lead-nurturing-automation/vs/hubspot-marketing-hub)
+- [vs Customer.io](https://distribute.you/lead-nurturing-automation/vs/customer-io)
+- [vs Brevo](https://distribute.you/lead-nurturing-automation/vs/brevo)
 - [AI lead generation](https://distribute.you/ai-lead-generation): our AI lead generation agent, which finds your leads, judges each one, checks the email and writes to them
 - [AI lead generation alternatives](https://distribute.you/ai-lead-generation/alternatives)
 - [vs Apollo.io](https://distribute.you/ai-lead-generation/vs/apollo)
