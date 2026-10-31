@@ -2,6 +2,9 @@ import { renderedResponse } from "@/lib/static-html";
 import { renderGtmAutomationPage, withGtmPrices } from "@/lib/pages/gtm-automation";
 import { withActionPrices } from "@/lib/pages/home-agent";
 import { fetchPlatformPrices } from "@/lib/platform-prices";
+import { fetchPathFinderData } from "@/lib/path-finder-data";
+import { withPathFinder } from "@/lib/pages/gtm-path-finder";
+import { SIGN_UP } from "@/lib/v2-shell";
 
 // Literal (Next reads it statically): the fleet indexes and the client counts the page
 // states record a new day every hour.
@@ -15,8 +18,10 @@ export const revalidate = 1800;
  */
 export async function GET(request: Request) {
   const prices = await fetchPlatformPrices("/gtm-automation");
-  return renderedResponse(withActionPrices(withGtmPrices(renderGtmAutomationPage(), prices), prices), request, {
+  const paths = await fetchPathFinderData("/gtm-automation", prices);
+  const page = withPathFinder(withActionPrices(withGtmPrices(renderGtmAutomationPage(), prices), prices), paths, SIGN_UP);
+  return renderedResponse(page, request, {
     canonicalPath: "/gtm-automation",
-    sMaxAge: prices ? 1800 : 60,
+    sMaxAge: prices && paths ? 1800 : 60,
   });
 }

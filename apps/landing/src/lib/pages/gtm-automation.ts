@@ -38,6 +38,7 @@ import { SITE, SIGN_UP, WHY, breadcrumb, esc, shell } from "../v2-shell";
 import { type PlatformPrice } from "./catalog";
 import { actionPrices } from "./home-agent";
 import { AGENT_CSS_VERSION, AI_SDR_CSS_VERSION, proofHtml, quotesHtml } from "./ai-sdr";
+import { PATH_FINDER_CSS_VERSION, PATH_FINDER_JS_VERSION, PATH_FINDER_TOKEN } from "./gtm-path-finder";
 
 export const GTM_AUTOMATION_CSS_VERSION = 1;
 
@@ -51,7 +52,9 @@ const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 function head(): string {
   return `<link rel="stylesheet" href="/landing/v2/agent.css?v=${AGENT_CSS_VERSION}">
 <link rel="stylesheet" href="/landing/v2/ai-sdr.css?v=${AI_SDR_CSS_VERSION}">
-<link rel="stylesheet" href="/landing/v2/gtm-automation.css?v=${GTM_AUTOMATION_CSS_VERSION}">`;
+<link rel="stylesheet" href="/landing/v2/gtm-automation.css?v=${GTM_AUTOMATION_CSS_VERSION}">
+<link rel="stylesheet" href="/landing/v2/path-finder.css?v=${PATH_FINDER_CSS_VERSION}">
+<script src="/landing/v2/path-finder.js?v=${PATH_FINDER_JS_VERSION}" defer></script>`;
 }
 
 /** The Agency twin, linked only while its catalogue entry is live. */
@@ -644,6 +647,7 @@ export function renderGtmAutomationPage(): string {
     bodyClass: "gtm",
     body: [
       heroHtml(),
+      PATH_FINDER_TOKEN,
       showcaseHtml(),
       stripHtml(),
       outcomesHtml(),
