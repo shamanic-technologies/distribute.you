@@ -137,6 +137,85 @@ export type FactoryChangeSide = z.infer<typeof ChangeSideSchema>;
  * broken), `not_yet` (normal colours: waiting on a first price or a catalogue line), `ok`; the served one-sentence
  * `stateDetail`; and `change` when the plan differs. Nullish: a body from an older build carries none of them.
  */
+// ─── Engine per outcome, SHADOW (features-service ENGINE-PER-OUTCOME-SHADOW, owner 2026-10-31) ─────────────
+// Per candidate place (each leg of the line a campaign runs: the outcome it calls), today's pick (the running pipe and its
+// best-ROI workflow) beside the Engine's (Thompson sampling on value per dollar over every workflow of every pipe making
+// that outcome). Served on Monitoring as `engine`; every figure below is served, none computed here.
+
+const EnginePickRefSchema = z
+  .object({ candidateId: z.string(), pipeId: z.string(), channelName: z.string(), workflowDynastySlug: z.string(), workflowDynastyName: z.string().nullable() })
+  .passthrough();
+
+const EnginePlaceSummarySchema = z
+  .object({
+    outcome: z.string(),
+    outcomeName: z.string(),
+    consumer: z.string(),
+    consumerName: z.string(),
+    today: EnginePickRefSchema.nullable(),
+    todayUnavailableReason: z.string().nullable(),
+    engine: EnginePickRefSchema.nullable(),
+    engineModal: EnginePickRefSchema.nullable(),
+    agrees: z.boolean().nullable(),
+    todayPickSharePct: num.nullable(),
+    state: z.string(),
+    candidates: num,
+  })
+  .passthrough();
+
+const CampaignEngineSchema = z
+  .object({
+    status: z.string(),
+    failure: z.string().nullable(),
+    comparable: num,
+    agreed: num,
+    expectedAgreementPct: num.nullable(),
+    places: z.array(EnginePlaceSummarySchema),
+  })
+  .passthrough();
+
+const EngineReplayFamilySchema = z
+  .object({
+    outcome: z.string(),
+    outcomeName: z.string(),
+    candidates: num,
+    graded: num,
+    windowDecisions: num,
+    bestValuePerDollar: num.nullable(),
+    todayRegret: num.nullable(),
+    todayValuePerDollar: num.nullable(),
+    todayUngradedPct: num.nullable(),
+    engineRegret: num.nullable(),
+    engineValuePerDollar: num.nullable(),
+    engineUngradedPct: num.nullable(),
+    regretGain: num.nullable(),
+    reason: z.string().nullable(),
+  })
+  .passthrough();
+
+export const EngineMonitoringSchema = z
+  .object({
+    verdict: z.object({ red: z.boolean(), reasons: z.array(z.string()) }).passthrough(),
+    last: z.object({ day: z.string(), places: num, agreed: num, agreementPct: num.nullable(), expectedAgreementPct: num.nullable(), failed: num }).passthrough().nullable(),
+    series: z.array(z.object({ day: z.string(), places: num, agreed: num, disagreed: num.optional(), agreementPct: num.nullable(), expectedAgreementPct: num.nullable(), failed: num }).passthrough()),
+    problems: z.array(z.object({ campaignId: z.string(), orgId: z.string(), brandId: z.string(), salesFunnelName: z.string(), failure: z.string().nullable() }).passthrough()),
+    replay: z
+      .object({
+        computedAt: z.string(),
+        windowDays: num,
+        families: z.array(EngineReplayFamilySchema),
+        totals: z.object({ todayRegret: num.nullable(), engineRegret: num.nullable(), regretGain: num.nullable(), families: num }).passthrough(),
+        failure: z.string().nullable(),
+      })
+      .passthrough()
+      .nullable(),
+  })
+  .passthrough();
+export type EngineMonitoring = z.infer<typeof EngineMonitoringSchema>;
+export type EngineReplayFamily = NonNullable<EngineMonitoring["replay"]>["families"][number];
+export type CampaignEngine = z.infer<typeof CampaignEngineSchema>;
+export type EnginePlaceSummary = CampaignEngine["places"][number];
+
 const MonitoringCampaignSchema = z
   .object({
     campaignId: z.string(),
@@ -153,6 +232,7 @@ const MonitoringCampaignSchema = z
     stateDetail: z.string().nullish(),
     target: z.string().nullish(),
     change: z.object({ running: ChangeSideSchema, best: ChangeSideSchema }).passthrough().nullish(),
+    engine: CampaignEngineSchema.nullish(),
   })
   .passthrough();
 
@@ -196,6 +276,8 @@ export const FactoryShadowMonitoringSchema = z
     // The last pass's campaigns in `state: problem` (red) and `state: not_yet` (normal colours), as served.
     problems: z.array(MonitoringCampaignSchema).optional(),
     notYet: z.array(MonitoringCampaignSchema).optional(),
+    // Absent until features-service serves the Engine shadow (additive rollout).
+    engine: EngineMonitoringSchema.optional(),
   })
   .passthrough();
 export type FactoryShadowMonitoring = z.infer<typeof FactoryShadowMonitoringSchema>;
@@ -292,4 +374,24 @@ export function stateSentence(c: FactoryShadowMonitoringCampaign): string {
   const reason = c.stateReason ?? c.failure;
   if (!reason) return c.state ?? c.status;
   return STATE_REASON_WORDS[reason] ?? unavailableWords(reason) ?? reason;
+}
+
+const ENGINE_REASON_WORDS: Record<string, string> = {
+  engine_failed: "the Engine could not be computed for a campaign",
+  replay_failed: "the 30-day replay failed",
+};
+
+/** A served Engine verdict reason in plain words; an unknown one reads as served. */
+export function engineReasonWords(code: string): string {
+  return ENGINE_REASON_WORDS[code] ?? code;
+}
+
+/** Regret (0..1, served) as a whole percent of each dollar's value lost; null stays null. */
+export function regretPct(v: number | null | undefined): string | null {
+  return v == null ? null : `${Math.round(v * 100)}%`;
+}
+
+/** The last pass's campaign places where both picks exist, in served order (campaign order, then line order). */
+export function enginePlaceRows(data: FactoryShadowMonitoring): Array<{ campaign: FactoryShadowMonitoringCampaign; place: EnginePlaceSummary }> {
+  return data.campaigns.flatMap((c) => (c.engine?.places ?? []).map((place) => ({ campaign: c, place })));
 }
