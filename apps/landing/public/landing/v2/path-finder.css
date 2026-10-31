@@ -1,0 +1,149 @@
+/* GTM path finder (GTM-PATH-FINDER-1031): a copy of treg.to/search (SearchPage-*.css,
+   captured 2026-10-31), values kept as treg ships them, recoloured to the charter blue.
+   Markup: src/lib/pages/gtm-path-finder.ts. Behaviour: path-finder.js (matter.js pile).
+   Title face: Geist Pixel Square by Vercel, SIL Open Font License 1.1, self-hosted in vendor/. */
+@font-face {
+  font-family: "Geist Pixel";
+  src: url("/landing/v2/vendor/GeistPixel-Square.woff2") format("woff2");
+  font-display: swap;
+}
+.pf {
+  --l-bg: #f4f5f8; --l-surface: #fff; --l-ink: #1a1a1a; --l-muted: #7c7c7c; --l-muted2: #989898;
+  --l-line: #2626231a; --l-line2: #25252233; --l-inverse: #1a1a1a; --l-inverse-ink: #f8f8f7;
+  --l-shadow-sm: 0 1px 2px #00000014;
+  --l-shadow-md: 0 1px 2px -1px #0000000a, 0 4px 6px -1px #0000000f;
+  --l-shadow-lg: 0 1px 2px -1px #0000000a, 0 4px 6px -1px #0000000f, 0 8px 16px #0000000a;
+  --l-ease: cubic-bezier(.2,.72,.25,1);
+  box-sizing: border-box; background: var(--l-bg); min-height: 560px; color: var(--l-ink);
+  font-family: var(--font-body); flex-direction: column; align-items: center; gap: 18px;
+  padding: 88px 20px 0; display: flex; position: relative; overflow: hidden;
+}
+.pf::before {
+  content: ""; pointer-events: none; z-index: 0; position: absolute; inset: 0 0 auto; height: 75%;
+  background: radial-gradient(at 50% 20%, #d6e2fb85, #0000 65%);
+}
+.pf-top { z-index: 3; justify-content: center; align-items: center; width: 100%; max-width: 1160px; display: flex; position: relative; }
+.pf-hero { text-align: center; flex-direction: column; align-items: center; gap: 26px; transition: opacity .3s; display: flex; }
+.pf.answered .pf-hero { display: none; }
+.pf-count {
+  font-family: var(--font-mono); letter-spacing: .08em; color: var(--l-muted); border: 1px solid var(--l-line2);
+  background: var(--l-surface); border-radius: 999px; padding: 5px 15px; font-size: 12px; display: inline-block;
+}
+.pf-hero h2 {
+  font-family: "Geist Pixel", var(--font-mono); letter-spacing: 0; margin: 0;
+  font-size: clamp(30px, 4.4vw, 56px); font-weight: 400; line-height: 1.16; color: var(--l-ink);
+}
+.pf-hero h2 span { color: var(--l-muted); }
+
+/* the answer: one card per path */
+.pf-panel { box-sizing: border-box; flex-direction: column; gap: 14px; width: 100%; padding: 6px 6px 10px; display: flex; }
+.pf-panel[hidden] { display: none; }
+.pf-panel-h { color: var(--l-muted); flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 20px; font-size: 14px; display: flex; }
+.pf-panel-h b { color: var(--l-ink); font-weight: 500; }
+.pf-actions { flex: none; align-items: center; gap: 16px; display: flex; }
+.pf-again { font: inherit; color: var(--l-muted); cursor: pointer; background: 0 0; border: 0; padding: 0; font-size: 13.5px; font-weight: 500; }
+.pf-again:hover { color: var(--l-ink); }
+.pf-start {
+  cursor: pointer; background: var(--l-inverse); color: var(--l-inverse-ink); letter-spacing: .01em;
+  box-shadow: var(--l-shadow-sm); transition: box-shadow .24s var(--l-ease), transform .12s var(--l-ease);
+  border: 0; border-radius: 999px; align-items: center; gap: 8px; padding: 11px 22px; font-size: 14px; font-weight: 550;
+  display: inline-flex; text-decoration: none;
+}
+.pf-start:hover { box-shadow: var(--l-shadow-lg); transform: translateY(-1px); }
+.pf-cards { grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 14px; display: grid; }
+.pf-card {
+  background: var(--l-surface); box-shadow: var(--l-shadow-md); transition: box-shadow .24s var(--l-ease);
+  border-radius: 15px; flex-direction: column; gap: 8px; padding: 14px 16px; animation: .45s both pf-in; display: flex; text-align: left;
+}
+.pf-card:hover { box-shadow: var(--l-shadow-lg); }
+.pf-card.best { box-shadow: 0 0 0 1.6px var(--accent), var(--l-shadow-md); }
+@keyframes pf-in { 0% { opacity: 0; transform: translateY(8px); } }
+.pf-card header { align-items: center; gap: 10px; display: flex; }
+.pf-mark {
+  box-sizing: border-box; border: 1px solid var(--l-line); background: #fff; border-radius: 22%;
+  flex: none; place-items: center; display: grid; overflow: hidden; width: 40px; height: 40px;
+}
+.pf-mark img { object-fit: contain; width: 58%; height: 58%; }
+.pf-plat { min-width: 0; flex-direction: column; flex: 1; gap: 1px; display: flex; }
+.pf-vendor { overflow-wrap: anywhere; font-size: 15px; font-weight: 550; }
+.pf-plat small { color: var(--l-muted); font-size: 12px; }
+.pf-fit {
+  font-family: var(--font-mono); background: var(--accent); color: #fff; font-variant-numeric: tabular-nums;
+  border-radius: 999px; padding: 2px 9px; font-size: 11.5px; white-space: nowrap;
+}
+.pf-route { margin: 2px 0 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--l-ink); line-height: 1.6; }
+.pf-route i { font-style: normal; color: var(--accent); }
+.pf-card .pf-more { margin: -4px 0 0; }
+.pf-card ul { flex-direction: column; margin: 0; padding: 0; list-style: none; display: flex; }
+.pf-card li { border-top: 1px solid var(--l-line); justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; display: flex; }
+.pf-tools { display: flex; gap: 5px; flex-wrap: wrap; }
+.pf-tools .pf-mark { width: 22px; height: 22px; }
+.pf-m { font-family: var(--font-mono); color: var(--l-muted); white-space: nowrap; flex: none; font-size: 11px; }
+.pf-m b { color: var(--accent); font-weight: 500; }
+.pf-more { color: var(--l-muted); font-size: 12px; font-family: var(--font-mono); }
+
+/* the question */
+.pf-ask { z-index: 6; flex-direction: column; align-items: center; gap: 12px; width: min(660px, 100%); display: flex; position: relative; }
+.pf-in { width: 100%; position: relative; margin: 0; }
+.pf-in input {
+  box-sizing: border-box; width: 100%; font: inherit; color: var(--l-ink); background: var(--l-surface);
+  border: 1px solid var(--l-line2); box-shadow: var(--l-shadow-sm);
+  transition: border-color .12s var(--l-ease), box-shadow .24s var(--l-ease);
+  border-radius: 999px; padding: 15px 64px 15px 24px; font-size: 16px;
+}
+.pf-in input::placeholder { color: var(--l-muted2); }
+.pf-in input:hover { box-shadow: var(--l-shadow-md); }
+.pf-in input:focus, .pf-in input:focus-visible { border-color: var(--l-muted); box-shadow: var(--l-shadow-md); outline: none; }
+.pf-go {
+  background: var(--l-inverse); width: 40px; height: 40px; color: var(--l-inverse-ink); cursor: pointer;
+  box-shadow: var(--l-shadow-sm); border: 0; border-radius: 999px; place-items: center; display: grid;
+  position: absolute; top: 50%; right: 7px; transform: translateY(-50%);
+}
+.pf-meta { min-height: 34px; font-family: var(--font-mono); color: var(--l-muted); text-align: center; margin: 0; font-size: 12px; line-height: 1.5; max-width: 560px; }
+.pf-chips { flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 760px; display: flex; }
+.pf-chip {
+  font: inherit; border: 1px solid var(--l-line2); background: var(--l-surface); color: var(--l-ink); cursor: pointer;
+  transition: border-color .12s var(--l-ease), box-shadow .24s var(--l-ease);
+  border-radius: 999px; padding: 7px 15px; font-size: 13px; font-weight: 500;
+}
+.pf-chip:hover { border-color: var(--l-muted); box-shadow: var(--l-shadow-sm); }
+
+/* the list a crawler reads; the script swaps it for the pile */
+.pf-list { z-index: 3; position: relative; max-width: 760px; margin: 8px auto 40px; padding: 0 0 0 18px; color: var(--l-muted); font-size: 13px; line-height: 1.6; }
+.pf.live .pf-list { display: none; }
+.pf-floor { flex: none; width: 100%; height: 0; }
+
+/* the pile */
+.pf-tile {
+  z-index: 2; visibility: hidden; box-sizing: border-box; border: 1px solid var(--l-line); cursor: grab;
+  transform-origin: 0 0; will-change: transform; user-select: none; -webkit-user-select: none; touch-action: none;
+  box-shadow: var(--l-shadow-sm); background: #fff; border-radius: 22%; place-items: center; padding: 0;
+  transition: opacity .4s, filter .4s; display: grid; position: absolute; top: 0; left: 0;
+}
+.pf-tile img { object-fit: contain; pointer-events: none; width: 58%; height: 58%; }
+.pf-tile .pf-i { border-radius: inherit; color: #fff; place-items: center; width: 100%; height: 100%; font-weight: 600; display: grid; }
+.pf-tile.read { box-shadow: var(--l-shadow-lg); }
+.pf-tile.scan { box-shadow: 0 0 0 2px var(--l-bg), 0 0 0 3.5px var(--accent); }
+.pf-tile.dim { opacity: .4; filter: grayscale(1); }
+.pf-tile.held { z-index: 8; cursor: grabbing; opacity: 1; filter: none; box-shadow: var(--l-shadow-lg); }
+@media (pointer: coarse) { .pf-tile { pointer-events: none; touch-action: auto; } }
+
+@media (prefers-reduced-motion: reduce) { .pf-card, .pf-hero { transition: none; animation: none; } }
+@media (max-width: 640px) {
+  .pf { gap: 10px; padding: 68px 14px 0; }
+  .pf-hero { gap: 14px; }
+  .pf-count { letter-spacing: .02em; white-space: nowrap; font-size: 10.5px; }
+  .pf-hero h2 { font-size: clamp(28px, 8.4vw, 36px); }
+  .pf-panel { gap: 12px; padding: 4px 2px 8px; }
+  .pf-actions { justify-content: space-between; width: 100%; }
+  .pf-start { padding: 9px 16px; font-size: 13px; }
+  .pf-cards { gap: 10px; }
+  .pf-card { padding: 12px 14px; }
+  .pf-meta { min-height: 22px; font-size: 11px; }
+  .pf-chips {
+    scrollbar-width: none; flex-wrap: nowrap; justify-content: flex-start; width: 100%; max-width: 100%;
+    padding: 0 2px 2px; overflow-x: auto; -webkit-mask-image: linear-gradient(90deg, #000 88%, #0000); mask-image: linear-gradient(90deg, #000 88%, #0000);
+  }
+  .pf-chips::-webkit-scrollbar { display: none; }
+  .pf-chip { white-space: nowrap; flex: none; padding: 6px 13px; font-size: 12.5px; }
+}

@@ -146,7 +146,7 @@ function heroHtml(): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">Cold Email Agency</span>
-      <h1 style="margin-top:18px">The cold email agency that books your meetings.</h1>
+      <h1>The cold email agency that books your meetings.</h1>
       <p class="lead">We find your buyers, write each email for one person, send it from our own domains and answer every reply. Your team takes the meetings.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -183,7 +183,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">How we work</span>
-        <h2 style="margin-top:14px">Every email written for one buyer.</h2>
+        <h2>Every email written for one buyer.</h2>
         <p>Cold email works when it reads like a note from a person. We write it that way, at the scale of a team.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -287,7 +287,7 @@ function sendingHtml(v: SendingVolume | null): string {
   <div class="wrap ce-sending">
     <div data-motion="reveal">
       <span class="eyebrow">Our sending</span>
-      <h2 style="margin-top:14px">We send from our own domains.</h2>
+      <h2>We send from our own domains.</h2>
       <p>Your brand reaches buyers through sending we run every day for all our clients.</p>
       <ol class="ce-points" data-motion="reveal" data-motion-stagger>${points}</ol>
     </div>
@@ -320,7 +320,7 @@ function proofHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Client results</span>
-      <h2 style="margin-top:16px">What our clients got back from cold email.</h2>
+      <h2>What our clients got back from cold email.</h2>
       <p>Live figures from their own dashboards, counting only what our outreach brought in.</p>
     </div>
     <div class="proof-grid">
@@ -372,7 +372,7 @@ export function coldEmailProofHtml(list: IndexList | null): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Our data, live</span>
-      <h2 style="margin-top:14px">What cold email brings, measured every day.</h2>
+      <h2>What cold email brings, measured every day.</h2>
       <p>Replies, meetings and returns from every cold email campaign we run. Your campaign starts on the workflow that leads today.</p>
     </div>
     <ul class="ag-proof-list">${cards}</ul>
@@ -401,7 +401,7 @@ function daysHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Live in 5 days</span>
-      <h2 style="margin-top:14px">From our first call to your first replies.</h2>
+      <h2>From our first call to your first replies.</h2>
       <p>We bring the domains, the inboxes and the agents. You bring your offer.</p>
     </div>
     <div class="ag-days-wrap">
@@ -461,7 +461,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">What clients ask us about cold email.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>What clients ask us about cold email.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other cold email agencies">${links}</nav>
   </div>

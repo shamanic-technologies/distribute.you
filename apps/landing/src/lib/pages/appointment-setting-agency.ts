@@ -115,7 +115,7 @@ function heroHtml(): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">B2B Appointment Setting Agency</span>
-      <h1 style="margin-top:18px">The appointment setting agency that fills your calendar.</h1>
+      <h1>The appointment setting agency that fills your calendar.</h1>
       <p class="lead">Our team finds your buyers, writes to each one and answers every reply. Your reps just show up to the meetings.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -140,7 +140,7 @@ function clientsHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Real clients, read live</span>
-      <h2 style="margin-top:14px">Meetings we set for real companies.</h2>
+      <h2>Meetings we set for real companies.</h2>
       <p>Each card is a client of ours, with the interested buyers and meetings our outreach brought them.</p>
     </div>
     <div class="showcase asa-showcase">
@@ -199,7 +199,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">How we set meetings</span>
-        <h2 style="margin-top:14px">From cold buyer to warm call.</h2>
+        <h2>From cold buyer to warm call.</h2>
         <p>Our team runs your account on data from every campaign we run. Your reps keep the calls and the deals.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -258,7 +258,7 @@ function meetingHtml(): string {
   <div class="wrap asa-meeting">
     <div data-motion="reveal">
       <span class="eyebrow">Every meeting</span>
-      <h2 style="margin-top:14px">Your rep walks in knowing the buyer.</h2>
+      <h2>Your rep walks in knowing the buyer.</h2>
       <p>Each meeting arrives with its whole story. Your team reads it in a minute and starts the call warm.</p>
       <ol class="asa-parts" data-motion="reveal" data-motion-stagger>${parts}</ol>
     </div>
@@ -297,7 +297,7 @@ export function meetingProofHtml(list: IndexList | null): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Our data, live</span>
-      <h2 style="margin-top:14px">What a booked meeting costs, read live.</h2>
+      <h2>What a booked meeting costs, read live.</h2>
       <p>Cost per meeting, meeting rate and the interested replies before them, read from every campaign we run and recorded every day.</p>
     </div>
     <ul class="ag-proof-list">${cards}</ul>
@@ -316,7 +316,7 @@ function receiptsHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Receipts</span>
-      <h2 style="margin-top:16px">What our clients got back for their budget.</h2>
+      <h2>What our clients got back for their budget.</h2>
       <p>Read off each client&apos;s own dashboard, every time this page loads.</p>
     </div>
     <div class="proof-grid">
@@ -361,7 +361,7 @@ export function costTableHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Appointment setting agencies compared</span>
-      <h2 style="margin-top:14px">The appointment setting agency you can start this week.</h2>
+      <h2>The appointment setting agency you can start this week.</h2>
       <p>Price and time to launch, read on each agency&apos;s own site.</p>
     </div>
     <div class="ag-table-wrap asa-table" data-motion="reveal">
@@ -441,7 +441,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">Good to know before the call.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Good to know before the call.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other appointment setting agencies">${links}</nav>
   </div>

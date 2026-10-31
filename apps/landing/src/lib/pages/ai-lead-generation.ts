@@ -252,7 +252,7 @@ function howHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it finds leads</span>
-      <h2 style="margin-top:16px">From your website to leads who answer.</h2>
+      <h2>From your website to leads who answer.</h2>
       <p>Lead generation automation that thinks about each lead. You paste a website; the agent does the rest every day.</p>
     </div>
     <div class="sdr-job">
@@ -322,7 +322,7 @@ function contrastHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Leads, not a list</span>
-      <h2 style="margin-top:16px">A database gives you contacts. Our agent gives you leads.</h2>
+      <h2>A database gives you contacts. Our agent gives you leads.</h2>
       <p>The same lead data, with the work around it done for you.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -344,7 +344,7 @@ function pricesHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">The price of a lead</span>
-      <h2 style="margin-top:16px">Every step of a lead, at the API price.</h2>
+      <h2>Every step of a lead, at the API price.</h2>
       <p>Each tool our agent calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
     <div class="prices-grid">
@@ -383,7 +383,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Lead tools compared</span>
-      <h2 style="margin-top:16px">The lead tool that also does the work.</h2>
+      <h2>The lead tool that also does the work.</h2>
       <p>Each of these is great at contact data. Ours finds, judges and writes to the lead too.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -409,7 +409,7 @@ function plansHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">Pay for the leads, never for a seat.</h2>
+      <h2>Pay for the leads, never for a seat.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
     <div class="plans">
@@ -454,7 +454,7 @@ function agentHtml(): string {
     <div class="agent-grid">
       <div class="section-head" data-motion="reveal">
         <span class="eyebrow">Works from your own agent</span>
-        <h2 style="margin-top:16px">Ask your agent for leads.</h2>
+        <h2>Ask your agent for leads.</h2>
         <p>Run our AI lead generation agent from Claude Code, Grok or any agent that speaks MCP. Same agent, same API prices.</p>
         <div class="agent-logos">
           <span>${LOGO("claude.ai", 20)}Claude Code</span>

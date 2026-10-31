@@ -104,7 +104,7 @@ function howHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it brings visitors</span>
-      <h2 style="margin-top:16px">From your website to the buyers who visit it.</h2>
+      <h2>From your website to the buyers who visit it.</h2>
       <p>Website traffic automation that starts with who you want on your site, then goes and gets them.</p>
     </div>
     <div class="sdr-job">
@@ -173,7 +173,7 @@ function visitorsHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Qualified visitors</span>
-      <h2 style="margin-top:16px">Traffic finds you over time. Our agent goes and invites your buyers.</h2>
+      <h2>Traffic finds you over time. Our agent goes and invites your buyers.</h2>
       <p>Content and social posts grow your audience. Our agent invites the exact people you want to sell to.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -201,7 +201,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Traffic tools compared</span>
-      <h2 style="margin-top:16px">The traffic tool that brings your buyers.</h2>
+      <h2>The traffic tool that brings your buyers.</h2>
       <p>Each of these grows an audience over time. Ours invites the people you want to sell to.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">

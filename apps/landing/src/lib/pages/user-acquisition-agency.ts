@@ -50,7 +50,7 @@ function heroHtml(): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">User Acquisition Agency</span>
-      <h1 style="margin-top:18px">The user acquisition agency that turns buyers into paying users.</h1>
+      <h1>The user acquisition agency that turns buyers into paying users.</h1>
       <p class="lead">Our team and our AI agents invite the right buyers to your product, then follow every signup until they pay.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -89,7 +89,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">How our user acquisition works</span>
-        <h2 style="margin-top:14px">From the first invite to a paying user.</h2>
+        <h2>From the first invite to a paying user.</h2>
         <p>Our team runs your account. Our AI agents write every message and never lose a signup.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -145,7 +145,7 @@ function legsHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">A SaaS growth agency, step by step</span>
-      <h2 style="margin-top:14px">Four steps, each measured on its own.</h2>
+      <h2>Four steps, each measured on its own.</h2>
       <p>You see what each step brings: visits, signups and paying users, with what each one cost you.</p>
     </div>
     <ul class="ua-legs" data-motion="reveal" data-motion-stagger>${items}</ul>
@@ -175,7 +175,7 @@ export function uaCostTableHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">User acquisition agencies compared</span>
-      <h2 style="margin-top:14px">SaaS growth agencies, side by side.</h2>
+      <h2>SaaS growth agencies, side by side.</h2>
       <p>What each one charges and how fast it starts, read on its own site.</p>
     </div>
     <div class="ag-table-wrap ua-table" data-motion="reveal">
@@ -255,7 +255,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">Before we meet your next users.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Before we meet your next users.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other user acquisition agencies">${links}</nav>
   </div>

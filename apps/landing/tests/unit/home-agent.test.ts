@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
-import { ACTION_PRICES_TOKEN, HOME_PRICE_GROUPS, actionPrices, actionPricesHtml, withActionPrices } from "../../src/lib/pages/home-agent";
+import { CAP_DATA_TOKEN, HOME_PRICE_GROUPS, LEDGER_JOBS, LEDGER_ROWS_TOKEN, actionPrices, actionPricesHtml, capScenarios, ledgerRowsHtml, withHomeWhy } from "../../src/lib/pages/home-agent";
 import type { PlatformPrice } from "../../src/lib/pages/catalog";
 import { CLAUDE_CODE_MCP_COMMAND } from "../../src/lib/docs/developer-surfaces";
 import { livePages } from "../../src/lib/site-pages";
@@ -74,12 +74,15 @@ describe("the price before every action", () => {
     expect(failed).toContain('href="/catalog"');
   });
 
-  it("has one slot on the homepage, inside the prices section, resolved by the route", () => {
-    expect(html.split(ACTION_PRICES_TOKEN)).toHaveLength(2);
-    expect(section("prices")).toContain(ACTION_PRICES_TOKEN);
-    expect(withActionPrices(html, FIXTURE)).not.toContain(ACTION_PRICES_TOKEN);
+  it("fills the ledger and the comparison from the catalog, resolved by the route", () => {
+    expect(html.split(LEDGER_ROWS_TOKEN)).toHaveLength(2);
+    expect(html.split(CAP_DATA_TOKEN)).toHaveLength(2);
+    expect(section("why")).toContain(LEDGER_ROWS_TOKEN);
+    const out = withHomeWhy(html, FIXTURE);
+    expect(out).not.toContain(LEDGER_ROWS_TOKEN);
+    expect(out).not.toContain(CAP_DATA_TOKEN);
     const route = readFileSync(path.resolve(__dirname, "../../src/app/route.ts"), "utf8");
-    expect(route).toContain("withActionPrices(");
+    expect(route).toContain("withHomeWhy(");
     expect(route).toContain('fetchPlatformPrices("/")');
   });
 });
@@ -102,26 +105,59 @@ describe("the bridges to the Agency page", () => {
   it("point only at a live Agency page of the catalogue", () => {
     const live = new Set(livePages("agency").map((p) => p.path));
     const agencyLinks = [...html.matchAll(/href="(\/[a-z-]*agency)"/g)].map((m) => m[1]);
-    expect(agencyLinks.length).toBeGreaterThanOrEqual(3);
+    expect(agencyLinks.length).toBeGreaterThanOrEqual(2);
     for (const href of agencyLinks) expect(live.has(href), href).toBe(true);
   });
 });
 
-describe("the point-tool stack", () => {
-  const stack = section("stack");
+describe("pay per action, not per seat: the ledger", () => {
+  const why = section("why");
 
-  it("states each vendor's price with its own pricing page and the day it was read", () => {
+  it("states each seat price with its vendor's own pricing page and the day it was read", () => {
     for (const src of ["https://www.apollo.io/pricing", "https://www.clay.com/pricing", "https://instantly.ai/pricing", "https://www.mailforge.ai/pricing"]) {
-      expect(stack).toContain(`href="${src}"`);
+      expect(why).toContain(`href="${src}"`);
     }
-    expect(stack).toContain("October 29, 2026");
+    expect(why).toContain("October 29, 2026");
   });
 
-  it("totals the monthly plans it lists, and nothing it does not", () => {
-    const body = stack.slice(stack.indexOf("<tbody>"), stack.indexOf("</tbody>"));
-    const monthly = [...body.matchAll(/<b>\$(\d+)\/(?:user\/)?month<\/b>/g)].map((m) => Number(m[1]));
+  it("totals the monthly seats it strikes, and nothing it does not", () => {
+    const monthly = LEDGER_JOBS.map((j) => /^\$(\d+)\/(?:user\/)?mo$/.exec(j.seat)).filter(Boolean).map((m) => Number(m![1]));
     expect(monthly).toEqual([49, 167, 47]);
-    expect(stack).toContain(`<b>$${monthly.reduce((a, b) => a + b, 0)}/month</b> before mailboxes`);
+    expect(why).toContain(`$${monthly.reduce((a, b) => a + b, 0)}/mo of seats`);
+  });
+
+  it("prices each job at its catalog group's cheapest served line, and says only 'API price' when the read failed", () => {
+    const rows = ledgerRowsHtml(FIXTURE);
+    expect(rows.match(/class="lrow"/g)).toHaveLength(LEDGER_JOBS.length);
+    expect(rows).toContain("from $0.00980 / credit");
+    expect(rows).toContain("in the email price");
+    const failed = ledgerRowsHtml(null);
+    expect(failed).not.toMatch(/from \$/);
+    expect(failed).toContain("at the API price");
+  });
+});
+
+describe("the right model for every task: the comparison", () => {
+  it("compares AI models on one unit, cheapest first, from the catalog only", () => {
+    const fx = [
+      ...FIXTURE,
+      price({ name: "o1", provider: "anthropic", providerDomain: "anthropic.com", type: "Output tokens (Haiku 5.5)", unit: "1M tokens", pricePerUnitInUsdCents: "0.00005" }),
+      price({ name: "o2", provider: "anthropic", providerDomain: "anthropic.com", type: "Output tokens (Opus 5.5)", unit: "1M tokens", pricePerUnitInUsdCents: "0.002" }),
+      price({ name: "o3", provider: "google", providerDomain: "google.com", type: "Output tokens (Gemini 3.1 Pro)", unit: "1M tokens", pricePerUnitInUsdCents: "0.0012" }),
+      price({ name: "o4", provider: "deepseek", providerDomain: "deepseek.com", type: "Output tokens (DeepSeek V4.1 Flash, peak)", unit: "1M tokens", pricePerUnitInUsdCents: "0.000127" }),
+      price({ name: "o5", provider: "deepseek", providerDomain: "deepseek.com", type: "Output tokens (DeepSeek V4.1 Flash, off-peak)", unit: "1M tokens", pricePerUnitInUsdCents: "0.0000636" }),
+    ];
+    const [ai] = capScenarios(fx);
+    expect(ai.rows.map((r) => r.tool)).toEqual(["Haiku 5.5", "DeepSeek V4.1 Flash", "Gemini 3.1 Pro", "Opus 5.5"]);
+    expect(ai.count).toBe("4 models");
+    expect(ai.res).toContain("via Haiku 5.5");
+  });
+
+  it("plays nothing it was not served: no read, no scenario, and the window points at the catalog", () => {
+    expect(capScenarios(null)).toEqual([]);
+    const out = withHomeWhy(html, null);
+    expect(out).toContain('<div id="caprows"><p class="cap-empty">');
+    expect(out).toContain('<script type="application/json" id="cap-data">[]</script>');
   });
 });
 
@@ -135,11 +171,22 @@ describe("the signature motion: the provider orbit and the WhatsApp agent", () =
 
   it("plays every CSS animation only when motion is welcome", () => {
     const gated = css.slice(css.indexOf("@media (prefers-reduced-motion: no-preference)"));
-    for (const anim of ["orbit-spin", "orbit-wave", "orbit-ping", "wa-in", "wa-dots"]) {
+    for (const anim of ["orbit-spin", "orbit-wave", "orbit-hit", "orbit-pop", "wa-in", "wa-dots", "kwslide"]) {
       const use = new RegExp(`animation: ${anim}`);
       expect(css.slice(0, css.indexOf("@media (prefers-reduced-motion: no-preference)"))).not.toMatch(use);
       expect(gated).toMatch(use);
     }
+  });
+
+  it("plays the orbit and the thread together: every tool a message uses is on the orbit", () => {
+    const orbitTools = new Set([...html.matchAll(/class="orbit-logo" data-tool="([^"]+)"/g)].map((m) => m[1]));
+    expect(orbitTools.size).toBe(10);
+    const used = [...html.matchAll(/data-tools="([^"]+)"/g)].flatMap((m) => m[1].split(" "));
+    expect(used.length).toBeGreaterThanOrEqual(6);
+    for (const t of used) expect(orbitTools.has(t), t).toBe(true);
+    const home = readFileSync(path.join(LANDING, "v2/home.js"), "utf8");
+    expect(home).toContain('.orbit-logo[data-tool="');
+    expect(home).toContain('getAttribute("data-tools")');
   });
 
   it("plays the thread once, set up before paint, in message order", () => {

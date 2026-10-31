@@ -216,7 +216,7 @@ function jobHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it books</span>
-      <h2 style="margin-top:16px">The whole SDR job, done by one agent.</h2>
+      <h2>The whole SDR job, done by one agent.</h2>
       <p>From a website to a meeting in your calendar. You show up to the call.</p>
     </div>
     <div class="sdr-job">
@@ -272,7 +272,7 @@ function setterHtml(): string {
   <div class="wrap sdr-setter">
     <div class="section-head" data-motion="reveal">
       <span class="eyebrow">AI appointment setter</span>
-      <h2 style="margin-top:16px">Our AI SDR works every reply until the meeting is set.</h2>
+      <h2>Our AI SDR works every reply until the meeting is set.</h2>
       <p>Questions, objections, finding a time. Our AI SDR answers each one for you.</p>
       <ul class="sdr-checks">
         <li>Reads every reply and spots the interested buyers</li>
@@ -311,7 +311,7 @@ export function proofHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Receipts from real runs</span>
-      <h2 style="margin-top:16px">What our clients got back.</h2>
+      <h2>What our clients got back.</h2>
       <p>Live figures, read off their own dashboards.</p>
     </div>
     <div class="proof-grid">
@@ -343,7 +343,7 @@ function pricesHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">API price, nothing added</span>
-      <h2 style="margin-top:16px">Every step of the SDR job, at the API price.</h2>
+      <h2>Every step of the SDR job, at the API price.</h2>
       <p>Each tool our AI SDR calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
     <div class="prices-grid">
@@ -382,7 +382,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">AI SDRs compared</span>
-      <h2 style="margin-top:16px">The AI SDR you can start today.</h2>
+      <h2>The AI SDR you can start today.</h2>
       <p>Three of these four start with a demo. Ours starts with your website.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -433,7 +433,7 @@ function plansHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">An AI SDR for the price of its tools.</h2>
+      <h2>An AI SDR for the price of its tools.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
     <div class="plans">
@@ -478,7 +478,7 @@ function agentHtml(): string {
     <div class="agent-grid">
       <div class="section-head" data-motion="reveal">
         <span class="eyebrow">Works from your own agent</span>
-        <h2 style="margin-top:16px">Ask your agent for meetings.</h2>
+        <h2>Ask your agent for meetings.</h2>
         <p>Run our AI SDR from Claude Code, Grok or any agent that speaks MCP. Same agent, same API prices.</p>
         <div class="agent-logos">
           <span>${LOGO("claude.ai", 20)}Claude Code</span>

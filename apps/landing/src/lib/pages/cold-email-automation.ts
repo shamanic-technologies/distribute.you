@@ -337,7 +337,7 @@ function howHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it writes</span>
-      <h2 style="margin-top:16px">One email per buyer, every day.</h2>
+      <h2>One email per buyer, every day.</h2>
       <p>AI cold email that reads before it writes. You paste a website; the agent runs the rest.</p>
     </div>
     <div class="sdr-job">
@@ -407,7 +407,7 @@ function sendingHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Sending, handled</span>
-      <h2 style="margin-top:16px">Your domain stays clean. Our inboxes do the sending.</h2>
+      <h2>Your domain stays clean. Our inboxes do the sending.</h2>
       <p>A cold email tool gives you a sender to set up. Our agent arrives with the inboxes, already warm.</p>
     </div>
     <div class="cx-send-grid">
@@ -432,7 +432,7 @@ function pricesHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">The price of a cold email</span>
-      <h2 style="margin-top:16px">Every step of an email, at the API price.</h2>
+      <h2>Every step of an email, at the API price.</h2>
       <p>Each tool our agent calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
     <div class="prices-grid">
@@ -471,7 +471,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Cold email tools compared</span>
-      <h2 style="margin-top:16px">The cold email tool that also does the work.</h2>
+      <h2>The cold email tool that also does the work.</h2>
       <p>Each of these is a fine sender for a team that runs outbound. Ours writes, sends and answers for you.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -505,7 +505,7 @@ function plansHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">Pay for the emails, never for a seat.</h2>
+      <h2>Pay for the emails, never for a seat.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
     <div class="plans">
@@ -546,7 +546,7 @@ function agentHtml(): string {
     <div class="agent-grid">
       <div class="section-head" data-motion="reveal">
         <span class="eyebrow">Works from your own agent</span>
-        <h2 style="margin-top:16px">Ask your agent to send the emails.</h2>
+        <h2>Ask your agent to send the emails.</h2>
         <p>Run our AI cold email agent from Claude Code, Grok or any agent that speaks MCP. Same agent, same API prices.</p>
         <div class="agent-logos">
           <span>${LOGO("claude.ai", 20)}Claude Code</span>

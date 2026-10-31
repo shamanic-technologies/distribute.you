@@ -150,7 +150,7 @@ function howHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it manages your budget</span>
-      <h2 style="margin-top:16px">You set the budget. The agent finds where it pays.</h2>
+      <h2>You set the budget. The agent finds where it pays.</h2>
       <p>AI ad management for founders: every dollar goes to reaching a buyer, and the agent keeps the ones that click.</p>
     </div>
     <div class="sdr-job">
@@ -217,7 +217,7 @@ function budgetHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Where your budget goes</span>
-      <h2 style="margin-top:16px">An ad buys a chance to be seen. Our agent reaches the buyer.</h2>
+      <h2>An ad buys a chance to be seen. Our agent reaches the buyer.</h2>
       <p>${esc(NO_AD_ACCOUNT)} You can set every click and signup beside any ad spend you run.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -245,7 +245,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">AI ad tools compared</span>
-      <h2 style="margin-top:16px">The AI ad manager that reaches buyers by name.</h2>
+      <h2>The AI ad manager that reaches buyers by name.</h2>
       <p>Each of these runs your ad accounts well. Ours puts the budget into reaching the buyers you chose.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">

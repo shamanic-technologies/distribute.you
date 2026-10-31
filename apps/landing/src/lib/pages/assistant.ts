@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SIGN_UP, shell } from "../v2-shell";
+import { withHomeWhy } from "./home-agent";
 
 /**
  * `/lp/assistant`: a second homepage that tests a different VALUE PROPOSITION, not a
@@ -49,7 +50,9 @@ export function homepageBlocks(home: string): HomepageBlocks {
   return {
     showcase: between(home, '<div class="showcase">', "\n  </div>\n</section>"),
     proofAndQuotes: between(home, "<!-- Proof -->", "<!-- How it works"),
-    rest: between(home, "<!-- Pipeline", "<!-- CTA"),
+    // The "why" rows carry live slots the homepage route fills; filled here with no read
+    // (each line says "at the API price"), never left as empty windows.
+    rest: withHomeWhy(between(home, "<!-- Pipeline", "<!-- CTA"), null),
   };
 }
 
@@ -68,7 +71,7 @@ const ARROW = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" strok
 
 const STYLE = `<style>
 .asst-hero { min-height: 0; padding: 150px 0 48px; }
-.asst-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 22px; padding: 5px 14px; border-radius: 100px; border: 1px solid var(--hair-2); background: #fff; font-size: 13px; color: var(--muted); }
+.asst-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px; padding: 5px 14px; border-radius: 100px; border: 1px solid var(--hair-2); background: #fff; font-size: 13px; color: var(--muted); }
 .asst-eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-100); }
 .asst-hero h1 { max-width: 820px; }
 .asst-hero .asst-sub { max-width: 580px; margin: 4px auto 30px; font-size: 19px; line-height: 1.5; color: var(--muted); }

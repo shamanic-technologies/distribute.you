@@ -37,11 +37,13 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=21"');
-    expect(html).toContain('src="/landing/v2/main.js?v=11"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=23"');
+    expect(html).toContain('src="/landing/v2/main.js?v=12"');
     // PAGE-REVENUE-AGENT-1029: the AI Agent sections have their own sheet, and the page
     // carries `data-motion` effects, so it loads the motion kit at the shell's version.
-    expect(html).toContain('href="/landing/v2/agent.css?v=2"');
+    expect(html).toContain('href="/landing/v2/agent.css?v=3"');
+    // The homepage's own motion (hero thread calling the orbit tools, the "why" rows).
+    expect(html).toContain('src="/landing/v2/home.js?v=1"');
     expect(html).toContain(`src="/landing/v2/motion.js?v=${MOTION_VERSION}"`);
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
@@ -385,7 +387,8 @@ describe("colour rhythm", () => {
 
   it("alternates section backgrounds: tint, dark, tint", () => {
     expect(html).toContain('<section class="framed tint" id="proof">');
-    expect(html).toContain('<section class="framed dark">');
+    // The dark band is the open-source section since the 3-stat band left (it repeated the pricing).
+    expect(html).toContain('<section class="framed dark os" id="open-source">');
     expect(html).toContain('<section class="framed tint tint-both" id="pricing">');
     expect(css).toMatch(/section\.tint \{ background: linear-gradient\(180deg, #ffffff 0%, var\(--accent-50\) 100%\); \}/);
     expect(css).toMatch(/section\.dark \{ background: radial-gradient/);

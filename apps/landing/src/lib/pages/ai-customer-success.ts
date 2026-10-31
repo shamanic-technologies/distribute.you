@@ -231,7 +231,7 @@ function howHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it keeps customers</span>
-      <h2 style="margin-top:16px">From a payment to a happy customer.</h2>
+      <h2>From a payment to a happy customer.</h2>
       <p>Customer success automation that starts the day a customer pays. You plug your tools once; the agent checks in for you every day.</p>
     </div>
     <div class="sdr-job">
@@ -297,7 +297,7 @@ function contrastHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">It writes first</span>
-      <h2 style="margin-top:16px">A support bot waits for a ticket. Our agent checks in first.</h2>
+      <h2>A support bot waits for a ticket. Our agent checks in first.</h2>
       <p>Keep your helpdesk for questions. Let our agent look after every customer in between.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -331,7 +331,7 @@ function momentsHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Moments it acts on</span>
-      <h2 style="margin-top:16px">Every moment that keeps a customer.</h2>
+      <h2>Every moment that keeps a customer.</h2>
       <p>The agent reads the tools you already use, then writes to the right customer at the right time.</p>
     </div>
     <ul class="acs-cards" data-motion="reveal" data-motion-stagger>${cards}</ul>
@@ -348,7 +348,7 @@ function countHtml(): string {
   <div class="wrap acs-own" data-motion="reveal">
     <div>
       <span class="eyebrow">What it counts</span>
-      <h2 style="margin-top:16px">We count happy customers.</h2>
+      <h2>We count happy customers.</h2>
       <p>A paying customer who writes back a positive message counts once as a satisfied customer, in your campaign results.</p>
     </div>
     <ul class="acs-own-list">
@@ -369,7 +369,7 @@ function pricesHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">The price of a message</span>
-      <h2 style="margin-top:16px">Every message, at the API price.</h2>
+      <h2>Every message, at the API price.</h2>
       <p>Each tool our agent calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
     <div class="prices-grid">
@@ -408,7 +408,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Customer success tools compared</span>
-      <h2 style="margin-top:16px">The AI that checks in before a customer asks.</h2>
+      <h2>The AI that checks in before a customer asks.</h2>
       <p>Each of these is great at answering the customers who write in. Ours writes to every customer first.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -435,7 +435,7 @@ function plansHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">Pay for the messages, never for your customers.</h2>
+      <h2>Pay for the messages, never for your customers.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
     <div class="plans">
@@ -484,7 +484,7 @@ function agentHtml(): string {
     <div class="agent-grid">
       <div class="section-head" data-motion="reveal">
         <span class="eyebrow">Works from your own agent</span>
-        <h2 style="margin-top:16px">Ask your agent to check in.</h2>
+        <h2>Ask your agent to check in.</h2>
         <p>Run our AI customer success agent from Claude Code, Grok or any agent that speaks MCP. Same agent, same API prices.</p>
         <div class="agent-logos">
           <span>${LOGO("claude.ai", 20)}Claude Code</span>

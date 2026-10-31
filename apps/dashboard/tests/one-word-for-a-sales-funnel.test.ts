@@ -26,6 +26,9 @@ const REPO = join(__dirname, "..", "..", "..");
 const ALLOWED = new Set([
   // A blockchain, in a platform prompt. The precise word for the thing it names.
   "apps/dashboard/src/instrumentation.ts",
+  // matter.js, a third-party physics library self-hosted byte for byte (the GTM path
+  // finder's falling logos): its own API words, never a sales funnel.
+  "apps/landing/public/landing/v2/vendor/matter-0.20.0.min.js",
   // This guard names what it forbids.
   "apps/dashboard/tests/one-word-for-a-sales-funnel.test.ts",
   // ...and the page guard that asserts the same absence on its own surface.

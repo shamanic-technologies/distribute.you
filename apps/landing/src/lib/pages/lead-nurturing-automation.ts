@@ -196,7 +196,7 @@ function howHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it nurtures</span>
-      <h2 style="margin-top:16px">From a signal to the right message.</h2>
+      <h2>From a signal to the right message.</h2>
       <p>Lead nurturing automation that waits for your lead to act, then writes. You plug your tools once; the agent runs every day.</p>
     </div>
     <div class="sdr-job">
@@ -262,7 +262,7 @@ function contrastHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Signals, not a schedule</span>
-      <h2 style="margin-top:16px">A drip sequence follows a calendar. Our agent follows your lead.</h2>
+      <h2>A drip sequence follows a calendar. Our agent follows your lead.</h2>
       <p>The same email and WhatsApp channels, sent at the moment that counts.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -296,7 +296,7 @@ function signalsHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Signals it acts on</span>
-      <h2 style="margin-top:16px">Every move your lead makes gets an answer.</h2>
+      <h2>Every move your lead makes gets an answer.</h2>
       <p>The agent reads the tools you already use. A lead who never acted is left in peace.</p>
     </div>
     <ul class="ln-cards" data-motion="reveal" data-motion-stagger>${cards}</ul>
@@ -313,7 +313,7 @@ function ownHtml(): string {
   <div class="wrap ln-own" data-motion="reveal">
     <div>
       <span class="eyebrow">We use it ourselves</span>
-      <h2 style="margin-top:16px">Our own leads get the same agent.</h2>
+      <h2>Our own leads get the same agent.</h2>
       <p>Every founder who visits, replies or signs up with us is followed by this agent, through the same Clerk, Stripe and PostHog connectors you plug. What works on our leads reaches yours the same day.</p>
     </div>
     <ul class="ln-own-list">
@@ -334,7 +334,7 @@ function pricesHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">The price of a message</span>
-      <h2 style="margin-top:16px">Every message, at the API price.</h2>
+      <h2>Every message, at the API price.</h2>
       <p>Each tool our agent calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
     <div class="prices-grid">
@@ -373,7 +373,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Nurturing tools compared</span>
-      <h2 style="margin-top:16px">The nurturing tool that writes the messages too.</h2>
+      <h2>The nurturing tool that writes the messages too.</h2>
       <p>Each of these is great at sending what you build. Ours decides when to write, and writes.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -399,7 +399,7 @@ function plansHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">Pay for the messages, never for your contacts.</h2>
+      <h2>Pay for the messages, never for your contacts.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
     <div class="plans">
@@ -444,7 +444,7 @@ function agentHtml(): string {
     <div class="agent-grid">
       <div class="section-head" data-motion="reveal">
         <span class="eyebrow">Works from your own agent</span>
-        <h2 style="margin-top:16px">Ask your agent to follow up.</h2>
+        <h2>Ask your agent to follow up.</h2>
         <p>Run our AI lead nurturing agent from Claude Code, Grok or any agent that speaks MCP. Same agent, same API prices.</p>
         <div class="agent-logos">
           <span>${LOGO("claude.ai", 20)}Claude Code</span>

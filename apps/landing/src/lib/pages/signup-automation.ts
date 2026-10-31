@@ -240,7 +240,7 @@ function pathHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">User acquisition automation</span>
-      <h2 style="margin-top:16px">From a first message to a paying user.</h2>
+      <h2>From a first message to a paying user.</h2>
       <p>Four steps run for you, each one on its own. A buyer who visits, signs up or goes quiet always gets the next message.</p>
     </div>
     <ol class="su-legs" data-motion="reveal" data-motion-stagger>
@@ -262,7 +262,7 @@ function toolsHtml(): string {
   <div class="wrap su-tools">
     <div data-motion="reveal">
       <span class="eyebrow">Plug in three tools</span>
-      <h2 style="margin-top:16px">The agent sees every visit, signup and payment.</h2>
+      <h2>The agent sees every visit, signup and payment.</h2>
       <p>Connect PostHog, Clerk and Stripe in a few clicks. Every new signup gets a welcome. Every quiet one gets a follow-up. Nobody who already paid gets a nudge.</p>
     </div>
     <ul class="su-plugs" data-motion="reveal" data-motion-stagger>${plugs}</ul>
@@ -279,7 +279,7 @@ function howHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it runs</span>
-      <h2 style="margin-top:16px">Paste your website. Watch the signups come in.</h2>
+      <h2>Paste your website. Watch the signups come in.</h2>
       <p>Signup automation that starts from what already brings signups to other founders.</p>
     </div>
     <div class="sdr-job">
@@ -320,7 +320,7 @@ function pricesHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">The price of a signup</span>
-      <h2 style="margin-top:16px">Pay for the work, never for a seat.</h2>
+      <h2>Pay for the work, never for a seat.</h2>
       <p>Each tool our agent calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
     <div class="prices-grid">
@@ -359,7 +359,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Signup tools compared</span>
-      <h2 style="margin-top:16px">The signup tool that finds new users too.</h2>
+      <h2>The signup tool that finds new users too.</h2>
       <p>Each of these grows signups from people who already know you. Ours also reaches the buyers who have never heard of you.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -393,7 +393,7 @@ function plansHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">More signups, at the price of the tools.</h2>
+      <h2>More signups, at the price of the tools.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
     <div class="plans">
@@ -434,7 +434,7 @@ function agentHtml(): string {
     <div class="agent-grid">
       <div class="section-head" data-motion="reveal">
         <span class="eyebrow">Works from your own agent</span>
-        <h2 style="margin-top:16px">Ask your agent for more signups.</h2>
+        <h2>Ask your agent for more signups.</h2>
         <p>Run our signup agent from Claude Code, Grok or any agent that speaks MCP. Same agent, same API prices.</p>
         <div class="agent-logos">
           <span>${LOGO("claude.ai", 20)}Claude Code</span>
