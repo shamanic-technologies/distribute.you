@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SIGN_UP, shell } from "../v2-shell";
+import { withHomeWhy } from "./home-agent";
 
 /**
  * `/lp/assistant`: a second homepage that tests a different VALUE PROPOSITION, not a
@@ -49,7 +50,9 @@ export function homepageBlocks(home: string): HomepageBlocks {
   return {
     showcase: between(home, '<div class="showcase">', "\n  </div>\n</section>"),
     proofAndQuotes: between(home, "<!-- Proof -->", "<!-- How it works"),
-    rest: between(home, "<!-- Pipeline", "<!-- CTA"),
+    // The "why" rows carry live slots the homepage route fills; filled here with no read
+    // (each line says "at the API price"), never left as empty windows.
+    rest: withHomeWhy(between(home, "<!-- Pipeline", "<!-- CTA"), null),
   };
 }
 

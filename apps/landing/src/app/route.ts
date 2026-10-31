@@ -4,7 +4,7 @@ import { renderedResponse } from "@/lib/static-html";
 import { renderAssistantPage } from "@/lib/pages/assistant";
 import { renderConciergePage } from "@/lib/pages/concierge";
 import { renderInstinctPage } from "@/lib/pages/instinct";
-import { withActionPrices } from "@/lib/pages/home-agent";
+import { withHomeWhy } from "@/lib/pages/home-agent";
 import { fetchPlatformPrices } from "@/lib/platform-prices";
 import { withSiteChrome } from "@/lib/site-chrome";
 import {
@@ -43,11 +43,10 @@ export async function GET(request: Request) {
   // public cost catalogue at render (`lib/pages/home-agent.ts`). The first-$100 match
   // banner ended with the offer reset. `index-v2-subscription.html` is the retired
   // $99/month page, reachable only by `?variant=subscription`.
-  const homepage = async () =>
-    withActionPrices(
-      readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"),
-      await fetchPlatformPrices("/"),
-    );
+  const homepage = async () => {
+    const prices = await fetchPlatformPrices("/");
+    return withHomeWhy(readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"), prices);
+  };
   const subscriptionHomepage = () =>
     readFileSync(join(process.cwd(), "public/landing", "index-v2-subscription.html"), "utf8");
   const page =
