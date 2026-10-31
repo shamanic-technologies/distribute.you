@@ -27,7 +27,7 @@ import { catalogSections, type PlatformPrice } from "./catalog";
 
 export const PATH_FINDER_TOKEN = "<!--gtm-path-finder-->";
 export const PATH_FINDER_CSS_VERSION = 1;
-export const PATH_FINDER_JS_VERSION = 1;
+export const PATH_FINDER_JS_VERSION = 2;
 
 // ---------------------------------------------------------------------------
 // Served shapes (only the fields this section reads)
@@ -43,7 +43,14 @@ export type PfChannel = {
   transitions: { from: PfStep | null; to: PfStep }[];
 };
 /** One outcome of a channel: its expected cost and every route (leg keys) that reaches it. */
-export type PfOutcome = { cost: number | null; routes: string[][] };
+export type PfOutcome = { cost: number | null; routes: string[][]; roi: number | null };
+
+/**
+ * A figure measured on fewer outcomes than this is not ranked: one positive reply bought for
+ * $2.18 once was crowned "best path" over a channel measured on 52 (owner 2026-10-31 review).
+ * The same floor the proof cards use (MIN_DRAWN_OUTCOME). Below it the path reads "learning".
+ */
+export const MIN_MEASURED_OUTCOMES = 5;
 export type PfEconomics = Map<string, Map<string, PfOutcome>>;
 /** treg's public catalogue: its platforms and the providers behind them (slug -> name). */
 export type TregCatalogue = { platforms: { slug: string; label: string }[]; providers: { slug: string; label: string }[] };
@@ -115,7 +122,18 @@ export function parseEconomics(body: unknown): PfEconomics {
       const routes = (Array.isArray(oc.paths) ? oc.paths : [])
         .map((x) => obj(x, "economics path").legKeys)
         .filter((k): k is string[] => Array.isArray(k) && k.every((x) => typeof x === "string"));
-      per.set(step(oc.step, "economics outcome.step").key, { cost: typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null, routes });
+      const key = step(oc.step, "economics outcome.step").key;
+      // The evidence behind the figure: website visits for a visit, positive replies for the
+      // reply and everything priced through it.
+      const ev = typeof c.evidence === "object" && c.evidence !== null ? (c.evidence as Record<string, unknown>) : {};
+      const n = key === "website_visit" ? ev.websiteVisitsProduced : ev.conversationsProduced;
+      const measured = typeof n === "number" && n >= MIN_MEASURED_OUTCOMES;
+      const r = c.returnPerDollar;
+      per.set(key, {
+        cost: measured && typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null,
+        routes,
+        roi: measured && typeof r === "number" && Number.isFinite(r) && r > 0 ? r : null,
+      });
     }
     out.set(str(c.channelSlug, "economics channelSlug"), per);
   }
@@ -153,6 +171,8 @@ export type PfPath = {
   who: string;
   tools: Tool[];
   expectedUsd: number | null;
+  /** The served expected return per dollar spent (a projection, labelled so), or null. */
+  expectedReturn: number | null;
 };
 export type PfGoal = { key: string; chip: string; step: string; plural: string; paths: PfPath[] };
 
@@ -294,6 +314,7 @@ export function pathsTo(stepKey: string, d: PathFinderData): PfPath[] {
         who: whoRuns(c),
         tools: pathTools(c, d.prices),
         expectedUsd: eco?.cost ?? null,
+        expectedReturn: eco?.roi ?? null,
       },
     });
   }
@@ -381,7 +402,11 @@ export function pathFinderJson(d: PathFinderData): string {
   const payload = {
     goals: goals(d).map((g) => ({
       ...g,
-      paths: g.paths.map((p) => ({ ...p, expected: p.expectedUsd === null ? null : formatExpected(p.expectedUsd) })),
+      paths: g.paths.map((p) => ({
+        ...p,
+        expected: p.expectedUsd === null ? null : formatExpected(p.expectedUsd),
+        roi: p.expectedReturn === null ? null : `${p.expectedReturn.toFixed(1)}x`,
+      })),
     })),
     tiles: tiles(d),
   };
