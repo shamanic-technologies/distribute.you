@@ -45,12 +45,11 @@ export type PfChannel = {
 /** One outcome of a channel: its expected cost and every route (leg keys) that reaches it. */
 export type PfOutcome = { cost: number | null; routes: string[][]; roi: number | null };
 
-/**
- * A figure measured on fewer outcomes than this is not ranked: one positive reply bought for
- * $2.18 once was crowned "best path" over a channel measured on 52 (owner 2026-10-31 review).
- * The same floor the proof cards use (MIN_DRAWN_OUTCOME). Below it the path reads "learning".
- */
-export const MIN_MEASURED_OUTCOMES = 5;
+
+/** features-service's maturity verdict on a projected figure (CHANNEL-ECON-MATURITY-1031): READ, never re-graded. */
+function isMature(v: unknown): boolean {
+  return typeof v === "object" && v !== null && (v as Record<string, unknown>).isMature === true;
+}
 export type PfEconomics = Map<string, Map<string, PfOutcome>>;
 /** treg's public catalogue: its platforms and the providers behind them (slug -> name). */
 export type TregCatalogue = { platforms: { slug: string; label: string }[]; providers: { slug: string; label: string }[] };
@@ -123,16 +122,13 @@ export function parseEconomics(body: unknown): PfEconomics {
         .map((x) => obj(x, "economics path").legKeys)
         .filter((k): k is string[] => Array.isArray(k) && k.every((x) => typeof x === "string"));
       const key = step(oc.step, "economics outcome.step").key;
-      // The evidence behind the figure: website visits for a visit, positive replies for the
-      // reply and everything priced through it.
-      const ev = typeof c.evidence === "object" && c.evidence !== null ? (c.evidence as Record<string, unknown>) : {};
-      const n = key === "website_visit" ? ev.websiteVisitsProduced : ev.conversationsProduced;
-      const measured = typeof n === "number" && n >= MIN_MEASURED_OUTCOMES;
+      // A figure features-service does not call mature (one reply bought for $2.18 was once
+      // crowned "best path") reads "learning" and is never ranked.
       const r = c.returnPerDollar;
       per.set(key, {
-        cost: measured && typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null,
+        cost: isMature(oc.maturity) && typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null,
         routes,
-        roi: measured && typeof r === "number" && Number.isFinite(r) && r > 0 ? r : null,
+        roi: isMature(c.returnPerDollarMaturity) && typeof r === "number" && Number.isFinite(r) && r > 0 ? r : null,
       });
     }
     out.set(str(c.channelSlug, "economics channelSlug"), per);
