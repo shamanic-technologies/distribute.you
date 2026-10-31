@@ -481,6 +481,7 @@ function ContactedCell({ volume, type }: { volume: MaxVolume; type: ReturnType<t
  */
 export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
   const channels = useAcquisitionChannels();
+  const { staffMode } = useStaffMode();
   // Every two steps have a channel between them, the client's own team included (owner
   // 2026-10-11). A pair served without one is a producer gap: logged and drawn as an error.
   const gaps = missingChannelGaps(items);
@@ -512,8 +513,8 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
               {it.name}
             </span>
           ) : it.pipeId ? (
-            // Served name and mark off the public catalogue (features-service P5.1).
-            <PipeChip pipeId={it.pipeId} servedName={it.name} />
+            // The served mark; staff read the code name, a client the channel's served name (owner rule: code names are staff only).
+            <PipeChip pipeId={it.pipeId} servedName={it.name} codeName={staffMode} />
           ) : (
             <ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />
           )}
@@ -524,13 +525,17 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
   );
 }
 
-/** A pipe on a path line: its served mark and name off the public catalogue (the path item's name until it answers). */
-function PipeChip({ pipeId, servedName }: { pipeId: string; servedName: string }) {
-  const { pipe } = usePublicPipe(pipeId);
+/**
+ * A step of a path line: the served mark of what performs it (public catalogue), then its name. A client reads the
+ * channel's served name ("Threads posts"); staff mode reads the code name (owner rule: code names are staff only),
+ * the channel name on hover.
+ */
+function PipeChip({ pipeId, servedName, codeName }: { pipeId: string; servedName: string; codeName: boolean }) {
+  const { pipe } = usePublicPipe(codeName ? pipeId : null);
   return (
-    <span className="k-chip shrink-0" style={{ fontSize: 11, height: 18, gap: 4, padding: "0 5px" }} title={servedName}>
+    <span className="k-chip shrink-0" style={{ fontSize: 11, height: 18, gap: 4, padding: "0 5px" }} title={codeName ? servedName : undefined}>
       <ServedPipeMark pipeId={pipeId} size={12} />
-      {pipe?.name ?? servedName}
+      {codeName ? (pipe?.name ?? servedName) : servedName}
     </span>
   );
 }

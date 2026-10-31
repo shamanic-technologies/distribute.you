@@ -478,6 +478,9 @@ export function unpricedWords(reason: string | null): string {
       return "Not priced yet";
     case null:
       return "Not priced yet";
+    // features-service: the campaign produces a step with no value of its own (Client Satisfied), so no ROI exists.
+    case "outcome_unvalued":
+      return "—";
     default:
       console.error("[sales-funnel-campaigns] no words for this ROI reason", { reason });
       return "Not priced yet";
