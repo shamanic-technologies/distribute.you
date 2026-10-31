@@ -62,7 +62,8 @@ import { planStateWords } from "@/lib/plan-following";
 import { CodeIcon } from "@phosphor-icons/react/dist/csr/Code";
 import { ScriptsPage, ScriptsTile, useScriptsMonitoring } from "@/components/v2/monitoring-scripts";
 import { brokenOutcomes, guardStateWords, outcomeName } from "@/lib/monitoring/scripts-monitoring";
-import { verdictReasonWords } from "@/lib/factory-shadow";
+import { engineReasonWords, regretPct, verdictReasonWords } from "@/lib/factory-shadow";
+import { EnginePage, EngineTile } from "@/components/v2/monitoring-engine";
 import { loadLabel, memLabel } from "@/lib/monitoring/box-health";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, ReconciliationPage, ReconciliationTile, useLedgerCheck, useLedgerReconciliation, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
@@ -191,6 +192,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "tools/intake": { section: "tools", title: "Records taken in", question: "Does every tool a client connected still bring records in?" },
   "factory/plan": { section: "factory", title: "Would change", question: "Which client campaigns would change if they followed their plan?" },
   "factory/following": { section: "factory", title: "Following its plan", question: "Does every campaign switched to its plan actually run it?" },
+  "factory/engine": { section: "factory", title: "Engine pick", question: "Would one Engine per outcome pick what our campaigns run today?" },
   "scripts/engines": { section: "scripts", title: "Engines", question: "Does each script work as well as the code it replaced?" },
   "ai/credit": { section: "ai", title: "Credit", question: "Does every AI vendor we call still have credit?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
@@ -355,6 +357,7 @@ export function V2Monitoring() {
         {view.page === "tools/intake" && <ConnectorIntakePage />}
         {view.page === "factory/plan" && <FactoryShadowPage />}
         {view.page === "factory/following" && <PlanFollowingPage />}
+        {view.page === "factory/engine" && <EnginePage />}
         {view.page === "scripts/engines" && <ScriptsPage />}
         {view.page === "ai/credit" && <VendorCreditPage />}
         {view.page === "chat/skills" && <SkillsView />}
@@ -515,6 +518,8 @@ function Hub({ base }: { base: string }) {
         <FactoryShadowTile href={href("factory/plan")} />
         {/* A campaign switched to follow its plan that cannot apply it, or the follower went silent (FACTORY-P1-PLAN-FOLLOWING-DASH): red here IS the alert, never an email. */}
         <PlanFollowingTile href={href("factory/following")} />
+        {/* The Engine-per-outcome shadow or its 30-day replay failed (ENGINE-PER-OUTCOME-SHADOW): red here IS the alert, never an email. */}
+        <EngineTile href={href("factory/engine")} />
         {/* A stored script that fails more often than the code it replaced, or whose guard rolled the fleet back (FACTORY-P3): red here IS the alert, never an email. */}
         <ScriptsTile href={href("scripts/engines")} />
         {/* An AI vendor that refused a call for lack of credit and has not served one since (VENDOR-CREDIT-1030, DeepSeek 2026-10-29): red here IS the alert, never an email. */}
@@ -908,11 +913,12 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={2}>Factory plan</SectionTitle>
-      <Section section="factory" count={2} grid={false}>
+      <SectionTitle count={3}>Factory plan</SectionTitle>
+      <Section section="factory" count={3} grid={false}>
         <HubChips>
           <HubChip href={href("factory/plan")} color={factory.data?.verdict.red ? "var(--data-rose)" : "var(--data-violet)"} label="Would change" />
           <HubChip href={href("factory/following")} color={following.data?.status === "red" ? "var(--data-rose)" : "var(--data-violet)"} label="Following its plan" />
+          <HubChip href={href("factory/engine")} color={factory.data?.engine?.verdict.red ? "var(--data-rose)" : "var(--data-violet)"} label="Engine pick" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -955,6 +961,37 @@ function Hub({ base }: { base: string }) {
               value: following.data?.following,
               note: "switched campaigns",
               bars: following.data?.byDay.map((d) => d.following),
+            },
+          ]}
+        />
+        <Card
+          href={href("factory/engine")}
+          page="factory/engine"
+          error={factory.isError && !factory.data}
+          cells={[
+            {
+              label: "Same pick",
+              // Red ONLY when broken (the served engine verdict); a disagreement is information, never red.
+              value:
+                factory.data &&
+                (factory.data.engine?.verdict.red ? (
+                  <span style={{ color: "var(--data-rose)" }}>Broken</span>
+                ) : factory.data.engine?.last?.agreementPct == null ? null : (
+                  formatRatePct(factory.data.engine.last.agreementPct)
+                )),
+              note: factory.data?.engine
+                ? factory.data.engine.verdict.red
+                  ? factory.data.engine.verdict.reasons.map(engineReasonWords).join(", ")
+                  : `of ${factory.data.engine.last?.places ?? 0} places, last pass`
+                : undefined,
+              bars: factory.data?.engine?.series.map((d) => d.agreementPct ?? 0),
+            },
+            {
+              label: "Value lost",
+              value:
+                factory.data &&
+                (factory.data.engine?.replay?.totals.families ? `${regretPct(factory.data.engine.replay.totals.todayRegret)} → ${regretPct(factory.data.engine.replay.totals.engineRegret)}` : null),
+              note: "today → Engine, last 30 days",
             },
           ]}
         />
