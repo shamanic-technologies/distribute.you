@@ -512,9 +512,9 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
               <LightningIcon size={12} weight="duotone" aria-hidden className="shrink-0" />
               {it.name}
             </span>
-          ) : it.pipeId && staffMode ? (
-            // Staff read its code name and mark; a client reads the channel name and mark (owner rule: code names are staff only).
-            <PipeChip pipeId={it.pipeId} servedName={it.name} />
+          ) : it.pipeId ? (
+            // The served mark; staff read the code name, a client the channel's served name (owner rule: code names are staff only).
+            <PipeChip pipeId={it.pipeId} servedName={it.name} codeName={staffMode} />
           ) : (
             <ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />
           )}
@@ -525,13 +525,17 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
   );
 }
 
-/** STAFF ONLY: a pipe on a path line, its served mark and code name off the public catalogue (the channel name on hover). */
-function PipeChip({ pipeId, servedName }: { pipeId: string; servedName: string }) {
-  const { pipe } = usePublicPipe(pipeId);
+/**
+ * A step of a path line: the served mark of what performs it (public catalogue), then its name. A client reads the
+ * channel's served name ("Threads posts"); staff mode reads the code name (owner rule: code names are staff only),
+ * the channel name on hover.
+ */
+function PipeChip({ pipeId, servedName, codeName }: { pipeId: string; servedName: string; codeName: boolean }) {
+  const { pipe } = usePublicPipe(codeName ? pipeId : null);
   return (
-    <span className="k-chip shrink-0" style={{ fontSize: 11, height: 18, gap: 4, padding: "0 5px" }} title={servedName}>
+    <span className="k-chip shrink-0" style={{ fontSize: 11, height: 18, gap: 4, padding: "0 5px" }} title={codeName ? servedName : undefined}>
       <ServedPipeMark pipeId={pipeId} size={12} />
-      {pipe?.name ?? servedName}
+      {codeName ? (pipe?.name ?? servedName) : servedName}
     </span>
   );
 }

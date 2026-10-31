@@ -71,14 +71,14 @@ describe("the client campaign page", () => {
     const code = aim.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     for (const staff of ["Jev", "play", "strategy", "tactic", "useFactoryShadow", "useStaffCatalogueObject"]) expect(code).not.toContain(staff);
   });
-  it("a client reads the CHANNEL (name + mark); only staff read the pipe's code name and mark", () => {
+  it("a client reads the channel's served name; only staff read the code name; the mark is always served", () => {
     const line = page.slice(page.indexOf("export function FunnelPathLine("), page.indexOf("/** The Type tag"));
     expect(line).toContain("const { staffMode } = useStaffMode();");
-    expect(line).toContain(") : it.pipeId && staffMode ? (");
-    expect(line).toContain("<PipeChip pipeId={it.pipeId} servedName={it.name} />");
-    expect(line).toContain("<ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />");
-    expect(line).toContain("<ServedPipeMark pipeId={pipeId} size={12} />");
-    expect(line).toContain("usePublicPipe(pipeId)");
+    expect(line).toContain("<PipeChip pipeId={it.pipeId} servedName={it.name} codeName={staffMode} />");
+    const chip = page.slice(page.indexOf("function PipeChip("), page.indexOf("/** The Type tag"));
+    expect(chip).toContain("{codeName ? (pipe?.name ?? servedName) : servedName}");
+    expect(chip).toContain("<ServedPipeMark pipeId={pipeId} size={12} />");
+    expect(chip).toContain("usePublicPipe(codeName ? pipeId : null)");
   });
 });
 
