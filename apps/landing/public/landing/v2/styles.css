@@ -902,3 +902,43 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
   .nav-right .btn-ghost { padding: 0 4px; }
   .nav-menu summary { width: 32px; height: 32px; }
 }
+
+/* ---------- Footer: the dark closing chapter (treg.to) ----------
+   Black, a fine dot texture, the WebGL dot field of footer-field.js on top (paused off
+   screen, never under reduced motion), mono column heads and the giant faint wordmark
+   cropped by the page edge. Values lifted from treg's product-theme.css + index.html. */
+footer {
+  --f-muted: #b5b5b5; --f-muted2: #969696; --f-line: #ffffff1a;
+  position: relative; overflow: hidden; isolation: isolate;
+  background: #000; color: var(--f-muted); border-top: 0;
+  padding: 72px 0 clamp(120px, 15vw, 210px);
+  background-image: radial-gradient(rgba(225, 235, 245, 0.07) 0.8px, transparent 1.1px);
+  background-size: 6px 6px;
+}
+footer.has-field { background-image: none; }
+/* The wrap stays static so the wordmark below anchors on the footer itself. */
+footer .foot, footer .foot-bottom, footer .faces { position: relative; z-index: 1; }
+.foot-field { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; contain: strict; }
+footer .foot .brand { color: #f7f8f7; }
+footer .foot .tag { color: var(--f-muted2); }
+footer .foot h4 { font-family: var(--font-mono); font-weight: 400; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--f-muted); margin-bottom: 10px; }
+footer .foot a { color: var(--f-muted); }
+footer .foot a:hover { color: #fff; }
+footer .foot-bridge { color: #9db8ff !important; }
+footer .foot-bottom { color: var(--f-muted2); font-family: var(--font-mono); font-size: 12px; }
+footer .faces-row img, footer .faces-row .face-initial { border-color: #000; box-shadow: none; }
+footer .faces-text { color: var(--f-muted); }
+footer :focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+.foot-mark {
+  position: absolute; left: 50%; bottom: -0.28em; transform: translateX(-50%); z-index: 0;
+  font-family: var(--font-display); font-weight: 500; font-size: clamp(72px, 14.5vw, 230px);
+  line-height: 1; letter-spacing: -0.04em; color: #ffffff0d;
+  white-space: nowrap; pointer-events: none; user-select: none;
+}
+@media (max-width: 640px) {
+  footer { padding-top: 56px; }
+  footer .foot.foot-fold > div:not(.foot-brand), footer .foot.foot-fold > div:not(.foot-brand):last-child { border-color: var(--f-line); }
+  footer .foot.foot-fold h4 { font-size: 12px; }
+  footer .foot-fold h4 button { color: var(--f-muted); }
+  footer .foot-fold h4 button::after { border-color: var(--f-muted); }
+}

@@ -302,7 +302,8 @@ export function footerInnerHtml(path: string, pages: SitePage[] = SITE_PAGES): s
       </div>
       ${m.columns.map(columnHtml).join("\n      ")}
     </div>
-    <div class="foot-bottom"><span>© 2026 distribute.you</span></div>`;
+    <div class="foot-bottom"><span>© 2026 distribute.you</span></div>
+    <div class="foot-mark" aria-hidden="true">distribute.you</div>`;
 }
 
 export function footerHtml(path: string, pages: SitePage[] = SITE_PAGES): string {
