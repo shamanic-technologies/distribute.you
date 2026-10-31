@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { acquisitionChannelsFromFeatures, channelSourcesFromCatalogue } from "../src/lib/acquisition-channels";
+import { acquisitionChannelsFromFeatures, channelSourcesFromCatalogue, withRetiredChannels } from "../src/lib/acquisition-channels";
 
 /**
  * P5.1 (owner 2026-10-31): the channel list is the SERVED catalogue's (`GET /public/channels`), never the seeded
@@ -54,3 +54,24 @@ describe("the channel list read from the served catalogue", () => {
     expect(mark).toContain("<CatalogueMark icon={def.servedIcon}");
   });
 });
+
+describe("a RETIRED channel (features-service retiredChannels) describes its past campaigns, never offered", () => {
+  const live = acquisitionChannelsFromFeatures(channelSourcesFromCatalogue(CATALOGUE));
+  const retired = acquisitionChannelsFromFeatures(
+    channelSourcesFromCatalogue([
+      { slug: "pr-expert-quote-opportunities", name: "PR Expert Quote Opportunities", description: "", icon: "tray", channelType: "earned", operatedBy: "platform", stepTransitions: [] },
+      { slug: "threads-post", name: "Old Threads", icon: "x", channelType: "earned", stepTransitions: [] },
+    ]),
+  );
+  const all = withRetiredChannels(live, retired);
+  it("is named and iconed, marked retired, after the live ones; a slug also live reads live", () => {
+    expect(all.find((c) => c.featureSlug === "pr-expert-quote-opportunities")).toMatchObject({ name: "PR Expert Quote Opportunities", servedIcon: "tray", retired: true });
+    expect(all.filter((c) => c.featureSlug === "threads-post")).toEqual([expect.objectContaining({ name: "Threads posts" })]);
+    expect(all.find((c) => c.featureSlug === "threads-post")!.retired).toBeUndefined();
+  });
+  it("never becomes a control (on/off, budget)", () => {
+    const controls = readFileSync(join(__dirname, "../src/lib/campaign-controls.ts"), "utf8");
+    expect(controls).toContain("if (def === null || def.retired) return false;");
+  });
+});
+

@@ -53,6 +53,7 @@ import { SparkleIcon } from "@phosphor-icons/react/dist/csr/Sparkle";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
 import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { ThreadsLogoIcon } from "@phosphor-icons/react/dist/csr/ThreadsLogo";
+import { TrayIcon } from "@phosphor-icons/react/dist/csr/Tray";
 import { VideoCameraIcon } from "@phosphor-icons/react/dist/csr/VideoCamera";
 import { MARK_ICONS } from "@/components/v2/catalogue-mark-icons";
 
@@ -114,6 +115,7 @@ const CATALOGUE_ICONS: Record<string, Icon> = {
   "envelope-simple": EnvelopeSimpleIcon,
   "hand-waving": HandWavingIcon,
   "threads-logo": ThreadsLogoIcon,
+  tray: TrayIcon,
 };
 
 const warned = new Set<string>();
