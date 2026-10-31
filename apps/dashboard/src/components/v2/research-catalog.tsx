@@ -10,7 +10,6 @@ import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { TacticTags, TacticsBlock } from "@/components/v2/tactic-tags";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
-import { formatUsdAdaptive } from "@/lib/format-number";
 import {
   ACTIVATE_CONTENT_NOTE,
   DEPRECATE_CONTENT_NOTE,
@@ -675,7 +674,7 @@ function CatalogList({
                                   <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
                                     </>
                                   )}
-                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">{posts && (r as ResearchTemplate).postFigures ? formatUsdAdaptive((r as ResearchTemplate).postFigures!.spentUsd) : r.spend}</td>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">{r.spend}</td>
                                   <td className="max-w-0 px-3">
                                     <ContentStatusWord status={status} pending={!statusAnswered} deprecation={deprecation} />
                                   </td>
@@ -702,7 +701,7 @@ function CatalogList({
                                   <td className="whitespace-nowrap px-3 text-right tabular-nums" title={(r as ResearchModel).runCost?.averageDisplay ? undefined : runCostGap((r as ResearchModel).runCost)}>
                                     <Dash v={(r as ResearchModel).runCost?.averageDisplay ?? null} />
                                   </td>
-                                  <td className="px-3 text-right tabular-nums">{posts && (r as ResearchModel).postFigures ? formatUsdAdaptive((r as ResearchModel).postFigures!.spentUsd) : r.spend}</td>
+                                  <td className="px-3 text-right tabular-nums">{r.spend}</td>
                                   <td className="max-w-0 px-3">
                                     <ContentStatusWord
                                       status={status}

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { costPerSignupText, hasPostFigures, postCountText, type ResearchPostFigures } from "../src/lib/research/research";
 
@@ -18,5 +20,10 @@ describe("research post figures", () => {
     expect(costPerSignupText(6.87)).toBe("$6.87");
     expect(costPerSignupText(22.4)).toBe("$22");
     expect(costPerSignupText(null)).toBe("Learning");
+  });
+
+  it("$ Spent prints the row's own served spend on every row, one format per column, post figures or not", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
+    expect(src).not.toContain(".spentUsd");
   });
 });
