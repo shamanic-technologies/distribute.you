@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#eef2ff"/>
+    </linearGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <g fill="none" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round">
+    <path d="M260 450 C 520 450, 560 210, 820 200"/>
+    <path d="M260 450 C 520 450, 560 330, 820 320"/>
+    <path d="M260 450 C 520 450, 560 570, 820 580"/>
+    <path d="M260 450 C 520 450, 560 690, 820 700"/>
+    <path d="M820 200 C 980 200, 1000 160, 1140 160"/>
+    <path d="M820 320 C 980 320, 1000 280, 1140 280"/>
+    <path d="M820 580 C 980 580, 1000 620, 1140 620"/>
+    <path d="M820 700 C 980 700, 1000 740, 1140 740"/>
+    <path d="M820 200 C 980 200, 1000 240, 1140 240"/>
+    <path d="M820 700 C 980 700, 1000 680, 1140 680"/>
+  </g>
+  <path d="M260 450 C 520 450, 560 450, 820 450 C 980 450, 1000 450, 1140 450" fill="none" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="260" cy="450" r="22" fill="#0f172a"/>
+  <g fill="#94a3b8">
+    <circle cx="820" cy="200" r="12"/><circle cx="820" cy="320" r="12"/><circle cx="820" cy="580" r="12"/><circle cx="820" cy="700" r="12"/>
+  </g>
+  <circle cx="820" cy="450" r="16" fill="#2563eb"/>
+  <g filter="url(#sh)">
+    <rect x="1000" y="370" width="380" height="160" rx="24" fill="#ffffff" stroke="#bfdbfe" stroke-width="2"/>
+  </g>
+  <text x="1040" y="430" font-family="Inter, Helvetica, Arial, sans-serif" font-size="30" fill="#64748b">Your best path</text>
+  <text x="1040" y="492" font-family="Inter, Helvetica, Arial, sans-serif" font-size="46" font-weight="700" fill="#0f172a">2.8x ROI</text>
+  <g filter="url(#sh)">
+    <rect x="220" y="110" width="430" height="96" rx="48" fill="#0f172a"/>
+  </g>
+  <text x="435" y="172" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="40" font-weight="700" fill="#ffffff">0% markup</text>
+  <text x="800" y="840" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="44" font-weight="600" fill="#0f172a">The value is the data, not the software</text>
+</svg>
