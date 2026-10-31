@@ -362,7 +362,8 @@ export function fundingLimit(
  */
 const PathItemSchema = z.union([
   z.object({ kind: z.literal("step"), key: z.string(), label: z.string() }).passthrough(),
-  z.object({ kind: z.literal("channel"), slug: z.string(), name: z.string() }).passthrough(),
+  // `pipeId` (features-service P5.1): the pipe working the leg, drawn by its served name and mark. Optional until deployed.
+  z.object({ kind: z.literal("channel"), slug: z.string(), name: z.string(), pipeId: z.string().optional() }).passthrough(),
   // A reactive path starts with its trigger (owner 2026-10-11), e.g. Positive Reply.
   z.object({ kind: z.literal("trigger"), slug: z.string(), name: z.string() }).passthrough(),
 ]);
@@ -372,6 +373,8 @@ export const FunnelCampaignRowSchema = z
   .object({
     id: z.string(),
     salesFunnelId: z.string(),
+    // The funnel the campaign RUNS now (features-service P5.1): `path` is this funnel's, never the one it was born on.
+    runningSalesFunnelId: z.string().nullish(),
     name: z.string(),
     status: z.string(),
     type: z.string().nullable(),
@@ -408,6 +411,7 @@ export const FunnelCampaignRowsSchema = z.object({ salesFunnelCampaigns: z.array
 export const FunnelCampaignCopySchema = FunnelCampaignRowSchema.pick({
   id: true,
   salesFunnelId: true,
+  runningSalesFunnelId: true,
   name: true,
   status: true,
   type: true,

@@ -298,11 +298,11 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     for (const gone of [">Spent<", ">Volume<", ">Budget<"]) expect(s).not.toContain(gone);
   });
 
-  it("every cell reads features-service's served row: short sentence, type label, roiMultiple, investedUsd; nothing composed", () => {
+  it("every cell reads features-service's served row: running path, type label, roiMultiple, investedUsd; nothing composed", () => {
     const f = funnel();
-    // One short served sentence under the name, not the path (owner 2026-10-14), on the fast copy read.
-    expect(f).toContain("{copy.shortDescription}</span>");
-    expect(f).not.toContain("<FunnelPathLine items={copy.path.items} />");
+    // The path the campaign RUNS NOW under the name (P5.1 owner 2026-10-31, replacing the 10-14 sentence), on the fast copy read.
+    expect(f).toContain("<FunnelPathLine items={copy.path.items} />");
+    expect(f).not.toContain("{copy.shortDescription}</span>");
     expect(src("src/components/v2/funnel-campaigns.tsx")).toContain("{row.typeLabel}");
     expect(src("src/components/v2/funnel-campaigns.tsx")).toContain("funnelRoiShown(row)");
     expect(f).toContain("formatUsdAdaptive(row.investedUsd)");
