@@ -162,7 +162,7 @@ function heroHtml(): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">Customer Success Agency</span>
-      <h1 style="margin-top:18px">The customer success agency that keeps your clients happy.</h1>
+      <h1>The customer success agency that keeps your clients happy.</h1>
       <p class="lead">Our team and our AI agents talk to your paying clients on WhatsApp. Every client is welcomed, answered and checked on.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -200,7 +200,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">How our customer success works</span>
-        <h2 style="margin-top:14px">From first payment to happy client.</h2>
+        <h2>From first payment to happy client.</h2>
         <p>Our team runs your account. Our AI agents write first, answer fast and never lose a thread.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -252,7 +252,7 @@ function momentsHtml(): string {
   <div class="wrap csa-moments">
     <div data-motion="reveal">
       <span class="eyebrow">Customer success outsourcing, on time</span>
-      <h2 style="margin-top:14px">Four moments, each one answered.</h2>
+      <h2>Four moments, each one answered.</h2>
       <p>Our agents start on what your clients do, so every message lands when it helps. Every client always has a next check-in date.</p>
       <ol class="csa-mom" data-motion="reveal" data-motion-stagger>${cards}</ol>
     </div>
@@ -275,7 +275,7 @@ function ownHtml(): string {
   <div class="wrap csa-own" data-motion="reveal">
     <div>
       <span class="eyebrow">We use it ourselves</span>
-      <h2 style="margin-top:14px">Our own clients hear from us first.</h2>
+      <h2>Our own clients hear from us first.</h2>
       <p>Every distribute.you client is followed by the same agents, on WhatsApp. What makes our clients happy reaches yours the same day.</p>
     </div>
     <ul class="csa-own-list">
@@ -309,7 +309,7 @@ export function csCostTableHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Customer success agencies compared</span>
-      <h2 style="margin-top:14px">Customer success outsourcing, side by side.</h2>
+      <h2>Customer success outsourcing, side by side.</h2>
       <p>What each one charges and how fast it starts, read on its own site.</p>
     </div>
     <div class="ag-table-wrap csa-table" data-motion="reveal">
@@ -377,7 +377,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">Before we meet your clients.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Before we meet your clients.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other customer success agencies">${links}</nav>
   </div>

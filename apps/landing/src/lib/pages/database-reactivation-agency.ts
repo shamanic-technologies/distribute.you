@@ -105,7 +105,7 @@ function heroHtml(): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">Database Reactivation Agency</span>
-      <h1 style="margin-top:18px">Database reactivation that turns old leads into new meetings.</h1>
+      <h1>Database reactivation that turns old leads into new meetings.</h1>
       <p class="lead">Your CRM already holds your next clients. Our team wakes them up by email and WhatsApp, and books the ones who answer.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -143,7 +143,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">How we reactivate your database</span>
-        <h2 style="margin-top:14px">From quiet contact to booked call.</h2>
+        <h2>From quiet contact to booked call.</h2>
         <p>Our team runs your account. Our AI agents read every sign of life and answer it on time.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -199,7 +199,7 @@ function signalsHtml(): string {
   <div class="wrap dra-signals">
     <div data-motion="reveal">
       <span class="eyebrow">Lead nurturing, on time</span>
-      <h2 style="margin-top:14px">Your contacts keep sending signals.</h2>
+      <h2>Your contacts keep sending signals.</h2>
       <p>Each sign of life tells our agents what to do next: write now, follow up later, or wait. Every lead always has its next follow-up date.</p>
       <ol class="dra-sig" data-motion="reveal" data-motion-stagger>${cards}</ol>
     </div>
@@ -234,7 +234,7 @@ export function reactivationProofHtml(list: IndexList | null): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Our data, live</span>
-      <h2 style="margin-top:14px">What a reply and a meeting cost, read live.</h2>
+      <h2>What a reply and a meeting cost, read live.</h2>
       <p>Measured on every campaign we run, cold leads included, and recorded every day. Your past leads start from there, and they already know your name.</p>
     </div>
     <ul class="ag-proof-list">${cards}</ul>
@@ -252,7 +252,7 @@ function ownHtml(): string {
   <div class="wrap dra-own" data-motion="reveal">
     <div>
       <span class="eyebrow">We use it ourselves</span>
-      <h2 style="margin-top:14px">Our own leads get the same care.</h2>
+      <h2>Our own leads get the same care.</h2>
       <p>Every person who visits, replies or signs up with us is followed the same way, by the same agents. What works on our leads reaches yours the same day.</p>
     </div>
     <ul class="dra-own-list">
@@ -286,7 +286,7 @@ export function costTableHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Database reactivation agencies compared</span>
-      <h2 style="margin-top:14px">The reactivation agency that keeps going after the first send.</h2>
+      <h2>The reactivation agency that keeps going after the first send.</h2>
       <p>What each one charges and how fast it starts, read on its own site.</p>
     </div>
     <div class="ag-table-wrap dra-table" data-motion="reveal">
@@ -355,7 +355,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">Before we wake your database.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Before we wake your database.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other database reactivation agencies">${links}</nav>
   </div>

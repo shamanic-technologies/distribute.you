@@ -38,7 +38,7 @@ function heroHtml(eyebrow: string, h1: string, lead: string): string {
   return `<section class="ag-page-hero ag-dark">
   <div class="wrap" data-motion="reveal" data-motion-stagger>
     <span class="eyebrow">${esc(eyebrow)}</span>
-    <h1 style="margin-top:18px">${esc(h1)}</h1>
+    <h1>${esc(h1)}</h1>
     <p class="lead">${esc(lead)}</p>
     <p class="why">${WHY}</p>
   </div>

@@ -201,7 +201,7 @@ describe("the PPC agency comparison cluster", () => {
   it("each vs page names both sides and links its source; the alternatives page lists every agency", () => {
     for (const a of PPC_AGENCIES) {
       const html = renderPpcVsPage(a);
-      expect(html).toContain(`<h1 style="margin-top:18px">distribute.you vs ${a.name}</h1>`);
+      expect(html).toContain(`<h1>distribute.you vs ${a.name}</h1>`);
       expect(html).toContain(`href="${a.sourceUrl}"`);
       expect(html).toContain(`<link rel="canonical" href="https://distribute.you${ppcVsPath(a)}">`);
     }

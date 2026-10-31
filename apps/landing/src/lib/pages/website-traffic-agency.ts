@@ -42,7 +42,7 @@ function heroHtml(): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">Website Traffic Agency for B2B</span>
-      <h1 style="margin-top:18px">The website traffic agency that brings your buyers.</h1>
+      <h1>The website traffic agency that brings your buyers.</h1>
       <p class="lead">Our team and our AI agents invite the people who buy from you to your website, by email and WhatsApp. Every visit is judged human, with a role and a company behind it.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -76,7 +76,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">How we bring visitors</span>
-        <h2 style="margin-top:14px">The right people, on the right page.</h2>
+        <h2>The right people, on the right page.</h2>
         <p>Website traffic you choose, by name. Our team runs it, our agents do the work every day.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -137,7 +137,7 @@ function weekHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Every visit, named</span>
-      <h2 style="margin-top:14px">Your traffic report reads like a list of buyers.</h2>
+      <h2>Your traffic report reads like a list of buyers.</h2>
       <p>Each visit comes with the role and company behind it, the message that brought them and what they did next. Your sales team knows who to call first.</p>
     </div>
     <div class="ag-table-wrap tr-week" data-motion="reveal">
@@ -164,7 +164,7 @@ export function trafficProofHtml(list: IndexList | null): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Our data, live</span>
-      <h2 style="margin-top:14px">What a human visit costs, read live.</h2>
+      <h2>What a human visit costs, read live.</h2>
       <p>Cost per click and click rate, read from every campaign we run and recorded every day. Your campaign starts from our best one.</p>
     </div>
     <ul class="ag-proof-list">${cards}</ul>
@@ -193,7 +193,7 @@ function daysHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Live in 5 days</span>
-      <h2 style="margin-top:14px">From our first call to your first visitors.</h2>
+      <h2>From our first call to your first visitors.</h2>
       <p>Nothing to set up on your side. Our data, our domains, our agents.</p>
     </div>
     <div class="ag-days-wrap">
@@ -219,7 +219,7 @@ export function trafficAgencyTableHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Traffic agencies compared</span>
-      <h2 style="margin-top:14px">Website traffic agencies, side by side.</h2>
+      <h2>Website traffic agencies, side by side.</h2>
       <p>What each one charges and how fast it starts, read on its own site.</p>
     </div>
     <div class="ag-table-wrap tr-table" data-motion="reveal">
@@ -288,7 +288,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">Good to know before the call.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Good to know before the call.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other website traffic agencies">${links}</nav>
   </div>

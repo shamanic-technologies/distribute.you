@@ -283,7 +283,7 @@ function outcomesHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">One agent, every outcome</span>
-      <h2 style="margin-top:16px">Your whole go-to-market, from one AI GTM agent.</h2>
+      <h2>Your whole go-to-market, from one AI GTM agent.</h2>
       <p>Each part of the run has its own page. The same agent runs them all, on one balance.</p>
     </div>
     <div class="gx-outs" data-motion="reveal" data-motion-stagger>
@@ -302,7 +302,7 @@ function howHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">How it runs</span>
-      <h2 style="margin-top:16px">Paste your website. The agent runs the rest.</h2>
+      <h2>Paste your website. The agent runs the rest.</h2>
       <p>GTM automation that starts from what already works for other founders.</p>
     </div>
     <div class="sdr-job">
@@ -373,7 +373,7 @@ function platformHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">A platform, or an agent</span>
-      <h2 style="margin-top:16px">A GTM platform hands you tools. Our agent hands you buyers.</h2>
+      <h2>A GTM platform hands you tools. Our agent hands you buyers.</h2>
       <p>Platforms are great for a sales team that runs the work. A founder gets the work done.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -395,7 +395,7 @@ function pricesHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">The price of the run</span>
-      <h2 style="margin-top:16px">Every step of your go-to-market, at the API price.</h2>
+      <h2>Every step of your go-to-market, at the API price.</h2>
       <p>Each tool our agent calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
     <div class="prices-grid">
@@ -434,7 +434,7 @@ export function compareHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">GTM platforms compared</span>
-      <h2 style="margin-top:16px">The GTM automation that also does the work.</h2>
+      <h2>The GTM automation that also does the work.</h2>
       <p>Each of these helps a sales team run its go-to-market. Ours runs it for you.</p>
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
@@ -468,7 +468,7 @@ function plansHtml(): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">A whole GTM team for the price of its tools.</h2>
+      <h2>A whole GTM team for the price of its tools.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
     <div class="plans plans-3">
@@ -521,7 +521,7 @@ function agentHtml(): string {
     <div class="agent-grid">
       <div class="section-head" data-motion="reveal">
         <span class="eyebrow">Works from your own agent</span>
-        <h2 style="margin-top:16px">Ask your agent to run your go-to-market.</h2>
+        <h2>Ask your agent to run your go-to-market.</h2>
         <p>Run our AI GTM agent from Claude Code, Grok or any agent that speaks MCP. Same agent, same API prices.</p>
         <div class="agent-logos">
           <span>${LOGO("claude.ai", 20)}Claude Code</span>

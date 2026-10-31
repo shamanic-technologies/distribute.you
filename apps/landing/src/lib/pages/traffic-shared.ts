@@ -181,7 +181,7 @@ export function visitIndexesHtml(list: IndexList | null, words: { eyebrow: strin
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">${esc(words.eyebrow)}</span>
-      <h2 style="margin-top:16px">${esc(words.h2)}</h2>
+      <h2>${esc(words.h2)}</h2>
       <p>${esc(words.p)}</p>
     </div>
     <ul class="tr-ix-list" data-motion="reveal" data-motion-stagger>${rows.map(lightIndexCard).join("")}</ul>
@@ -222,7 +222,7 @@ export function plansHtml(w: PlanWords): string {
   <div class="wrap">
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
-      <h2 style="margin-top:16px">${esc(w.h2)}</h2>
+      <h2>${esc(w.h2)}</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
     <div class="plans plans-3">
@@ -278,7 +278,7 @@ export function agentBoxHtml(w: { h2: string; p: string; ask: string }): string 
     <div class="agent-grid">
       <div class="section-head" data-motion="reveal">
         <span class="eyebrow">Works from your own agent</span>
-        <h2 style="margin-top:16px">${esc(w.h2)}</h2>
+        <h2>${esc(w.h2)}</h2>
         <p>${esc(w.p)}</p>
         <div class="agent-logos">
           <span>${LOGO("claude.ai", 20)}Claude Code</span>
@@ -308,7 +308,7 @@ export function pricesHtml(w: { eyebrow: string; h2: string }): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">${esc(w.eyebrow)}</span>
-      <h2 style="margin-top:16px">${esc(w.h2)}</h2>
+      <h2>${esc(w.h2)}</h2>
       <p>Each tool our agent calls has a public price, read live from our <a href="/catalog">catalog</a>. You pay what the vendor charges, with 0% markup.</p>
     </div>
     <div class="prices-grid">
