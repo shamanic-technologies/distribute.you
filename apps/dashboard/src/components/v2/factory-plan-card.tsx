@@ -1,10 +1,9 @@
 "use client";
 
-import { Fragment, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { Fragment } from "react";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getFunnelCampaignFactoryShadow, getSalesFunnelCampaignPlanChanges, setSalesFunnelCampaignBrief } from "@/lib/api";
+import { getFunnelCampaignFactoryShadow, getSalesFunnelCampaignPlanChanges } from "@/lib/api";
 import {
   confidenceWords,
   isLowConfidence,
@@ -29,6 +28,7 @@ import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { DRAINING_WORDS, followsPlanWords, isDraining, planStateWords, type PlanChange } from "@/lib/plan-following";
 import { useStaffCatalogueObject } from "@/components/v2/staff-catalogue-data";
+import { BriefField } from "@/components/v2/campaign-brief-field";
 
 /**
  * GTM FACTORY STEP 1 on the campaign page, STAFF MODE ONLY (owner 2026-10-28, FACTORY-P1-DASH): what the campaign
@@ -87,7 +87,12 @@ function FactoryPlanBody({ campaign, type }: { campaign: SalesFunnelCampaign; ty
           <div className="min-w-0">
             <p className="k-label">Brief</p>
             <div className="mt-1">
-              <BriefField campaign={campaign} />
+              <BriefField
+                campaign={campaign}
+                placeholder="The strategy in your words: who to reach, how, what to avoid."
+                emptyText="No brief yet: every pipe runs its default play."
+                updatedNote={(at) => `Updated ${utcTime(at)} UTC. Jev reads it on the next pass.`}
+              />
             </div>
           </div>
         </div>
@@ -223,101 +228,6 @@ function FunnelPipes({ salesFunnelId }: { salesFunnelId: string }) {
         ),
       )}
     </span>
-  );
-}
-
-// ─── Brief: text, a click opens it in its own box, blur/Enter saves, Esc drops ───
-
-function BriefField({ campaign }: { campaign: SalesFunnelCampaign }) {
-  const qc = useQueryClient();
-  const served = campaign.brief ?? "";
-  const [text, setText] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const dropped = useRef(false);
-  const save = useMutation({
-    mutationFn: (next: string | null) => setSalesFunnelCampaignBrief(campaign.id, next, campaign.brandId),
-    onSuccess: async (saved) => {
-      // Every list holding this campaign reads the saved brief at once, then re-reads.
-      for (const key of [["salesFunnelCampaigns", campaign.brandId, "all"], ["salesFunnelCampaigns", campaign.brandId, campaign.offerId]]) {
-        qc.setQueryData<SalesFunnelCampaign[]>(key, (old) => old?.map((c) => (c.id === saved.id ? { ...c, ...saved } : c)));
-      }
-      await qc.invalidateQueries({ queryKey: ["salesFunnelCampaigns", campaign.brandId] });
-    },
-  });
-  // The typed value shows while it saves (never the old one).
-  const shown = save.isPending && save.variables !== undefined ? (save.variables ?? "") : served;
-  const box = "w-full rounded-[8px] px-2 py-1.5 text-left text-[13px] leading-5 whitespace-pre-wrap";
-
-  const commit = () => {
-    if (text === null) return;
-    if (dropped.current) {
-      dropped.current = false;
-      setText(null);
-      return;
-    }
-    const next = text.trim() === "" ? null : text.trim();
-    setText(null);
-    if (next === (campaign.brief ?? null)) return;
-    setError(null);
-    save.mutate(next, {
-      onError: (err) => {
-        console.error("[factory-plan] brief save failed", { campaignId: campaign.id, err });
-        // Reopen with the text kept.
-        setText(next ?? "");
-        setError("Not saved. Try again.");
-      },
-    });
-  };
-
-  if (text !== null) {
-    return (
-      <>
-        <textarea
-          autoFocus
-          aria-label="Brief"
-          value={text}
-          rows={Math.max(3, text.split("\n").length)}
-          maxLength={8000}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              e.currentTarget.blur();
-            }
-            if (e.key === "Escape") {
-              e.stopPropagation();
-              dropped.current = true;
-              setError(null);
-              e.currentTarget.blur();
-            }
-          }}
-          placeholder="The strategy in your words: who to reach, how, what to avoid."
-          className={`k-input ${box} resize-y`}
-          // keel.css is unlayered: the box's padding, height and font ride inline so the field opens in the text's own box.
-          style={{ font: "inherit", fontSize: 13, lineHeight: "20px", height: "auto", padding: "6px 8px" }}
-        />
-        <p className="k-fg3 mt-1 text-[11px]">Enter saves, Shift+Enter for a new line, Esc drops.</p>
-        {error && <p className="mt-1 text-[12px]" style={{ color: ROSE }}>{error}</p>}
-      </>
-    );
-  }
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          dropped.current = false;
-          setText(shown);
-        }}
-        className={`k-hover cursor-text ${box}`}
-        aria-label="Edit the brief"
-      >
-        {shown ? <span className={save.isPending ? "k-fg3" : "k-fg"}>{shown}</span> : <span className="k-fg4">No brief yet: every pipe runs its default play.</span>}
-      </button>
-      {campaign.briefUpdatedAt && !save.isPending && <p className="k-fg3 mt-0.5 px-2 text-[11px]">Updated {utcTime(campaign.briefUpdatedAt)} UTC. Jev reads it on the next pass.</p>}
-      {error && <p className="mt-1 px-2 text-[12px]" style={{ color: ROSE }}>{error}</p>}
-    </>
   );
 }
 

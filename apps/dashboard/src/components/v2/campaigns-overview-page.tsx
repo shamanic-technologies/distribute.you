@@ -37,7 +37,7 @@ import { v2CampaignHref } from "@/lib/v2/routes";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
-import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
+import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 
@@ -399,7 +399,7 @@ function CampaignLine({
     if (row && row.investedUsd === null) console.error("[funnel-campaigns] investedUsd not served", { id: row.id });
   }, [row, rowSettled, rowsError, campaign.id]);
   useEffect(() => {
-    if (copySettled && copy && !copy.shortDescription) console.error("[funnel-campaigns] shortDescription not served", { id: copy.id, reason: copy.shortDescriptionUnavailableReason ?? null });
+    if (copySettled && copy && !copy.path) console.error("[funnel-campaigns] path not served", { id: copy.id, reason: copy.copyUnavailableReason ?? null });
   }, [copy, copySettled]);
   const wait = <Shimmer className="ml-auto h-4 w-12 rounded" />;
   return (
@@ -418,8 +418,11 @@ function CampaignLine({
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-[14px] font-medium">{campaign.salesFunnelName}</span>
         </span>
-        {copy?.shortDescription ? (
-          <span className="k-fg2 block truncate text-[12px]">{copy.shortDescription}</span>
+        {/* P5.1 (owner 2026-10-31): the path the campaign runs NOW, each pipe by its served name and mark. */}
+        {copy?.path ? (
+          <span className="block min-w-0">
+            <FunnelPathLine items={copy.path.items} />
+          </span>
         ) : copySettled ? (
           <span className="k-fg4 block text-[12px]">—</span>
         ) : (

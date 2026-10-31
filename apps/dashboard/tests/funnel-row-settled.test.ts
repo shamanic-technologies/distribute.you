@@ -48,9 +48,12 @@ describe("both readers of the rows gate a missing row on funnelRowSettled", () =
   it("the campaign page uses it for its own row", () => {
     expect(src).toContain("const rowsSettled = funnelRowSettled(row !== null, rowsQ, campaign.createdAt);");
   });
-  it("sentence and Type read the fast copy read, money the full rows", () => {
+  it("path and Type read the fast copy read, money the full rows", () => {
     expect(list).toContain("copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}");
-    expect(list).toContain("{copy?.shortDescription ? (");
-    expect(src).toContain("sub={path ? <FunnelPathLine items={path.items} /> : undefined}");
+    expect(list).toContain("{copy?.path ? (");
+    // P5.1: the page's path moved from the header into "What this campaign aims at", on the same copy.
+    expect(src).toContain("const copyOf = row ?? copyRow;");
+    expect(src).toContain("<CampaignAimSection campaign={campaign} copy={copyOf}");
+    expect(src).not.toContain("sub={path ? <FunnelPathLine");
   });
 });
