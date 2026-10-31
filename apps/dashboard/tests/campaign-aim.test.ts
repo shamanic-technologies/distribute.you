@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { pathChangeSentence, pathChangedAt } from "../src/lib/campaign-path-change";
-import { FunnelCampaignCopySchema } from "../src/lib/sales-funnel-campaigns";
+import { FunnelCampaignCopySchema, unpricedWords } from "../src/lib/sales-funnel-campaigns";
 
 /**
  * P5.1 (owner 2026-10-31): the CLIENT campaign page opens on what the campaign aims at (Target, Type, brief) and the
@@ -71,10 +71,19 @@ describe("the client campaign page", () => {
     const code = aim.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     for (const staff of ["Jev", "play", "strategy", "tactic", "useFactoryShadow", "useStaffCatalogueObject"]) expect(code).not.toContain(staff);
   });
-  it("a path pipe wears its served mark and name (public catalogue), never a local look", () => {
+  it("a client reads the CHANNEL (name + mark); only staff read the pipe's code name and mark", () => {
     const line = page.slice(page.indexOf("export function FunnelPathLine("), page.indexOf("/** The Type tag"));
+    expect(line).toContain("const { staffMode } = useStaffMode();");
+    expect(line).toContain(") : it.pipeId && staffMode ? (");
     expect(line).toContain("<PipeChip pipeId={it.pipeId} servedName={it.name} />");
+    expect(line).toContain("<ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />");
     expect(line).toContain("<ServedPipeMark pipeId={pipeId} size={12} />");
     expect(line).toContain("usePublicPipe(pipeId)");
+  });
+});
+
+describe("a campaign whose outcome has no value of its own (features-service outcome_unvalued)", () => {
+  it("prints a dash, never a negative ROI", () => {
+    expect(unpricedWords("outcome_unvalued")).toBe("—");
   });
 });

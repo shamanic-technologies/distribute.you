@@ -481,6 +481,7 @@ function ContactedCell({ volume, type }: { volume: MaxVolume; type: ReturnType<t
  */
 export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
   const channels = useAcquisitionChannels();
+  const { staffMode } = useStaffMode();
   // Every two steps have a channel between them, the client's own team included (owner
   // 2026-10-11). A pair served without one is a producer gap: logged and drawn as an error.
   const gaps = missingChannelGaps(items);
@@ -511,8 +512,8 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
               <LightningIcon size={12} weight="duotone" aria-hidden className="shrink-0" />
               {it.name}
             </span>
-          ) : it.pipeId ? (
-            // Served name and mark off the public catalogue (features-service P5.1).
+          ) : it.pipeId && staffMode ? (
+            // Staff read its code name and mark; a client reads the channel name and mark (owner rule: code names are staff only).
             <PipeChip pipeId={it.pipeId} servedName={it.name} />
           ) : (
             <ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />
@@ -524,7 +525,7 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
   );
 }
 
-/** A pipe on a path line: its served mark and name off the public catalogue (the path item's name until it answers). */
+/** STAFF ONLY: a pipe on a path line, its served mark and code name off the public catalogue (the channel name on hover). */
 function PipeChip({ pipeId, servedName }: { pipeId: string; servedName: string }) {
   const { pipe } = usePublicPipe(pipeId);
   return (
