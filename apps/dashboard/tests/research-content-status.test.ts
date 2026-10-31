@@ -119,7 +119,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     const roiAt = list.indexOf("<RowRoi f={r} />");
     const cells = list.slice(roiAt, list.indexOf("<ContentStatusWord", roiAt));
     expect(cells).toContain("<Dash v={r.cost} />");
-    // On a post-writing pipe the $ Spent cell prints the served post spend, else the row's own (THREADS-IDEAS-AB).
+    // $ Spent prints the row's own served spend on every pipe; post columns sit before it (THREADS-IDEAS-AB).
     expect(cells.indexOf("{r.outcomes}")).toBeLessThan(cells.indexOf("r.spend}"));
     expect(cells.indexOf("<PostCells")).toBeLessThan(cells.indexOf("r.spend}"));
   });
