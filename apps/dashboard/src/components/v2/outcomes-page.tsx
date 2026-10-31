@@ -11,7 +11,7 @@ import { pollOptions } from "@/lib/query-options";
 import { integrationFor } from "@/lib/integrations";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { OUTCOME_PEOPLE_PAGE_SIZE, type OutcomeStepStat } from "@/lib/v2/outcome-people";
-import { useAudienceSnapshot, useBrandOutcomeList, type BrandOutcome } from "@/components/v2/brand-outcomes";
+import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons, type BrandOutcome } from "@/components/v2/brand-outcomes";
 import { RecordsTabs } from "@/components/v2/records";
 import { formatCount } from "@/lib/format-number";
 import { v2Href, v2OutcomeHref } from "@/lib/v2/routes";
@@ -28,8 +28,13 @@ import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
 import { AudienceLists } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
-import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
-import { OutcomeStats } from "@/components/v2/outcome-stats";
+import { BarSpark, EmptyNote, Shimmer, SparkLine, TopBar } from "@/components/v2/ui";
+import { OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
+import { CatalogueMark } from "@/components/v2/catalogue-mark";
+import { Arrow } from "@/components/v2/research-bits";
+import { LearningFigure, RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { formatUsdAdaptive } from "@/lib/format-number";
+import { costStepOf, outcomeRoiOf, type OfferOutcomeCostSeries, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
 import { stepLabel } from "@/lib/legs";
 
 /**
@@ -113,6 +118,14 @@ function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, numb
   return <Num n={counts[o.outcome.items.kind === "people" ? o.outcome.items.bucket : "contacted"]} />;
 }
 
+/**
+ * THE OUTCOMES OVERVIEW (P5, owner 2026-10-31: outcomes are the dashboard's main entry, « what did I
+ * get, and what did it cost? »): one card per outcome the brand reaches, in the producer's order
+ * (features-service's outcome-cost-series `steps[]`, the brand's path from Paid client down to Lead
+ * found). Anatomy = the Research hub card: mark + name, an inset of two cells (how many, with its
+ * months as bars; $ per outcome, with its running curve), then a footer line with the ROI. Every
+ * figure is served (crm-service people, lead-service buckets, features-service cost and ROI).
+ */
 export function OutcomesOverviewPage() {
   const { orgId, brandId } = useIds();
   const { offerId } = useSelectedOffer();
@@ -120,6 +133,10 @@ export function OutcomesOverviewPage() {
   const counts = useBucketCounts(brandId).data?.counts ?? null;
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held ?? null;
+  const costQ = useOutcomeCostSeries(brandId, offerId);
+  const costAnswered = costQ.data !== undefined || (costQ.isFetchedAfterMount && costQ.isError) || !offerId;
+  const stepIcons = useStepIcons();
+  const ordered = inServedOrder(outcomes, costQ.data);
   return (
     <div>
       <TopBar crumbs={[{ label: "Outcomes" }, { label: "Overview" }]} />
@@ -127,55 +144,136 @@ export function OutcomesOverviewPage() {
         <h1 className="text-[28px] font-semibold leading-[34px] tracking-[-0.01em]">
           {!settled ? <Shimmer className="h-8 w-72" /> : outcomes.length === 0 ? "No outcome yet" : `${outcomes.length} outcome${outcomes.length === 1 ? "" : "s"}`}
         </h1>
-        <p className="k-fg2 mb-6 mt-1 text-[14px]">What you get, from your campaigns and your own tools. Open one to see who.</p>
+        <p className="k-fg2 mb-6 mt-1 text-[14px]">What you got since you started, and what each one cost.</p>
         {allError && <p className="mb-3 text-[13px] text-[var(--data-rose)]">We could not read your own tools right now. Only your campaigns show.</p>}
-        <div className="k-card overflow-hidden">
-          {!settled ? (
-            <div className="space-y-px p-2">
-              <Shimmer className="h-10 rounded-[8px]" />
-              <Shimmer className="h-10 rounded-[8px]" />
-              <Shimmer className="h-10 rounded-[8px]" />
-            </div>
-          ) : outcomes.length === 0 ? (
+        {!settled ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Shimmer key={i} className="h-[212px] rounded-[12px]" />
+            ))}
+          </div>
+        ) : outcomes.length === 0 ? (
+          <div className="k-card">
             <EmptyNote>Turn a campaign on, or connect PostHog, Clerk or Stripe, and what you get shows here.</EmptyNote>
-          ) : (
-            <div className="k-scroll overflow-x-auto">
-              <table className="w-full min-w-[640px] text-[13px]">
-                <thead>
-                  <tr className="k-line-subtle border-b">
-                    <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Outcome</th>
-                    <th className="k-label px-3 py-2.5 text-left font-normal">From</th>
-                    <th className="k-label px-3 py-2.5 text-right font-normal">People</th>
-                    <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">Contacted by us</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {outcomes.map((o) => (
-                    <tr key={o.outcome.key} className="k-row k-line-subtle h-10 border-b last:border-b-0">
-                      <td className="px-3 py-2 pl-4">
-                        <Link href={v2OutcomeHref(orgId, brandId, o.outcome.key)} className="font-medium hover:underline">
-                          {o.outcome.label}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2">
-                        <ProducedBy campaigns={o.campaigns} funnelCampaigns={o.funnelCampaigns} sources={o.all?.sources} />
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <AllCount o={o} counts={counts} peopleHeld={peopleHeld} />
-                      </td>
-                      <td className="px-3 py-2 pr-4 text-right">
-                        <OursCount o={o} counts={counts} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {ordered.map((o) => (
+              <OutcomeCard
+                key={o.outcome.key}
+                o={o}
+                href={v2OutcomeHref(orgId, brandId, o.outcome.key)}
+                counts={counts}
+                peopleHeld={peopleHeld}
+                cost={costStepOf(costQ.data, o.outcome.key)}
+                costAnswered={costAnswered}
+                icon={stepIcons?.get(o.outcome.key) ?? null}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+/** The producer's step order (outcome-cost-series `steps[]`); a step it does not serve (posts) keeps its place after. */
+function inServedOrder(list: BrandOutcome[], series: OfferOutcomeCostSeries | null | undefined): BrandOutcome[] {
+  if (!series) return list;
+  const at = new Map(series.steps.map((s, i) => [s.stepKey, i] as const));
+  const rank = (o: BrandOutcome) => at.get(o.outcome.key) ?? series.steps.length;
+  return [...list].sort((a, b) => rank(a) - rank(b));
+}
+
+function OutcomeCard({
+  o,
+  href,
+  counts,
+  peopleHeld,
+  cost,
+  costAnswered,
+  icon,
+}: {
+  o: BrandOutcome;
+  href: string;
+  counts: Record<string, number> | null;
+  peopleHeld: number | null;
+  cost: OutcomeCostStep | null;
+  costAnswered: boolean;
+  icon: string | null;
+}) {
+  // How many per month: crm-service's months (everyone), else what features-service counted from people we contacted.
+  const bars = o.all?.months?.length ? o.all.months.map((m) => m.people) : cost?.months.map((m) => m.outcomes) ?? null;
+  const curve = cost ? cost.months.map((m) => m.cumulativeCostPerOutcomeUsd).filter((v): v is number => v != null) : null;
+  const name = o.outcome.label;
+  return (
+    <div className="k-card relative flex min-w-0 flex-col p-4 transition-shadow hover:shadow-[var(--elev-popover)]">
+      <div className="flex items-center gap-3">
+        <CatalogueMark icon={icon} name={name} size={28} />
+        <Link href={href} className="min-w-0 flex-1 truncate text-[14px] font-medium leading-5 after:absolute after:inset-0 after:content-['']">
+          {name}
+        </Link>
+      </div>
+
+      <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
+        <div className="min-w-0 border-r border-[var(--line-subtle)] p-3">
+          <p className="k-label">How many</p>
+          <div className="mt-1.5 flex h-7 items-center text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
+            <AllCount o={o} counts={counts} peopleHeld={peopleHeld} />
+          </div>
+          <div className="k-fg3 mt-0.5 flex items-center gap-1 truncate text-[11px] tabular-nums">
+            <OursCount o={o} counts={counts} /> contacted by us
+          </div>
+          <BarSpark values={bars ? bars.slice(-12) : null} className="mt-2" />
+        </div>
+        <div className="min-w-0 p-3">
+          <p className="k-label">$ / outcome</p>
+          <div className="mt-1.5 text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
+            <OutcomeCostFigure answered={costAnswered} cost={cost} />
+          </div>
+          <p className="k-fg3 mt-0.5 truncate text-[11px] tabular-nums">
+            {cost ? `${formatUsdAdaptive(cost.sinceInception.spendUsd)} spent` : "\u00a0"}
+          </p>
+          <div className="mt-2 h-6">{curve && curve.length >= 2 ? <SparkLine values={curve} className="h-6" /> : null}</div>
+        </div>
+      </div>
+
+      <div className="mt-auto flex items-center gap-2 pt-3 text-[13px]">
+        <span className="k-fg3 shrink-0">
+          <span className="relative z-10">
+            <RoiLabel />
+          </span>
+        </span>
+        <div className="min-w-0 flex-1 truncate font-medium tabular-nums">
+          {!costAnswered ? <Shimmer className="h-4 w-14" /> : <RoiValue roi={outcomeRoiOf(cost)} learning={cost?.sinceInception.learning} />}
+        </div>
+        <Arrow />
+      </div>
+      <div className="relative z-10 mt-2 min-w-0 text-[12px]">
+        <ProducedBy campaigns={o.campaigns} funnelCampaigns={o.funnelCampaigns} sources={o.all?.sources} />
+      </div>
+    </div>
+  );
+}
+
+/** $ per outcome: measured; greyed while Learning with the served expected beside it; else the served expected. */
+function OutcomeCostFigure({ answered, cost }: { answered: boolean; cost: OutcomeCostStep | null }) {
+  if (!answered) return <Shimmer className="h-7 w-20" />;
+  if (!cost) return <span className="k-fg4">—</span>;
+  const measured = cost.sinceInception.costPerOutcomeUsd;
+  const expected = cost.expected.costPerOutcomeUsd;
+  if (measured == null) {
+    return expected != null ? (
+      <span className="whitespace-nowrap">
+        {formatUsdAdaptive(expected)}
+        <span className="k-fg3 ml-1 text-[11px] font-normal">expected</span>
+      </span>
+    ) : (
+      <span className="k-fg3 text-[13px] font-normal">Learning</span>
+    );
+  }
+  if (cost.sinceInception.learning) return <LearningFigure measured={formatUsdAdaptive(measured)} expected={expected != null ? formatUsdAdaptive(expected) : null} />;
+  return <>{formatUsdAdaptive(measured)}</>;
 }
 
 /** Everyone who reached one step, any source, earliest first; a row opens the person in the Unibox. */

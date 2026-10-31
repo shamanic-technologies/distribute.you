@@ -48,20 +48,21 @@ describe("sidebar", () => {
     expect(shell).not.toContain('label="Inbox"');
     expect(shell).not.toContain('label="Sent"');
   });
-  // The owner's sketch (2026-10-10), token for token: Today, Records (Companies, People,
-  // Deals), Unibox, Campaigns (Overview + ON campaigns), Outcomes (Overview + one per step),
-  // Setup (Offer, Brand). No category header for campaigns; staff pages under the GA nav.
+  // The owner's sketch (2026-10-10), token for token, with Outcomes moved right after Today
+  // (P5, owner 2026-10-31: a client first asks what they got and what it cost): Today, Outcomes
+  // (Overview + one per step), Records (Companies, People, Deals), Unibox, Campaigns (Overview +
+  // ON campaigns), Setup (Offer, Brand). No category header for campaigns; staff pages under the GA nav.
   const at = (needle: string) => shell.indexOf(needle);
   it("reads the sketch in order", () => {
     const order = [
       'label="Today"',
+      '<Group title="Outcomes">',
       ">Records</span>",
       'label="Companies"',
       'label="People"',
       'label="Deals"',
       'label="Unibox"',
       '<Group title="Campaigns">',
-      '<Group title="Outcomes">',
       '<Group title="Setup">',
       'label="Offer"',
       'label="Brand"',
@@ -77,7 +78,7 @@ describe("sidebar", () => {
     for (const l of ["Targeting", "Integrations", "Brand settings"]) expect(setup).not.toContain(`label="${l}"`);
   });
   it("Campaigns: its Overview, then every ON campaign with its face and a live dot, no indent", () => {
-    const block = shell.slice(at('<Group title="Campaigns">'), at('<Group title="Outcomes">'));
+    const block = shell.slice(at('<Group title="Campaigns">'), at('<Group title="Setup">'));
     expect(block.indexOf('label="Overview"')).toBeLessThan(block.indexOf("ongoing.map("));
     // Campaigns that are sales funnels (owner 2026-10-10) are listed too, by name and face.
     expect(block).toContain("<FunnelFace name={c.salesFunnelName} size={16} />");
@@ -87,7 +88,7 @@ describe("sidebar", () => {
     expect(block).not.toContain("indent");
   });
   it("Outcomes: its Overview, then one entry per step the ON campaigns produce or the brand's tools state", () => {
-    const block = shell.slice(at('<Group title="Outcomes">'), at('<Group title="Setup">'));
+    const block = shell.slice(at('<Group title="Outcomes">'), at(">Records</span>"));
     expect(block).toContain("v2OutcomeHref(orgId, brandId)");
     expect(block).toContain("outcomes.map(({ outcome, all })");
     expect(block).not.toContain("indent");

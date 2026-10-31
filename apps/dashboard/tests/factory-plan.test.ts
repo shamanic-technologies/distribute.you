@@ -138,9 +138,13 @@ describe("factory shadow: the campaign page (staff mode only)", () => {
     const writer = api.slice(api.indexOf("export async function setSalesFunnelCampaignBrief("), api.indexOf("/** One funnel campaign with its units. */"));
     expect(writer).toContain('method: "PATCH"');
     expect(writer).toContain("body: { brief }");
-    expect(card).toContain("setSalesFunnelCampaignBrief(");
-    expect(card).toContain('e.key === "Escape"');
-    expect(card).toContain("onBlur={commit}");
+    // One brief field for the staff card and the client page (P5.1): campaign-brief-field.tsx.
+    const field = read("components/v2/campaign-brief-field.tsx");
+    expect(card).toContain("<BriefField");
+    expect(field).toContain("setSalesFunnelCampaignBrief(");
+    expect(field).toContain('e.key === "Escape"');
+    expect(field).toContain("onBlur={commit}");
+    expect(field).not.toMatch(/>\s*Save\s*</);
     expect(card).not.toMatch(/>\s*Save\s*</);
   });
 

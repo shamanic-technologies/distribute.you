@@ -41,6 +41,9 @@ export const OutcomeCostStepSchema = z.object({
     learning: z.boolean(),
   }),
   expected: ExpectedSchema,
+  /** What one outcome is worth and its return (P5 OUTCOMES-ENTRY); optional until features-service deploys them. */
+  value: z.object({ valuePerOutcomeUsd: z.number().nullable(), unavailableReason: z.string().nullable() }).optional(),
+  roi: z.object({ measured: z.number().nullable(), expected: z.number().nullable() }).optional(),
   months: z.array(OutcomeCostMonthSchema),
 });
 export type OutcomeCostStep = z.infer<typeof OutcomeCostStepSchema>;
@@ -57,6 +60,23 @@ export type OfferOutcomeCostSeries = z.infer<typeof OfferOutcomeCostSeriesSchema
 /** One step's series, or null when the producer serves none for it. */
 export function costStepOf(series: OfferOutcomeCostSeries | null | undefined, stepKey: string): OutcomeCostStep | null {
   return series?.steps.find((s) => s.stepKey === stepKey) ?? null;
+}
+
+/** A step's ROI as every v2 surface prints it (`RoiValue`): measured, greyed while Learning; else the served expected one; else the reason. */
+export interface OutcomeRoi {
+  value: number | null;
+  expected: boolean;
+  reason: string | null;
+  learning?: boolean;
+  expectedValue?: number | null;
+}
+
+export function outcomeRoiOf(step: OutcomeCostStep | null): OutcomeRoi {
+  if (!step?.roi) return { value: null, expected: false, reason: null };
+  const { measured, expected } = step.roi;
+  if (measured != null) return { value: measured, expected: false, reason: null, learning: step.sinceInception.learning, expectedValue: expected };
+  if (expected != null) return { value: expected, expected: true, reason: null };
+  return { value: null, expected: false, reason: step.value?.unavailableReason ?? step.expected.unavailableReason };
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

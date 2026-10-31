@@ -60,7 +60,7 @@ import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { useLegCatalogue, usePublicPipe } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { v2CampaignHref, v2Href, type V2CampaignTab } from "@/lib/v2/routes";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
@@ -82,6 +82,8 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview } from "@/lib/v2/campaign-layout-preview";
 import { FunnelCampaignPageNext } from "@/components/v2/campaign-page-next";
 import { FactoryPlanSection } from "@/components/v2/factory-plan-card";
+import { CampaignAimSection } from "@/components/v2/campaign-aim";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 
 /**
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
@@ -479,6 +481,7 @@ function ContactedCell({ volume, type }: { volume: MaxVolume; type: ReturnType<t
  */
 export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
   const channels = useAcquisitionChannels();
+  const { staffMode } = useStaffMode();
   // Every two steps have a channel between them, the client's own team included (owner
   // 2026-10-11). A pair served without one is a producer gap: logged and drawn as an error.
   const gaps = missingChannelGaps(items);
@@ -509,6 +512,9 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
               <LightningIcon size={12} weight="duotone" aria-hidden className="shrink-0" />
               {it.name}
             </span>
+          ) : it.pipeId ? (
+            // The served mark; staff read the code name, a client the channel's served name (owner rule: code names are staff only).
+            <PipeChip pipeId={it.pipeId} servedName={it.name} codeName={staffMode} />
           ) : (
             <ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />
           )}
@@ -516,6 +522,21 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
       ))}
     </span>
     </HoverScroll>
+  );
+}
+
+/**
+ * A step of a path line: the served mark of what performs it (public catalogue), then its name. A client reads the
+ * channel's served name ("Threads posts"); staff mode reads the code name (owner rule: code names are staff only),
+ * the channel name on hover.
+ */
+function PipeChip({ pipeId, servedName, codeName }: { pipeId: string; servedName: string; codeName: boolean }) {
+  const { pipe } = usePublicPipe(codeName ? pipeId : null);
+  return (
+    <span className="k-chip shrink-0" style={{ fontSize: 11, height: 18, gap: 4, padding: "0 5px" }} title={codeName ? servedName : undefined}>
+      <ServedPipeMark pipeId={pipeId} size={12} />
+      {codeName ? (pipe?.name ?? servedName) : servedName}
+    </span>
   );
 }
 
@@ -756,7 +777,8 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   // Its path on the fast copy read when the cached rows predate it (owner 2026-10-13: instant).
   const copyQ = useAuthQuery(["funnelCampaignCopies", campaign.brandId, campaign.offerId], () => listFunnelCampaignCopies(campaign.brandId, campaign.offerId), pollOptions);
   const copyRow = copyQ.data?.find((r) => r.id === campaign.id) ?? null;
-  const path = row?.path ?? copyRow?.path ?? null;
+  // The row's copy (Type, the path it runs now): the full row, else the fast copy read.
+  const copyOf = row ?? copyRow;
   const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
   // The part that emails people is where its people live (Inbox, Sent, Targeting read its scope).
   // The pipes in the order the funnel runs them (sourcing, then cold email, then closing).
@@ -795,7 +817,6 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
           <span className="truncate">{campaign.salesFunnelName}</span>
         </span>
       }
-      sub={path ? <FunnelPathLine items={path.items} /> : undefined}
       tabs={tabs}
       actions={
         <>
@@ -817,6 +838,9 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
         <V2AudiencesTable campaignId={coldEmail.campaignId} offerId={campaign.offerId} />
       ) : (
       <div className="space-y-8">
+        {/* P5.1 (owner 2026-10-31): every customer's page opens on what the campaign aims at and the path it runs now. */}
+        <CampaignAimSection campaign={campaign} copy={copyOf} copySettled={copyQ.isFetchedAfterMount || rowsQ.isFetchedAfterMount || copyOf !== null} />
+
         {notFunded && (
           // keel.css is unlayered, so a bg-* utility on a k-card loses: the amber tint rides an inline style.
           <div
@@ -851,7 +875,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
         {/* GTM Factory step 1 (FACTORY-P1-DASH): staff mode only, renders nothing for a customer. */}
         <FactoryPlanSection
           campaign={campaign}
-          type={(row ?? copyRow) ? <TypeTag row={(row ?? copyRow)!} /> : copyQ.isFetchedAfterMount ? DASH : <Shimmer className="h-5 w-24" />}
+          type={copyOf ? <TypeTag row={copyOf} /> : copyQ.isFetchedAfterMount ? DASH : <Shimmer className="h-5 w-24" />}
         />
 
         <section>

@@ -120,6 +120,15 @@ export function expectedReasonWords(reason: string | null): string {
       return "No conversion on this pipe yet";
     case "net_not_measured_on_pipe":
       return "Not measured on this pipe";
+    // A step's value per outcome (features-service outcome-cost-series `value`).
+    case "step_not_on_expected_path":
+      return "Not on your path";
+    case "no_lifetime_revenue":
+      return "No client value set";
+    case "zero_conversion_rate":
+      return "No conversion yet";
+    case "leg_cost_unavailable":
+      return "No price yet";
     case null:
       return "—";
     default:

@@ -5,14 +5,14 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getOfferOutcomeCostSeries } from "@/lib/api";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { costStepOf, monthLabel, monthTick, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
+import { costStepOf, monthLabel, monthTick, outcomeRoiOf, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
 import type { OutcomeStepStat } from "@/lib/v2/outcome-people";
 import { EmptyNote, Figure, Shimmer, StatTile } from "@/components/v2/ui";
-import { LearningFigure } from "@/components/v2/roi-label";
+import { LearningFigure, RoiLabel, RoiValue } from "@/components/v2/roi-label";
 
 /**
- * ONE OUTCOME, OVER TIME (owner 2026-10-27): above the people table of an outcome page, four cards
- * (People, Contacted by us, $ / outcome, This month) then four charts: people per month and since
+ * ONE OUTCOME, OVER TIME (owner 2026-10-27): above the people table of an outcome page, five cards
+ * (People, Contacted by us, $ / outcome, ROI (P5, 2026-10-31), This month) then four charts: people per month and since
  * inception (crm-service, everyone vs contacted by us), $ / outcome per month and since inception
  * (features-service: the client's spend ÷ outcomes of people WE contacted, owner's choice "A").
  * Every figure is served; nothing is summed or divided here.
@@ -55,11 +55,11 @@ export function OutcomeStats({
   const thisMonth = months.length > 0 ? months[months.length - 1] : null;
   return (
     <div className="mb-6 space-y-3">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatTile label="People" note={<Wide>Everyone</Wide>}>
           <Figure value={formatCount(all.people)} unit={all.people === 1 ? "person" : "people"} />
         </StatTile>
-        <StatTile label="Contacted by us" note={<Wide>We wrote to them</Wide>}>
+        <StatTile label="Contacted by us">
           <Figure value={formatCount(all.contactedByUs)} unit={all.contactedByUs === 1 ? "person" : "people"} />
         </StatTile>
         <StatTile label={`$ / ${label}`} note={<Wide>Since you started</Wide>}>
@@ -69,6 +69,17 @@ export function OutcomeStats({
               {formatUsdAdaptive(cost.sinceInception.spendUsd)} spent for {formatCount(cost.sinceInception.outcomes)}{" "}
               {(cost.sinceInception.outcomes === 1 ? label : plural).toLowerCase()}
             </p>
+          )}
+        </StatTile>
+        {/* What it brought (P5, owner 2026-10-31): the served return of one outcome, measured else expected. */}
+        <StatTile label={<RoiLabel />}>
+          {!costAnswered ? (
+            <Shimmer className="h-7 w-16" />
+          ) : (
+            <Figure value={<RoiValue roi={outcomeRoiOf(cost)} learning={cost?.sinceInception.learning} />} />
+          )}
+          {cost?.value?.valuePerOutcomeUsd != null && (
+            <p className="k-fg3 mt-0.5 truncate text-[12px]">Each {label.toLowerCase()} is worth {formatUsdAdaptive(cost.value.valuePerOutcomeUsd)}</p>
           )}
         </StatTile>
         <StatTile label="This month" note={thisMonth ? monthLabel(thisMonth.month) : undefined}>
