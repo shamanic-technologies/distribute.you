@@ -60,7 +60,7 @@ function heroHtml(): string {
           <span class="sub">Our AI agent brings the right buyers to your website, by cold email and WhatsApp. Only the clicks a person made count.</span>
         </h1>
 
-        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free for one user. Every action at the API price, 0% markup.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every action at the API price, 0% markup.</div>
 
         <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
           <div class="launch-field">
@@ -208,7 +208,7 @@ export function compareHtml(): string {
       <table class="sdr-table">
         <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">How it brings traffic</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${TRAFFIC_AUTOMATION_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free for one user. Every action at the API price, 0% markup</td><td>${esc(OUR_TRAFFIC_ROW.channel)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${TRAFFIC_AUTOMATION_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>${esc(OUR_TRAFFIC_ROW.channel)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -245,7 +245,7 @@ export const TRAFFIC_AUTOMATION_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What is the price?",
-    a: 'The agent is free for one user, and $9 per user each month for a team. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+    a: 'The agent is free. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
   },
   {
     q: "Can I run it on my own server?",
@@ -297,7 +297,7 @@ export const TRAFFIC_TOOL_CLUSTER: ToolCluster = {
   ourWins: [
     "Each visitor is a buyer the agent chose for you, by role, company and market.",
     "Visits start with the first messages, so you do not wait for content to rank.",
-    "Free for one user, every action at the API price with 0% markup.",
+    "Free, every action at the API price with 0% markup.",
   ],
   chooseUs: [
     "You want the right buyers on your pricing or demo page.",
@@ -311,7 +311,7 @@ export const TRAFFIC_TOOL_CLUSTER: ToolCluster = {
 
 export const TRAFFIC_AUTOMATION_TITLE = "Website Traffic Automation: Get Qualified Website Visitors | distribute.you";
 export const TRAFFIC_AUTOMATION_DESCRIPTION =
-  "Revenue made easy. Get qualified website visitors: our AI agent invites your buyers by cold email and WhatsApp and counts only human clicks. Free for one user.";
+  "Revenue made easy. Get qualified website visitors: our AI agent invites your buyers by cold email and WhatsApp and counts only human clicks. Free.";
 
 export function renderWebsiteTrafficAutomationPage(list: IndexList | null): string {
   const url = `${SITE}${TRAFFIC_AUTOMATION_PATH}`;
@@ -364,7 +364,7 @@ export function renderWebsiteTrafficAutomationPage(list: IndexList | null): stri
         operatingSystem: "Web",
         url,
         description: TRAFFIC_AUTOMATION_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free for one user. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
       },
       {
         "@context": "https://schema.org",

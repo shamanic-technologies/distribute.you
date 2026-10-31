@@ -330,7 +330,7 @@ export function renderCatalogPage(prices: PlatformPrice[] | null): string {
         id: "pays-for",
         h2: "What you pay for",
         tint: true,
-        html: `<p>Your campaigns use a few tools: lead data, research, AI, sending. You pay for each tool by the unit, at the vendor's price with 0% markup. One user is free, and a team is $9 per user each month.</p>
+        html: `<p>Your campaigns use a few tools: lead data, research, AI, sending. You pay for each tool by the unit, at the vendor's price with 0% markup. The AI agent is free.</p>
 <p>Follow-ups are reserved when the first email goes out, so you see their cost before they are sent.</p>`,
       },
       {

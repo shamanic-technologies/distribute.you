@@ -237,7 +237,7 @@ export function uaFaq(): { q: string; a: string }[] {
     },
     {
       q: "Can I run it myself instead?",
-      a: `Yes. Our <a href="${twin}">Signup Automation</a> is the same AI agent, free for one user, every action at the API price.`,
+      a: `Yes. Our <a href="${twin}">Signup Automation</a> is the same AI agent, free, every action at the API price.`,
     },
   ];
 }

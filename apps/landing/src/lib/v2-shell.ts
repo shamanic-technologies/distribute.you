@@ -57,7 +57,7 @@ export function ctaBox(): string {
           <button class="btn btn-accent" type="submit"><span>Start free</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </div>
       </form>
-      <div class="fine">Free for one user · API price, 0% markup · Cancel anytime</div>
+      <div class="fine">Free · API price, 0% markup · Cancel anytime</div>
     </div>
   </div>
 </section>`;

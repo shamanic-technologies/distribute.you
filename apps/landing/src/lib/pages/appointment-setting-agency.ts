@@ -386,7 +386,7 @@ function bridgeHtml(): string {
   return `<section class="framed">
   <div class="wrap">
     <a class="asa-bridge" href="${AI_SDR_PATH}" data-motion="reveal">
-      <span><b>Rather run it yourself?</b> Our AI SDR books meetings for you, free for one user, every action at the API price.</span>
+      <span><b>Rather run it yourself?</b> Our AI SDR books meetings for you, free, every action at the API price.</span>
       <em>See the AI SDR</em>
     </a>
   </div>

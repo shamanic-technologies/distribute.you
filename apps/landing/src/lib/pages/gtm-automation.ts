@@ -153,7 +153,7 @@ function heroHtml(): string {
               <span class="sub">Our AI GTM agent finds your buyers, writes to them, answers, books the meeting and follows up until they pay.</span>
             </h1>
 
-            <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free for one user. Every action at the API price, 0% markup.</div>
+            <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every action at the API price, 0% markup.</div>
 
             <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
               <div class="launch-field">
@@ -237,8 +237,7 @@ function stripHtml(): string {
   <div class="wrap">
     <ul class="strip" data-motion="reveal" data-motion-stagger>
       <li><b>0%</b><span>markup on every action</span></li>
-      <li><b>$0</b><span>for one user, hosted by us</span></li>
-      <li><b>$9</b><span>per user for teams</span></li>
+      <li><b>$0</b><span>hosted by us</span></li>
       <li><b>MIT</b><span>open source, run it yourself</span></li>
     </ul>
   </div>
@@ -362,7 +361,7 @@ export const PLATFORM_ROWS: { topic: string; platform: string; agent: string }[]
   { topic: "Sending", platform: "Your sequencer and your mailboxes", agent: "Built in, from our warmed domains" },
   { topic: "Replies", platform: "Your reps answer them", agent: "Answered until the meeting is booked" },
   { topic: "Follow up", platform: "Another tool to wire in", agent: "On WhatsApp, until they buy" },
-  { topic: "How you pay", platform: "Seats, often on a yearly plan", agent: "Free for one user, pause anytime" },
+  { topic: "How you pay", platform: "Seats, often on a yearly plan", agent: "Free, pause anytime" },
 ];
 
 function platformHtml(): string {
@@ -441,7 +440,7 @@ export function compareHtml(): string {
       <table class="sdr-table">
         <thead><tr><th scope="col">Platform</th><th scope="col">Price on their site</th><th scope="col">Free to start</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${GTM_AUTOMATION_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free for one user. Every action at the API price, 0% markup</td><td>Yes, and open source too</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${GTM_AUTOMATION_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>Yes, and open source too</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -471,7 +470,7 @@ function plansHtml(): string {
       <h2 style="margin-top:16px">A whole GTM team for the price of its tools.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
-    <div class="plans plans-3">
+    <div class="plans">
       <article class="plan rv">
         <span class="plan-tag"><i></i>Open source</span>
         <div class="plan-price">Free<small>on your server</small></div>
@@ -486,7 +485,7 @@ function plansHtml(): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>for one user</small></div>
+        <div class="plan-price">Free<small>no monthly fee</small></div>
         <p class="plan-desc">We host it and send from our inboxes. You pay each action at the API price.</p>
         <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">What's included</div>
@@ -496,18 +495,6 @@ function plansHtml(): string {
           <li><i></i>Meetings booked, then WhatsApp follow up</li>
           <li><i></i>Our AI agent talks with you on WhatsApp</li>
           <li><i></i>A prepaid balance: start with $10, auto reload keeps it going</li>
-        </ul>
-      </article>
-      <article class="plan rv">
-        <span class="plan-tag"><i></i>Team</span>
-        <div class="plan-price">$9<small>per user, each month</small></div>
-        <p class="plan-desc">Your whole team on the same buyers and replies.</p>
-        <a class="btn btn-outline btn-lg" href="${SIGN_UP}">Start free</a>
-        <div class="plan-included">What's included</div>
-        <ul>
-          <li><i></i>Everything in Hosted</li>
-          <li><i></i>Every teammate sees every lead, reply and meeting</li>
-          <li><i></i>The same API prices, 0% markup</li>
         </ul>
       </article>
     </div>${bridge}
@@ -572,7 +559,7 @@ export function gtmAutomationFaq(): { q: string; a: string }[] {
     },
     {
       q: "How much does GTM automation cost?",
-      a: 'With us, the agent is free for one user, and $9 per user each month for a team. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+      a: 'With us, the agent is free. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
     },
     {
       q: "Can I run it from Claude Code or Grok?",
@@ -631,7 +618,7 @@ function faqHtml(): string {
 
 export const GTM_AUTOMATION_TITLE = "GTM Automation: an AI GTM Agent Done For You | distribute.you";
 export const GTM_AUTOMATION_DESCRIPTION =
-  "Revenue made easy. GTM automation by one AI agent that finds buyers, writes, answers, books meetings and follows up. Free for one user, 0% markup.";
+  "Revenue made easy. GTM automation by one AI agent that finds buyers, writes, answers, books meetings and follows up. Free, 0% markup.";
 
 export function renderGtmAutomationPage(): string {
   const url = `${SITE}${GTM_AUTOMATION_PATH}`;
@@ -667,7 +654,7 @@ export function renderGtmAutomationPage(): string {
         operatingSystem: "Web",
         url,
         description: GTM_AUTOMATION_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free for one user. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
       },
       {
         "@context": "https://schema.org",

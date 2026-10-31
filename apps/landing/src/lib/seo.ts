@@ -4,7 +4,7 @@ export const SITE_NAME = "distribute.you";
 export const SITE_URL = PROD_URLS.landing;
 export const SITE_TITLE = "distribute.you: done-for-you revenue automation";
 export const SITE_DESCRIPTION =
-  "Revenue made easy. Our AI agent finds your buyers, writes to them and books your meetings. Open source, free for one user, at the API price with 0% markup.";
+  "Revenue made easy. Our AI agent finds your buyers, writes to them and books your meetings. Open source, free, at the API price with 0% markup.";
 export const TWITTER_HANDLE = "@distribute_you";
 
 export const BRAND_LOGO_PATH = "/landing/logo/logo-distribute-blue.svg";

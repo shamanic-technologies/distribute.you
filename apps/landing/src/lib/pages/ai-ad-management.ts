@@ -105,7 +105,7 @@ function heroHtml(): string {
           <span class="sub">Our AI agent puts your budget into outreach to the buyers you choose, by cold email and WhatsApp. The agent moves the money to what brings human clicks.</span>
         </h1>
 
-        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free for one user. Every action at the API price, 0% markup.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every action at the API price, 0% markup.</div>
 
         <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
           <div class="launch-field">
@@ -252,7 +252,7 @@ export function compareHtml(): string {
       <table class="sdr-table">
         <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">Where the budget goes</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${AD_MANAGEMENT_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free for one user. Every action at the API price, 0% markup</td><td>${esc(OUR_AD_ROW.channel)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${AD_MANAGEMENT_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>${esc(OUR_AD_ROW.channel)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -289,7 +289,7 @@ export const AD_MANAGEMENT_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What is the price?",
-    a: 'The agent is free for one user, and $9 per user each month for a team. Your budget pays each action at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+    a: 'The agent is free. Your budget pays each action at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
   },
   {
     q: "Can I run it on my own server?",
@@ -342,7 +342,7 @@ export const AD_TOOL_CLUSTER: ToolCluster = {
   ourWins: [
     "Every dollar reaches a buyer you chose, by name.",
     "Only human clicks count, and every signup is followed up on WhatsApp.",
-    "Free for one user, every action at the API price with 0% markup.",
+    "Free, every action at the API price with 0% markup.",
   ],
   chooseUs: [
     "You want your budget to reach the buyers you would sell to.",
@@ -356,7 +356,7 @@ export const AD_TOOL_CLUSTER: ToolCluster = {
 
 export const AD_MANAGEMENT_TITLE = "AI Ad Management: Your Budget Turned Into Buyers | distribute.you";
 export const AD_MANAGEMENT_DESCRIPTION =
-  "Revenue made easy. AI ad management that puts your budget into outreach to the buyers you choose, and counts only human clicks. Free for one user, 0% markup.";
+  "Revenue made easy. AI ad management that puts your budget into outreach to the buyers you choose, and counts only human clicks. Free, 0% markup.";
 
 export function renderAiAdManagementPage(list: IndexList | null): string {
   const url = `${SITE}${AD_MANAGEMENT_PATH}`;
@@ -409,7 +409,7 @@ export function renderAiAdManagementPage(list: IndexList | null): string {
         operatingSystem: "Web",
         url,
         description: AD_MANAGEMENT_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free for one user. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
       },
       {
         "@context": "https://schema.org",

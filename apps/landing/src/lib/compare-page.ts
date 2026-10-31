@@ -114,18 +114,18 @@ export function comparePageTitle(c: Competitor, now: Date = new Date()): string 
 
 export function comparePageDescription(c: Competitor): string {
   if (isAiSdrCluster(c)) {
-    return `Looking at ${c.name} alternatives? distribute.you is the AI SDR that books your meetings, free for one user. Compare price, contract and channels.`;
+    return `Looking at ${c.name} alternatives? distribute.you is the AI SDR that books your meetings, free. Compare price, contract and channels.`;
   }
   if (isAiLeadGenCluster(c)) {
-    return `Looking at ${c.name} alternatives? distribute.you's AI lead generation agent finds, checks and contacts your leads, free for one user. Compare prices.`;
+    return `Looking at ${c.name} alternatives? distribute.you's AI lead generation agent finds, checks and contacts your leads, free. Compare prices.`;
   }
   if (isColdEmailAutomationCluster(c)) {
-    return `Looking at ${c.name} alternatives? distribute.you's cold email automation writes, sends and answers for you, free for one user. Compare prices.`;
+    return `Looking at ${c.name} alternatives? distribute.you's cold email automation writes, sends and answers for you, free. Compare prices.`;
   }
   if (isGtmAutomationCluster(c)) {
-    return `Looking at ${c.name} alternatives? distribute.you's AI GTM agent runs your go-to-market for you, free for one user. Compare prices.`;
+    return `Looking at ${c.name} alternatives? distribute.you's AI GTM agent runs your go-to-market for you, free. Compare prices.`;
   }
-  return `Looking at ${c.name} alternatives? distribute.you's AI agent runs your cold email, free for one user. Compare price and cost per positive reply.`;
+  return `Looking at ${c.name} alternatives? distribute.you's AI agent runs your cold email, free. Compare price and cost per positive reply.`;
 }
 
 /** What distribute.you is, said for the reader of this page: an AI SDR page names the job. */
@@ -201,17 +201,17 @@ export function renderComparePage(c: Competitor): string {
 
 <section class="framed" id="pricing">
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(c.name)} pricing: what they charge, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. Our AI agent is free for one user: every action is at the vendor's API price with 0% markup, and we show what each positive reply cost.</p></div>
+    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(c.name)} pricing: what they charge, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. Our AI agent is free: every action is at the vendor's API price with 0% markup, and we show what each positive reply cost.</p></div>
     <div class="cmp-cols">
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
         <span class="plan-tag">distribute.you</span>
-        <div class="plan-price">Free<small>for one user</small></div>
+        <div class="plan-price">Free<small>no monthly fee</small></div>
         <p class="plan-desc">Every action at the API price, 0% markup. Start with $10. Pause or cancel anytime.</p>
         <a class="btn btn-accent" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">Included in the plan</div>
         <ul><li><i></i>Buyers found and qualified from your website</li><li><i></i>Emails written and sent from our domains</li><li><i></i>Every reply read, the interested ones answered</li><li><i></i>Cost per positive reply on your dashboard</li></ul>
-        <div class="plan-foot">Teams are $9 per user each month. What a meeting costs you is measured on your account.</div>
+        <div class="plan-foot">What a meeting costs you is measured on your account.</div>
       </div>
     </div>
   </div>
@@ -350,7 +350,7 @@ export function renderAlternativesPage(): string {
 ${liveBand()}`;
   return shell({
     title: `Alternatives to ${COMPETITORS.slice(0, 4).map((c) => c.name).join(", ")} and ${COMPETITORS.length - 4} more (${monthLabel(new Date())})`,
-    description: `Weighing ${COMPETITORS.length} cold email tools? distribute.you is the AI agent that runs your outbound from our domains, free for one user, and shows what a positive reply costs.`,
+    description: `Weighing ${COMPETITORS.length} cold email tools? distribute.you is the AI agent that runs your outbound from our domains, free, and shows what a positive reply costs.`,
     path: "/alternatives",
     body,
     jsonLd: [breadcrumb([{ name: "Alternatives", path: "/alternatives" }])],
@@ -360,7 +360,7 @@ ${liveBand()}`;
 const AI_SDR_ALTERNATIVES_FAQ = [
   {
     q: "What is the best AI SDR alternative for a founder?",
-    a: "distribute.you, if you want meetings without a demo or a contract: our AI agent finds your buyers, writes to them, answers the replies and books the meeting, free for one user at the API price with 0% markup.",
+    a: "distribute.you, if you want meetings without a demo or a contract: our AI agent finds your buyers, writes to them, answers the replies and books the meeting, free at the API price with 0% markup.",
   },
   {
     q: "Which AI SDRs publish their price?",
@@ -368,7 +368,7 @@ const AI_SDR_ALTERNATIVES_FAQ = [
   },
   {
     q: "Is there an open source AI SDR?",
-    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free for one user.",
+    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free.",
   },
 ];
 
@@ -402,7 +402,7 @@ const AI_SDR_ALTERNATIVES: AlternativesCopy = {
 const AI_LEAD_GEN_ALTERNATIVES_FAQ = [
   {
     q: "What is the best AI lead generation alternative for a founder?",
-    a: "distribute.you, if you want leads who answer rather than a database to search: our AI agent finds your leads from your website, judges each one, checks the email and writes to them, free for one user at the API price with 0% markup.",
+    a: "distribute.you, if you want leads who answer rather than a database to search: our AI agent finds your leads from your website, judges each one, checks the email and writes to them, free at the API price with 0% markup.",
   },
   {
     q: "Which lead tools publish their price?",
@@ -410,7 +410,7 @@ const AI_LEAD_GEN_ALTERNATIVES_FAQ = [
   },
   {
     q: "Is there an open source AI lead generation tool?",
-    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free for one user.",
+    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free.",
   },
 ];
 
@@ -428,7 +428,7 @@ const AI_LEAD_GEN_ALTERNATIVES: AlternativesCopy = {
 const COLD_EMAIL_AUTOMATION_ALTERNATIVES_FAQ = [
   {
     q: "What is the best cold email automation alternative for a founder?",
-    a: "distribute.you, if you want the emails written, sent and answered rather than a tool to run: our AI agent finds your buyers from your website, writes each email, sends it from domains we own and answers the replies, free for one user at the API price with 0% markup.",
+    a: "distribute.you, if you want the emails written, sent and answered rather than a tool to run: our AI agent finds your buyers from your website, writes each email, sends it from domains we own and answers the replies, free at the API price with 0% markup.",
   },
   {
     q: "Which cold email tools publish their price?",
@@ -440,7 +440,7 @@ const COLD_EMAIL_AUTOMATION_ALTERNATIVES_FAQ = [
   },
   {
     q: "Is there an open source cold email automation tool?",
-    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free for one user.",
+    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free.",
   },
 ];
 
@@ -458,7 +458,7 @@ const COLD_EMAIL_AUTOMATION_ALTERNATIVES: AlternativesCopy = {
 const GTM_AUTOMATION_ALTERNATIVES_FAQ = [
   {
     q: "What is the best GTM automation alternative for a founder?",
-    a: "distribute.you, if you want your go-to-market run rather than a platform to staff: one AI agent finds your buyers, writes from domains we own, answers, books the meeting and follows up, free for one user at the API price with 0% markup.",
+    a: "distribute.you, if you want your go-to-market run rather than a platform to staff: one AI agent finds your buyers, writes from domains we own, answers, books the meeting and follows up, free at the API price with 0% markup.",
   },
   {
     q: "Which GTM platforms publish their price?",
@@ -470,7 +470,7 @@ const GTM_AUTOMATION_ALTERNATIVES_FAQ = [
   },
   {
     q: "Is there an open source GTM automation tool?",
-    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free for one user.",
+    a: "Yes. The GTM Factory behind distribute.you is open source under the MIT license. Run it on your own server with your own API keys, or let us host it, free.",
   },
 ];
 
@@ -527,7 +527,7 @@ function renderClusterAlternativesPage(copy: AlternativesCopy): string {
   const table = `<table class="cmp-table cmp-alt-table">
     <thead><tr><th scope="col">${esc(copy.rowLabel)}</th><th scope="col">Entry price</th><th scope="col">Free to start</th><th scope="col">Channels</th><th scope="col">Source</th></tr></thead>
     <tbody>
-      <tr class="us-row"><th scope="row"><a href="${PAGE}">distribute.you</a></th><td class="us">${esc(DISTRIBUTE_ROW.entryPrice)}</td><td class="us">Yes, for one user. Open source too.</td><td class="us">${esc(DISTRIBUTE_ROW.channels)}</td><td class="us"><a href="/catalog">Our catalog</a></td></tr>
+      <tr class="us-row"><th scope="row"><a href="${PAGE}">distribute.you</a></th><td class="us">${esc(DISTRIBUTE_ROW.entryPrice)}</td><td class="us">Yes. Open source too.</td><td class="us">${esc(DISTRIBUTE_ROW.channels)}</td><td class="us"><a href="/catalog">Our catalog</a></td></tr>
       ${rows}
     </tbody>
   </table>`;

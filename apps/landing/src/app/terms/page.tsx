@@ -156,9 +156,8 @@ const SECTIONS: SectionDef[] = [
           are not re-priced in either direction.
         </p>
         <p>
-          <strong>Current offer: the AI agent.</strong> The AI agent is free
-          for one user. A team is billed per user each month (currently $9 per
-          user). You pay for the work done on your campaigns: each tool behind
+          <strong>Current offer: the AI agent.</strong> The AI agent is free,
+          for up to 5 members per organization. You pay for the work done on your campaigns: each tool behind
           them (lead data, research, AI writing, email checks, sending, calls)
           is billed by the unit at our public catalogue price, published at{" "}
           <a href="/catalog" className="text-brand-400 underline">

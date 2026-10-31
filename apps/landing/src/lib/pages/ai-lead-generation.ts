@@ -205,7 +205,7 @@ function heroHtml(): string {
           <span class="sub">Our AI lead generation agent finds your buyers, judges every lead, checks the email and writes to them for you.</span>
         </h1>
 
-        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free for one user. Every lead at the API price, 0% markup.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every lead at the API price, 0% markup.</div>
 
         <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
           <div class="launch-field">
@@ -236,8 +236,7 @@ function stripHtml(): string {
   <div class="wrap">
     <ul class="strip" data-motion="reveal" data-motion-stagger>
       <li><b>0%</b><span>markup on every lead found</span></li>
-      <li><b>$0</b><span>for one user, hosted by us</span></li>
-      <li><b>$9</b><span>per user for teams</span></li>
+      <li><b>$0</b><span>hosted by us</span></li>
       <li><b>MIT</b><span>open source, run it yourself</span></li>
     </ul>
   </div>
@@ -391,7 +390,7 @@ export function compareHtml(): string {
       <table class="sdr-table">
         <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">How you get leads</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${AI_LEAD_GEN_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free for one user. Every action at the API price, 0% markup</td><td>Our AI agent finds, judges and contacts them from your website</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${AI_LEAD_GEN_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>Our AI agent finds, judges and contacts them from your website</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -413,7 +412,7 @@ function plansHtml(): string {
       <h2 style="margin-top:16px">Pay for the leads, never for a seat.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
-    <div class="plans plans-3">
+    <div class="plans">
       <article class="plan rv">
         <span class="plan-tag"><i></i>Open source</span>
         <div class="plan-price">Free<small>on your server</small></div>
@@ -428,7 +427,7 @@ function plansHtml(): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>for one user</small></div>
+        <div class="plan-price">Free<small>no monthly fee</small></div>
         <p class="plan-desc">We host it. You pay each lead at the API price.</p>
         <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">What's included</div>
@@ -438,18 +437,6 @@ function plansHtml(): string {
           <li><i></i>Emails written and sent from our warmed domains</li>
           <li><i></i>Our AI agent talks with you on WhatsApp</li>
           <li><i></i>A prepaid balance: start with $10, auto reload keeps it going</li>
-        </ul>
-      </article>
-      <article class="plan rv">
-        <span class="plan-tag"><i></i>Team</span>
-        <div class="plan-price">$9<small>per user, each month</small></div>
-        <p class="plan-desc">Your whole sales team on the same leads.</p>
-        <a class="btn btn-outline btn-lg" href="${SIGN_UP}">Start free</a>
-        <div class="plan-included">What's included</div>
-        <ul>
-          <li><i></i>Everything in Hosted</li>
-          <li><i></i>Every teammate sees every lead and reply</li>
-          <li><i></i>The same API prices, 0% markup</li>
         </ul>
       </article>
     </div>
@@ -504,7 +491,7 @@ export const AI_LEAD_GEN_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How much does a lead cost?",
-    a: 'The agent is free for one user, and $9 per user each month for a team. Each step of a lead, finding it, checking the email and judging the fit, is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+    a: 'The agent is free. Each step of a lead, finding it, checking the email and judging the fit, is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
   },
   {
     q: "Is it a lead list or real outreach?",
@@ -558,7 +545,7 @@ function faqHtml(): string {
 
 export const AI_LEAD_GEN_TITLE = "AI Lead Generation: Qualified Leads Found For You | distribute.you";
 export const AI_LEAD_GEN_DESCRIPTION =
-  "Revenue made easy. AI lead generation that finds your buyers, judges every lead, checks the email and writes to them. Free for one user, 0% markup.";
+  "Revenue made easy. AI lead generation that finds your buyers, judges every lead, checks the email and writes to them. Free, 0% markup.";
 
 export function renderAiLeadGenerationPage(): string {
   const url = `${SITE}${AI_LEAD_GEN_PATH}`;
@@ -591,7 +578,7 @@ export function renderAiLeadGenerationPage(): string {
         operatingSystem: "Web",
         url,
         description: AI_LEAD_GEN_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free for one user. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
       },
       {
         "@context": "https://schema.org",

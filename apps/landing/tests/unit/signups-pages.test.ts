@@ -82,7 +82,7 @@ describe("the Signup Automation page", () => {
   });
 
   it("states the current AI Agent offer and starts free", () => {
-    for (const s of ["Free for one user", "0% markup", "$9", "start with $10", "gtm-factory", "Start free"]) expect(agent).toContain(s);
+    for (const s of ["0% markup", "start with $10", "gtm-factory", "Start free"]) expect(agent).toContain(s);
     expect(agent).toContain("<!--action-prices-->");
     expect(agent).toContain("__HOT_LEAD_BAND__");
   });

@@ -149,7 +149,7 @@ function heroHtml(): string {
           <span class="sub">Our AI agent brings the right buyers to your product, then follows every signup until they pay.</span>
         </h1>
 
-        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free for one user. Every action at the API price, 0% markup.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every action at the API price, 0% markup.</div>
 
         <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
           <div class="launch-field">
@@ -178,8 +178,7 @@ function stripHtml(): string {
   <div class="wrap">
     <ul class="strip" data-motion="reveal" data-motion-stagger>
       <li><b>0%</b><span>markup on every action</span></li>
-      <li><b>$0</b><span>for one user, hosted by us</span></li>
-      <li><b>$9</b><span>per user for teams</span></li>
+      <li><b>$0</b><span>hosted by us</span></li>
       <li><b>MIT</b><span>open source, run it yourself</span></li>
     </ul>
   </div>
@@ -367,7 +366,7 @@ export function compareHtml(): string {
       <table class="sdr-table su-table">
         <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">Where signups come from</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${SIGNUP_PAGE_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free for one user. Every action at the API price, 0% markup</td><td>${esc(OUR_SIGNUP_ROW.how)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${SIGNUP_PAGE_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>${esc(OUR_SIGNUP_ROW.how)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -397,7 +396,7 @@ function plansHtml(): string {
       <h2 style="margin-top:16px">More signups, at the price of the tools.</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
-    <div class="plans plans-3">
+    <div class="plans">
       <article class="plan rv">
         <span class="plan-tag"><i></i>Open source</span>
         <div class="plan-price">Free<small>on your server</small></div>
@@ -412,7 +411,7 @@ function plansHtml(): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>for one user</small></div>
+        <div class="plan-price">Free<small>no monthly fee</small></div>
         <p class="plan-desc">We host it and send from our inboxes. You pay each action at the API price.</p>
         <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">What's included</div>
@@ -422,18 +421,6 @@ function plansHtml(): string {
           <li><i></i>PostHog, Clerk and Stripe connectors</li>
           <li><i></i>Every signup followed up until they pay</li>
           <li><i></i>A prepaid balance: start with $10, auto reload keeps it going</li>
-        </ul>
-      </article>
-      <article class="plan rv">
-        <span class="plan-tag"><i></i>Team</span>
-        <div class="plan-price">$9<small>per user, each month</small></div>
-        <p class="plan-desc">Your whole team sees every signup and reply.</p>
-        <a class="btn btn-outline btn-lg" href="${SIGN_UP}">Start free</a>
-        <div class="plan-included">What's included</div>
-        <ul>
-          <li><i></i>Everything in Hosted</li>
-          <li><i></i>Every teammate sees every lead, signup and reply</li>
-          <li><i></i>The same API prices, 0% markup</li>
         </ul>
       </article>
     </div>${bridge}
@@ -499,7 +486,7 @@ export function signupFaq(): { q: string; a: string }[] {
     },
     {
       q: "How much does signup automation cost?",
-      a: 'The agent is free for one user, and $9 per user each month for a team. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+      a: 'The agent is free. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
     },
     {
       q: "Can I run it from Claude Code or on my own server?",
@@ -553,7 +540,7 @@ function faqHtml(): string {
 
 export const SIGNUP_TITLE = "Signup Automation: an AI Agent That Gets You More Signups | distribute.you";
 export const SIGNUP_DESCRIPTION =
-  "Revenue made easy. Signup automation by one AI agent: buyers invited by cold email and WhatsApp, every signup followed until they pay. Free for one user, 0% markup.";
+  "Revenue made easy. Signup automation by one AI agent: buyers invited by cold email and WhatsApp, every signup followed until they pay. Free, 0% markup.";
 
 export function renderSignupAutomationPage(): string {
   const url = `${SITE}${SIGNUP_PAGE_PATH}`;
@@ -587,7 +574,7 @@ export function renderSignupAutomationPage(): string {
         operatingSystem: "Web",
         url,
         description: SIGNUP_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free for one user. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
       },
       {
         "@context": "https://schema.org",

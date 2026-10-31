@@ -48,9 +48,9 @@ export type NurturingTool = {
 
 /** How WE answer each row, stated once. */
 export const OUR_NURTURING_ROW = {
-  entryPrice: "Free for one user, every action at the API price",
-  pricing: "Free for one user. $9 per user for a team. Every message written and sent is billed at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
-  freeTier: "Free for one user, hosted. Open source under MIT to run yourself.",
+  entryPrice: "Free, every action at the API price",
+  pricing: "Free. Every message written and sent is billed at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
+  freeTier: "Free, hosted. Open source under MIT to run yourself.",
   whatsapp: "Included. The agent writes on email and WhatsApp, whichever the lead answers.",
   whoWrites: "Our AI agent writes each message for one person, when that person acts.",
   signals: "Reads your Clerk signups, Stripe payments, PostHog visits and GoHighLevel stages.",

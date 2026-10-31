@@ -199,8 +199,7 @@ export function stripHtml(unit: string): string {
   <div class="wrap">
     <ul class="strip" data-motion="reveal" data-motion-stagger>
       <li><b>0%</b><span>markup on ${esc(unit)}</span></li>
-      <li><b>$0</b><span>for one user, hosted by us</span></li>
-      <li><b>$9</b><span>per user for teams</span></li>
+      <li><b>$0</b><span>hosted by us</span></li>
       <li><b>MIT</b><span>open source, run it yourself</span></li>
     </ul>
   </div>
@@ -225,7 +224,7 @@ export function plansHtml(w: PlanWords): string {
       <h2 style="margin-top:16px">${esc(w.h2)}</h2>
       <p>The same agent and the same features on every plan. Pause or cancel anytime.</p>
     </div>
-    <div class="plans plans-3">
+    <div class="plans">
       <article class="plan rv">
         <span class="plan-tag"><i></i>Open source</span>
         <div class="plan-price">Free<small>on your server</small></div>
@@ -240,7 +239,7 @@ export function plansHtml(w: PlanWords): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>for one user</small></div>
+        <div class="plan-price">Free<small>no monthly fee</small></div>
         <p class="plan-desc">${esc(w.hostedDesc)}</p>
         <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">What's included</div>
@@ -249,18 +248,6 @@ export function plansHtml(w: PlanWords): string {
           ${w.hostedItems.map((l) => `<li><i></i>${esc(l)}</li>`).join("\n          ")}
           <li><i></i>Our AI agent talks with you on WhatsApp</li>
           <li><i></i>A prepaid balance: start with $10, auto reload keeps it going</li>
-        </ul>
-      </article>
-      <article class="plan rv">
-        <span class="plan-tag"><i></i>Team</span>
-        <div class="plan-price">$9<small>per user, each month</small></div>
-        <p class="plan-desc">${esc(w.teamDesc)}</p>
-        <a class="btn btn-outline btn-lg" href="${SIGN_UP}">Start free</a>
-        <div class="plan-included">What's included</div>
-        <ul>
-          <li><i></i>Everything in Hosted</li>
-          <li><i></i>Every teammate sees every visit and signup</li>
-          <li><i></i>The same API prices, 0% markup</li>
         </ul>
       </article>
     </div>

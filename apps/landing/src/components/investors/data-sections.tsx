@@ -75,8 +75,8 @@ export async function CompanyOverviewSection() {
       </p>
       <p>
         The business model has two arms. The{" "}
-        <strong className="text-gray-900">AI agent</strong> is free for one user
-        and $9 per user each month for a team, with every action at the API price,
+        <strong className="text-gray-900">AI agent</strong> is free
+       , with every action at the API price,
         0% markup, prepaid. The{" "}
         <strong className="text-gray-900">GTM agency</strong> is from $1K a month
         plus 10% of the budget. Revenue grows with the teams and the budgets our

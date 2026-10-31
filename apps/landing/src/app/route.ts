@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   });
 
   // `index-v2.html` is the Revenue AI Agent page (PAGE-REVENUE-AGENT-1029, owner
-  // 2026-10-29): free for one user, every action at the API price with 0% markup, open
+  // 2026-10-29): free, every action at the API price with 0% markup, open
   // source. Served to `control`, `postpaid` and crawlers. Its price list is READ from the
   // public cost catalogue at render (`lib/pages/home-agent.ts`). The first-$100 match
   // banner ended with the offer reset. `index-v2-subscription.html` is the retired

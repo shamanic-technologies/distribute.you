@@ -112,7 +112,7 @@ function heroHtml(): string {
         <a class="btn btn-accent btn-lg" ${BOOK_ATTRS}>Book a call</a>
         <a class="btn btn-lg btn-ghost-d" href="#how">See how it works</a>
       </div>
-      <p class="ag-price-line"><b>From $1K/month + 10% of budget.</b> Live in 5 days. <a href="${NURTURING_PAGE_PATH}">Rather run it yourself? Lead Nurturing Automation, free for one user.</a></p>
+      <p class="ag-price-line"><b>From $1K/month + 10% of budget.</b> Live in 5 days. <a href="${NURTURING_PAGE_PATH}">Rather run it yourself? Lead Nurturing Automation, free.</a></p>
       <ul class="dra-plugs" aria-label="Tools we connect to">${CONNECTORS.map((c) => `<li>${LOGO(c.domain, 18)}${esc(c.name)}</li>`).join("")}</ul>
     </div>
     ${threadHtml()}
