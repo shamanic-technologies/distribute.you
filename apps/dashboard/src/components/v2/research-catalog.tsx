@@ -10,6 +10,7 @@ import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { TacticTags, TacticsBlock } from "@/components/v2/tactic-tags";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
+import { formatUsdAdaptive } from "@/lib/format-number";
 import {
   ACTIVATE_CONTENT_NOTE,
   DEPRECATE_CONTENT_NOTE,
@@ -44,6 +45,10 @@ import {
 import {
   CATALOG_KINDS,
   RESEARCH_TABS,
+  costPerSignupText,
+  hasPostFigures,
+  postCountText,
+  type ResearchPostFigures,
   researchCatalogHref,
   modelHeadLabel,
   researchModel,
@@ -319,6 +324,46 @@ function Dash({ v }: { v: string | null }) {
   return v == null ? <span className="k-fg4">{"—"}</span> : <>{v}</>;
 }
 
+/** The post columns' headers (THREADS-IDEAS-AB), on a pipe whose rows carry `postFigures`. */
+function PostHeads() {
+  return (
+    <>
+      <th className={`${TH} w-16 text-right`}>Posts</th>
+      <th className={`${TH} w-20 text-right`}>Views</th>
+      <th className={`${TH} w-28 text-right`}>Engagements</th>
+      <th className={`${TH} w-16 text-right`}>Visits</th>
+      <th className={`${TH} w-20 text-right`}>Signups</th>
+      <th className={`${TH} w-24 text-right`}>$ / signup</th>
+    </>
+  );
+}
+
+/** One row's post figures, printed as served; a row without them on such a pipe shows dashes. */
+function PostCells({ p }: { p: ResearchPostFigures | null | undefined }) {
+  if (p == null)
+    return (
+      <>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <td key={i} className="px-3 text-right">
+            <span className="k-fg4">{"—"}</span>
+          </td>
+        ))}
+      </>
+    );
+  return (
+    <>
+      <td className="px-3 text-right tabular-nums">{postCountText(p.posts)}</td>
+      <td className="px-3 text-right tabular-nums">{postCountText(p.views)}</td>
+      <td className="px-3 text-right tabular-nums">{postCountText(p.engagements)}</td>
+      <td className="px-3 text-right tabular-nums">{postCountText(p.visits)}</td>
+      <td className="px-3 text-right tabular-nums">{postCountText(p.signups)}</td>
+      <td className="whitespace-nowrap px-3 text-right tabular-nums">
+        {p.costPerSignupUsd == null ? <span className="k-fg3 text-[12px]">{costPerSignupText(null)}</span> : costPerSignupText(p.costPerSignupUsd)}
+      </td>
+    </>
+  );
+}
+
 // ─── A pipe's list ─────────────────────────────────────────────────────────
 
 function CatalogList({
@@ -369,6 +414,9 @@ function CatalogList({
         ? templatesByTab(rows as ResearchTemplate[], templateStatuses)
         : modelsByTab(rows as ResearchModel[], modelStatuses);
   const statusPending = tabbed && !statusFailed && !byTab;
+  // A post-writing pipe (Threads posts): its templates and LLMs carry post figures, shown as their own
+  // columns in place of the per-outcome ones (THREADS-IDEAS-AB). Every other pipe renders as before.
+  const posts = tabbed && hasPostFigures(rows as (ResearchTemplate | ResearchModel)[]);
   // Templates and models render in the served order: features-service ranks them in the ONE leg order the
   // pipe picks them by, so row 1 is the one it writes with next. Never re-sorted here (owner 2026-10-23).
   const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = tabbed ? (byTab?.[tab] ?? []) : rows;
@@ -395,7 +443,7 @@ function CatalogList({
                 <>Every workflow on this pipe, all clients pooled, best ROI first.</>
               ) : (
                 <>
-                  Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
+                  Every {words.one} that wrote this pipe&apos;s {posts ? "posts" : "emails"}, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
                   {kind === "templates"
                     ? "Click a row for its workflows, models and last emails; its name opens its page."
                     : kind === "models"
@@ -440,7 +488,7 @@ function CatalogList({
             <div>
               <div className="k-card min-w-0 overflow-hidden">
                 <div className="k-scroll relative overflow-x-auto">
-                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[1100px]" : "min-w-[1040px]"} text-[13px]`}>
+                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : posts ? "min-w-[1200px]" : kind === "templates" ? "min-w-[1100px]" : "min-w-[1040px]"} text-[13px]`}>
                     <thead>
                       <tr className="border-b border-[var(--line-subtle)]">
                         <th className={TH}>{words.title.slice(0, -1)}</th>
@@ -457,9 +505,15 @@ function CatalogList({
                             <th className={`${TH} w-24 text-right`}>
                               <RoiLabel />
                             </th>
+                            {posts ? (
+                              <PostHeads />
+                            ) : (
+                              <>
                             <th className={`${TH} w-28 text-right`}>% Conversion</th>
                             <th className={`${TH} w-28 text-right`}>{`$ ${o.unit}`}</th>
                             <th className={`${TH} w-28 text-right`}>{`# ${o.plural}`}</th>
+                              </>
+                            )}
                             <th className={`${TH} w-24 text-right`}>$ Spent</th>
                             <th className={`${TH} w-28`}>Status</th>
                           </>
@@ -470,12 +524,18 @@ function CatalogList({
                             <th className={`${TH} w-24 text-right`}>
                               <RoiLabel />
                             </th>
+                            {posts ? (
+                              <PostHeads />
+                            ) : (
+                              <>
                             <th className={`${TH} w-36 text-right`}>{`$ ${o.unit}`}</th>
                             <th className={`${TH} w-28 text-right`}>% Conversion</th>
                             <th className={`${TH} w-32 text-right`}>{`# ${o.plural}`}</th>
+                              </>
+                            )}
                             <th className={`${TH} w-24 text-right`}>$ / run</th>
                             <th className={`${TH} w-28 text-right`}>$ Spent</th>
-                            <th className={`${TH} w-56`}>Status</th>
+                            <th className={`${TH} ${posts ? "w-36" : "w-56"}`}>Status</th>
                           </>
                         ) : kind === "workflows" ? (
                           <>
@@ -493,20 +553,20 @@ function CatalogList({
                       {statusPending ? (
                         [0, 1, 2, 3, 4].map((i) => (
                           <tr key={i} className="k-row h-10">
-                            <td colSpan={10} className="px-4">
+                            <td colSpan={posts ? 13 : 10} className="px-4">
                               <Shimmer className="h-4 w-full" />
                             </td>
                           </tr>
                         ))
                       ) : statusFailed ? (
                         <tr>
-                          <td colSpan={10}>
+                          <td colSpan={posts ? 13 : 10}>
                             <EmptyNote>We could not read which {words.many} are active just now. It retries on its own.</EmptyNote>
                           </td>
                         </tr>
                       ) : shown.length === 0 ? (
                         <tr>
-                          <td colSpan={10}>
+                          <td colSpan={posts ? 13 : 10}>
                             <EmptyNote>
                               {rows.length === 0
                                 ? `No ${words.one} has written this pipe's emails yet.`
@@ -602,6 +662,10 @@ function CatalogList({
                                   <td className="whitespace-nowrap px-3 text-right tabular-nums">
                                     <TemplateRoi t={r as ResearchTemplate} />
                                   </td>
+                                  {posts ? (
+                                    <PostCells p={(r as ResearchTemplate).postFigures} />
+                                  ) : (
+                                    <>
                                   <td className="px-3 text-right tabular-nums">
                                     <Dash v={r.rate} />
                                   </td>
@@ -609,7 +673,9 @@ function CatalogList({
                                     <Dash v={r.cost} />
                                   </td>
                                   <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
-                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">{r.spend}</td>
+                                    </>
+                                  )}
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">{posts && (r as ResearchTemplate).postFigures ? formatUsdAdaptive((r as ResearchTemplate).postFigures!.spentUsd) : r.spend}</td>
                                   <td className="max-w-0 px-3">
                                     <ContentStatusWord status={status} pending={!statusAnswered} deprecation={deprecation} />
                                   </td>
@@ -620,6 +686,10 @@ function CatalogList({
                                   <td className="whitespace-nowrap px-3 text-right tabular-nums">
                                     <RowRoi f={r} />
                                   </td>
+                                  {posts ? (
+                                    <PostCells p={(r as ResearchModel).postFigures} />
+                                  ) : (
+                                    <>
                                   <td className="whitespace-nowrap px-3 text-right tabular-nums">
                                     <Dash v={r.cost} />
                                   </td>
@@ -627,10 +697,12 @@ function CatalogList({
                                     <Dash v={r.rate} />
                                   </td>
                                   <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
+                                    </>
+                                  )}
                                   <td className="whitespace-nowrap px-3 text-right tabular-nums" title={(r as ResearchModel).runCost?.averageDisplay ? undefined : runCostGap((r as ResearchModel).runCost)}>
                                     <Dash v={(r as ResearchModel).runCost?.averageDisplay ?? null} />
                                   </td>
-                                  <td className="px-3 text-right tabular-nums">{r.spend}</td>
+                                  <td className="px-3 text-right tabular-nums">{posts && (r as ResearchModel).postFigures ? formatUsdAdaptive((r as ResearchModel).postFigures!.spentUsd) : r.spend}</td>
                                   <td className="max-w-0 px-3">
                                     <ContentStatusWord
                                       status={status}
