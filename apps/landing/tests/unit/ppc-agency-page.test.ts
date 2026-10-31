@@ -63,13 +63,25 @@ const LIST: IndexList = {
     idx("engaged", "engaged_lead", 80.619),
   ],
 };
-// The served shape of `/public/stats/runs` (cents arrive as strings).
+// The served shape of `/public/stats/runs` (runs-service #475): the bars read `vendorMonthly`, what each
+// month cost at the VENDOR price (PUBLIC-VENDOR-COST-1031), never the billed `monthly` beside it.
+const vm = (month: string, vendor: string | null, reason: string | null = null) => ({
+  month,
+  chargedCostInUsdCents: "999999",
+  vendorCostInUsdCents: vendor,
+  unpricedChargedCostInUsdCents: "0",
+  unpricedShare: vendor === null ? 0.35 : 0,
+  unavailableReason: reason,
+});
 const RUNS = {
-  monthly: [
-    { month: "2026-10", completed: 2478198, totalCostInUsdCents: "477457.3769835825" },
-    { month: "2026-02", completed: 14082, totalCostInUsdCents: "11190.3874666661" },
-    { month: "2026-09", completed: 749486, totalCostInUsdCents: "403296.6979077956" },
+  monthly: [{ month: "2026-10", completed: 2478198, totalCostInUsdCents: "999999999" }],
+  vendorMonthly: [
+    vm("2026-10", "477457.3769835825"),
+    vm("2026-02", "11190.3874666661"),
+    vm("2026-08", null, "unpriced share above 1%"),
+    vm("2026-09", "403296.6979077956"),
   ],
+  vendorUnavailableReason: null,
 };
 const NOW = new Date("2026-10-29T12:00:00Z");
 const spend = parseMonthlySpend(RUNS);
@@ -116,7 +128,7 @@ describe("the PPC Agency page", () => {
     expect(page.match(new RegExp(`href="${BOOK_A_CALL}" target="_blank"`, "g"))?.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("the signature bars: the served monthly spend, oldest first, full height in the HTML, the month in progress marked", () => {
+  it("the signature bars: the served vendor cost per month, withheld months left out, oldest first, full height in the HTML, the month in progress marked", () => {
     expect(spend?.map((r) => r.month)).toEqual(["2026-02", "2026-09", "2026-10"]);
     expect(spend?.map((r) => Math.round(r.usd))).toEqual([112, 4033, 4775]);
     const chart = spendChartHtml(spend, NOW);
@@ -128,7 +140,7 @@ describe("the PPC Agency page", () => {
     expect(chart).toContain('<div class="pp-bar now">');
     expect(chart).toContain("Oct, so far");
     // The headline is the last FULL month, never the month in progress.
-    expect(chart).toContain("<b>$4k</b><span>put to work by our agents in September</span>");
+    expect(chart).toContain("<b>$4k</b><span>paid to our vendors in September, no markup</span>");
     expect(chart).toContain("each month since February 2026");
     expect(page).toContain('href="/landing/v2/ppc.css?v=');
     for (const fx of ["bar-grow", "sticky-story", "beams", "scrub", "reveal"]) expect(page).toContain(`data-motion="${fx}"`);
@@ -139,8 +151,10 @@ describe("the PPC Agency page", () => {
 
   it("a failed or malformed spend read drops the chart, never the page", () => {
     expect(parseMonthlySpend({})).toBeNull();
-    expect(parseMonthlySpend({ monthly: [{ month: "2026-10", totalCostInUsdCents: "abc" }] })).toBeNull();
-    expect(parseMonthlySpend({ monthly: [] })).toBeNull();
+    expect(parseMonthlySpend({ monthly: [{ month: "2026-10", totalCostInUsdCents: "40000" }] })).toBeNull();
+    expect(parseMonthlySpend({ vendorMonthly: [vm("2026-10", "abc")] })).toBeNull();
+    expect(parseMonthlySpend({ vendorMonthly: [] })).toBeNull();
+    expect(parseMonthlySpend({ vendorMonthly: null, vendorUnavailableReason: "catalogue unreadable" })).toBeNull();
     expect(spendChartHtml(null, NOW)).toBe("");
     expect(spendChartHtml([{ month: "2026-10", usd: 0 }], NOW)).toBe("");
     const bare = renderPpcAgencyPage(null, null, NOW);

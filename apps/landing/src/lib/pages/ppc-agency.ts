@@ -10,8 +10,8 @@
  * up on WhatsApp. No ad network is named: none is managed for clients today.
  *
  * Signature motion (refs #14, outrank): month-by-month bars that grow, on the darker Agency
- * slab, followed by a darker sticky story. The bars are the spend our agents put to work each
- * month (`/public/stats/runs` `monthly[].totalCostInUsdCents`, every campaign we run); the HTML
+ * slab, followed by a darker sticky story. The bars are what every campaign we run cost each
+ * month at the vendor price, no markup (`/public/stats/runs` `vendorMonthly`); the HTML
  * is the final state, `bar-grow` in motion.js replays it, reduced motion plays nothing.
  *
  * Every figure is READ at render: the monthly spend and the fleet indexes a click and a sale
@@ -39,18 +39,35 @@ export function ppcHead(): string {
 
 export type MonthlySpend = { month: string; usd: number }[];
 
-/** `/public/stats/runs` monthly rows, spend only, read strictly; null on a shape we do not know. */
+/**
+ * `/public/stats/runs` `vendorMonthly`, read strictly: what each month cost at the VENDOR price, before any
+ * markup (owner 2026-10-31, PUBLIC-VENDOR-COST-1031: show the real cost since the start, never what clients
+ * paid). A month the producer withholds (its unpriced share is too high) is left out, never filled in; null
+ * on a shape we do not know or when the producer could not read its vendor catalogue.
+ */
 export function parseMonthlySpend(body: unknown): MonthlySpend | null {
-  const monthly = (body as { monthly?: unknown })?.monthly;
-  if (!Array.isArray(monthly)) {
-    console.error("[landing] /public/stats/runs: monthly is not an array");
+  const b = body as { vendorMonthly?: unknown; vendorUnavailableReason?: unknown };
+  if (b?.vendorUnavailableReason) {
+    console.error("[landing] /public/stats/runs: vendor cost unavailable", b.vendorUnavailableReason);
+    return null;
+  }
+  if (!Array.isArray(b?.vendorMonthly)) {
+    console.error("[landing] /public/stats/runs: vendorMonthly is not an array");
     return null;
   }
   const rows: MonthlySpend = [];
-  for (const r of monthly as { month?: unknown; totalCostInUsdCents?: unknown }[]) {
-    const cents = typeof r?.totalCostInUsdCents === "string" ? Number(r.totalCostInUsdCents) : r?.totalCostInUsdCents;
-    if (typeof r?.month !== "string" || !/^\d{4}-\d{2}$/.test(r.month) || typeof cents !== "number" || !Number.isFinite(cents) || cents < 0) {
-      console.error("[landing] /public/stats/runs: bad monthly spend row", JSON.stringify(r));
+  for (const r of b.vendorMonthly as { month?: unknown; vendorCostInUsdCents?: unknown; unavailableReason?: unknown }[]) {
+    if (typeof r?.month !== "string" || !/^\d{4}-\d{2}$/.test(r.month)) {
+      console.error("[landing] /public/stats/runs: bad vendorMonthly row", JSON.stringify(r));
+      return null;
+    }
+    if (r.vendorCostInUsdCents === null) {
+      console.error(`[landing] /public/stats/runs: ${r.month} withheld`, r.unavailableReason);
+      continue;
+    }
+    const cents = typeof r.vendorCostInUsdCents === "string" ? Number(r.vendorCostInUsdCents) : r.vendorCostInUsdCents;
+    if (typeof cents !== "number" || !Number.isFinite(cents) || cents < 0) {
+      console.error("[landing] /public/stats/runs: bad vendorMonthly row", JSON.stringify(r));
       return null;
     }
     rows.push({ month: r.month, usd: cents / 100 });
@@ -63,7 +80,7 @@ function apiBase(): string {
   return (process.env.API_SERVICE_URL || "https://api.distribute.you").replace(/\/$/, "");
 }
 
-/** What our agents spent running every campaign, each month; null on a failed read. */
+/** What every campaign we run cost each month at the vendor price; null on a failed read. */
 export async function fetchMonthlySpend(timeoutMs = 8_000): Promise<MonthlySpend | null> {
   try {
     const res = await fetch(`${apiBase()}/public/stats/runs`, {
@@ -111,10 +128,10 @@ export function spendChartHtml(rows: MonthlySpend | null, now: Date = new Date()
     })
     .join("");
   return `<figure class="pp-chart">
-      <div class="pp-chart-h"><span class="live"><i></i>Budget at work, month by month</span><span>Read live</span></div>
-      <p class="pp-chart-big"><b>${compactUsd(full.usd)}</b><span>put to work by our agents in ${esc(fullName)}</span></p>
-      <div class="pp-bars" data-motion="bar-grow" role="img" aria-label="What our agents spent running every campaign, each month since ${esc(since)}, read live">${bars}</div>
-      <figcaption>Every campaign we run, each month since ${esc(since)}. Read from our cost ledger.</figcaption>
+      <div class="pp-chart-h"><span class="live"><i></i>Real cost, month by month</span><span>Read live</span></div>
+      <p class="pp-chart-big"><b>${compactUsd(full.usd)}</b><span>paid to our vendors in ${esc(fullName)}, no markup</span></p>
+      <div class="pp-bars" data-motion="bar-grow" role="img" aria-label="What every campaign we run cost at the vendor price, each month since ${esc(since)}, read live">${bars}</div>
+      <figcaption>Every campaign we run, each month since ${esc(since)}. Priced at what our vendors charge us.</figcaption>
     </figure>`;
 }
 
