@@ -262,7 +262,7 @@ async function collectBrandSends(
     // The second gate is that something actually landed, which is what the email
     // then names. Both come from the same `/revenue` payload already fetched.
     const roi = roiChangeOn(revenue, targetDay);
-    if (!roi || roi.today <= roi.previous) return [];
+    if (!roi || !roiVisiblyRose(roi)) return [];
 
     const newOutcomes = newOutcomesOnDay(revenue, targetDay);
     if (newOutcomes.length === 0) return [];
@@ -400,6 +400,16 @@ export function roiChangeOn(
   const previous = earlier[earlier.length - 1];
   if (!previous?.roiMultiple) return null;
   return { today: today.roiMultiple, previous: previous.roiMultiple };
+}
+
+/**
+ * Whether the return went up BY AN AMOUNT THE EMAIL CAN SHOW. The email prints both
+ * figures through `formatRoi` (one decimal under 10x), so a rise from 1.19x to 1.25x
+ * reads "1.2x, up from 1.2x" (Doc Dinners, 2026-10-31). Compare the printed figures,
+ * not the raw multiples: a rise the reader cannot see is not news.
+ */
+export function roiVisiblyRose(roi: { today: number; previous: number }): boolean {
+  return roi.today > roi.previous && formatRoi(roi.today) !== formatRoi(roi.previous);
 }
 
 /**
