@@ -1,7 +1,7 @@
 import { SITE, breadcrumb, docPage } from "../v2-shell";
 
 const DESCRIPTION =
-  "Revenue made easy. Our AI agent finds your buyers, writes to them and books your meetings. Open source, free for one user, at the API price with 0% markup.";
+  "Revenue made easy. Our AI agent finds your buyers, writes to them and books your meetings. Open source, free, at the API price with 0% markup.";
 
 /** `/about`: what we sell, who runs it and how it is paid for. */
 export function renderAboutPage(): string {
@@ -46,7 +46,7 @@ export function renderAboutPage(): string {
         id: "pay",
         h2: "How you pay",
         tint: true,
-        html: `<p>The AI agent is free for one user, and $9 per user each month for a team. Each action is billed at the vendor's API price with 0% markup, read live on the <a href="/catalog">catalog</a>. You start with a $10 top-up, and automatic reload keeps the balance going. You choose how much goes to your outreach, and you can pause or cancel anytime.</p>
+        html: `<p>The AI agent is free. Each action is billed at the vendor's API price with 0% markup, read live on the <a href="/catalog">catalog</a>. You start with a $10 top-up, and automatic reload keeps the balance going. You choose how much goes to your outreach, and you can pause or cancel anytime.</p>
 <p>The <a href="/gtm-agency">GTM agency</a> is from $1K a month plus 10% of the budget you put into your campaigns. Book a call and we take it from there.</p>
 <p>Published market rates for the alternatives are the reason this is worth reading twice. An outsourced agency runs $1,500 to $5,000 a month plus $80 to $200 per qualified reply. An in-house SDR runs $4,000 to $7,000 a month plus $50 to $120, and takes three to six months to ramp. A booked meeting bought on the open market runs about $700.</p>`,
       },

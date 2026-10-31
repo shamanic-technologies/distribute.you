@@ -51,10 +51,10 @@ export type SignupTool = {
 
 /** How WE answer each row, stated once. */
 export const OUR_SIGNUP_ROW = {
-  entryPrice: "Free for one user, every action at the API price",
+  entryPrice: "Free, every action at the API price",
   pricing:
-    "Free for one user. $9 per user for a team. Every lead found, message written and email sent is billed at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
-  freeTier: "Free for one user, hosted. Open source under MIT to run yourself.",
+    "Free. Every lead found, message written and email sent is billed at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
+  freeTier: "Free, hosted. Open source under MIT to run yourself.",
   how: "Our AI agent writes to new buyers by cold email and WhatsApp, then follows every visit and signup until they pay.",
   whoWorks: "Our AI agent finds the buyers, writes each message and answers each reply.",
   signals: "Reads your PostHog visits, Clerk signups and Stripe payments.",

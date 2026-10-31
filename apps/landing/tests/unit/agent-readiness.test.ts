@@ -278,7 +278,7 @@ describe("llms.txt", () => {
     expect(lower).not.toMatch(/distribute\.you is a[^.]*cold email agency/);
     expect(lower).not.toMatch(/distribute\.you is a[^.]*cold email tool/);
     // OFFER-RESET-1029: the offer is stated, AI agent and agency alike.
-    for (const line of ["free for one user", "0% markup", "github.com/distribute-you/gtm-factory", "/gtm-agency"]) expect(lower).toContain(line);
+    for (const line of ["the ai agent is free", "0% markup", "github.com/distribute-you/gtm-factory", "/gtm-agency"]) expect(lower).toContain(line);
     expect(lower).not.toContain("at cost");
     expect(lower).not.toContain("costs us");
     expect(llms).not.toContain(String.fromCharCode(0x2014));

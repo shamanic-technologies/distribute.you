@@ -34,7 +34,7 @@ describe("/ai-sdr targets its keyword", () => {
   it("states the why and the AI Agent offer", () => {
     expect(html).toContain("Revenue made easy.");
     expect(html).toContain("0% markup");
-    expect(html).toContain("$9");
+    expect(html).not.toContain('<i></i>Team</span>'); // one free plan, no Team tier (owner 2026-10-31)
     expect(html).toContain("https://github.com/distribute-you/gtm-factory");
     expect(html).toContain("Start free");
   });

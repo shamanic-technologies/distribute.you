@@ -114,7 +114,7 @@
 
 /* ---------- The offer strip (treg.to) ---------- */
 .offer-strip { padding: 8px 0 72px; }
-.strip { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--hair); border-radius: 20px; background: #fff; box-shadow: var(--shadow-card); overflow: hidden; }
+.strip { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--hair); border-radius: 20px; background: #fff; box-shadow: var(--shadow-card); overflow: hidden; }
 .strip li { display: flex; flex-direction: column; gap: 6px; padding: 24px 26px; }
 .strip li + li { border-left: 1px solid var(--hair); }
 .strip b { font-family: var(--font-display); font-weight: 400; font-size: 44px; line-height: 1; letter-spacing: -0.05em; color: var(--accent); }
@@ -154,8 +154,7 @@
 .stack-source { margin-top: 14px; font-size: 13px; color: var(--muted-2); text-align: center; }
 .stack-source a { color: inherit; text-decoration: underline; }
 
-/* ---------- Pricing: three plans, then what you pay for ---------- */
-.plans.plans-3 { grid-template-columns: repeat(3, 1fr); align-items: start; }
+/* ---------- Pricing: two plans, then what you pay for ---------- */
 .plans-foot { margin-top: 28px; text-align: center; font-size: 15px; color: var(--muted); }
 .plans-foot a { color: var(--accent-text); margin-left: 6px; }
 .payfor { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
@@ -219,11 +218,7 @@ section.os .os-card p { margin-top: 10px; font-size: 15px; }
   .wa { width: 250px; height: 340px; }
 }
 @media (max-width: 960px) {
-  .strip { grid-template-columns: 1fr 1fr; }
-  .strip li:nth-child(3) { border-left: 0; }
-  .strip li:nth-child(n + 3) { border-top: 1px solid var(--hair); }
   .prices-grid, .agent-grid, .os-grid, .payfor { grid-template-columns: 1fr; }
-  .plans.plans-3 { grid-template-columns: 1fr; }
   .agent-grid { gap: 28px; }
 }
 /* On a phone the thread leaves the orbit: the agent core takes the centre and the chat
@@ -238,6 +233,8 @@ section.os .os-card p { margin-top: 10px; font-size: 15px; }
   .orbit-logo::after { border-radius: 15px; }
   .orbit-core { display: flex; }
   .wa { position: relative; left: auto; top: auto; transform: none; width: 100%; max-width: 330px; height: 350px; margin-top: 8px; }
+  .strip { grid-template-columns: 1fr; }
+  .strip li + li { border-left: 0; border-top: 1px solid var(--hair); }
   .strip b { font-size: 36px; }
   .strip li { padding: 18px; }
   .price-list li { grid-template-columns: 32px minmax(0, 1fr); padding: 14px 16px; }

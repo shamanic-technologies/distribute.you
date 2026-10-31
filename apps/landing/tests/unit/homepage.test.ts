@@ -41,7 +41,7 @@ describe("the homepage is self-contained", () => {
     expect(html).toContain('src="/landing/v2/main.js?v=12"');
     // PAGE-REVENUE-AGENT-1029: the AI Agent sections have their own sheet, and the page
     // carries `data-motion` effects, so it loads the motion kit at the shell's version.
-    expect(html).toContain('href="/landing/v2/agent.css?v=2"');
+    expect(html).toContain('href="/landing/v2/agent.css?v=3"');
     // The homepage's own motion (hero thread calling the orbit tools, the "why" rows).
     expect(html).toContain('src="/landing/v2/home.js?v=1"');
     expect(html).toContain(`src="/landing/v2/motion.js?v=${MOTION_VERSION}"`);
@@ -150,18 +150,19 @@ describe("homepage copy discipline", () => {
 });
 
 describe("the offer the page states", () => {
-  it("sells the AI Agent offer: free for one user, the API price, Team at $9, a $10 start", () => {
-    // Owner 2026-10-29 (OFFER-RESET-1029): free open source, free hosted for one user at
-    // the API price x1, Team $9/user, a prepaid first top-up of $10. The first-$100 match,
+  it("sells the AI Agent offer: free, the API price, a $10 start, no Team tier", () => {
+    // Owner 2026-10-29 (OFFER-RESET-1029): free open source, free hosted at the API price
+    // x1, a prepaid first top-up of $10. Owner 2026-10-31: the $9/user Team tier is gone and
+    // the page never states a member count (the 5-member cap lives in the Terms only). The first-$100 match,
     // the referral program, post-paid and the $99/month plan ended for new signups.
-    for (const line of ["Revenue Automation", "Done For You", "Free for one user", "0% markup", "$9", "start with $10", 'href="/catalog"']) {
+    for (const line of ["Revenue Automation", "Done For You", "0% markup", "start with $10", 'href="/catalog"']) {
       expect(html, line).toContain(line);
     }
     expect(html).not.toContain("promo-bar");
     expect(html).not.toContain("data-promo-until");
     const own = html.replace(navHtml("/"), "");
     expect(own).not.toBe(html);
-    for (const gone of ["match your first", "$100 free", "first $100", "$99", "free trial", "3-day", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go", "nothing charged today", "after the spend", "referral", "Refer a friend"]) {
+    for (const gone of ["match your first", "$100 free", "first $100", "$99", "$9<", "per user", "for one user", "Team</span>", "free trial", "3-day", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go", "nothing charged today", "after the spend", "referral", "Refer a friend"]) {
       expect(own, gone).not.toContain(gone);
     }
     expect(html).not.toMatch(/per day/i);

@@ -86,17 +86,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "AI agent, one user",
+      name: "AI agent",
       price: "0",
       priceCurrency: "USD",
-      description: "Free for one user. Every action at the vendor's API price, 0% markup, from a prepaid balance. Start with $10. Pause or cancel anytime.",
-    },
-    {
-      "@type": "Offer",
-      name: "AI agent, team",
-      price: "9",
-      priceCurrency: "USD",
-      description: "$9 per user each month. The same API prices, 0% markup.",
+      description: "Free. Every action at the vendor's API price, 0% markup, from a prepaid balance. Start with $10. Pause or cancel anytime.",
     },
   ],
   provider: {
@@ -141,7 +134,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Confirm what we found",
-      text: "Check the offer, the audiences and the sales funnel, then choose how much goes to your outreach. One user is free, and every action is at the API price with 0% markup.",
+      text: "Check the offer, the audiences and the sales funnel, then choose how much goes to your outreach. The AI agent is free, and every action is at the API price with 0% markup.",
     },
     {
       "@type": "HowToStep",

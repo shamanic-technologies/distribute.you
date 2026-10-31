@@ -31,7 +31,7 @@ const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 const OUR_WINS = [
   "The agent reaches buyers who have never heard of you, by cold email and WhatsApp.",
   "Every visit and every signup gets its next message, until the person pays.",
-  "Free for one user, every action at the API price with 0% markup.",
+  "Free, every action at the API price with 0% markup.",
 ];
 
 const CHOOSE_US = [
@@ -48,7 +48,7 @@ function faqFor(t: SignupTool): { q: string; a: string }[] {
   return [
     {
       q: `How much does ${t.name} cost?`,
-      a: `${t.name} starts at ${t.entryPrice.replace(/^From /, "").replace(/^Free, then from /, "free, then ")}. ${t.prices.map((p) => `${p.plan}: ${p.price}`).join(". ")}. distribute.you is free for one user, and every action is billed at the vendor's API price with 0% markup.`,
+      a: `${t.name} starts at ${t.entryPrice.replace(/^From /, "").replace(/^Free, then from /, "free, then ")}. ${t.prices.map((p) => `${p.plan}: ${p.price}`).join(". ")}. distribute.you is free, and every action is billed at the vendor's API price with 0% markup.`,
     },
     { q: `What does ${t.name} do best?`, a: t.whereTheyWin.join(" ") },
     {
@@ -123,12 +123,11 @@ export function renderSignupVsPage(t: SignupTool): string {
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
         <span class="plan-tag">distribute.you</span>
-        <div class="plan-price">Free<small>for one user</small></div>
+        <div class="plan-price">Free<small>no monthly fee</small></div>
         <p class="plan-desc">Every action at the API price, 0% markup. Start with $10. Pause or cancel anytime.</p>
         <a class="btn btn-accent" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">Included in the plan</div>
         <ul><li><i></i>Cold email from our domains, and WhatsApp</li><li><i></i>PostHog, Clerk and Stripe connectors</li><li><i></i>Every signup followed up until they pay</li><li><i></i>Open source under MIT</li></ul>
-        <div class="plan-foot">Teams are $9 per user each month.</div>
       </div>
     </div>
   </div>
@@ -160,7 +159,7 @@ __HOT_LEAD_BAND__
 
   return shell({
     title: `${t.name} alternative: distribute.you vs ${t.name} for signup automation`,
-    description: `Looking at ${t.name} alternatives? distribute.you's AI signup agent invites new buyers and follows every signup until they pay, free for one user. Compare prices.`,
+    description: `Looking at ${t.name} alternatives? distribute.you's AI signup agent invites new buyers and follows every signup until they pay, free. Compare prices.`,
     path,
     head: signupHead(),
     bodyClass: "signups",

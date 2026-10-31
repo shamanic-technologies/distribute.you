@@ -51,7 +51,7 @@ function faqFor(c: ToolCluster, t: AgentTool): { q: string; a: string }[] {
   return [
     {
       q: `How much does ${t.name} cost?`,
-      a: `${t.name}: ${t.prices.map((p) => `${p.plan}, ${p.price}`).join(". ")}. distribute.you is free for one user, and every action is billed at the vendor's API price with 0% markup.`,
+      a: `${t.name}: ${t.prices.map((p) => `${p.plan}, ${p.price}`).join(". ")}. distribute.you is free, and every action is billed at the vendor's API price with 0% markup.`,
     },
     { q: `What does ${t.name} do best?`, a: t.whereTheyWin.join(" ") },
     { q: `Can I keep ${t.name} and add distribute.you?`, a: c.keep(t.name) },
@@ -123,12 +123,11 @@ export function renderToolVsPage(c: ToolCluster, t: AgentTool): string {
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
         <span class="plan-tag">distribute.you</span>
-        <div class="plan-price">Free<small>for one user</small></div>
+        <div class="plan-price">Free<small>no monthly fee</small></div>
         <p class="plan-desc">Every action at the API price, 0% markup. Start with $10. Pause or cancel anytime.</p>
         <a class="btn btn-accent" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">Included in the plan</div>
         <ul>${c.planItems.map((l) => `<li><i></i>${esc(l)}</li>`).join("")}<li><i></i>Open source under MIT</li></ul>
-        <div class="plan-foot">Teams are $9 per user each month.</div>
       </div>
     </div>
   </div>
@@ -160,7 +159,7 @@ __HOT_LEAD_BAND__
 
   return shell({
     title: `${t.name} alternative: distribute.you vs ${t.name} for ${c.topic}`,
-    description: `Looking at ${t.name} alternatives? distribute.you's AI agent brings the right buyers to your website, free for one user. Compare prices, read on ${verified}.`,
+    description: `Looking at ${t.name} alternatives? distribute.you's AI agent brings the right buyers to your website, free. Compare prices, read on ${verified}.`,
     path,
     head: c.head,
     bodyClass: c.bodyClass,

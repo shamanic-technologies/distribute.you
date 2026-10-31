@@ -126,7 +126,7 @@ const faqJsonLd = {
       name: "How much does distribute.you cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: `The AI agent is free for one user, and $9 per user each month for a team. You pay as you go from a prepaid balance, starting with $10: each action is billed at the vendor's API price with 0% markup, listed on ${CATALOG_URL}, and each campaign spends only up to the caps you set (a max budget and/or a max volume, each with a period). See what each result cost you in the dashboard.`,
+        text: `The AI agent is free. You pay as you go from a prepaid balance, starting with $10: each action is billed at the vendor's API price with 0% markup, listed on ${CATALOG_URL}, and each campaign spends only up to the caps you set (a max budget and/or a max volume, each with a period). See what each result cost you in the dashboard.`,
       },
     },
   ],

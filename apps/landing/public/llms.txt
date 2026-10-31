@@ -11,8 +11,7 @@
 > and the number it cost you to get it. We write by cold email and WhatsApp,
 > and publish what our tests measure.
 >
-> It comes two ways. The AI agent is free for one user and $9 per user each
-> month for a team; each action is billed at the vendor's API price with 0%
+> It comes two ways. The AI agent is free; each action is billed at the vendor's API price with 0%
 > markup, listed on https://distribute.you/catalog, from a prepaid balance that
 > starts at $10. The agent is open source under the MIT license:
 > https://github.com/distribute-you/gtm-factory. The GTM agency
@@ -143,8 +142,7 @@ https://distribute.you/docs
 - What we sell: Revenue Automation Done For You, as an AI agent or as a GTM agency
 - ICP: The Serial Builder. 16 to 40 years old, solo CEO founder, ships 3 or more
   products a year, wants the founder reachable.
-- Pricing model, AI agent: free for one user, $9 per user each month for a
-  team. Each action is billed at the vendor's API price with 0% markup, from a
+- Pricing model, AI agent: free. Each action is billed at the vendor's API price with 0% markup, from a
   prepaid balance: start with $10, then automatic reload. No setup fee,
   pause or cancel anytime.
 - Pricing model, GTM agency: from $1K a month plus 10% of the budget. Book a
@@ -154,7 +152,7 @@ https://distribute.you/docs
 ## Key pages
 
 - [Home](https://distribute.you/): the AI agent, how it works, live action prices
-- [Pricing](https://distribute.you/#pricing): free for one user, $9 per user for a team, every action at the API price with 0% markup
+- [Pricing](https://distribute.you/#pricing): free, every action at the API price with 0% markup
 - [GTM agency](https://distribute.you/gtm-agency): our team runs your go-to-market, from $1K a month plus 10% of budget
 - [Cold email agency](https://distribute.you/cold-email-agency): we find your buyers, write each email, send it from our own domains and answer every reply, from $1K a month plus 10% of budget
 - [Appointment setting agency](https://distribute.you/appointment-setting-agency): our team books B2B sales meetings in your calendar, from $1K a month plus 10% of budget
@@ -211,7 +209,7 @@ you run; we run the campaign.
 - [vs Zendesk](https://distribute.you/ai-customer-success/vs/zendesk)
 - [vs HubSpot Service Hub](https://distribute.you/ai-customer-success/vs/hubspot-service-hub)
 - [vs Freshdesk](https://distribute.you/ai-customer-success/vs/freshdesk)
-- [Signup automation](https://distribute.you/signup-automation): our AI signup agent, which invites buyers by cold email and WhatsApp, then follows every visit and signup until they pay, free for one user
+- [Signup automation](https://distribute.you/signup-automation): our AI signup agent, which invites buyers by cold email and WhatsApp, then follows every visit and signup until they pay, free
 - [Signup automation alternatives](https://distribute.you/signup-automation/alternatives)
 - [vs Rewardful](https://distribute.you/signup-automation/vs/rewardful)
 - [vs ReferralHero](https://distribute.you/signup-automation/vs/referralhero)

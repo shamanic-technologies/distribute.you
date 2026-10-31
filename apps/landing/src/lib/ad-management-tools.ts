@@ -22,10 +22,10 @@ export const AD_MANAGEMENT_ALTERNATIVES_PATH = `${AD_MANAGEMENT_PATH}/alternativ
 
 /** How WE answer each row, stated once. */
 export const OUR_AD_ROW = {
-  entryPrice: "Free for one user, every action at the API price",
+  entryPrice: "Free, every action at the API price",
   pricing:
-    "Free for one user. $9 per user for a team. Your budget pays for each action at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
-  freeTier: "Free for one user, hosted. Open source under MIT to run yourself.",
+    "Free. Your budget pays for each action at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
+  freeTier: "Free, hosted. Open source under MIT to run yourself.",
   channel: "Outreach by cold email and WhatsApp, to buyers chosen by name. We run no ad account.",
   whoSees: "Buyers our agent picked for you, each one by name.",
   whatCounts: "Human clicks only, then every signup is followed up on WhatsApp.",
