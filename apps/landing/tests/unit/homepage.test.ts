@@ -37,7 +37,7 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=21"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=22"');
     expect(html).toContain('src="/landing/v2/main.js?v=11"');
     // PAGE-REVENUE-AGENT-1029: the AI Agent sections have their own sheet, and the page
     // carries `data-motion` effects, so it loads the motion kit at the shell's version.

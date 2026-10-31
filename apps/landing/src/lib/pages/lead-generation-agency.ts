@@ -76,7 +76,7 @@ function heroHtml(): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">B2B Lead Generation Agency</span>
-      <h1 style="margin-top:18px">The lead generation agency that judges every lead.</h1>
+      <h1>The lead generation agency that judges every lead.</h1>
       <p class="lead">We find your buyers, keep only the ones who fit, and reach out for you. Your team gets the leads who answer.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -110,7 +110,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">How we work</span>
-        <h2 style="margin-top:14px">Leads, not lists.</h2>
+        <h2>Leads, not lists.</h2>
         <p>A list is names. A lead is a buyer who fits, reached for you, and counted when they act.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -224,7 +224,7 @@ function anatomyHtml(delivery: CheckedDelivery | null): string {
   <div class="wrap lg-anatomy">
     <div data-motion="reveal">
       <span class="eyebrow">Every lead</span>
-      <h2 style="margin-top:14px">Each lead comes with its reason.</h2>
+      <h2>Each lead comes with its reason.</h2>
       <p>You see why we picked them, what we sent them and what they did. Your team calls the ones who are ready.</p>
       <ol class="lg-parts" data-motion="reveal" data-motion-stagger>${parts}</ol>
       ${checkedDeliveryHtml(delivery)}
@@ -264,7 +264,7 @@ export function leadProofHtml(list: IndexList | null): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Our data, live</span>
-      <h2 style="margin-top:14px">What a lead who acts costs, read live.</h2>
+      <h2>What a lead who acts costs, read live.</h2>
       <p>An engaged lead replied with interest, or visited the client&apos;s website from our email. Read from every campaign we run, recorded every day.</p>
     </div>
     <ul class="ag-proof-list">${cards}</ul>
@@ -293,7 +293,7 @@ function daysHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">First leads in 5 days</span>
-      <h2 style="margin-top:14px">From our first call to your first leads.</h2>
+      <h2>From our first call to your first leads.</h2>
       <p>Nothing to set up on your side. Our data, our domains, our agents.</p>
     </div>
     <div class="ag-days-wrap">
@@ -352,7 +352,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">Good to know before the call.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Good to know before the call.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other lead generation agencies">${links}</nav>
   </div>

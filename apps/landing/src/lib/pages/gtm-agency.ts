@@ -127,7 +127,7 @@ function heroHtml(): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">GTM Agency</span>
-      <h1 style="margin-top:18px">The best growth on the market, run for you.</h1>
+      <h1>The best growth on the market, run for you.</h1>
       <p class="lead">We run your go-to-market with data from every campaign we run. Your team stays on top of every lead, with agents that do the work.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -161,7 +161,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">How we work</span>
-        <h2 style="margin-top:14px">We run your GTM department.</h2>
+        <h2>We run your GTM department.</h2>
         <p>Your team keeps the meetings and the deals. Our team and our agents run everything before them.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -213,7 +213,7 @@ function daysHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Live in 5 days</span>
-      <h2 style="margin-top:14px">From our first call to your first replies.</h2>
+      <h2>From our first call to your first replies.</h2>
       <p>Nothing to set up on your side. Our domains, our inboxes, our agents.</p>
     </div>
     <div class="ag-days-wrap">
@@ -242,7 +242,7 @@ export function proofHtml(list: IndexList | null): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Our data, live</span>
-      <h2 style="margin-top:14px">Every campaign we run makes the next one sharper.</h2>
+      <h2>Every campaign we run makes the next one sharper.</h2>
       <p>One data set, fed by every client. Your campaign starts where our best one is today. Read live, every day.</p>
     </div>
     <ul class="ag-proof-list">${cards}</ul>
@@ -282,7 +282,7 @@ export function monthlyHtml(rows: MonthlyRuns | null, now: Date = new Date()): s
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Month by month</span>
-      <h2 style="margin-top:14px">Our agents at work, month by month.</h2>
+      <h2>Our agents at work, month by month.</h2>
       <p>Actions our AI agents completed for all our clients, each month since ${esc(since)}.</p>
     </div>
     <div data-motion="bar-grow"><div class="ag-bars" role="img" aria-label="Actions our agents completed each month, read live">${bars}</div></div>
@@ -326,7 +326,7 @@ export function priceHtml(title = "GTM Agency", included: readonly string[] = IN
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Price</span>
-      <h2 style="margin-top:14px">One fee that grows with your budget.</h2>
+      <h2>One fee that grows with your budget.</h2>
       <p>Move the slider to see your monthly fee.</p>
     </div>
     <div class="ag-price">
@@ -408,7 +408,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">Good to know before the call.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Good to know before the call.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other agencies">${links}</nav>
   </div>

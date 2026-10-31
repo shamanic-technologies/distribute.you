@@ -129,6 +129,9 @@ section.framed::after {
   font-family: var(--font-display);
 }
 .section-head { max-width: 640px; margin-bottom: 48px; }
+/* One gap between a label pill and the title under it, every page, phone and desktop
+   (owner 2026-10-31: 14-18px read as glued to the text). Pages set no inline margin. */
+.eyebrow + h1, .eyebrow + h2, .eyebrow + h3 { margin-top: 24px; }
 .section-head p { margin-top: 14px; font-size: 18px; }
 .section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
 
@@ -308,7 +311,6 @@ section.framed::after {
 .step { position: relative; padding: 8px 0 88px; }
 .step:last-child { padding-bottom: 8px; }
 .step::before { content: ""; position: absolute; left: -44px; top: 16px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px #fff; }
-.step .eyebrow { margin-bottom: 14px; }
 .step h3 { font-size: 30px; line-height: 1.1; letter-spacing: -0.04em; }
 .step p { margin-top: 14px; max-width: 480px; font-size: 16px; }
 .step .note { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hair); color: var(--muted-2); font-size: 15px; }
@@ -357,7 +359,6 @@ section.framed::after {
   padding: 36px; border-radius: 20px;
   background: #fff; border: 1px solid var(--hair); box-shadow: var(--shadow-card);
 }
-.feature .eyebrow { margin-bottom: 18px; }
 .feature h3 { font-size: 34px; line-height: 1.08; letter-spacing: -0.04em; }
 .feature p { margin-top: 14px; font-size: 16px; max-width: 460px; }
 .panel {
@@ -685,6 +686,9 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 
 @media (max-width: 960px) {
   .quote { width: 300px; }
+  /* Unpinned on a phone: drop the desktop pin offsets too, or the 3rd card sits 124px low
+     and covers the Gmail/Outlook/Cal.com row under the stack. */
+  .stack-card, .stack-card:nth-child(2), .stack-card:nth-child(3) { top: 0; }
   .stack-card { grid-template-columns: 1fr; gap: 20px; padding: 24px; position: relative; }
 }
 @media (max-width: 640px) {
@@ -789,7 +793,8 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
    and as the homepage hero's eyebrow. ---------- */
 .why { font-family: var(--font-display); font-size: 20px; line-height: 1.3; letter-spacing: -0.02em; color: var(--text); }
 .hero-inner .why { margin-top: 16px; }
-.hero-inner > .why-eyebrow { margin-bottom: 20px; }
+/* `.hero h1` zeroes its top margin; keep the pill-to-title gap here too. */
+.hero .eyebrow + h1 { margin-top: 24px; }
 .cta-box .why { margin-bottom: 16px; color: #6ea0ff; }
 /* Smallest phones (320px, iPhone SE): the brand ran into "Log in" in the pill nav. */
 @media (max-width: 360px) {

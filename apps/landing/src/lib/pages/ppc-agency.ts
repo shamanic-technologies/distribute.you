@@ -124,7 +124,7 @@ function heroHtml(spend: MonthlySpend | null, now: Date): string {
   <div class="wrap ag-hero-grid">
     <div data-motion="reveal" data-motion-stagger>
       <span class="eyebrow">PPC Agency for B2B</span>
-      <h1 style="margin-top:18px">The PPC agency where every click is a buyer you chose.</h1>
+      <h1>The PPC agency where every click is a buyer you chose.</h1>
       <p class="lead">Your paid budget reaches the people who buy from you, by email and WhatsApp. We count every human click, every signup and every sale.</p>
       <p class="why">${WHY}</p>
       <div class="ag-ctas">
@@ -158,7 +158,7 @@ function storyHtml(): string {
     <div>
       <div class="section-head">
         <span class="eyebrow">Where your budget goes</span>
-        <h2 style="margin-top:14px">Paid reach, aimed at your buyers.</h2>
+        <h2>Paid reach, aimed at your buyers.</h2>
         <p>Your budget pays to reach people you picked. Each click has a name, and each sale shows where it came from.</p>
       </div>
       <ol class="ag-steps">${steps}</ol>
@@ -218,7 +218,7 @@ function clickHtml(): string {
   <div class="wrap pp-clicks">
     <div data-motion="reveal">
       <span class="eyebrow">Every click</span>
-      <h2 style="margin-top:14px">A click you can put a name on.</h2>
+      <h2>A click you can put a name on.</h2>
       <p>Each visit to your site comes with the buyer behind it. Your team knows who to call first.</p>
       <ol class="pp-parts" data-motion="reveal" data-motion-stagger>${parts}</ol>
     </div>
@@ -257,7 +257,7 @@ export function ppcProofHtml(list: IndexList | null): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Our data, live</span>
-      <h2 style="margin-top:14px">What a human click costs, read live.</h2>
+      <h2>What a human click costs, read live.</h2>
       <p>Cost per click, click rate and return on spend, read from every campaign we run and recorded every day.</p>
     </div>
     <ul class="ag-proof-list">${cards}</ul>
@@ -286,7 +286,7 @@ function daysHtml(): string {
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Live in 5 days</span>
-      <h2 style="margin-top:14px">From our first call to your first clicks.</h2>
+      <h2>From our first call to your first clicks.</h2>
       <p>Nothing to set up on your side. Our data, our domains, our agents.</p>
     </div>
     <div class="ag-days-wrap">
@@ -345,7 +345,7 @@ function faqHtml(): string {
   ].join("");
   return `<section class="framed" id="faq">
   <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Questions</span><h2 style="margin-top:14px">Good to know before the call.</h2></div>
+    <div class="section-head center"><span class="eyebrow">Questions</span><h2>Good to know before the call.</h2></div>
     <div class="ag-faq">${items}</div>
     <nav class="ag-links" aria-label="Compare with other PPC agencies">${links}</nav>
   </div>
