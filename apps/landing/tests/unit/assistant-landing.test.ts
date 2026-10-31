@@ -81,7 +81,7 @@ describe("/lp/assistant: the value-proposition candidate homepage", () => {
       "Three steps, and only the first one is yours.",
       'id="pipeline"',
       'id="features"',
-      'class="framed dark"',
+      'id="why"',
       'id="prices"',
       'id="pricing"',
       'id="open-source"',

@@ -227,7 +227,6 @@ export function renderConciergePage(
   serving: ConciergeServing = { at: "candidate" },
 ): string {
   const proofAndQuotes = between(home, "<!-- Proof -->", "<!-- How it works");
-  const stats = between(home, "<!-- Stats band", "<!-- Price before the action");
   const faq = between(home, "<!-- FAQ", "<!-- CTA");
 
   const body = `${STYLE}
@@ -267,7 +266,16 @@ export function renderConciergePage(
 </section>
 
 ${proofAndQuotes}
-${stats}
+<!-- Stats band: kept here since the homepage dropped it (it repeated the pricing). -->
+<section class="framed dark">
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat rv"><div class="n"><span data-count="24">0</span><span class="u">h</span></div><div class="l">From signup to your first revenue signal</div></div>
+      <div class="stat rv"><div class="n"><span data-count="0">0</span><span class="u">%</span></div><div class="l">Markup on the API price of every action.</div></div>
+      <div class="stat rv"><div class="n"><span data-count="2">0</span><span class="u">min</span></div><div class="l">To launch. Onboarding is a URL and a click.</div></div>
+    </div>
+  </div>
+</section>
 
 <section class="framed" id="developers">
   <div class="wrap">
