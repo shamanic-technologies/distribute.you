@@ -22,6 +22,7 @@ import { VideoCameraIcon } from "@phosphor-icons/react/dist/csr/VideoCamera";
 import type { Icon } from "@phosphor-icons/react";
 import type { AcquisitionChannelMark as ChannelMark, OwnChannelGlyph } from "@/lib/acquisition-channels";
 import { BrandLogo } from "@/components/brand-logo";
+import { CatalogueMark } from "@/components/v2/catalogue-mark";
 
 // The tile that stands for one acquisition channel. It lives here rather than in
 // the settings card because the Campaigns table renders the SAME mark for the
@@ -70,6 +71,7 @@ const TILE: Record<MarkSize, string> = {
   md: "h-11 w-11 rounded-xl",
 };
 const GLYPH: Record<MarkSize, number> = { xs: 12, sm: 18, md: 26 };
+const TILE_PX: Record<MarkSize, number> = { xs: 18, sm: 32, md: 44 };
 const LOGO: Record<MarkSize, number> = { xs: 12, sm: 18, md: 24 };
 
 export function AcquisitionChannelMark({
@@ -81,11 +83,19 @@ export function AcquisitionChannelMark({
   // what it was handed. A NULL mark is a channel this app has not drawn yet, not
   // an error: features-service publishes the channels and only the tile is ours,
   // so a newly published one arrives markless and must still render its row.
-  def: { mark: ChannelMark | null };
+  def: { mark: ChannelMark | null; servedIcon?: string | null; name?: string };
   size?: MarkSize;
   dimmed?: boolean;
 }) {
-  if (!def.mark) return null;
+  if (!def.mark) {
+    // No tile of ours: the icon the catalogue serves for the channel (P5.1), at the tile's own size.
+    if (!def.servedIcon) return null;
+    return (
+      <span className={dimmed ? "opacity-60" : ""}>
+        <CatalogueMark icon={def.servedIcon} name={def.name ?? ""} size={TILE_PX[size]} />
+      </span>
+    );
+  }
 
   if (def.mark.kind === "vendor") {
     // A real provider logo is never tinted: the tile stays white so the mark

@@ -48,6 +48,11 @@ import { PencilSimpleLineIcon } from "@phosphor-icons/react/dist/csr/PencilSimpl
 import { SealCheckIcon } from "@phosphor-icons/react/dist/csr/SealCheck";
 import { SmileyIcon } from "@phosphor-icons/react/dist/csr/Smiley";
 import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
+import { BrowserIcon } from "@phosphor-icons/react/dist/csr/Browser";
+import { SparkleIcon } from "@phosphor-icons/react/dist/csr/Sparkle";
+import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
+import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
+import { ThreadsLogoIcon } from "@phosphor-icons/react/dist/csr/ThreadsLogo";
 import { VideoCameraIcon } from "@phosphor-icons/react/dist/csr/VideoCamera";
 import { MARK_ICONS } from "@/components/v2/catalogue-mark-icons";
 
@@ -103,6 +108,12 @@ const CATALOGUE_ICONS: Record<string, Icon> = {
   users: UsersIcon,
   waves: WavesIcon,
   "youtube-logo": YoutubeLogoIcon,
+  // Channel icons the public catalogue serves (P5.1: the channel list is read from it).
+  browser: BrowserIcon,
+  sparkle: SparkleIcon,
+  "envelope-simple": EnvelopeSimpleIcon,
+  "hand-waving": HandWavingIcon,
+  "threads-logo": ThreadsLogoIcon,
 };
 
 const warned = new Set<string>();

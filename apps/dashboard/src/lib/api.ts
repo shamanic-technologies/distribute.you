@@ -4249,6 +4249,10 @@ const PublicCatalogueSchema = z.object({
       salesPathEligible: z.boolean().optional(),
       /** One-line card caption under the channel's name (features-service, 2026-10-06). */
       shortDescription: z.string().optional(),
+      /** The channel's full description, its served icon name and its place in every list (P5.1: the channel list is read from here). */
+      description: z.string().nullish(),
+      icon: z.string().nullish(),
+      displayOrder: z.number().nullish(),
       /** `outbound`, `sourcing`, `ads`... (features-service); read only to check the rename's outbound list. */
       channelType: z.string().optional(),
       operatedBy: z.string().optional(),

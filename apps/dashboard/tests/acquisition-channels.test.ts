@@ -146,9 +146,10 @@ describe("marks", () => {
     expect(pigeon?.mark).toBeNull();
   });
 
-  it("renders nothing rather than an invented tile", () => {
+  it("renders the SERVED icon or nothing, never an invented tile (P5.1)", () => {
     const mark = read("../src/components/marks/acquisition-channel-mark.tsx");
-    expect(mark).toContain("if (!def.mark) return null;");
+    expect(mark).toContain("if (!def.servedIcon) return null;");
+    expect(mark).toContain("<CatalogueMark icon={def.servedIcon}");
   });
 
   // A tint outside the dark remap paints a bright block on the dark surface, and
@@ -224,11 +225,11 @@ describe("a campaign's channel is read, never inferred", () => {
 
   // The catalogue is a projection of a query already in flight, so naming a
   // campaign costs no request of its own.
-  it("projects the features the app already fetches", () => {
+  it("projects the served catalogue the legs and pipe marks already read (P5.1: never the seeded features list)", () => {
     const hook = read("../src/lib/use-acquisition-channels.ts");
-    expect(hook).toContain("useFeatures()");
-    expect(hook).toContain("acquisitionChannelsFromFeatures");
-    expect(hook).not.toContain("useAuthQuery");
+    expect(hook).toContain('useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), pollOptions)');
+    expect(hook).toContain("acquisitionChannelsFromFeatures(channelSourcesFromCatalogue(data.channels))");
+    expect(hook).not.toContain("useFeatures");
   });
 });
 
