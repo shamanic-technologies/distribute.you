@@ -205,6 +205,9 @@ export const EngineMonitoringSchema = z
         windowDays: num,
         families: z.array(EngineReplayFamilySchema),
         totals: z.object({ todayRegret: num.nullable(), engineRegret: num.nullable(), regretGain: num.nullable(), families: num }).passthrough(),
+        // False = read while runs-service had not reconciled its ledger (stated, never red).
+        ledgerReconciled: z.boolean().optional(),
+        ledgerDaysMissing: num.optional(),
         failure: z.string().nullable(),
       })
       .passthrough()

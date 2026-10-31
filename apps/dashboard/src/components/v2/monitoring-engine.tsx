@@ -52,13 +52,14 @@ function Verdict({ engine }: { engine: EngineMonitoring }) {
   );
 }
 
-const pickName = (p: EnginePlaceSummary["today"]) => (p ? `${p.channelName} · ${p.workflowDynastyName ?? p.workflowDynastySlug}` : null);
+// The workflow's served name already carries its channel ("Sales Cold Email Outreach Keel"): the name alone, the pipe on hover.
+const pickName = (p: EnginePlaceSummary["today"]) => (p ? (p.workflowDynastyName ?? p.workflowDynastySlug) : null);
 
 function Pick({ pick, reason }: { pick: EnginePlaceSummary["today"]; reason?: string | null }) {
   const name = pickName(pick);
   if (!name) return <span className="k-fg3 text-[12px]">{reason ? reason.replace(/_/g, " ") : "—"}</span>;
   return (
-    <span className="block truncate" title={name}>
+    <span className="block truncate" title={`${pick!.channelName}: ${name}`}>
       {name}
     </span>
   );
@@ -123,6 +124,11 @@ function ReplayRows({ engine }: { engine: EngineMonitoring }) {
   const cell = (v: string | null, good?: boolean) => (v == null ? <span className="k-fg4">—</span> : <span className={good ? "text-[var(--run)]" : ""}>{v}</span>);
   return (
     <div className="k-scroll overflow-x-auto">
+      {replay.ledgerReconciled === false && (
+        <p className="k-fg3 k-line-subtle border-b px-4 py-2.5 text-[12px]">
+          {`Read while the cost ledger was not reconciled (${replay.ledgerDaysMissing ?? 0} days pending): figures may move once it is.`}
+        </p>
+      )}
       <table className="w-full min-w-[860px] text-[13px]">
         <thead>
           <tr className="k-line-subtle border-b">
