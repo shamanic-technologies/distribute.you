@@ -178,7 +178,7 @@ export function OutcomesOverviewPage() {
 }
 
 /** The producer's step order (outcome-cost-series `steps[]`); a step it does not serve (posts) keeps its place after. */
-function inServedOrder(list: BrandOutcome[], series: OfferOutcomeCostSeries | undefined): BrandOutcome[] {
+function inServedOrder(list: BrandOutcome[], series: OfferOutcomeCostSeries | null | undefined): BrandOutcome[] {
   if (!series) return list;
   const at = new Map(series.steps.map((s, i) => [s.stepKey, i] as const));
   const rank = (o: BrandOutcome) => at.get(o.outcome.key) ?? series.steps.length;
