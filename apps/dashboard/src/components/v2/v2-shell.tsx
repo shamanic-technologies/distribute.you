@@ -235,6 +235,43 @@ function V2Sidebar() {
               ) : undefined
             }
           />
+        </div>
+
+        {/* Outcomes (owner 2026-10-10/11): one entry per step, from the running campaigns AND the brand's own tools.
+            Right after Today since P5 (owner 2026-10-31): a client first asks what they got and what it cost. */}
+        <Group title="Outcomes">
+          <NavItem
+            href={v2OutcomeHref(orgId, brandId)}
+            label="Overview"
+            icon={<I d={ICONS.overview} />}
+            active={section === "outcomes" && /\/outcomes\/?$/.test(pathname)}
+          />
+          {outcomes.map(({ outcome, all }) => {
+              const href = v2OutcomeHref(orgId, brandId, outcome.key);
+              const n = all
+                ? all.people
+                : outcome.items.kind === "people"
+                  ? buckets?.counts[outcome.items.bucket]
+                  : outcome.items.kind === "leads-found"
+                    ? peopleHeld
+                    : null;
+              // An outcome at a known 0 is not listed (owner 2026-10-14); a count still loading
+              // keeps its entry, and so does the page being read.
+              if (n === 0 && pathname !== href) return null;
+              return (
+                <NavItem
+                  key={outcome.key}
+                  href={href}
+                  label={outcome.label}
+                  icon={<OutcomeMark outcomeKey={outcome.key} label={outcome.label} stepIcons={stepIcons} />}
+                  active={pathname === href}
+                  trailing={<Count n={n} />}
+                />
+              );
+            })}
+        </Group>
+
+        <div className="mt-5 space-y-px">
           <button
             type="button"
             onClick={() => setRecordsOpen((v) => !v)}
@@ -322,39 +359,6 @@ function V2Sidebar() {
                 }
               />
             ))}
-        </Group>
-
-        {/* Outcomes (owner 2026-10-10/11): one entry per step, from the running campaigns AND the brand's own tools. */}
-        <Group title="Outcomes">
-          <NavItem
-            href={v2OutcomeHref(orgId, brandId)}
-            label="Overview"
-            icon={<I d={ICONS.overview} />}
-            active={section === "outcomes" && /\/outcomes\/?$/.test(pathname)}
-          />
-          {outcomes.map(({ outcome, all }) => {
-              const href = v2OutcomeHref(orgId, brandId, outcome.key);
-              const n = all
-                ? all.people
-                : outcome.items.kind === "people"
-                  ? buckets?.counts[outcome.items.bucket]
-                  : outcome.items.kind === "leads-found"
-                    ? peopleHeld
-                    : null;
-              // An outcome at a known 0 is not listed (owner 2026-10-14); a count still loading
-              // keeps its entry, and so does the page being read.
-              if (n === 0 && pathname !== href) return null;
-              return (
-                <NavItem
-                  key={outcome.key}
-                  href={href}
-                  label={outcome.label}
-                  icon={<OutcomeMark outcomeKey={outcome.key} label={outcome.label} stepIcons={stepIcons} />}
-                  active={pathname === href}
-                  trailing={<Count n={n} />}
-                />
-              );
-            })}
         </Group>
 
         <Group title="Setup">
