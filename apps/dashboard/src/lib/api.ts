@@ -4239,6 +4239,21 @@ const PublicCatalogueSchema = z.object({
   // The outbound leg rename (features-service, 2026-10-09); `lib/legs.ts` checks it against
   // the locked copy in `lib/outbound-leg-key.ts`. Optional for an older producer.
   legKeyCorrespondence: z.array(z.object({ legacyLegKey: z.string(), legKey: z.string() })).optional(),
+  // The RETIRED channels (features-service P5.1): served only to DESCRIBE past campaigns (name, icon, legs), never offered.
+  // Optional until every producer serves it.
+  retiredChannels: z
+    .array(
+      z.object({
+        slug: z.string(),
+        name: z.string(),
+        description: z.string().nullish(),
+        icon: z.string().nullish(),
+        channelType: z.string().nullish(),
+        operatedBy: z.string().nullish(),
+        stepTransitions: z.array(z.object({ from: z.object({ key: z.string() }).nullable(), to: z.object({ key: z.string() }) })).nullish(),
+      }),
+    )
+    .optional(),
   channels: z.array(
     z.object({
       slug: z.string(),

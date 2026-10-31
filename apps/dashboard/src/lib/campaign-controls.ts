@@ -203,7 +203,9 @@ export function buildControlRows(
 ): ControlRow[] {
   const scoped = campaigns.filter((c) => {
     if (filter.campaignId) return c.id === filter.campaignId;
-    if (acquisitionChannelForFeatureSlug(c.featureSlug, channels) === null) return false;
+    // A retired channel only DESCRIBES its past campaigns: never a control (P5.1).
+    const def = acquisitionChannelForFeatureSlug(c.featureSlug, channels);
+    if (def === null || def.retired) return false;
     if (filter.featureSlug && c.featureSlug !== filter.featureSlug) return false;
     if (filter.offerId && c.offerId !== filter.offerId) return false;
     if (filter.legKey && canonicalLegKey(c.featureSlug, c.legKey) !== canonicalLegKey(c.featureSlug, filter.legKey)) return false;

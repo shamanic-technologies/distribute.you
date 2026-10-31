@@ -7,6 +7,7 @@ import { pollOptions } from "@/lib/query-options";
 import {
   acquisitionChannelsFromFeatures,
   channelSourcesFromCatalogue,
+  withRetiredChannels,
   type AcquisitionChannelDef,
 } from "@/lib/acquisition-channels";
 
@@ -26,5 +27,15 @@ import {
  */
 export function useAcquisitionChannels(): AcquisitionChannelDef[] {
   const { data } = useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), pollOptions);
-  return useMemo(() => (data ? acquisitionChannelsFromFeatures(channelSourcesFromCatalogue(data.channels)) : []), [data]);
+  return useMemo(
+    () =>
+      data
+        ? withRetiredChannels(
+            acquisitionChannelsFromFeatures(channelSourcesFromCatalogue(data.channels)),
+            // A RETIRED channel names and marks its past campaigns, never offered (`retired`, P5.1).
+            acquisitionChannelsFromFeatures(channelSourcesFromCatalogue(data.retiredChannels ?? [])),
+          )
+        : [],
+    [data],
+  );
 }

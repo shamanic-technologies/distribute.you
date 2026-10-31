@@ -88,6 +88,11 @@ export type AcquisitionChannelDef = {
   mark: AcquisitionChannelMark | null;
   /** The icon name the catalogue serves for it, drawn where this app has no tile of its own. */
   servedIcon: string | null;
+  /**
+   * A RETIRED channel (features-service `retiredChannels`): served only so its past campaigns keep their name and
+   * icon. Never offered, never controlled (no on/off, no budget). Absent = a live channel.
+   */
+  retired?: boolean;
   /** The producer's typology (`sourcing`, `outbound`, `conversion`, `paid`, `earned`, `pr`). */
   channelType: string;
   /**
@@ -328,6 +333,15 @@ export function channelSourcesFromCatalogue(channels: readonly CatalogueChannelW
     });
   }
   return out;
+}
+
+/**
+ * The live channels, then the RETIRED ones the catalogue serves to describe past campaigns (P5.1), each marked
+ * `retired`. A slug served in both reads as live.
+ */
+export function withRetiredChannels(live: AcquisitionChannelDef[], retired: AcquisitionChannelDef[]): AcquisitionChannelDef[] {
+  const liveSlugs = new Set(live.map((c) => c.featureSlug));
+  return [...live, ...retired.filter((c) => !liveSlugs.has(c.featureSlug)).map((c) => ({ ...c, retired: true }))];
 }
 
 /**
