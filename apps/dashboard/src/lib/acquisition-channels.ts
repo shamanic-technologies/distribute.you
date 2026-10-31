@@ -86,6 +86,8 @@ export type AcquisitionChannelDef = {
   summary: string;
   /** Its tile, or null for a channel this app has not drawn yet. */
   mark: AcquisitionChannelMark | null;
+  /** The icon name the catalogue serves for it, drawn where this app has no tile of its own. */
+  servedIcon: string | null;
   /** The producer's typology (`sourcing`, `outbound`, `conversion`, `paid`, `earned`, `pr`). */
   channelType: string;
   /**
@@ -117,6 +119,8 @@ export interface ChannelSource {
   name: string;
   description: string;
   displayOrder?: number;
+  /** The icon name the catalogue serves (a Phosphor name). */
+  icon?: string | null;
   /**
    * WHAT KIND of channel the feature is, the ONE typology features-service states on
    * every feature (owner 2026-10-09). The predicate this module filters on.
@@ -270,6 +274,7 @@ export function acquisitionChannelsFromFeatures(
       name: f.name,
       summary: f.description,
       mark: channelMarkForSlug(f.slug),
+      servedIcon: f.icon ?? null,
       channelType: f.channelType,
       operatedBy: f.acquisitionChannel?.operatedBy ?? null,
       legs: (f.acquisitionChannel?.stepTransitions ?? [])
@@ -282,6 +287,47 @@ export function acquisitionChannelsFromFeatures(
       const delta = orderOf(a.featureSlug) - orderOf(b.featureSlug);
       return delta !== 0 ? delta : a.name.localeCompare(b.name);
     });
+}
+
+/** One channel as the public catalogue serves it (`GET /public/channels`, `channels[]`). Structural, alias-free. */
+export interface CatalogueChannelWire {
+  slug: string;
+  name?: string | null;
+  description?: string | null;
+  icon?: string | null;
+  displayOrder?: number | null;
+  channelType?: string | null;
+  operatedBy?: string | null;
+  stepTransitions?: Array<{ from?: { key: string } | null; to: { key: string } }> | null;
+}
+
+/**
+ * THE CHANNEL LIST IS THE SERVED CATALOGUE'S (P5.1, owner 2026-10-31): every channel features-service's public
+ * catalogue serves, so a channel declared there (Threads posts, Organic Market) is named and marked like any other.
+ * The features list carried only the seeded channels, so declared ones read "not in the catalogue" with no mark.
+ * A channel served with no name is logged and left out (never a slug standing in for its name).
+ */
+export function channelSourcesFromCatalogue(channels: readonly CatalogueChannelWire[]): ChannelSource[] {
+  const out: ChannelSource[] = [];
+  for (const c of channels) {
+    if (!c.name) {
+      console.error("[dashboard] the catalogue served a channel with no name", { slug: c.slug });
+      continue;
+    }
+    out.push({
+      slug: c.slug,
+      name: c.name,
+      description: c.description ?? "",
+      displayOrder: c.displayOrder ?? undefined,
+      icon: c.icon ?? null,
+      channelType: c.channelType ?? undefined,
+      acquisitionChannel: {
+        operatedBy: c.operatedBy ?? undefined,
+        stepTransitions: (c.stepTransitions ?? []).map((t) => ({ from: t.from?.key ?? null, to: t.to.key })),
+      },
+    });
+  }
+  return out;
 }
 
 /**
