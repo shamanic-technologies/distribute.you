@@ -398,6 +398,15 @@
     requestAnimationFrame(draw);
   }
 
+  /* Footer dot field (treg.to closing chapter): its script loads only on a page with a
+     footer and only when motion is welcome; the CSS dot texture is the static state. */
+  if (!reduced && document.querySelector("footer") && window.WebGLRenderingContext) {
+    var field = document.createElement("script");
+    field.src = "/landing/v2/footer-field.js?v=1";
+    field.defer = true;
+    document.body.appendChild(field);
+  }
+
   /* Phone footer (MOBILE-POLISH-1031): each link column folds behind its title on a phone.
      The HTML stays the open list (crawlers, no JS); the fold is only added here. */
   Array.prototype.forEach.call(document.querySelectorAll(".foot"), function (foot) {
