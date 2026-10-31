@@ -74,21 +74,23 @@ const ROUTES_TO_PAID = [
   { legKeys: ["lead_found_to_website_visit", "website_visit_to_meeting_booked", "meeting_booked_to_paid_client"] },
   { legKeys: ["lead_found_to_conversation", "conversation_to_paid_client"] },
 ];
+const MATURE = { isMature: true, notMatureReason: null, measuredOutcome: "positive_reply", outcomesMeasured: 52, outcomesRequired: 30 };
+const NOT_MATURE = { isMature: false, notMatureReason: "too_few_outcomes", measuredOutcome: "positive_reply", outcomesMeasured: 1, outcomesRequired: 30 };
 const ECONOMICS_BODY = {
   channelSlug: null,
   channels: [
     {
       channelSlug: "sales-cold-email-outreach",
-      evidence: { totalSpentUsd: 16602, conversationsProduced: 52, websiteVisitsProduced: 1087 },
       returnPerDollar: 0.7536,
+      returnPerDollarMaturity: MATURE,
       outcomes: [
-        { step: step("conversation", "Positive reply"), costPerOutcomeUsd: 319.278, paths: ROUTES_TO_PAID },
-        { step: step("website_visit", "Website visit"), costPerOutcomeUsd: 15.27, paths: ROUTES_TO_PAID },
-        { step: step("meeting_booked", "Meeting booked"), costPerOutcomeUsd: 1161.01, paths: ROUTES_TO_PAID },
+        { step: step("conversation", "Positive reply"), costPerOutcomeUsd: 319.278, paths: ROUTES_TO_PAID, maturity: MATURE },
+        { step: step("website_visit", "Website visit"), costPerOutcomeUsd: 15.27, paths: ROUTES_TO_PAID, maturity: MATURE },
+        { step: step("meeting_booked", "Meeting booked"), costPerOutcomeUsd: 1161.01, paths: ROUTES_TO_PAID, maturity: MATURE },
       ],
     },
     // Prod 2026-10-31: one reply bought for $2.18, the figure the first ship crowned "best path".
-    { channelSlug: "email-sending", evidence: { totalSpentUsd: 2.18, conversationsProduced: 1, websiteVisitsProduced: 0 }, returnPerDollar: 9, outcomes: [{ step: step("conversation", "Positive reply"), costPerOutcomeUsd: 2.18 }] },
+    { channelSlug: "email-sending", returnPerDollar: 9, returnPerDollarMaturity: NOT_MATURE, outcomes: [{ step: step("conversation", "Positive reply"), costPerOutcomeUsd: 2.18, maturity: NOT_MATURE }] },
     { channelSlug: "linkedin-ads", outcomes: [{ step: step("website_visit", "Website visit"), costPerOutcomeUsd: null }] },
   ],
 };
@@ -126,7 +128,7 @@ describe("served shapes", () => {
 });
 
 describe("paths", () => {
-  it("lists every channel reaching the goal, measured paths cheapest first, a figure on under 5 outcomes as learning", () => {
+  it("lists every channel reaching the goal, measured paths cheapest first, a figure features-service calls not mature as learning", () => {
     expect(pathsTo("conversation", DATA).map((p) => [p.slug, p.expectedUsd, p.expectedReturn])).toEqual([
       ["sales-cold-email-outreach", 319.278, 0.7536],
       ["email-sending", null, null],
