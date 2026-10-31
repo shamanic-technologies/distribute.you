@@ -11,6 +11,7 @@
  */
 import type { ResearchFreshness } from "./freshness";
 import { sameLegKey } from "../outbound-leg-key";
+import { formatUsdAdaptive } from "../format-number";
 
 /**
  * A PIPE is one leg x one channel: the channel doing the work, the leg (from step -> to step) it buys.
@@ -258,6 +259,37 @@ export interface ResearchFigures {
   roiDetail?: ResearchRoi | null;
 }
 
+/**
+ * What a POST-writing pipe's template or LLM row produced (features-service THREADS-IDEAS-AB): posts published,
+ * their views and engagements, the visits and signups they brought, what they cost. Null (or absent on an
+ * older build) on a pipe whose writer records no posts, e.g. cold email. Printed as served, never recomputed.
+ */
+export interface ResearchPostFigures {
+  posts: number;
+  views: number;
+  engagements: number;
+  visits: number;
+  signups: number;
+  spentUsd: number;
+  /** Null while no signup came yet: printed « Learning ». */
+  costPerSignupUsd: number | null;
+}
+
+/** The pipe's rows carry post figures: its list shows the post columns (formatting only, no figure computed). */
+export function hasPostFigures(rows: readonly { postFigures?: ResearchPostFigures | null }[]): boolean {
+  return rows.some((r) => r.postFigures != null);
+}
+
+/** A served post count, printed (`12,480`). */
+export function postCountText(n: number): string {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+/** A served $ per signup, printed; null (no signup yet) is « Learning », the repo's word for a cost at zero outcomes. */
+export function costPerSignupText(usd: number | null): string {
+  return usd == null ? "Learning" : formatUsdAdaptive(usd);
+}
+
 /** A served return (features-service `CatalogRoi`). */
 export interface ResearchRoi {
   /** The multiple: 3.2 = $3.20 of pipeline per $1 billed. */
@@ -361,6 +393,8 @@ export interface ResearchTemplate extends ResearchFigures {
    */
   tactics?: { id: string; name: string }[] | null;
   tacticsUnavailableReason?: string | null;
+  /** Posts, views, engagements, visits, signups on a post-writing pipe; null elsewhere, absent on an older build. */
+  postFigures?: ResearchPostFigures | null;
   hasText: boolean;
   dynasty?: ResearchTemplateDynasty | null;
   standaloneReason?: TemplateStandaloneReason | null;
@@ -450,6 +484,8 @@ export interface ResearchModel extends ResearchFigures {
   key: string;
   label: string;
   runCost?: ResearchRunCost | null;
+  /** Posts, views, engagements, visits, signups on a post-writing pipe; null elsewhere, absent on an older build. */
+  postFigures?: ResearchPostFigures | null;
   dynasty?: ResearchLlmDynasty | null;
   standaloneReason?: ModelStandaloneReason | null;
   /** Every version, newest first, as features-service serves them; on a model on its own, that model. */
