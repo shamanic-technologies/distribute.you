@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  pathFinderJson,
   PATH_FINDER_TOKEN,
   formatExpected,
   goals,
@@ -78,13 +79,16 @@ const ECONOMICS_BODY = {
   channels: [
     {
       channelSlug: "sales-cold-email-outreach",
+      evidence: { totalSpentUsd: 16602, conversationsProduced: 52, websiteVisitsProduced: 1087 },
+      returnPerDollar: 0.7536,
       outcomes: [
         { step: step("conversation", "Positive reply"), costPerOutcomeUsd: 319.278, paths: ROUTES_TO_PAID },
         { step: step("website_visit", "Website visit"), costPerOutcomeUsd: 15.27, paths: ROUTES_TO_PAID },
         { step: step("meeting_booked", "Meeting booked"), costPerOutcomeUsd: 1161.01, paths: ROUTES_TO_PAID },
       ],
     },
-    { channelSlug: "email-sending", outcomes: [{ step: step("conversation", "Positive reply"), costPerOutcomeUsd: 2.18 }] },
+    // Prod 2026-10-31: one reply bought for $2.18, the figure the first ship crowned "best path".
+    { channelSlug: "email-sending", evidence: { totalSpentUsd: 2.18, conversationsProduced: 1, websiteVisitsProduced: 0 }, returnPerDollar: 9, outcomes: [{ step: step("conversation", "Positive reply"), costPerOutcomeUsd: 2.18 }] },
     { channelSlug: "linkedin-ads", outcomes: [{ step: step("website_visit", "Website visit"), costPerOutcomeUsd: null }] },
   ],
 };
@@ -122,10 +126,10 @@ describe("served shapes", () => {
 });
 
 describe("paths", () => {
-  it("lists every channel reaching the goal, priced paths cheapest first", () => {
-    expect(pathsTo("conversation", DATA).map((p) => [p.slug, p.expectedUsd])).toEqual([
-      ["email-sending", 2.18],
-      ["sales-cold-email-outreach", 319.278],
+  it("lists every channel reaching the goal, measured paths cheapest first, a figure on under 5 outcomes as learning", () => {
+    expect(pathsTo("conversation", DATA).map((p) => [p.slug, p.expectedUsd, p.expectedReturn])).toEqual([
+      ["sales-cold-email-outreach", 319.278, 0.7536],
+      ["email-sending", null, null],
     ]);
     expect(pathsTo("meeting_booked", DATA).map((p) => p.slug)).toEqual(["sales-cold-email-outreach", "linkedin-ads", "agency-meeting-booking"]);
   });
@@ -192,15 +196,18 @@ describe("markup", () => {
     expect(html).toContain('data-goal="conversation"');
     expect(html).not.toContain('class="pf-chip" type="button" data-goal="meeting_booked"');
   });
-  it("labels every cost as expected and never prints a ROI", () => {
+  it("labels every cost and return as expected, the return only where features-service serves it", () => {
     const js = read("public/landing/v2/path-finder.js");
     expect(js).toContain("<li><span>Expected cost</span>");
     expect(js).toContain('<span class="pf-m">learning</span>');
-    expect(html.toLowerCase()).not.toContain("roi");
+    expect(js).toContain("<li><span>Expected return</span>");
+    const json = pathFinderJson(DATA);
+    expect(json).toContain('"roi":"0.8x"');
+    expect(json).not.toContain('"roi":"9.0x"');
   });
   it("a crawler reads the paths as a plain list", () => {
     expect(prose).toContain("Interested replies from my buyers");
-    expect(prose).toContain("Email Sending, Sales Cold Email Outreach");
+    expect(prose).toContain("Sales Cold Email Outreach, Email Sending");
   });
   it("escapes the inline JSON", () => {
     const evil: PathFinderData = { ...DATA, channels: parseChannels({ channels: [{ ...CHANNELS_BODY.channels[0], name: "</script><b>x" }] }) };
