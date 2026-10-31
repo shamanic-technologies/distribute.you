@@ -14,7 +14,7 @@ describe("the daily digest is news about the return", () => {
 
   it("sends only when the return went UP, on two SERVED points", () => {
     expect(digest).toContain("const roi = roiChangeOn(revenue, targetDay);");
-    expect(digest).toContain("if (!roi || roi.today <= roi.previous) return [];");
+    expect(digest).toContain("if (!roi || !roiVisiblyRose(roi)) return [];");
     // Both figures come off features-service's own per-day curve — a return the
     // browser computed would be a second opinion on a number the dashboard shows.
     expect(digest).toContain("revenue.roiHistory?.daily");

@@ -3,6 +3,7 @@ import { ADMIN_ALLOWED_EMAILS } from "../src/lib/admin-allowlist";
 import {
   collectOutcomeDigestSends,
   renderOutcomeDigestHtml,
+  roiVisiblyRose,
   sendOutcomeDigestEmails,
   type DigestFetch,
 } from "../src/lib/outcome-digest";
@@ -698,5 +699,17 @@ describe("daily outcome digest", () => {
     const revenue = revenueWithLeads([lead(0, {})]);
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
     expect(result.preparedSends).toHaveLength(0);
+  });
+});
+
+describe("roiVisiblyRose", () => {
+  it("is false when both figures print the same (1.19x -> 1.25x reads 1.2x, up from 1.2x)", () => {
+    expect(roiVisiblyRose({ today: 1.246, previous: 1.19 })).toBe(false);
+  });
+  it("is true when the printed figure moves", () => {
+    expect(roiVisiblyRose({ today: 1.26, previous: 1.24 })).toBe(true);
+  });
+  it("is false on a fall", () => {
+    expect(roiVisiblyRose({ today: 1.1, previous: 1.5 })).toBe(false);
   });
 });
