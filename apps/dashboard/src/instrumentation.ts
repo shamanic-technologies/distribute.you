@@ -962,13 +962,11 @@ const PLATFORM_CHAT_CONFIGS = [
     key: "copilot",
     systemPrompt: COPILOT_SYSTEM_PROMPT,
     allowedTools: COPILOT_ALLOWED_TOOLS,
-    // Claude Sonnet 5.5 (chat-service `sonnet`, owner's pick 2026-10-10 over Haiku 5.5; the
-    // platform Anthropic key holds the startup credit).
-    provider: "anthropic",
-    model: "sonnet",
-    // One notch above Sonnet 5.5's default `high` (owner 2026-10-11: "un cran au-dessus",
-    // not the maximum); chat-service v0.63.42+ sends this as output_config.effort.
-    effort: "xhigh",
+    // DeepSeek V4.1 Flash (chat-service `deepseek`/`deepseek-flash`, CHAT-DEEPSEEK-FLASH-1101,
+    // owner 2026-11-01: "ça devrait être enough pour du chat"; was Claude Sonnet 5.5). No
+    // `effort`: Anthropic-only, chat-service clears the stored one on this provider switch.
+    provider: "deepseek",
+    model: "deepseek-flash",
   },
   {
     key: "workflow",

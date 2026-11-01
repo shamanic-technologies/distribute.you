@@ -125,13 +125,14 @@ describe("copilot wiring", () => {
     expect(chat).toContain("account: figures");
   });
 
-  it("runs on Claude Sonnet 5.5 with the card, page and account-read tools", () => {
+  it("runs on DeepSeek V4.1 Flash with the card, page and account-read tools", () => {
     const boot = src("src/instrumentation.ts");
     const at = boot.indexOf('key: "copilot"');
     const cfg = boot.slice(at, boot.indexOf("},", at));
-    expect(cfg).toContain('provider: "anthropic"');
-    expect(cfg).toContain('model: "sonnet"');
-    expect(cfg).toContain('effort: "xhigh"');
+    expect(cfg).toContain('provider: "deepseek"');
+    expect(cfg).toContain('model: "deepseek-flash"');
+    // effort is Anthropic-only: chat-service refuses it on a DeepSeek config.
+    expect(cfg).not.toContain("effort:");
     for (const t of ["present_choices", "open_page", "list_replies_to_handle", "get_offer_performance"]) {
       expect(boot).toContain(`"${t}"`);
     }
