@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MONITORING_PAGES, parseMonitoringPath } from "../src/lib/monitoring/monitoring";
-import { FactoryShadowMonitoringSchema, enginePlaceRows, engineReasonWords, regretPct } from "../src/lib/factory-shadow";
+import { FactoryShadowMonitoringSchema, enginePlaceRows, engineReasonWords, regretPct, resultStatusLook } from "../src/lib/factory-shadow";
 
 /**
  * ENGINE-PER-OUTCOME-SHADOW (owner 2026-10-31, GTM Factory v10 "one Engine per outcome"): features-service's factory pass
@@ -43,6 +43,10 @@ const body = {
     last: { day: "2026-10-31", places: 1, agreed: 0, disagreed: 1, agreementPct: 0, expectedAgreementPct: 12.5, failed: 0 },
     series: [{ day: "2026-10-31", places: 1, agreed: 0, disagreed: 1, agreementPct: 0, expectedAgreementPct: 12.5, failed: 0 }],
     problems: [],
+    results: [
+      { family: "lead_found|start|-", outcome: "lead_found", outcomeName: "Lead, from Start", todayRegret: 0.08, engineRegret: 0.01, status: "switched", units: 1, driving: 1, rolledBack: 0, switchedSince: "2026-11-01T12:00:00Z", heldDays: 0, fleetEligible: false, drives: [] },
+      { family: "conversation|start|-", outcome: "conversation", outcomeName: "Positive reply, from Lead found", todayRegret: 0.15, engineRegret: 0.54, status: "shadow", units: 0, driving: 0, rolledBack: 0, switchedSince: null, heldDays: null, fleetEligible: false, drives: [] },
+    ],
     replay: {
       computedAt: "2026-10-31T12:00:00Z",
       windowDays: 30,
@@ -62,6 +66,13 @@ describe("engine shadow: served shape", () => {
     expect(enginePlaceRows(parsed)).toHaveLength(1);
     const { engine: _e, ...before } = body;
     expect(FactoryShadowMonitoringSchema.parse({ ...before, campaigns: [] }).engine).toBeUndefined();
+  });
+  it("reads each result's served status: Switched, Shadow, Rolled back (red only for a roll-back)", () => {
+    expect(FactoryShadowMonitoringSchema.parse(body).engine?.results?.map((r) => r.status)).toEqual(["switched", "shadow"]);
+    expect(resultStatusLook("rolled_back")).toEqual({ word: "Rolled back", tone: "var(--data-rose)" });
+    expect(resultStatusLook("switched").tone).not.toContain("rose");
+    expect(resultStatusLook("shadow").tone).not.toContain("rose");
+    expect(engineReasonWords("rolled_back")).toContain("rolled back");
   });
   it("words served codes and regret without computing a figure", () => {
     expect(regretPct(0.31)).toBe("31%");

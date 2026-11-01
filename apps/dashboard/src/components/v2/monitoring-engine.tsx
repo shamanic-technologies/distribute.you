@@ -11,6 +11,8 @@ import {
   engineReasonWords,
   enginePlaceRows,
   regretPct,
+  resultStatusLook,
+  type EngineResult,
   type EngineMonitoring,
   type EnginePlaceSummary,
   type FactoryShadowMonitoring,
@@ -35,6 +37,7 @@ function useBrandNames() {
 function Verdict({ engine }: { engine: EngineMonitoring }) {
   const red = engine.verdict.red;
   const last = engine.last;
+  const live = (engine.results ?? []).filter((r) => r.status === "switched");
   return (
     <div className="k-card flex items-start gap-3 px-4 py-3">
       <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: red ? RED : OK }} aria-hidden="true" />
@@ -46,7 +49,11 @@ function Verdict({ engine }: { engine: EngineMonitoring }) {
               ? `Nothing broken. The Engine agrees with today's pick on ${last.agreed} of ${last.places} places.`
               : "Nothing broken. No place has both picks yet."}
         </p>
-        <p className="k-fg3 mt-0.5 text-[12px]">Shadow only: nothing runs from it. Recomputed with the factory plan, every 3 hours.</p>
+        <p className="k-fg3 mt-0.5 text-[12px]">
+          {live.length > 0
+            ? `Live on ${live.map((r) => r.outcomeName).join(", ")}; every other result is shadow. Recomputed every 3 hours.`
+            : "Shadow only: nothing runs from it. Recomputed with the factory plan, every 3 hours."}
+        </p>
       </div>
     </div>
   );
@@ -160,6 +167,47 @@ function ReplayRows({ engine }: { engine: EngineMonitoring }) {
   );
 }
 
+/** Per result: whether the Engine drives it live, rolled back (red), or stays in shadow; its replay regrets beside it. */
+function ResultRows({ results }: { results: EngineResult[] }) {
+  if (results.length === 0) return <EmptyNote>No result has been replayed yet.</EmptyNote>;
+  return (
+    <div className="k-scroll overflow-x-auto">
+      <table className="w-full min-w-[860px] text-[13px]">
+        <thead>
+          <tr className="k-line-subtle border-b">
+            <th className="k-label px-3 py-2.5 pl-4 text-left font-medium">Result</th>
+            <th className="k-label w-[150px] px-3 py-2.5 text-left font-medium">Status</th>
+            <th className="k-label w-[130px] px-3 py-2.5 text-right font-medium">Regret today</th>
+            <th className="k-label w-[130px] px-3 py-2.5 text-right font-medium">Regret Engine</th>
+            <th className="k-label w-[170px] px-3 py-2.5 pr-4 text-right font-medium">Live on</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((r) => {
+            const look = resultStatusLook(r.status);
+            return (
+              <tr key={r.family} className="k-line-subtle border-b last:border-b-0">
+                <td className="truncate px-3 py-2 pl-4">{r.outcomeName}</td>
+                <td className="px-3 py-2">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: look.tone }} aria-hidden="true" />
+                    <span style={r.status === "rolled_back" ? { color: look.tone } : undefined}>{look.word}</span>
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">{regretPct(r.todayRegret) ?? <span className="k-fg4">—</span>}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{regretPct(r.engineRegret) ?? <span className="k-fg4">—</span>}</td>
+                <td className="k-fg2 px-3 py-2 pr-4 text-right tabular-nums text-[12px]">
+                  {r.units === 0 ? <span className="k-fg4">—</span> : `${r.driving} of ${r.units} campaigns${r.heldDays !== null ? `, ${r.heldDays} d` : ""}`}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function EngineView({ data }: { data: FactoryShadowMonitoring }) {
   const engine = data.engine;
   if (!engine) return <EmptyNote>The Engine shadow is not served yet.</EmptyNote>;
@@ -187,6 +235,13 @@ export function EngineView({ data }: { data: FactoryShadowMonitoring }) {
               ))}
             </ul>
           )}
+        </div>
+      </section>
+
+      <section>
+        <SectionTitle count={engine.results?.filter((r) => r.status !== "shadow").length ?? 0}>Results the Engine drives</SectionTitle>
+        <div className="k-card overflow-hidden">
+          <ResultRows results={engine.results ?? []} />
         </div>
       </section>
 
