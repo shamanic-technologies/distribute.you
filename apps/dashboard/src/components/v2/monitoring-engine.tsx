@@ -37,6 +37,7 @@ function useBrandNames() {
 function Verdict({ engine }: { engine: EngineMonitoring }) {
   const red = engine.verdict.red;
   const last = engine.last;
+  const live = (engine.results ?? []).filter((r) => r.status === "switched");
   return (
     <div className="k-card flex items-start gap-3 px-4 py-3">
       <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: red ? RED : OK }} aria-hidden="true" />
@@ -48,7 +49,11 @@ function Verdict({ engine }: { engine: EngineMonitoring }) {
               ? `Nothing broken. The Engine agrees with today's pick on ${last.agreed} of ${last.places} places.`
               : "Nothing broken. No place has both picks yet."}
         </p>
-        <p className="k-fg3 mt-0.5 text-[12px]">Shadow only: nothing runs from it. Recomputed with the factory plan, every 3 hours.</p>
+        <p className="k-fg3 mt-0.5 text-[12px]">
+          {live.length > 0
+            ? `Live on ${live.map((r) => r.outcomeName).join(", ")}; every other result is shadow. Recomputed every 3 hours.`
+            : "Shadow only: nothing runs from it. Recomputed with the factory plan, every 3 hours."}
+        </p>
       </div>
     </div>
   );
