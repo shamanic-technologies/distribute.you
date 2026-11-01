@@ -33,6 +33,11 @@ const value = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 
 const verdictColor = (c: BoxCheck) => (c.verdict === "broken" ? RED : c.verdict === "ok" ? OK : GREY);
 
 type Range = "recent" | "daily";
+
+const servedLimit = (details: unknown): number | null => {
+  const v = details && typeof details === "object" ? (details as Record<string, unknown>).limit : undefined;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+};
 type RecentP = BoxCheckRun & { day: string };
 
 /** One check: its served verdict and reason, then its measured value over the last 48 h or per day. */
@@ -41,6 +46,8 @@ function CheckSection({ check, recentHours }: { check: BoxCheck; recentHours: nu
   const name = boxCheckName(check);
   const every = cadenceLabel(check.cadenceMinutes);
   const recent: RecentP[] = check.recent.map((r) => ({ ...r, day: r.ranAt }));
+  // The ceiling a watchdog reports beside its value (`details.limit`, e.g. Postgres max_connections), drawn as a dashed line.
+  const limit = servedLimit(check.latestDetails);
   return (
     <section>
       <SectionTitle
@@ -75,7 +82,11 @@ function CheckSection({ check, recentHours }: { check: BoxCheck; recentHours: nu
       {check.verdict === "not_yet" ? null : range === "recent" ? (
         <DailyLines
           points={recent}
-          lines={[{ key: "v", label: check.unit ?? "Value", color: ACCENT, get: (p) => p.value }]}
+          lines={[
+            { key: "v", label: check.unit ?? "Value", color: ACCENT, get: (p: RecentP) => p.value },
+            ...(limit == null ? [] : [{ key: "limit", label: "Limit", color: GREY, dashed: true, get: () => limit }]),
+          ]}
+          flag={(p) => !p.ok}
           format={value}
           windows={[{ key: "all", label: "All", days: null }]}
           label={`${name}, last ${recentHours} hours`}
@@ -89,8 +100,13 @@ function CheckSection({ check, recentHours }: { check: BoxCheck; recentHours: nu
           points={check.daily}
           lines={[
             { key: "max", label: "Highest", color: AMBER, get: (p) => p.valueMax },
-            { key: "mean", label: "Average", color: ACCENT, get: (p) => p.valueMean },
+            // A check with a ceiling plots a PEAK per run (Postgres connections): the day's highest vs the limit is the read,
+            // and its backfilled days only carry refusal hours, so an average of them would print a false 297.
+            ...(limit == null
+              ? [{ key: "mean", label: "Average", color: ACCENT, get: (p: BoxCheckDay) => p.valueMean }]
+              : [{ key: "limit", label: "Limit", color: GREY, dashed: true, get: () => limit }]),
           ]}
+          flag={(p) => p.failedRuns > 0}
           format={value}
           windows={[{ key: "all", label: "All", days: null }]}
           label={`${name}, per day`}

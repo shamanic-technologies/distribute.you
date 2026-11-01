@@ -71,6 +71,7 @@ export const EXPECTED_BOX_CHECKS: Record<string, string> = {
   "jev-judgments": "Jev judgments",
   "own-org-balance": "Our own org's credit",
   "social-posting": "Social posting",
+  "pg-connections": "Postgres connections",
 };
 
 export const boxCheckName = (c: Pick<BoxCheck, "check" | "label">) => c.label ?? EXPECTED_BOX_CHECKS[c.check] ?? c.check;
