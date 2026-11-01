@@ -58,6 +58,20 @@ describe("out-of-credit dunning family", () => {
     });
   }
 
+  // billing-service sends this family with EMPTY metadata, so the copy cannot know
+  // how many emails went out: it must hold for an org that sent none (CREDIT-DEPLETED-
+  // COPY-1101, Martian DBB got "All your outreach went out" with 0 emails sent).
+  const SENT_CLAIM = /went out|has gone out|have gone out|in full|last batch/i;
+  for (const name of names) {
+    it(`"${name}" never claims outreach went out`, () => {
+      const t = family.find((x) => x.name === name)!;
+      expect(t.subject).not.toMatch(SENT_CLAIM);
+      expect(t.textBody).not.toMatch(SENT_CLAIM);
+      expect(t.htmlBody.replace(/<[^>]+>/g, "")).not.toMatch(SENT_CLAIM);
+      expect(t.textBody).not.toMatch(/\{\{/);
+    });
+  }
+
   it("auto top-up is offered only where the card can be charged off session", () => {
     for (const t of family) {
       if (t.name.endsWith("-blocked")) {

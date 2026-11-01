@@ -46,14 +46,16 @@ const P = `color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;`;
 // The why closes every customer email, in the plain-text part too (the HTML part
 // carries it in emailLayout's footer). Admin notifications and the staff digest skip it.
 const TEXT_SIGNOFF = `\n\n--\ndistribute.you\n${BRAND_WHY}`;
-const DUNNING_BUTTON = "Send the next batch";
-const DUNNING_AUTO_TOPUP = "Turn on auto top-up while you're there so the next batch never has to wait.";
+// One button per mode: prepaid adds credit, postpaid settles what it spent.
+const DUNNING_BUTTON = "Add credit";
+const DUNNING_POSTPAID_BUTTON = "Settle my balance";
+const DUNNING_AUTO_TOPUP = "Turn on auto top-up while you're there so your campaigns never have to wait.";
 const DUNNING_BLOCKED_CARD = "Your bank doesn't allow automatic top-ups, so add credit whenever your balance runs low and your outreach keeps going.";
 // Postpaid accounts have no credit to add and no top-up to turn on: they pay what they
 // spent (owner 2026-10-30, LBVisible got "Add credit" + "Turn on auto top-up").
-const DUNNING_POSTPAID_CARD = "Keep your card on file and we charge it as you spend, so the next batch never has to wait.";
+const DUNNING_POSTPAID_CARD = "Keep your card on file and we charge it as you spend, so your campaigns never have to wait.";
 
-function founderEmail(name: string, subject: string, paragraphs: string[]) {
+function founderEmail(name: string, subject: string, paragraphs: string[], button = DUNNING_BUTTON) {
   return {
     name,
     subject,
@@ -61,37 +63,41 @@ function founderEmail(name: string, subject: string, paragraphs: string[]) {
       <p style="${P}">Hey,</p>
 ${paragraphs.map((p) => `      <p style="${P}">${p}</p>`).join("\n")}
       <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">${DUNNING_BUTTON}</a>
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">${button}</a>
       </p>
       <p style="${P}">Kevin<br />Founder, distribute.you</p>`),
-    textBody: `Hey,\n\n${paragraphs.join("\n\n")}\n\n${DUNNING_BUTTON}: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you${TEXT_SIGNOFF}`,
+    textBody: `Hey,\n\n${paragraphs.join("\n\n")}\n\n${button}: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you${TEXT_SIGNOFF}`,
   };
 }
 
+// billing-service sends these with EMPTY metadata: no sent count, no balance. The copy
+// therefore states only what is true for every org it reaches, a 0-sent one included
+// (CREDIT-DEPLETED-COPY-1101: Martian DBB was told "All your outreach went out" with 0
+// emails sent, its balance used by AI chat). Never claim what went out here.
 function dunningTemplates() {
   const steps: { name: string; subject: string; paragraphs: string[]; postpaid: string[] }[] = [
     {
       name: "credit-depleted",
-      subject: "All your outreach went out",
+      subject: "Add credit to keep your campaigns going",
       paragraphs: [
-        "Every email your balance covered has gone out to your prospects. Any reply still comes straight to you.",
-        "Add credit and the next batch goes out to new decision-makers at the companies you target. Everything is set up, so it picks up where it left off.",
+        "Your prepaid balance is used up. The balance pays for everything you run with us, your emails and your AI assistant included.",
+        "Your campaigns stay set up as you left them. Anything queued goes out as soon as you add credit, and new prospects follow.",
       ],
       postpaid: [
-        "Every email your credit line covered has gone out to your prospects. Any reply still comes straight to you.",
-        "Settle your balance due and the next batch goes out to new decision-makers at the companies you target. Everything is set up, so it picks up where it left off.",
+        "Your credit line is used up. The credit line pays for everything you run with us, your emails and your AI assistant included.",
+        "Your campaigns stay set up as you left them. Anything queued goes out as soon as your balance due is settled, and new prospects follow.",
       ],
     },
     {
       name: "credit-depleted-followup-3d",
-      subject: "Your next batch is ready to go",
+      subject: "Your campaigns are ready to go",
       paragraphs: [
-        "Your last batch went out in full, and your campaigns are set up for the next one.",
-        "It goes out as soon as you add credit, to new decision-makers at the companies you target.",
+        "Your campaigns are set up and waiting for credit.",
+        "Add credit and anything queued goes out, then new decision-makers at the companies you target.",
       ],
       postpaid: [
-        "Your last batch went out in full, and your campaigns are set up for the next one.",
-        "The next batch goes out as soon as your balance due is settled, to new decision-makers at the companies you target.",
+        "Your campaigns are set up and waiting for your balance due to be settled.",
+        "Once your balance due is settled, anything queued goes out, then new decision-makers at the companies you target.",
       ],
     },
     {
@@ -110,7 +116,7 @@ function dunningTemplates() {
   return steps.flatMap(({ name, subject, paragraphs, postpaid }) => [
     founderEmail(name, subject, [...paragraphs, DUNNING_AUTO_TOPUP]),
     founderEmail(`${name}-blocked`, subject, [...paragraphs, DUNNING_BLOCKED_CARD]),
-    founderEmail(`${name}-postpaid`, subject, [...postpaid, DUNNING_POSTPAID_CARD]),
+    founderEmail(`${name}-postpaid`, subject, [...postpaid, DUNNING_POSTPAID_CARD], DUNNING_POSTPAID_BUTTON),
   ]);
 }
 
