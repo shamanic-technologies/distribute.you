@@ -6,8 +6,9 @@
  * - prepaid: the spendable balance. No bar, since billing states no "full" amount to fill
  *   one against; a dot says whether campaigns can still spend, and billing's runway says
  *   how many days it lasts at the running daily budgets.
- * - postpaid: spent since the last card charge, out of the spend that triggers the next one
- *   (the same meter the Billing page draws). Keyed on a saved card only, never on the
+ * - postpaid: billing's amount owed since the last card charge, out of the spend that
+ *   triggers the next one (the same meter the Billing page draws); reservations for running
+ *   work are named apart, never counted as spent. Keyed on a saved card only, never on the
  *   auto top-up flag (a prepaid concept).
  * - subscription: the month's credit left, out of the plan's monthly amount (the trial's
  *   grant while trialing).
@@ -27,6 +28,12 @@ export interface GaugeAccount {
   has_payment_method: boolean;
   /** Postpaid only: how far below $0 the balance goes before the card is charged (billing). */
   credit_line_cents?: number | null;
+  /**
+   * Postpaid only: the spend billing will CHARGE, actual usage only (billing). The card is
+   * charged when this reaches the credit line, never on `balance_cents`, which also holds
+   * reservations for work still running.
+   */
+  amount_owed_cents?: string | null;
 }
 
 /** The plan read's fields the gauge reads (billing-service `GET /v1/accounts/subscription`). */
@@ -127,12 +134,19 @@ export function budgetGaugeView(
     if (balance > 0) {
       return { label: "Credit left", figure: formatBillingCents(balance), meter: null, line: `Then billed every ${formatCentsAsUsd(line, 0)}.`, tone: "ok" };
     }
-    const spent = Math.max(0, -balance);
+    // The figure is what the card will be charged for (billing's amount owed), out of the
+    // line that triggers the charge. Reservations for running work are named apart: they
+    // are not charged until the work is done (Beyond Logic 2026-11-01: $119.74 "spent"
+    // beside "charged at $50" while $26.77 was owed and $92.97 only reserved).
+    const owed = parseFloat(account.amount_owed_cents ?? "");
+    if (Number.isNaN(owed)) return { error: `amount_owed_cents is not a number: ${String(account.amount_owed_cents)}` };
+    const reserved = Math.max(0, -balance - owed);
+    const charged = `Card charged at ${formatCentsAsUsd(line, 0)}`;
     return {
       label: "Spent since last charge",
-      figure: formatCentsAsUsd(spent, 2),
-      meter: { value: spent, max: line },
-      line: `Card charged at ${formatCentsAsUsd(line, 0)}.`,
+      figure: formatCentsAsUsd(owed, 2),
+      meter: { value: owed, max: line },
+      line: reserved >= 1 ? `${charged} · ${formatCentsAsUsd(reserved, 0)} reserved for running work` : `${charged}.`,
       tone: "ok",
     };
   }
