@@ -25,7 +25,7 @@ describe("Monitoring > Box > Watchdogs: features-service's read parses as served
   });
 
   it("asks for every watchdog the box runs, so a silent one reads not yet", () => {
-    expect(Object.keys(EXPECTED_BOX_CHECKS)).toEqual(["deploy-pipeline", "service-health", "workflow-queue", "jev-judgments", "own-org-balance", "social-posting"]);
+    expect(Object.keys(EXPECTED_BOX_CHECKS)).toEqual(["deploy-pipeline", "service-health", "workflow-queue", "jev-judgments", "own-org-balance", "social-posting", "pg-connections"]);
     expect(boxCheckName({ check: "own-org-balance", label: null })).toBe("Our own org's credit");
     expect(boxCheckName({ check: "deploy-pipeline", label: "Deploy pipeline" })).toBe("Deploy pipeline");
     expect(boxCheckName({ check: "brand-new-check", label: null })).toBe("brand-new-check");
@@ -70,5 +70,13 @@ describe("Monitoring > Box > Watchdogs: page and hub", () => {
     expect(src).toContain("data.checks.map((c)");
     expect(src).toContain("check.reason");
     expect(src).not.toContain(".sort(");
+  });
+
+  it("PG-SATURATION-1101: the per-day chart draws the served ceiling (details.limit) and a rose dot on every day a run broke", () => {
+    const src = read("components/v2/monitoring-watchdogs.tsx");
+    expect(src).toContain("servedLimit(check.latestDetails)");
+    expect(src).toContain("flag={(p) => p.failedRuns > 0}");
+    const charts = read("components/v2/monitoring-charts.tsx");
+    expect(charts).toContain("if (!flag(d)) return null;");
   });
 });

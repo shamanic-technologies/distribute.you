@@ -77,6 +77,7 @@ export function DailyLines<P extends { day: string }>({
   label,
   pointLabel = (d) => dayLabel(d),
   tickLabel = (d) => dayLabel(d, { month: "short", day: "numeric" }),
+  flag,
 }: {
   points: P[];
   lines: Line<P>[];
@@ -88,6 +89,8 @@ export function DailyLines<P extends { day: string }>({
   /** The hovered point's date in the header, and an axis tick: a day by default, a month for a monthly series. */
   pointLabel?: (day: string) => string;
   tickLabel?: (day: string) => string;
+  /** A served bad point (a day a watchdog broke): a rose dot on the first line at that point, nothing elsewhere. */
+  flag?: (p: P) => boolean;
 }) {
   const [win, setWin] = useState(windows[0].key);
   const [hover, setHover] = useState<number | null>(null);
@@ -180,6 +183,19 @@ export function DailyLines<P extends { day: string }>({
             <rect key={d.day} x={x(i) - slot / 2} y={0} width={slot} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />
           ))}
         </svg>
+        {flag &&
+          shown.map((d, i) => {
+            if (!flag(d)) return null;
+            const v = lines[0].get(d);
+            return (
+              <span
+                key={d.day}
+                className="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{ left: `calc(52px + (100% - 52px) * ${shown.length > 1 ? i / (shown.length - 1) : 0})`, top: v == null ? H - B : y(v), background: "var(--data-rose)" }}
+                aria-hidden="true"
+              />
+            );
+          })}
       </div>
       <div className="k-line-subtle ml-[52px] flex border-t pt-1.5">
         {shown.map((d, i) => (
