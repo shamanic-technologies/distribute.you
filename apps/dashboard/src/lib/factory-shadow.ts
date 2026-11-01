@@ -199,6 +199,27 @@ export const EngineMonitoringSchema = z
     last: z.object({ day: z.string(), places: num, agreed: num, agreementPct: num.nullable(), expectedAgreementPct: num.nullable(), failed: num }).passthrough().nullable(),
     series: z.array(z.object({ day: z.string(), places: num, agreed: num, disagreed: num.optional(), agreementPct: num.nullable(), expectedAgreementPct: num.nullable(), failed: num }).passthrough()),
     problems: z.array(z.object({ campaignId: z.string(), orgId: z.string(), brandId: z.string(), salesFunnelName: z.string(), failure: z.string().nullable() }).passthrough()),
+    // ENGINE-PER-OUTCOME-SWITCH: per result, Switched / Shadow / Rolled back (absent before that build).
+    results: z
+      .array(
+        z
+          .object({
+            family: z.string(),
+            outcome: z.string(),
+            outcomeName: z.string(),
+            todayRegret: num.nullable(),
+            engineRegret: num.nullable(),
+            status: z.string(),
+            units: num,
+            driving: num,
+            rolledBack: num,
+            switchedSince: z.string().nullable(),
+            heldDays: num.nullable(),
+            fleetEligible: z.boolean(),
+          })
+          .passthrough(),
+      )
+      .optional(),
     replay: z
       .object({
         computedAt: z.string(),
@@ -216,6 +237,7 @@ export const EngineMonitoringSchema = z
   .passthrough();
 export type EngineMonitoring = z.infer<typeof EngineMonitoringSchema>;
 export type EngineReplayFamily = NonNullable<EngineMonitoring["replay"]>["families"][number];
+export type EngineResult = NonNullable<EngineMonitoring["results"]>[number];
 export type CampaignEngine = z.infer<typeof CampaignEngineSchema>;
 export type EnginePlaceSummary = CampaignEngine["places"][number];
 
@@ -382,7 +404,20 @@ export function stateSentence(c: FactoryShadowMonitoringCampaign): string {
 const ENGINE_REASON_WORDS: Record<string, string> = {
   engine_failed: "the Engine could not be computed for a campaign",
   replay_failed: "the 30-day replay failed",
+  rolled_back: "a switched result rolled back to the service path",
+  drives_unreadable: "the switched results could not be read",
 };
+
+const RESULT_STATUS: Record<string, { word: string; tone: string }> = {
+  switched: { word: "Switched", tone: "var(--run)" },
+  shadow: { word: "Shadow", tone: "var(--fg-4)" },
+  rolled_back: { word: "Rolled back", tone: "var(--data-rose)" },
+};
+
+/** A served result status as the page shows it: its word and its tone (red only for a roll-back). */
+export function resultStatusLook(status: string): { word: string; tone: string } {
+  return RESULT_STATUS[status] ?? { word: status, tone: "var(--fg-4)" };
+}
 
 /** A served Engine verdict reason in plain words; an unknown one reads as served. */
 export function engineReasonWords(code: string): string {
