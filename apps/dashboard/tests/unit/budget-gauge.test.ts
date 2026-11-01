@@ -17,15 +17,37 @@ describe("budgetGaugeView", () => {
 
   it("postpaid: spent since last charge out of the credit line", () => {
     const v = budgetGaugeView(
+      { ...base, payment_mode: "postpaid", balance_cents: "-3800", has_payment_method: true, credit_line_cents: 10000, amount_owed_cents: "3800.0000000000" },
+      undefined,
+    );
+    expect(v).toMatchObject({ label: "Spent since last charge", figure: "$38.00", meter: { value: 3800, max: 10000 }, line: "Card charged at $100.", tone: "ok" });
+  });
+
+  it("postpaid: reservations for running work are never counted as spent (Beyond Logic 2026-11-01)", () => {
+    const v = budgetGaugeView(
+      { ...base, payment_mode: "postpaid", balance_cents: "-11974", has_payment_method: true, credit_line_cents: 5000, amount_owed_cents: "2677.0000000000" },
+      undefined,
+    );
+    expect(v).toMatchObject({
+      label: "Spent since last charge",
+      figure: "$26.77",
+      meter: { value: 2677, max: 5000 },
+      line: "Card charged at $50 · $93 reserved for running work",
+      tone: "ok",
+    });
+  });
+
+  it("postpaid without billing's amount owed: an error, never the balance read as spent", () => {
+    const v = budgetGaugeView(
       { ...base, payment_mode: "postpaid", balance_cents: "-3800", has_payment_method: true, credit_line_cents: 10000 },
       undefined,
     );
-    expect(v).toMatchObject({ label: "Spent since last charge", figure: "$38.00", meter: { value: 3800, max: 10000 }, tone: "ok" });
+    expect(v).toHaveProperty("error");
   });
 
   it("postpaid reads its credit line, never the auto top-up flag billing stops serving (owner 2026-10-21)", () => {
     const v = budgetGaugeView(
-      { ...base, payment_mode: "postpaid", balance_cents: "-1254", has_auto_topup: false, has_payment_method: true, credit_line_cents: 5000 },
+      { ...base, payment_mode: "postpaid", balance_cents: "-1254", has_auto_topup: false, has_payment_method: true, credit_line_cents: 5000, amount_owed_cents: "1254" },
       undefined,
     );
     expect(v).toMatchObject({ label: "Spent since last charge", figure: "$12.54", meter: { value: 1254, max: 5000 }, tone: "ok" });
