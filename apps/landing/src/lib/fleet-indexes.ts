@@ -11,8 +11,6 @@
  * Alias-free so the unit tests render it directly.
  */
 
-import { formatReturnMultiple } from "./landing-format";
-
 export type IndexStatus = "robust" | "signal" | "noise";
 
 /** `multiple` = a return (3.6 = $3.6 back per dollar spent), written like the hero ROI. */
@@ -203,21 +201,32 @@ export async function fetchIndexDetail(slug: string): Promise<IndexDetail | "not
 /** The JSON-LD `unitText` of a unit. */
 export const UNIT_TEXT: Record<IndexUnit, string> = { usd: "USD", percent: "percent", multiple: "multiple of spend" };
 
-/** $4.35, $1,240, 2.08%, 3.6x. Two decimals while they carry meaning. */
-export function formatIndexValue(value: number, unit: IndexUnit): string {
-  if (unit === "multiple") return `${formatReturnMultiple(value).text}x`;
-  if (unit === "percent") {
-    return `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
-  }
-  const digits = value >= 1000 ? 0 : 2;
-  return `$${value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+/**
+ * The figure we show, and the height we draw it at (owner 2026-11-02: with this little
+ * data a decimal is noise). 10 or more goes to the nearest ten, 1 to 10 to the unit.
+ * Below 1 the unit would print 0% for a rate we did measure (0.18% positive replies),
+ * so it keeps its first meaningful digit (0.2%, 0.05%).
+ */
+export function displayValue(value: number): number {
+  const a = Math.abs(value);
+  if (a >= 10) return Math.round(value / 10) * 10;
+  if (a >= 0.5 || a === 0) return Math.round(value);
+  return Number(value.toPrecision(1));
 }
 
-/** Shorter tick labels for the chart scale ($4.4, 2.1%). */
-export function formatTick(value: number, unit: IndexUnit): string {
-  const digits = Math.abs(value) >= 100 ? 0 : Math.abs(value) >= 10 ? 1 : 2;
-  const n = value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+function withUnit(value: number, unit: IndexUnit): string {
+  const n = displayValue(value).toLocaleString("en-US", { maximumFractionDigits: 6 });
   return unit === "percent" ? `${n}%` : unit === "multiple" ? `${n}x` : `$${n}`;
+}
+
+/** $4, $1,240, 2%, 20x, 0.2%: a decimal only under 1. */
+export function formatIndexValue(value: number, unit: IndexUnit): string {
+  return withUnit(value, unit);
+}
+
+/** The chart scale labels, rounded the same way ($4, 2%, $40). */
+export function formatTick(value: number, unit: IndexUnit): string {
+  return withUnit(value, unit);
 }
 
 /** Customer-facing status words: every status is published, each says how far to lean on it. */

@@ -131,10 +131,10 @@ describe("the Lead Generation Agency page", () => {
   it("the proof keeps the indexes a lead reaches, engaged leads first; a failed read drops it", () => {
     expect(leadIndexes(LIST).map((i) => i.slug)).toEqual(["engaged", "reply"]);
     const proof = leadProofHtml(LIST);
-    expect(proof).toContain('<span class="v">$80.62</span>');
-    expect(proof).toContain('<span class="v">$152.08</span>');
-    expect(proof).not.toContain("$10.88");
-    expect(proof).not.toContain("$609.97");
+    expect(proof).toContain('<span class="v">$80</span>');
+    expect(proof).toContain('<span class="v">$150</span>');
+    expect(proof).not.toContain('<span class="v">$10</span>');
+    expect(proof).not.toContain("$610");
     expect(leadProofHtml(null)).toBe("");
     expect(leadProofHtml({ ...LIST, indexes: [LIST.indexes[0]] })).toBe("");
   });

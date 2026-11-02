@@ -175,9 +175,9 @@ describe("the PPC Agency page", () => {
     expect(PPC_OUTCOMES).toEqual(["website_visit", "revenue"]);
     expect(ppcIndexes(LIST).map((i) => i.slug)).toEqual(["click", "roi"]);
     const proof = ppcProofHtml(LIST);
-    expect(proof).toContain('<span class="v">$10.89</span>');
-    expect(proof).not.toContain("$152.08");
-    expect(proof).not.toContain("$80.62");
+    expect(proof).toContain('<span class="v">$10</span>');
+    expect(proof).not.toContain("$150");
+    expect(proof).not.toContain("$80<");
     expect(ppcProofHtml(null)).toBe("");
     expect(ppcProofHtml({ ...LIST, indexes: [LIST.indexes[0]] })).toBe("");
   });

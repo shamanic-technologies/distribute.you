@@ -175,8 +175,8 @@ describe("the Cold Email Agency page", () => {
   it("the data keeps the cold email indexes a buyer pays for, replies first; a failed read drops it", () => {
     expect(coldEmailIndexes(LIST).map((i) => i.slug)).toEqual(["reply", "meeting", "engaged", "roi"]);
     const proof = coldEmailProofHtml(LIST);
-    expect(proof).toContain('<span class="v">$152.08</span>');
-    expect(proof).not.toContain("$10.88");
+    expect(proof).toContain('<span class="v">$150</span>');
+    expect(proof).not.toContain('<span class="v">$10</span>');
     expect(coldEmailProofHtml(null)).toBe("");
     expect(coldEmailProofHtml({ ...LIST, indexes: [LIST.indexes[1]] })).toBe("");
     const other = { ...LIST, indexes: LIST.indexes.map((i) => ({ ...i, channelSlug: "whatsapp" })) };

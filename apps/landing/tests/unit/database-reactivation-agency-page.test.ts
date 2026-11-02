@@ -157,8 +157,8 @@ describe("the Database Reactivation Agency page", () => {
     expect(REACTIVATION_OUTCOMES).toEqual(["positive_reply", "meeting_booked"]);
     expect(reactivationIndexes(LIST).map((i) => i.slug)).toEqual(["reply", "meeting"]);
     const proof = reactivationProofHtml(LIST);
-    expect(proof).toContain('<span class="v">$148.79</span>');
-    expect(proof).not.toContain("$10.92");
+    expect(proof).toContain('<span class="v">$150</span>');
+    expect(proof).not.toContain('<span class="v">$10</span>');
     expect(reactivationProofHtml(null)).toBe("");
     expect(reactivationProofHtml({ ...LIST, indexes: [LIST.indexes[1]] })).toBe("");
     const bare = renderDatabaseReactivationAgencyPage(null);

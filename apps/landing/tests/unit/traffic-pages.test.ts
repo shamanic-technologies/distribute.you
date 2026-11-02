@@ -139,8 +139,8 @@ describe("every figure is live", () => {
     expect(visitIndexesHtml(null, { eyebrow: "a", h2: "b", p: "c" })).toBe("");
     for (const [, html] of pages) {
       expect(html).toContain('href="/indexes/cold-email-cost-per-click"');
-      expect(html).toContain("$10.92");
-      expect(html).toContain("1.63%");
+      expect(html).toContain(">$10<");
+      expect(html).toContain(">2%<");
       expect(html).not.toContain("Cold Email ROI Index</b>");
     }
     expect(renderWebsiteTrafficAutomationPage(null)).not.toContain('id="data"');
