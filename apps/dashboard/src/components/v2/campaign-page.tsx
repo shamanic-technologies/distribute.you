@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getConversationCounts, getLeadBucketCounts } from "@/lib/api";
@@ -69,6 +70,7 @@ export function V2CampaignRoute() {
 export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled?: boolean } = {}) {
   const { orgId, brandId, campaignId } = useParams<{ orgId: string; brandId: string; campaignId: string }>();
   const params = useSearchParams();
+  const router = useRouter();
   const { staffMode } = useStaffMode();
   const { settled, campaignById } = useCampaigns(orgId, brandId, { allOffers: true });
   const campaign = campaignById.get(campaignId) ?? null;
@@ -89,6 +91,20 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
   const tab = visible.find((t) => t.key === params.get("tab"))?.key ?? "overview";
   const tabHref = (t: V2CampaignTab) => v2CampaignHref(orgId, brandId, id, t);
   const tabs: V2Tab[] = visible.map((t) => ({ label: t.label, href: tabHref(t.key), active: t.key === tab }));
+
+  // A client never reads a part on its own (FACTORY-USER-DASHBOARD-1102): the campaign it belongs to is the page,
+  // with its Plan of Engines; a part's old link lands there, on the same tab. Staff keep the part page.
+  const partHref = partOfId && !staffMode ? v2CampaignHref(orgId, brandId, partOfId, tab) : null;
+  useEffect(() => {
+    if (partHref) router.replace(partHref);
+  }, [partHref, router]);
+  if (partHref) {
+    return (
+      <V2Page crumbs={[{ label: "Campaigns" }, { label: " " }]} title={<Shimmer className="h-8 w-56" />} width="max-w-[1280px]">
+        <Shimmer className="h-[240px] w-full rounded-[12px]" />
+      </V2Page>
+    );
+  }
 
   if (settled && !campaign && !funnelListSettled) {
     // The id may be a sales-funnel campaign whose list has not answered yet: no "not found" flash.
