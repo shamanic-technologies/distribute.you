@@ -61,9 +61,12 @@ export function PersonPage() {
   // The Checks read the selected offer's criteria: wait for the offers, never a brand-wide read first.
   const { offerId, settled: offerSettled } = useSelectedOffer();
   const leadQ = useAuthQuery(["leadDetail", leadRowId, brandId], () => getLeadDetail(leadRowId, brandId), pollOptions);
+  // Everything this person went through at the brand: a person in several campaigns (cold email,
+  // then the reply campaign their answer opened) has one row per campaign, and the row this page
+  // opens on can be the newest one, which holds only "Added to the campaign".
   const historyQ = useAuthQuery(
-    ["leadHistory", leadRowId, brandId, "campaign"],
-    () => getLeadHistory(leadRowId, { brandId, scope: "campaign" }),
+    ["leadHistory", leadRowId, brandId, "brand"],
+    () => getLeadHistory(leadRowId, { brandId, scope: "brand" }),
     { enabled: Boolean(leadRowId) },
   );
   // The conversation (this person x the selected offer x the brand): lead-service's stored,
