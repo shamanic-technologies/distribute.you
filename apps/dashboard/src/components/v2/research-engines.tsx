@@ -10,7 +10,7 @@ import { formatRatePct } from "@/lib/pipe-stats";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { regretPct } from "@/lib/factory-shadow";
 import { useResearchEnginePlaces } from "@/lib/research/research-source";
-import { placesByCaller, replayFamiliesOf, selectedPlace, type EnginePlace, type EnginePlaces } from "@/lib/research/engine-places";
+import { placesByCaller, replayFamiliesOf, selectedPlace, splitsByPlace, type EnginePlace, type EnginePlaces, type StrategySplit } from "@/lib/research/engine-places";
 
 /**
  * The Engine half of Research (FACTORY-RESEARCH-1102, owner 2026-11-02 « on adaptera la page Research qui est outdate
@@ -132,6 +132,7 @@ function Engines({ data }: { data: EnginePlaces }) {
       )}
 
       <EngineCallers data={data} />
+      <ProposedStrategies data={data} />
     </>
   );
 }
@@ -194,7 +195,7 @@ function PlaceDetail({ data, place }: { data: EnginePlaces; place: EnginePlace }
             <tbody>
               {families.map((f) => (
                 <tr key={f.family} className="k-line-subtle border-b last:border-0">
-                  <td className={TD}>{f.family}</td>
+                  <td className={TD}>{f.familyName ?? f.family}</td>
                   <td className={TDN}>{regretPct(f.todayRegret) ?? <span className="k-fg4">{"—"}</span>}</td>
                   <td className={TDN}>{regretPct(f.engineRegret) ?? <span className="k-fg4">{"—"}</span>}</td>
                 </tr>
@@ -237,8 +238,8 @@ function PlaceDetail({ data, place }: { data: EnginePlaces; place: EnginePlace }
                       <td className={`${TDN} ${best && place.clearWinner ? "text-[var(--run)]" : ""}`}>{pct(c.sharePct)}</td>
                       <td className={TDN}>{pct(c.beliefRatePct)}</td>
                       <td className={TDN}>{c.costPerDecisionUsd == null ? <span className="k-fg4">{"—"}</span> : formatUsdAdaptive(c.costPerDecisionUsd)}</td>
-                      <td className={TDN}>{c.fleetDecisions.toLocaleString("en-US")}</td>
-                      <td className={TDN}>{c.fleetOutcomes.toLocaleString("en-US")}</td>
+                      <td className={TDN}>{Math.round(c.fleetDecisions).toLocaleString("en-US")}</td>
+                      <td className={TDN}>{c.fleetOutcomes.toLocaleString("en-US", { maximumFractionDigits: 1 })}</td>
                     </tr>
                   );
                 })}
@@ -298,6 +299,90 @@ function EngineCallers({ data }: { data: EnginePlaces }) {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+const VERDICT_LOOK: Record<StrategySplit["verdict"], { label: string; cls: string }> = {
+  conclusion: { label: "Conclusion", cls: "text-[var(--run)]" },
+  signal: { label: "Signal", cls: "text-[var(--data-amber)]" },
+  noise: { label: "Noise", cls: "k-fg3" },
+};
+
+/** One half of a split: outcomes per 100 decisions (served `ratePct`, over 100 when a decision yields several), on how many decisions and workflows. */
+function SplitSide({ side }: { side: StrategySplit["inside"] }) {
+  return (
+    <>
+      {side.ratePct == null ? <span className="k-fg4">{"—"}</span> : side.ratePct.toLocaleString("en-US", { maximumFractionDigits: side.ratePct < 1 ? 1 : 0 })}{" "}
+      <span className="k-fg3">
+        on {Math.round(side.decisions).toLocaleString("en-US")} · {side.workflows} {side.workflows === 1 ? "workflow" : "workflows"}
+      </span>
+    </>
+  );
+}
+
+/**
+ * Factory's « Proposed strategies »: per place, every workflow tactic that splits its candidates in two, the outcome rate
+ * per decision inside vs outside and the served verdict; a strategy is proposed only on a conclusion (served `proposed`).
+ */
+function ProposedStrategies({ data }: { data: EnginePlaces }) {
+  const proposed = data.strategySplits.filter((s) => s.proposed).length;
+  const groups = splitsByPlace(data.strategySplits);
+  return (
+    <section className="mt-10">
+      <SectionTitle count={proposed} right={<span>A split on the workflows&apos; tactics, proposed only on a conclusion</span>}>
+        Proposed strategies
+      </SectionTitle>
+      {proposed === 0 && (
+        <p className="k-fg3 -mt-1 mb-3 text-[12px]">No split has reached a conclusion yet. Every split looked at is below, place by place.</p>
+      )}
+      {groups.length === 0 ? (
+        <div className="k-card">
+          <EmptyNote>No place has workflows with different tactics yet.</EmptyNote>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {groups.map((g) => (
+            <div key={g.placeKey} className="k-card overflow-hidden">
+              <div className="flex flex-wrap items-baseline gap-x-2 px-4 pb-2 pt-3">
+                <span className="text-[14px] font-medium">{g.outcomeName}</span>
+                <span className="k-fg3 text-[12px]">for {g.consumerName}</span>
+              </div>
+              <div className="k-scroll overflow-x-auto">
+                <table className="w-full min-w-[720px] table-fixed text-[13px]">
+                  <thead>
+                    <tr className="k-line-subtle border-y">
+                      <th className={`${TH} text-left`}>Split looked at</th>
+                      <th className={`${TH} w-[300px] text-right`}>With it: outcomes per 100 decisions</th>
+                      <th className={`${TH} w-[260px] text-right`}>Without it</th>
+                      <th className={`${TH} w-[110px] text-right`}>Verdict</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.splits.map((s) => (
+                      <tr key={s.tacticId} className="k-line-subtle border-b last:border-0" title={s.reason}>
+                        <td className={TD}>
+                          <span className="font-medium" title={s.tacticDescription}>
+                            {s.tacticName}
+                          </span>
+                          {s.proposed && <span className="k-chip ml-2">Proposed</span>}
+                        </td>
+                        <td className={`${TDN} ${s.better === "inside" ? "font-medium" : ""}`}>
+                          <SplitSide side={s.inside} />
+                        </td>
+                        <td className={`${TDN} ${s.better === "outside" ? "font-medium" : ""}`}>
+                          <SplitSide side={s.outside} />
+                        </td>
+                        <td className={`${TDN} ${VERDICT_LOOK[s.verdict].cls}`}>{VERDICT_LOOK[s.verdict].label}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

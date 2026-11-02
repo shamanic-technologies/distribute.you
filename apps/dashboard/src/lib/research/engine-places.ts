@@ -21,6 +21,8 @@ const CandidateSchema = z.object({
   fleetOutcomes: z.number(),
 });
 
+const SplitSideSchema = z.object({ workflows: z.number().int(), outcomes: z.number(), decisions: z.number(), ratePct: z.number().nullable() });
+
 export const EnginePlacesSchema = z.object({
   computedAt: z.string().nullable(),
   clearWinnerPct: z.number(),
@@ -45,12 +47,29 @@ export const EnginePlacesSchema = z.object({
       callers: z.array(z.object({ consumer: z.string(), consumerName: z.string(), best: z.string().nullable() })),
     }),
   ),
+  /** Factory's « Proposed strategies »: per place, each workflow tactic splitting its candidates, inside vs outside, judged. */
+  strategySplits: z.array(
+    z.object({
+      placeKey: z.string(),
+      outcomeName: z.string(),
+      consumerName: z.string(),
+      tacticId: z.string(),
+      tacticName: z.string(),
+      tacticDescription: z.string(),
+      inside: SplitSideSchema,
+      outside: SplitSideSchema,
+      better: z.enum(["inside", "outside"]).nullable(),
+      verdict: z.enum(["conclusion", "signal", "noise"]),
+      reason: z.string(),
+      proposed: z.boolean(),
+    }),
+  ),
   replay: z
     .object({
       computedAt: z.string(),
       windowDays: z.number(),
       families: z.array(
-        z.object({ family: z.string(), outcome: z.string(), outcomeName: z.string(), todayRegret: z.number().nullable(), engineRegret: z.number().nullable() }),
+        z.object({ family: z.string(), familyName: z.string().optional(), outcome: z.string(), outcomeName: z.string(), todayRegret: z.number().nullable(), engineRegret: z.number().nullable() }),
       ),
       failure: z.string().nullable(),
     })
@@ -61,6 +80,7 @@ export type EnginePlaces = z.infer<typeof EnginePlacesSchema>;
 export type EnginePlace = EnginePlaces["places"][number];
 export type EnginePlaceCandidate = EnginePlace["candidates"][number];
 export type EngineCallers = EnginePlaces["engines"][number];
+export type StrategySplit = EnginePlaces["strategySplits"][number];
 export type ReplayFamily = NonNullable<EnginePlaces["replay"]>["families"][number];
 
 /** Parse the served body; a shape mismatch throws loud (the page shows its error state). */
@@ -99,4 +119,15 @@ export function selectedPlace(places: readonly EnginePlace[], asked: string | nu
 /** The replay's families for one outcome (the selected place's value lost), in served order. */
 export function replayFamiliesOf(data: Pick<EnginePlaces, "replay">, outcome: string): ReplayFamily[] {
   return (data.replay?.families ?? []).filter((f) => f.outcome === outcome);
+}
+
+/** The splits grouped by place (served `placeKey`), places and splits in the served order. */
+export function splitsByPlace(splits: readonly StrategySplit[]): Array<{ placeKey: string; outcomeName: string; consumerName: string; splits: StrategySplit[] }> {
+  const groups: Array<{ placeKey: string; outcomeName: string; consumerName: string; splits: StrategySplit[] }> = [];
+  for (const s of splits) {
+    const g = groups.find((x) => x.placeKey === s.placeKey);
+    if (g) g.splits.push(s);
+    else groups.push({ placeKey: s.placeKey, outcomeName: s.outcomeName, consumerName: s.consumerName, splits: [s] });
+  }
+  return groups;
 }

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseEnginePlaces, placesByCaller, replayFamiliesOf, selectedPlace } from "../src/lib/research/engine-places";
+import { parseEnginePlaces, placesByCaller, replayFamiliesOf, selectedPlace, splitsByPlace } from "../src/lib/research/engine-places";
 import { outcomeStudiesOf, pipesOutsideOutcomes, type ResearchFile } from "../src/lib/research/research";
 
 const REPO = join(__dirname, "..", "..", "..");
@@ -35,6 +35,11 @@ const body = {
   summary: { places: 3, clearWinners: 1, campaigns: 4 },
   places: [place("conversation", "target", 2, 95), place("meeting_booked", "target", 3, 60), place("conversation", "meeting_booked", 1, null)],
   engines: [{ outcome: "conversation", outcomeName: "Conversation", callers: [{ consumer: "target", consumerName: "TARGET", best: "Wf a" }] }],
+  strategySplits: [
+    { placeKey: "conversation|target", outcomeName: "c", consumerName: "T", tacticId: "t1", tacticName: "T1", tacticDescription: "", inside: { workflows: 1, outcomes: 0, decisions: 3, ratePct: 0 }, outside: { workflows: 2, outcomes: 1, decisions: 9, ratePct: 11 }, better: "outside", verdict: "noise", reason: "", proposed: false },
+    { placeKey: "meeting_booked|target", outcomeName: "m", consumerName: "T", tacticId: "t1", tacticName: "T1", tacticDescription: "", inside: { workflows: 1, outcomes: 0, decisions: 3, ratePct: null }, outside: { workflows: 2, outcomes: 1, decisions: 9, ratePct: 11 }, better: null, verdict: "conclusion", reason: "", proposed: true },
+    { placeKey: "conversation|target", outcomeName: "c", consumerName: "T", tacticId: "t2", tacticName: "T2", tacticDescription: "", inside: { workflows: 1, outcomes: 0, decisions: 3, ratePct: 0 }, outside: { workflows: 2, outcomes: 1, decisions: 9, ratePct: 11 }, better: "outside", verdict: "signal", reason: "", proposed: false },
+  ],
   replay: { computedAt: "2026-11-02T07:00:00Z", windowDays: 30, families: [{ family: "x", outcome: "conversation", outcomeName: "Conversation", todayRegret: 0.2, engineRegret: 0.1 }], failure: null },
 };
 
@@ -61,6 +66,12 @@ describe("Research engine places (FACTORY-RESEARCH-1102)", () => {
   it("the value lost shown for a place is the replay's own families for its outcome", () => {
     expect(replayFamiliesOf(body, "conversation").map((f) => f.family)).toEqual(["x"]);
     expect(replayFamiliesOf({ replay: null }, "conversation")).toEqual([]);
+  });
+
+  it("strategy splits read per place in the served order; proposed is the served flag", () => {
+    const g = splitsByPlace(parseEnginePlaces(body).strategySplits);
+    expect(g.map((x) => [x.placeKey, x.splits.map((s) => s.tacticId)])).toEqual([["conversation|target", ["t1", "t2"]], ["meeting_booked|target", ["t1"]]]);
+    expect(read("apps/dashboard/src/components/v2/research-engines.tsx")).toContain("data.strategySplits.filter((s) => s.proposed).length");
   });
 
   it("the headline and the counts are the served summary, the chance the served favourite's, nothing divided in the browser", () => {
