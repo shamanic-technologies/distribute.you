@@ -6,7 +6,7 @@ import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank"
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
@@ -42,7 +42,6 @@ import {
   type MaxVolume,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
-  type SalesFunnelUnit,
   type FunnelCampaignRow,
   type FunnelCampaignCopy,
   type FunnelPathItem,
@@ -57,21 +56,18 @@ import { paymentHoldKind } from "@/lib/payment-declined";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { useStatBasis } from "@/lib/use-stat-basis";
-import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useLegCatalogue, usePublicPipe } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { v2CampaignHref, v2Href, type V2CampaignTab } from "@/lib/v2/routes";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
-import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
-import { CampaignResultCells } from "@/components/v2/offer-campaigns";
+import { useCampaigns } from "@/components/v2/use-campaigns";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { CampaignHoldNote, useCampaignHolds } from "@/components/v2/campaign-hold";
 import { holdOutlivesLimitChange } from "@/lib/campaign-hold";
-import { PipeSections } from "@/components/v2/pipe-sections";
+import { FactoryCampaignSections } from "@/components/v2/factory-campaign";
 import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts } from "@/components/v2/spend-charts";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
@@ -665,85 +661,6 @@ function LimitCell({
   );
 }
 
-/** The parts the campaign runs, each its served results, opening its own page. */
-function FunnelResults({
-  orgId,
-  brandId,
-  units,
-}: {
-  orgId: string;
-  brandId: string;
-  units: SalesFunnelUnit[];
-}) {
-  const router = useRouter();
-  const prefetch = useRoutePrefetch();
-  const { basis } = useStatBasis();
-  const channels = useAcquisitionChannels();
-  const catalogue = useLegCatalogue();
-  const { campaignById, settled } = useCampaigns(orgId, brandId, { allOffers: true });
-  return (
-    <section>
-      <SectionTitle count={units.length}>Results</SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">What this campaign brought in, since it started.</p>
-      {units.length === 0 ? (
-        <div className="k-card">
-          <EmptyNote>Nothing runs in this campaign yet.</EmptyNote>
-        </div>
-      ) : (
-        <div className="k-card overflow-hidden">
-          <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[860px] text-[13px]">
-              <thead>
-                <tr className="k-line-subtle border-b">
-                  <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Brings in</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">
-                    <RoiLabel />
-                  </th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal"># Outcomes</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">$ Value</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">$ / Outcome</th>
-                  <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">$ Invested</th>
-                </tr>
-              </thead>
-              <tbody>
-                {units.map((u) => {
-                  const record: V2Campaign | null = campaignById.get(u.campaignId) ?? null;
-                  const def = channels.find((d) => d.featureSlug === u.featureSlug);
-                  // The step reads off the leg catalogue, so a part that never ran still says what it does.
-                  const leg = record?.leg ?? legFor(catalogue, u.legKey);
-                  if (settled && !def) console.error("[funnel-campaigns] a part's channel is not in the catalogue", { featureSlug: u.featureSlug });
-                  const href = record?.href ?? null;
-                  return (
-                    <tr
-                      key={u.campaignId}
-                      className={`k-row k-line-subtle h-12 border-b last:border-b-0 ${href ? "cursor-pointer" : ""}`}
-                      onClick={href ? () => router.push(href) : undefined}
-                      onMouseEnter={href ? () => prefetch(href) : undefined}
-                    >
-                      <td className="px-3 py-2 pl-4">
-                        {!settled ? (
-                          <Shimmer className="h-4 w-48 rounded" />
-                        ) : (
-                          <span className="flex min-w-0 flex-wrap items-center gap-2">
-                            <span className="font-medium">{leg?.toLabel ?? "—"}</span>
-                            <ChannelChip name={def?.name ?? u.featureSlug} def={def} notRun={false} />
-                          </span>
-                        )}
-                      </td>
-                      {/* Each step runs and pauses with the campaign, so it states no status of its own. */}
-                      <CampaignResultCells record={record} basis={basis} />
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
 /**
  * One campaign that is a sales funnel: its face and name, ONE status for the whole of it,
  * its two limits with what the current period consumed (billing), then its results (each
@@ -803,7 +720,6 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   const holds = useCampaignHolds(runningPipes.map((u) => u.campaignId));
   // Why each day costs what it costs, the campaign's and each pipe's (features-service, owner 2026-10-19).
   const spendQ = useFunnelCampaignSpendCharts(campaign.brandId, campaign.id);
-  const pipeCharts = new Map((spendQ.data?.pipes ?? []).map((p) => [p.campaignId, p]));
   const pipeLabel = (id: string) => {
     const u = units.find((x) => x.campaignId === id);
     return (campaignById.get(id)?.leg ?? (u ? legFor(catalogue, u.legKey) : null))?.toLabel ?? null;
@@ -944,14 +860,9 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
           <SpendChartsBlock {...spendChartState(spendQ, (d) => d.campaign)} />
         </section>
 
-        <PipeSections
-          brandId={campaign.brandId}
-          units={units}
-          campaignById={campaignById}
-          spendChart={(campaignId) => spendChartState(spendQ, () => pipeCharts.get(campaignId) ?? null)}
-        />
-
-        <FunnelResults orgId={orgId} brandId={campaign.brandId} units={units} />
+        {/* The GTM Factory campaign page (FACTORY-USER-DASHBOARD-1102, every client): its milestones, its plan of
+            Engines and the scripts each one picks, the strategy its brief keeps per Engine. Replaces the per-pipe blocks. */}
+        <FactoryCampaignSections campaign={campaign} />
       </div>
       )}
       {editing && <FunnelCampaignModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}

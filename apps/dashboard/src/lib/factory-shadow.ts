@@ -28,8 +28,22 @@ const LineLegSchema = z
   })
   .passthrough();
 
+/** One leg of a priced line: its expected cost per outcome, rate and outcomes needed per Target (served). */
+const FigureLegSchema = z
+  .object({
+    legKey: z.string(),
+    pipeId: z.string().nullable(),
+    ratePct: num.nullable(),
+    costPerOutcomeUsd: num.nullable(),
+    outcomesNeededPerPayingClient: num.nullable(),
+    costSource: z.string().nullish(),
+  })
+  .passthrough();
+export type FactoryFigureLeg = z.infer<typeof FigureLegSchema>;
+
 const FiguresSchema = z
   .object({
+    legs: z.array(FigureLegSchema).optional(),
     costPerTargetUsd: num.nullable(),
     roi: num.nullable(),
     basis: z.string().nullable(),
@@ -52,6 +66,63 @@ const RunningLineSchema = z.union([
   PlanLineSchema.extend({ reachesTarget: z.literal(true).optional() }),
   z.object({ funnelId: z.string(), reachesTarget: z.literal(false), unavailableReason: z.string() }).passthrough(),
 ]);
+
+// ─── The Engine per outcome of ONE campaign, in full (features-service `engine` on the factory-shadow body) ───
+
+const EngineRefSchema = z
+  .object({ candidateId: z.string(), pipeId: z.string(), channelName: z.string(), workflowDynastySlug: z.string(), workflowDynastyName: z.string().nullable() })
+  .passthrough();
+
+/** One script competing at a place: its share of the Engine's draws, its belief's rate and cost per decision. */
+const EngineCandidateRowSchema = EngineRefSchema.extend({
+  fromStep: z.string().nullable(),
+  valueAddedUsd: num.nullable(),
+  clientDecisions: num.nullable(),
+  clientOutcomes: num.nullable(),
+  fleetDecisions: num,
+  fleetOutcomes: num,
+  rateMeanPct: num.nullable(),
+  costPerDecisionMeanUsd: num.nullable(),
+  valuePerDollarMean: num.nullable(),
+  pickSharePct: num.nullable(),
+  isToday: z.boolean(),
+  isEnginePick: z.boolean(),
+}).passthrough();
+export type EngineCandidateRow = z.infer<typeof EngineCandidateRowSchema>;
+
+const EnginePlaceFullSchema = z
+  .object({
+    outcome: z.string(),
+    outcomeName: z.string(),
+    consumer: z.string(),
+    consumerName: z.string(),
+    today: EngineRefSchema.nullable(),
+    todayUnavailableReason: z.string().nullable(),
+    engine: EngineRefSchema.nullable(),
+    agrees: z.boolean().nullable(),
+    state: z.string(),
+    candidates: z.array(EngineCandidateRowSchema),
+  })
+  .passthrough();
+export type EnginePlaceFull = z.infer<typeof EnginePlaceFullSchema>;
+
+const CampaignEngineFullSchema = z
+  .object({ computedAt: z.string(), status: z.string(), failure: z.string().nullable(), places: z.array(EnginePlaceFullSchema) })
+  .passthrough();
+export type CampaignEngineFull = z.infer<typeof CampaignEngineFullSchema>;
+
+/** Every pipe the plan may walk, kept or ruled out by the campaign's brief (the brief judge). */
+const PipeVerdictSchema = z
+  .object({
+    pipeId: z.string(),
+    channelName: z.string(),
+    fromStep: z.string().nullable(),
+    toStep: z.string(),
+    inRunningFunnel: z.boolean(),
+    excluded: z.boolean().nullable(),
+  })
+  .passthrough();
+export type PipeVerdict = z.infer<typeof PipeVerdictSchema>;
 
 export const FactoryShadowPickSchema = z
   .object({
@@ -81,6 +152,8 @@ export const FactoryShadowPlanSchema = z
     failure: z.string().nullable(),
     picks: z.array(FactoryShadowPickSchema),
     pickDiffers: z.boolean(),
+    pipeVerdicts: z.array(PipeVerdictSchema).optional(),
+    engine: CampaignEngineFullSchema.nullish(),
     plan: z
       .object({
         target: z.string(),

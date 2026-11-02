@@ -118,11 +118,10 @@ describe("the block is drawn at the three grains", () => {
   it("Today draws the offer's block", () => {
     expect(src("today-page.tsx")).toContain("<OfferSpendChartsSection brandId={brandId} offerId={selectedOfferId} />");
   });
-  it("the campaign page draws the campaign's block and hands each pipe its own", () => {
+  it("the campaign page draws the campaign's block (the per-pipe blocks are gone: FACTORY-USER-DASHBOARD-1102)", () => {
     const s = src("funnel-campaigns.tsx");
     expect(s).toContain("spendChartState(spendQ, (d) => d.campaign)");
-    expect(s).toContain("spendChart={(campaignId) =>");
-    expect(src("pipe-sections.tsx")).toContain("<SpendChartsBlock {...spendChart(u.campaignId)} />");
+    expect(s).not.toContain("spendChart={(campaignId) =>");
   });
   it("divides nothing in the browser", () => {
     const s = src("spend-charts.tsx");
