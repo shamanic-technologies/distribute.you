@@ -19,7 +19,7 @@ import { getFunnelCampaignMilestones, getFunnelCampaignPeopleJourneys } from "@/
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
-import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
+import { EmptyNote, SectionTitle, ShareBar, Shimmer } from "@/components/v2/ui";
 import { useFactoryShadow } from "@/components/v2/factory-plan-card";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 
@@ -67,6 +67,8 @@ export function FactoryJourneys({ brandId, campaignId }: { brandId: string; camp
   const q = useAuthQuery(["funnelCampaignPeopleJourneys", brandId, campaignId], () => getFunnelCampaignPeopleJourneys(brandId, campaignId), pollOptions);
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   const rows = q.data?.transitions ?? [];
+  // The busiest step scales each row's people bar (display only, served counts).
+  const peopleMax = Math.max(0, ...rows.map((t) => t.people));
   return (
     <section>
       <SectionTitle right={<span>Since it started, share by what each script spent</span>}>What its people went through</SectionTitle>
@@ -82,7 +84,7 @@ export function FactoryJourneys({ brandId, campaignId }: { brandId: string; camp
           <EmptyNote>Nobody has moved through this campaign yet.</EmptyNote>
         ) : (
           rows.map((t) => (
-            <div key={t.pipeId} className="grid gap-x-4 gap-y-1 px-4 py-2.5 text-[13px] md:grid-cols-[minmax(0,280px)_96px_minmax(0,1fr)]">
+            <div key={t.pipeId} className="grid items-center gap-x-4 gap-y-1.5 px-4 py-3 text-[13px] md:grid-cols-[minmax(0,280px)_96px_120px_minmax(0,1fr)]">
               <span className="flex min-w-0 items-center gap-1.5">
                 <span className="k-fg2 truncate">{t.fromLabel}</span>
                 <span className="k-fg3">→</span>
@@ -91,7 +93,9 @@ export function FactoryJourneys({ brandId, campaignId }: { brandId: string; camp
               <span className="tabular-nums md:text-right">
                 {formatCount(t.people)} {t.people === 1 ? "person" : "people"}
               </span>
-              <span className="k-fg2 min-w-0 text-[12px]">
+              <ShareBar value={t.people} max={peopleMax} className="hidden w-full md:block" />
+              <span className="k-fg2 min-w-0 space-y-1.5 text-[12px]">
+                {t.scripts.length > 1 && <ScriptSplit shares={t.scripts.map((sc) => sc.sharePct)} />}
                 {t.scripts.length > 0
                   ? t.scripts.map((sc, i) => (
                       <span key={sc.workflowDynastySlug}>
@@ -109,6 +113,17 @@ export function FactoryJourneys({ brandId, campaignId }: { brandId: string; camp
   );
 }
 
+/** A step's scripts as one stacked bar of their served shares, the biggest first and full colour. */
+function ScriptSplit({ shares }: { shares: Array<number | null> }) {
+  return (
+    <span className="flex h-1.5 w-full max-w-[280px] overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
+      {shares.map((v, i) => (
+        <span key={i} className="h-full border-r border-[var(--bg)] last:border-0" style={{ width: `${Math.max(0, v ?? 0)}%`, background: "var(--accent)", opacity: Math.max(0.25, 1 - i * 0.25) }} />
+      ))}
+    </span>
+  );
+}
+
 // ─── Milestones ───────────────────────────────────────────────────────────────────────────────
 
 /** A milestone figure: measured in the ordinary colour, expected greyed with its word, none = its reason or "—". */
@@ -123,6 +138,8 @@ export function FactoryMilestones({ brandId, campaignId }: { brandId: string; ca
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   const rows = q.data?.milestones ?? [];
   const target = rows.find((r) => r.isTarget)?.label ?? "Target";
+  // The widest milestone scales the outcome bars: the funnel narrowing, drawn (display only).
+  const outcomesMax = Math.max(0, ...rows.map((r) => r.outcomes ?? 0));
   return (
     <section>
       <SectionTitle count={rows.length > 0 ? rows.length : null} right={<span>Measured since it started, else expected</span>}>
@@ -165,7 +182,12 @@ export function FactoryMilestones({ brandId, campaignId }: { brandId: string; ca
                         {r.label}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.outcomes !== null ? formatCount(r.outcomes) : DASH}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      <span className="inline-flex items-center justify-end gap-2.5">
+                        {r.outcomes !== null && <ShareBar value={r.outcomes} max={outcomesMax} color="var(--data-teal)" className="hidden w-16 md:block" />}
+                        {r.outcomes !== null ? formatCount(r.outcomes) : DASH}
+                      </span>
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <MilestoneCell v={r.costPerOutcomeUsd} format={formatUsdAdaptive} />
                     </td>
@@ -173,7 +195,12 @@ export function FactoryMilestones({ brandId, campaignId }: { brandId: string; ca
                       <MilestoneCell v={r.costFromStartUsd} format={formatUsdAdaptive} />
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      <MilestoneCell v={r.conversionFromAbovePct} format={formatRatePct} />
+                      <span className="inline-flex items-center justify-end gap-2.5">
+                        {r.conversionFromAbovePct.value !== null && (
+                          <ShareBar value={r.conversionFromAbovePct.value} max={100} color={r.conversionFromAbovePct.basis === "expected" ? "var(--fg-4)" : "var(--accent)"} className="hidden w-12 md:block" />
+                        )}
+                        <MilestoneCell v={r.conversionFromAbovePct} format={formatRatePct} />
+                      </span>
                     </td>
                     <td className="px-3 py-2 pr-4 text-right tabular-nums">
                       <MilestoneCell v={r.attemptsPerTarget} format={formatAbout} />
@@ -390,7 +417,12 @@ function ScriptsTable({ place, label, next }: { place: EnginePlaceFull; label: s
                       {c.isToday && !c.isEnginePick && <span className="k-chip">Running now</span>}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{c.pickSharePct != null ? `${formatShare(c.pickSharePct)}%` : DASH}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    <span className="inline-flex items-center justify-end gap-2.5">
+                      {c.pickSharePct != null && <ShareBar value={c.pickSharePct} max={100} color={c.isEnginePick ? "var(--run)" : "var(--accent)"} className="hidden w-14 md:block" />}
+                      {c.pickSharePct != null ? `${formatShare(c.pickSharePct)}%` : DASH}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums">{c.rateMeanPct != null ? formatRatePct(c.rateMeanPct) : DASH}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{c.costPerDecisionMeanUsd != null ? formatUsdAdaptive(c.costPerDecisionMeanUsd) : DASH}</td>
                   <td className="px-3 py-2 pr-4 text-right tabular-nums">

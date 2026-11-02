@@ -28,7 +28,7 @@ import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner";
 import { CardChangeConfirmModal } from "@/components/billing/card-change-confirm-modal";
 import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm-modal";
-import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
+import { BarSpark, EmptyNote, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
 import { CreditBalanceCard, PostpaidOwedCard } from "@/components/v2/balance-hero";
 import { MonthlyLimitCard } from "@/components/v2/monthly-limit-card";
 
@@ -568,7 +568,11 @@ export function V2BillingPage() {
         >
           <div className="k-card overflow-hidden">
             <div className="k-line-subtle flex items-center justify-between gap-3 border-b px-4 py-2.5">
-              <span className="k-label">Payments{c.payments.length > 0 ? ` · ${c.payments.length}` : ""}</span>
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="k-label">Payments{c.payments.length > 0 ? ` · ${c.payments.length}` : ""}</span>
+                {/* Each payment as a bar, oldest first: the rhythm of top-ups at a glance (served amounts only). */}
+                {c.payments.length > 1 && <BarSpark values={[...c.payments].reverse().slice(-24).map((p) => Math.max(0, p.amountCents - p.amountReturnedCents))} />}
+              </span>
               {account?.has_payment_method && (
                 <button
                   type="button"
@@ -663,6 +667,7 @@ function UsageSection({ billedCents, setAsideCents }: { billedCents: number | nu
   const rows = (usage?.categories ?? []).filter((cat) => Math.abs(usdToCents(cat.billedUsd)) >= 0.5);
   const setAsideCentsServed = usdToCents(usage?.totalSetAsideUsd ?? 0);
   const coveredCents = usdToCents(usage?.coveredByUs?.billedUsd ?? 0);
+  const usageMax = Math.max(0, ...rows.map((cat) => cat.billedUsd));
   return (
     <Section
       id="usage"
@@ -685,7 +690,9 @@ function UsageSection({ billedCents, setAsideCents }: { billedCents: number | nu
                 key={cat.key}
                 className="k-row k-line-subtle flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2"
               >
-                <p className="min-w-0 truncate text-[13px]">{cat.label}</p>
+                <p className="min-w-0 flex-1 truncate text-[13px]">{cat.label}</p>
+                {/* Each category's served billed amount as a bar, on the biggest one (display only). */}
+                <ShareBar value={cat.billedUsd} max={usageMax} className="hidden w-32 sm:block" />
                 <span className="w-20 shrink-0 text-right text-[13px] tabular-nums">
                   {formatBillingCents(usdToCents(cat.billedUsd))}
                 </span>

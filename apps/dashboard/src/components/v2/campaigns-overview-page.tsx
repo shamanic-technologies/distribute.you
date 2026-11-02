@@ -43,7 +43,7 @@ import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
-import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
+import { EmptyNote, MarkLines, SectionTitle, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 
 /** What the Create box sends to the Copilot when nothing is typed, as if typed and sent. */
@@ -103,7 +103,7 @@ export function CampaignsOverviewPage() {
             <EmptyNote>This brand has no offer yet.</EmptyNote>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-10">
             {staffMode && <CreateBox />}
             {staffMode && <Suggested brandId={brandId} offerId={offerId} campaigns={q.data ?? null} />}
             <CampaignList orgId={orgId} brandId={brandId} offerId={offerId} />
@@ -276,6 +276,8 @@ function CampaignList({ orgId, brandId, offerId }: { orgId: string; brandId: str
     return [...kept].sort((a, b) => value(b) - value(a));
   }, [base, search, type, sort, rowById, copyById]);
 
+  // The biggest served $ Spent in view scales each row's bar (display only).
+  const spentMax = Math.max(0, ...shown.map((c) => rowById.get(c.id)?.investedUsd ?? 0));
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   if (settled && !q.data && q.isError) return <p className="text-[13px] text-[var(--data-rose)]">Could not read this offer&apos;s campaigns.</p>;
   return (
@@ -332,6 +334,7 @@ function CampaignList({ orgId, brandId, offerId }: { orgId: string; brandId: str
               copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}
               copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ, c.createdAt)}
               caps={capsById.get(c.id) ?? null}
+              spentMax={spentMax}
             />
           ))}
         </div>
@@ -371,6 +374,7 @@ export function CampaignLine({
   copy,
   copySettled,
   caps,
+  spentMax = null,
 }: {
   orgId: string;
   campaign: SalesFunnelCampaign;
@@ -380,6 +384,7 @@ export function CampaignLine({
   copy: FunnelCampaignCopy | null;
   copySettled: boolean;
   caps: SalesFunnelCaps | null;
+  spentMax?: number | null;
 }) {
   const router = useRouter();
   const prefetch = useRoutePrefetch();
@@ -424,7 +429,7 @@ export function CampaignLine({
       }}
       onMouseEnter={() => prefetch(href)}
       onFocus={() => prefetch(href)}
-      className="k-row grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,1fr)_104px_120px_116px_120px_76px_170px]"
+      className="k-row grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 px-4 py-4 md:grid-cols-[minmax(0,1fr)_104px_120px_116px_120px_76px_170px]"
     >
       <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
         <span className="flex min-w-0 items-center gap-2">
@@ -464,6 +469,7 @@ export function CampaignLine({
       <div className="hidden text-right md:block">
         <div className="k-label">$ Spent</div>
         <div className="mt-0.5 text-[13px] tabular-nums">{!rowSettled ? wait : row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH}</div>
+        {rowSettled && row?.investedUsd != null && spentMax ? <ShareBar value={row.investedUsd} max={spentMax} className="ml-auto mt-1.5 w-full" /> : null}
       </div>
       <div className="flex justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="text-right">

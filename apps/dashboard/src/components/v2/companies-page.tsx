@@ -12,7 +12,7 @@ import { companyRungs, dealsBoardRungs } from "@/lib/deals-board";
 import { uniboxValueTag, uniboxValueTone, type LifecycleRung } from "@/lib/unibox-leads";
 import { TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { CompanyMark } from "@/components/v2/people-bits";
-import { EmptyNote, Initials, Shimmer, TopBar } from "@/components/v2/ui";
+import { EmptyNote, Initials, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
 import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 
 /**
@@ -139,6 +139,8 @@ export function CompaniesPage() {
   }, [hasMore, shown]);
   const rowKey = (o: (typeof orgs)[number], i: number) => o.orgId ?? o.orgDomain ?? `${o.orgName}-${i}`;
   const allSelected = orgs.length > 0 && orgs.every((o, i) => selected.has(rowKey(o, i)));
+  // The biggest served value in view scales each row's bar (display only).
+  const valueMax = Math.max(0, ...orgs.slice(0, shown).map((o) => o.expectedRevenueUsd));
   const toggle = (k: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -340,7 +342,13 @@ export function CompaniesPage() {
                         </span>
                       ) : <span className="k-fg4">{"—"}</span>}
                     </td>
-                    <td className="px-3 text-right font-medium tabular-nums">{formatUsdAdaptive(o.expectedRevenueUsd)}</td>
+                    <td className="px-3 text-right font-medium tabular-nums">
+                      {/* The served value beside a bar on the biggest company in view (display only). */}
+                      <span className="inline-flex items-center justify-end gap-2.5">
+                        <ShareBar value={o.expectedRevenueUsd} max={valueMax} className="hidden w-14 md:block" />
+                        {formatUsdAdaptive(o.expectedRevenueUsd)}
+                      </span>
+                    </td>
                     <td className="px-3">
                       <span className="flex gap-1">
                         {o.tags.filter((t) => !HIDDEN_TAGS.has(t)).slice(0, 2).map((t) => (
