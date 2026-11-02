@@ -237,7 +237,7 @@ function PlaceRow({ place, on, onSelect }: { place: EnginePlace; on: boolean; on
       <span className="w-16 shrink-0" title="Share of picks per candidate">
         {place.daily && place.daily.length > 1 ? (
           <span className={place.clearWinner ? "text-[var(--run)]" : "text-[var(--accent)]"}>
-            <SparkLine className="h-6" values={place.daily.map((d) => d.favouriteSharePct ?? 0)} />
+            <SparkLine className="h-6" values={place.daily.flatMap((d) => (d.favouriteSharePct == null ? [] : [d.favouriteSharePct]))} />
           </span>
         ) : (
           <SplitStrip place={place} />

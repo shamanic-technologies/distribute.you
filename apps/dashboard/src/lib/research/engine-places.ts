@@ -35,6 +35,8 @@ export const EnginePlacesSchema = z.object({
   computedAt: z.string().nullable(),
   clearWinnerPct: z.number(),
   summary: z.object({ places: z.number().int(), clearWinners: z.number().int(), campaigns: z.number().int() }),
+  /** What `places[].daily` counts (features-service v0.179.495): the picks that ran, fleet ledger, against today's favourite. */
+  dailyBasis: z.string().nullish(),
   places: z.array(
     z.object({
       key: z.string(),
@@ -49,8 +51,7 @@ export const EnginePlacesSchema = z.object({
       /** Asked of features-service 2026-11-02 (Factory's spark and « value lost per day »): drawn once served. */
       daily: z
         .array(z.object({ day: z.string(), decisions: z.number(), favouriteSharePct: z.number().nullable(), lostUsd: z.number().nullable() }))
-        .optional(),
-      dailyBasis: z.string().optional(),
+        .nullish(),
     }),
   ),
   engines: z.array(
