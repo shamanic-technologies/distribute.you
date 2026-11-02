@@ -3,14 +3,14 @@
 import { useSearchParams } from "next/navigation";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { CatalogueName } from "@/components/v2/catalogue-name";
-import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
+import { EmptyNote, Figure, SectionTitle, Shimmer, SparkLine, StatTile } from "@/components/v2/ui";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getPublicCatalogueSteps } from "@/lib/api";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { regretPct } from "@/lib/factory-shadow";
 import { useResearchEnginePlaces } from "@/lib/research/research-source";
-import { outcomesPer100, placesByCaller, replayFamiliesOf, selectedPlace, splitsByPlace, type EnginePlace, type EnginePlaces, type StrategySplit } from "@/lib/research/engine-places";
+import { outcomeTint, outcomesPer100, placesByCaller, replayFamiliesOf, selectedPlace, splitsByPlace, type EnginePlace, type EnginePlaces, type StrategySplit } from "@/lib/research/engine-places";
 
 /**
  * The Engine half of Research (FACTORY-RESEARCH-1102, owner 2026-11-02 « on adaptera la page Research qui est outdate
@@ -31,7 +31,63 @@ function pct(v: number | null): React.ReactNode {
 function OutcomeMark({ outcome, name, size = 28 }: { outcome: string; name: string; size?: number }) {
   const steps = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000 });
   const step = steps.data?.find((s) => s.key === outcome) ?? null;
-  return <CatalogueMark icon={step?.icon ?? null} name={step?.name ?? name} size={size} />;
+  return <CatalogueMark icon={step?.icon ?? null} color={outcomeTint(outcome)} name={step?.name ?? name} size={size} />;
+}
+
+/** A served share (0-100) as a bar on the data track, green when it is a clear winner's. */
+function ShareBar({ pct: v, strong, className = "" }: { pct: number | null; strong?: boolean; className?: string }) {
+  return (
+    <span className={`block h-1.5 overflow-hidden rounded-full bg-[var(--data-track)] ${className}`} aria-hidden="true">
+      <span className="block h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, v ?? 0))}%`, background: strong ? "var(--run)" : "var(--accent)" }} />
+    </span>
+  );
+}
+
+/** A place's candidates as one stacked bar of their served shares, the favourite first and full colour. */
+function SplitStrip({ place }: { place: EnginePlace }) {
+  return (
+    <span className="flex h-2 w-full overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
+      {place.candidates.map((c, i) => (
+        <span
+          key={c.candidateId}
+          className="h-full border-r border-[var(--bg)] last:border-0"
+          style={{ width: `${Math.max(0, c.sharePct ?? 0)}%`, background: i === 0 ? (place.clearWinner ? "var(--run)" : "var(--accent)") : "var(--accent)", opacity: i === 0 ? 1 : Math.max(0.2, 0.55 - i * 0.1) }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** A served day series as one line with its scale and days: the detail's big chart (the v2 SVG family, no library). */
+function DayLine({ days, values, format, color = "var(--accent)" }: { days: string[]; values: Array<number | null>; format: (v: number) => string; color?: string }) {
+  const w = 640;
+  const h = 180;
+  const pad = { l: 48, r: 8, t: 10, b: 22 };
+  const nums = values.filter((v): v is number => v != null);
+  const max = Math.max(...nums, 0) || 1;
+  const x = (i: number) => pad.l + (values.length < 2 ? 0 : (i / (values.length - 1)) * (w - pad.l - pad.r));
+  const y = (v: number) => pad.t + (1 - v / max) * (h - pad.t - pad.b);
+  const d = values.map((v, i) => (v == null ? "" : `${i === 0 || values[i - 1] == null ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`)).join(" ");
+  const ticks = [0, 0.5, 1].map((f) => max * f);
+  const labelAt = [0, Math.floor((days.length - 1) / 2), days.length - 1];
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-[200px] w-full" role="img">
+      {ticks.map((t) => (
+        <g key={t}>
+          <line x1={pad.l} x2={w - pad.r} y1={y(t)} y2={y(t)} stroke="var(--line-subtle)" />
+          <text x={pad.l - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill="var(--fg-3)">
+            {format(t)}
+          </text>
+        </g>
+      ))}
+      {[...new Set(labelAt)].map((i) => (
+        <text key={i} x={x(i)} y={h - 4} textAnchor={i === 0 ? "start" : i === days.length - 1 ? "end" : "middle"} fontSize="11" fill="var(--fg-3)">
+          {days[i]?.slice(5)}
+        </text>
+      ))}
+      <path d={d} fill="none" stroke={color} strokeWidth="1.75" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 /** The page's headline, Factory's: how many places have a clear winner, read off the served summary. */
@@ -93,16 +149,42 @@ function Engines({ data }: { data: EnginePlaces }) {
     <>
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Places" note="outcome x caller">
-          <Figure value={data.summary.places} />
+          <div className="flex items-end justify-between gap-2">
+            <Figure value={data.summary.places} />
+            <div className="flex flex-wrap justify-end gap-[3px]" aria-hidden="true">
+              {data.places.map((p) => (
+                <span key={p.key} className="h-4 w-[5px] rounded-full" style={{ background: p.clearWinner ? "var(--run)" : "var(--data-track)" }} />
+              ))}
+            </div>
+          </div>
         </StatTile>
         <StatTile label="Clear winners" note={`chance ${data.clearWinnerPct}% or more`}>
-          <Figure value={data.summary.clearWinners} />
+          <div className="flex items-end justify-between gap-3">
+            <Figure value={data.summary.clearWinners} sub={`of ${data.summary.places}`} />
+            <span className="mb-2 w-20">
+              <ShareBar pct={data.summary.places ? (data.summary.clearWinners / data.summary.places) * 100 : 0} strong />
+            </span>
+          </div>
         </StatTile>
         <StatTile label="Live campaigns" note="read on the last Engine pass">
-          <Figure value={data.summary.campaigns} />
+          <div className="flex items-end justify-between gap-2">
+            <Figure value={data.summary.campaigns} />
+            <div className="flex h-6 items-end gap-[3px]" aria-hidden="true">
+              {data.places.map((p) => (
+                <span key={p.key} className="w-[6px] rounded-[2px]" style={{ height: `${Math.max(3, (p.campaigns / Math.max(1, ...data.places.map((x) => x.campaigns))) * 24)}px`, background: outcomeTint(p.outcome) }} />
+              ))}
+            </div>
+          </div>
         </StatTile>
         <StatTile label="Engines" note="one per outcome">
-          <Figure value={data.engines.length} />
+          <div className="flex items-end justify-between gap-2">
+            <Figure value={data.engines.length} />
+            <div className="flex -space-x-1.5">
+              {data.engines.map((e) => (
+                <OutcomeMark key={e.outcome} outcome={e.outcome} name={e.outcomeName} size={22} />
+              ))}
+            </div>
+          </div>
         </StatTile>
       </div>
 
@@ -111,7 +193,7 @@ function Engines({ data }: { data: EnginePlaces }) {
           <EmptyNote>The Engine has not picked for any live campaign yet.</EmptyNote>
         </div>
       ) : (
-        <div className="mt-8 grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="mt-10 grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
           <section>
             <SectionTitle count={data.places.length}>Candidate places</SectionTitle>
             <div className="space-y-4">
@@ -127,7 +209,7 @@ function Engines({ data }: { data: EnginePlaces }) {
               ))}
             </div>
           </section>
-          <section id="research-place" className="min-w-0 scroll-mt-16">{selected && <PlaceDetail data={data} place={selected} />}</section>
+          <section id="research-place" className="min-w-0 scroll-mt-16 lg:sticky lg:top-4 lg:h-fit">{selected && <PlaceDetail data={data} place={selected} />}</section>
         </div>
       )}
 
@@ -149,9 +231,17 @@ function PlaceRow({ place, on, onSelect }: { place: EnginePlace; on: boolean; on
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-medium">{place.outcomeName}</span>
         <span className="k-fg3 block truncate text-[12px]">
-          {place.candidates.length} {place.candidates.length === 1 ? "workflow" : "workflows"} · {place.campaigns}{" "}
-          {place.campaigns === 1 ? "campaign" : "campaigns"}
+          {place.favourite ? place.favourite.workflowName : "no pick yet"} · {place.campaigns} {place.campaigns === 1 ? "campaign" : "campaigns"}
         </span>
+      </span>
+      <span className="w-16 shrink-0" title="Share of picks per candidate">
+        {place.daily && place.daily.length > 1 ? (
+          <span className={place.clearWinner ? "text-[var(--run)]" : "text-[var(--accent)]"}>
+            <SparkLine className="h-6" values={place.daily.map((d) => d.favouriteSharePct ?? 0)} />
+          </span>
+        ) : (
+          <SplitStrip place={place} />
+        )}
       </span>
       <span
         className={`w-12 shrink-0 text-right text-[13px] tabular-nums ${place.clearWinner ? "text-[var(--run)]" : "k-fg2"}`}
@@ -182,6 +272,33 @@ function PlaceDetail({ data, place }: { data: EnginePlaces; place: EnginePlace }
         </StatTile>
       </div>
 
+      <div className="k-card mt-3 px-4 pb-3 pt-3">
+        {place.daily && place.daily.length > 1 ? (
+          <>
+            <DayLine days={place.daily.map((d) => d.day)} values={place.daily.map((d) => d.lostUsd)} format={(v) => formatUsdAdaptive(v)} />
+            <p className="k-fg3 mt-1 text-[12px]">
+              <span className="mr-1.5 inline-block h-0.5 w-3 align-middle bg-[var(--accent)]" />
+              Value lost to weaker picks, per day: dollars spent each day on workflows other than today&apos;s favourite.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="k-label mb-3">Share of picks, today</p>
+            <div className="space-y-2.5">
+              {place.candidates.map((c, i) => (
+                <div key={c.candidateId} className="grid grid-cols-[minmax(0,220px)_minmax(0,1fr)_48px] items-center gap-3 text-[13px]">
+                  <span className="flex min-w-0">
+                    <CatalogueName kind="workflow" name={c.workflowName} servedKey={c.workflowDynastySlug} />
+                  </span>
+                  <ShareBar pct={c.sharePct} strong={i === 0 && place.clearWinner} className="h-2.5" />
+                  <span className={`text-right tabular-nums ${i === 0 && place.clearWinner ? "text-[var(--run)]" : ""}`}>{pct(c.sharePct)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
       {families.length > 0 && (
         <div className="k-card mt-3 overflow-hidden">
           <table className="w-full text-[13px]">
@@ -196,8 +313,18 @@ function PlaceDetail({ data, place }: { data: EnginePlaces; place: EnginePlace }
               {families.map((f) => (
                 <tr key={f.family} className="k-line-subtle border-b last:border-0">
                   <td className={TD}>{f.familyName ?? f.family}</td>
-                  <td className={TDN}>{regretPct(f.todayRegret) ?? <span className="k-fg4">{"—"}</span>}</td>
-                  <td className={TDN}>{regretPct(f.engineRegret) ?? <span className="k-fg4">{"—"}</span>}</td>
+                  <td className={TDN}>
+                    <span className="inline-flex items-center gap-2">
+                      {f.todayRegret != null && <ShareBar pct={f.todayRegret * 100} className="w-16" />}
+                      {regretPct(f.todayRegret) ?? <span className="k-fg4">{"—"}</span>}
+                    </span>
+                  </td>
+                  <td className={TDN}>
+                    <span className="inline-flex items-center gap-2">
+                      {f.engineRegret != null && <ShareBar pct={f.engineRegret * 100} className="w-16" />}
+                      {regretPct(f.engineRegret) ?? <span className="k-fg4">{"—"}</span>}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -216,7 +343,7 @@ function PlaceDetail({ data, place }: { data: EnginePlaces; place: EnginePlace }
               <thead>
                 <tr className="k-line-subtle border-b">
                   <th className={`${TH} text-left`}>Workflow</th>
-                  <th className={`${TH} text-right`}>Share of picks</th>
+                  <th className={`${TH} w-[150px] text-right`}>Share of picks</th>
                   <th className={`${TH} text-right`}>Belief: reaches {place.outcomeName}</th>
                   <th className={`${TH} text-right`}>Belief: $ per decision</th>
                   <th className={`${TH} text-right`}>Decisions</th>
@@ -235,7 +362,12 @@ function PlaceDetail({ data, place }: { data: EnginePlaces; place: EnginePlace }
                         </span>
                         <span className="k-fg3 mt-0.5 block truncate pl-6 text-[12px]">{c.channelName}</span>
                       </td>
-                      <td className={`${TDN} ${best && place.clearWinner ? "text-[var(--run)]" : ""}`}>{pct(c.sharePct)}</td>
+                      <td className={`${TDN} ${best && place.clearWinner ? "text-[var(--run)]" : ""}`}>
+                        <span className="inline-flex items-center gap-2">
+                          <ShareBar pct={c.sharePct} strong={best && place.clearWinner} className="w-14" />
+                          {pct(c.sharePct)}
+                        </span>
+                      </td>
                       <td className={TDN}>{pct(c.beliefRatePct)}</td>
                       <td className={TDN}>{c.costPerDecisionUsd == null ? <span className="k-fg4">{"—"}</span> : formatUsdAdaptive(c.costPerDecisionUsd)}</td>
                       <td className={TDN}>{Math.round(c.fleetDecisions).toLocaleString("en-US")}</td>
@@ -260,7 +392,7 @@ function PlaceDetail({ data, place }: { data: EnginePlaces; place: EnginePlace }
 function EngineCallers({ data }: { data: EnginePlaces }) {
   if (data.engines.length === 0) return null;
   return (
-    <section className="mt-10">
+    <section className="mt-14">
       <SectionTitle count={data.engines.length} right={<span>The pick lives on the caller, never on the Engine</span>}>
         One Engine, several callers
       </SectionTitle>
@@ -330,7 +462,7 @@ function ProposedStrategies({ data }: { data: EnginePlaces }) {
   const proposed = data.strategySplits.filter((s) => s.proposed).length;
   const groups = splitsByPlace(data.strategySplits);
   return (
-    <section className="mt-10">
+    <section className="mt-14">
       <SectionTitle count={proposed} right={<span>A split on the workflows&apos; tactics, proposed only on a conclusion</span>}>
         Proposed strategies
       </SectionTitle>
