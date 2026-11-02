@@ -309,10 +309,20 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     expect(src("src/lib/api.ts")).toContain("/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?");
   });
 
-  it("Status is the on/off control: green with the budget when on (Up to for Reactive), Off otherwise; not funded keeps its handling", () => {
+  it("Status is the on/off control: green with the budget when on (Up to for Reactive), Off otherwise; not funded keeps its handling", async () => {
     const f = funnel();
-    expect(f).toContain('`${reactive ? "Up to " : ""}${maxBudgetLabel(b)}`');
+    expect(f).toContain('funnelOnLabel(reactive ? "reactive" : funnelTypeOf(caps), caps)');
     expect(f).toContain("<FunnelCampaignStatus campaign={campaign} onLabel={on ? onLabel : null} />");
+    // The campaign page reads the same ONE button (owner 2026-11-02): no budget button beside it.
+    const page = src("src/components/v2/funnel-campaigns.tsx");
+    expect(page).toContain("<FunnelCampaignStatus campaign={campaign} onLabel={capsSettled ? funnelOnLabel(");
+    expect(page).not.toContain("FunnelLimitsButton");
+    const { funnelOnLabel } = await import("../src/lib/sales-funnel-campaigns");
+    const budget = { amountCents: "8000", consumedCents: "8000", remainingCents: "0", period: "monthly", periodStart: "2026-11-01", periodEnd: null, reached: true, consumedUnavailableReason: null, consumedUnavailableDetail: null };
+    const caps = { maxBudget: budget, maxVolume: null } as unknown as Parameters<typeof funnelOnLabel>[1];
+    expect(funnelOnLabel("proactive", caps)).toBe("$80/month");
+    expect(funnelOnLabel("reactive", caps)).toBe("Up to $80/month");
+    expect(funnelOnLabel("proactive", null)).toBe("On");
     expect(f).toContain("Not funded yet · Set a budget");
   });
 
@@ -367,7 +377,7 @@ describe("Campaigns order + one modal (owner 2026-10-11)", () => {
 
   it("the Status button opens the campaign's one modal (switch + both limits, one Save); no on/off menu left", () => {
     const f = src("src/components/v2/funnel-campaigns.tsx");
-    const status = f.slice(f.indexOf("export function FunnelCampaignStatus("), f.indexOf("export function FunnelLimitsButton("));
+    const status = f.slice(f.indexOf("export function FunnelCampaignStatus("), f.indexOf("const PERIOD_SHORT"));
     expect(status).toContain('aria-haspopup="dialog"');
     expect(status).toContain("<FunnelCampaignModal campaign={campaign}");
     expect(status).not.toContain('role="menu"');

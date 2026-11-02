@@ -278,6 +278,17 @@ export function capWords(type: FunnelType | null): CapWords {
 }
 
 /** A stated budget in the type's words: "Max $50/week" (Proactive), "Up to $50/week" (Reactive). */
+/**
+ * The ONE status button's word when the campaign is ON (Campaigns table and the campaign page, owner 2026-11-02:
+ * one button, never a budget button beside an On button): its budget ("$80/month", Reactive "Up to $80/month"),
+ * else its volume, else "On".
+ */
+export function funnelOnLabel(type: FunnelType | null, caps: SalesFunnelCaps | null): string {
+  const b = caps?.maxBudget ?? null;
+  const limit = fundingLimit(caps);
+  return b ? `${type === "reactive" ? "Up to " : ""}${maxBudgetLabel(b)}` : limit?.kind === "volume" ? volumeFundingLabel(type, limit.volume) : "On";
+}
+
 export function statedBudget(type: FunnelType | null, b: Pick<MaxBudget, "amountCents" | "period">): string {
   return `${capWords(type).prefix}${maxBudgetLabel(b)}`;
 }
