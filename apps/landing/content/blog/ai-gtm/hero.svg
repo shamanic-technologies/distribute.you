@@ -31,7 +31,7 @@
     <rect x="1000" y="370" width="380" height="160" rx="24" fill="#ffffff" stroke="#bfdbfe" stroke-width="2"/>
   </g>
   <text x="1040" y="430" font-family="Inter, Helvetica, Arial, sans-serif" font-size="30" fill="#64748b">Your best path</text>
-  <text x="1040" y="492" font-family="Inter, Helvetica, Arial, sans-serif" font-size="46" font-weight="700" fill="#0f172a">2.8x ROI</text>
+  <text x="1040" y="492" font-family="Inter, Helvetica, Arial, sans-serif" font-size="46" font-weight="700" fill="#0f172a">2.1x ROI</text>
   <g filter="url(#sh)">
     <rect x="220" y="110" width="430" height="96" rx="48" fill="#0f172a"/>
   </g>
