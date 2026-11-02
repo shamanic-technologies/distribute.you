@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MONITORING_PAGES, parseMonitoringPath } from "../src/lib/monitoring/monitoring";
-import { BoxHealthSchema, containerLabel, memLabel } from "../src/lib/monitoring/box-health";
+import { BoxHealthSchema, containerLabel, gbLabel, memLabel } from "../src/lib/monitoring/box-health";
 
 /**
  * BOX-OVERLOAD-1026-MONITORING: the production box posts a sample every 5 minutes to features-service (#2091), read
@@ -42,6 +42,25 @@ describe("Monitoring > Box: features-service's read parses as served", () => {
     expect(d.latest).toBeNull();
   });
 
+  it("disk fields (BOX-DISK-1101) are additive: absent parses, served parses, a null day stays null", () => {
+    const f = fixture();
+    const without = BoxHealthSchema.parse(f);
+    expect(without.thresholds.diskAvailablePctMin).toBeUndefined();
+    expect(without.latest?.diskAvailablePct).toBeUndefined();
+    const d = BoxHealthSchema.parse({
+      ...f,
+      thresholds: { ...f.thresholds, diskAvailablePctMin: 10 },
+      latest: { ...f.latest, diskTotalMb: 153600, diskAvailableMb: 4608, diskAvailablePct: 3 },
+      daily: f.daily.map((p: object, i: number) => ({ ...p, diskAvailableMinMb: i === 0 ? null : 4608, diskAvailablePctMin: i === 0 ? null : 3 })),
+      recent: f.recent.map((p: object) => ({ ...p, diskAvailablePct: 3 })),
+    });
+    expect(d.thresholds.diskAvailablePctMin).toBe(10);
+    expect(d.latest?.diskAvailablePct).toBe(3);
+    expect(d.daily[0].diskAvailablePctMin).toBeNull();
+    expect(d.daily[1].diskAvailablePctMin).toBe(3);
+    expect(gbLabel(4608)).toBe("4.5 GB");
+  });
+
   it("names a container and a memory figure the way people read them", () => {
     expect(containerLabel("distribute-postgres-1")).toBe("postgres");
     expect(memLabel(1552)).toBe("1.5 GB");
@@ -76,6 +95,10 @@ describe("Monitoring > Box: page and hub", () => {
     expect(src).toContain('data.status === "red"');
     expect(src).toContain("t.memAvailableMinMb");
     expect(src).toContain("t.swapUsedPctMax");
+    // disk: drawn against the served limit, missing samples left out, no reading = a plain note (never red)
+    expect(src).toContain("<DiskChart data={data} />");
+    expect(src).toContain("data.thresholds.diskAvailablePctMin");
+    expect(src).toContain("No disk sample yet.");
     expect(src).not.toMatch(/\.sort\(/);
     expect(src).not.toMatch(/\.reduce\(/);
   });
