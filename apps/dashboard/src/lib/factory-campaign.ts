@@ -117,8 +117,13 @@ export function milestoneReasonWords(reason: string | null): string | null {
     case "plan_not_computed_yet":
       return "Your campaign's plan is computed every 3 hours. It shows here after the next pass.";
     case "no_spend_yet":
-      return "Nothing spent yet";
+      return "Nobody yet";
+    case "spend_recorded_under_another_pipe":
+      return "Its cost is counted on the next step";
+    case null:
+      return null;
     default:
+      console.error("[factory-campaign] a served reason has no words yet", { reason });
       return null;
   }
 }

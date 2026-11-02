@@ -130,3 +130,11 @@ describe("a part's own page is staff only (FACTORY-USER-DASHBOARD-1102)", () => 
     expect(fn.indexOf("if (partHref) {")).toBeLessThan(fn.indexOf("if (settled && !campaign && !funnelListSettled)"));
   });
 });
+
+describe("a journey with no script share says why, in words", () => {
+  it("names both served reasons", async () => {
+    const { milestoneReasonWords } = await import("../src/lib/factory-campaign");
+    expect(milestoneReasonWords("no_spend_yet")).toBe("Nobody yet");
+    expect(milestoneReasonWords("spend_recorded_under_another_pipe")).toBe("Its cost is counted on the next step");
+  });
+});
