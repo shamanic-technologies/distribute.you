@@ -72,7 +72,9 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
     expect(card).toContain(">No monthly spend limit.</span>");
     expect(card).toContain("const spentRaw = data.spent_this_period_cents;");
     expect(card).toContain("<Meter value={spent} max={limitCents} />");
-    expect(card).toContain("spent (billed + provisioned) this month");
+    // The month is NAMED: "this month" read as a third figure beside the Balance card's
+    // since-last-charge one (2026-11-02).
+    expect(card).toContain("spent in {periodMonth(data.period_start)}, provisioned included");
     expect(card).not.toContain("charged_this_period_cents");
     expect(card).not.toContain("charged this month");
     expect(card).not.toContain("Never charge me");

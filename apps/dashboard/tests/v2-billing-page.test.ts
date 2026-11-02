@@ -167,9 +167,19 @@ describe("Billing Usage shows the same moment as Billed (BILLING-PAGE-COHERENT-1
   const usage = page.slice(page.indexOf("function UsageSection("));
 
   it("hands Usage the top's Billed and Set aside", () => {
-    expect(page).toContain(
-      "<UsageSection billedCents={c.confirmedChargesCents} setAsideCents={c.provisionedChargesCents} />",
-    );
+    expect(page).toContain("billedCents={c.confirmedChargesCents}");
+    expect(page).toContain("setAsideCents={c.provisionedChargesCents}");
+  });
+
+  it("a postpaid Total states what was paid and what is due, never 'matches Billed' (2026-11-02)", () => {
+    // $66.53 since joining beside a $26.40 balance due read as two prices for one bill.
+    expect(page).toContain('dueCents={mode === "postpaid" ? owed.owedCents : null}');
+    expect(usage).toContain("already paid, {formatCentsAsUsd(dueCents, 2)} balance due.");
+  });
+
+  it("Free credit is not drawn while there is none (owner 2026-11-02)", () => {
+    expect(page).toContain("&& hasFreeCredit && (");
+    expect(page).not.toContain("No free credit yet.");
   });
 
   it("polls, and re-reads fast while its totals differ from the top", () => {

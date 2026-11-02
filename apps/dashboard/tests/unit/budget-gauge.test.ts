@@ -23,6 +23,14 @@ describe("budgetGaugeView", () => {
     expect(v).toMatchObject({ label: "Spent since last charge", figure: "$38.00", meter: { value: 3800, max: 10000 }, line: "Card charged at $100.", tone: "ok" });
   });
 
+  it("postpaid: rounds the amount owed UP, like the charge and the Billing page (2026-11-02)", () => {
+    const v = budgetGaugeView(
+      { ...base, payment_mode: "postpaid", balance_cents: "-11959", has_payment_method: true, credit_line_cents: 5000, amount_owed_cents: "2639.5000000000" },
+      undefined,
+    );
+    expect(v).toMatchObject({ figure: "$26.40" });
+  });
+
   it("postpaid: reservations for running work are never counted as spent (Beyond Logic 2026-11-01)", () => {
     const v = budgetGaugeView(
       { ...base, payment_mode: "postpaid", balance_cents: "-11974", has_payment_method: true, credit_line_cents: 5000, amount_owed_cents: "2677.0000000000" },
@@ -32,7 +40,7 @@ describe("budgetGaugeView", () => {
       label: "Spent since last charge",
       figure: "$26.77",
       meter: { value: 2677, max: 5000 },
-      line: "Card charged at $50 · $93 reserved for running work",
+      line: "Card charged at $50 · $93 provisioned",
       tone: "ok",
     });
   });
