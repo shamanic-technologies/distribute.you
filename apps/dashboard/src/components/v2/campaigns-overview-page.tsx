@@ -14,6 +14,7 @@ import {
   funnelRoiShown,
   funnelRowSettled,
   roiMissingReason,
+  unpricedWords,
   funnelSortKey,
   funnelTypeOf,
   isOngoingFunnelCampaign,
@@ -26,6 +27,10 @@ import {
   type SalesFunnelCaps,
 } from "@/lib/sales-funnel-campaigns";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { expectedReasonWords } from "@/lib/expected-return";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { stepLabel } from "@/lib/legs";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview, withLayoutNext } from "@/lib/v2/campaign-layout-preview";
 import { getOfferSalesPaths } from "@/lib/api";
@@ -76,16 +81,20 @@ export function CampaignsOverviewPage() {
     <>
       <TopBar crumbs={[{ label: "Campaigns" }, { label: "Overview" }]} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        <header className="mb-6">
-          <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em]">Campaigns</h1>
-          <div className="mt-2 h-6">
-            {listSettled && q.data && (
-              <span className="k-chip inline-flex items-center gap-1.5 tabular-nums">
-                <span className={`h-1.5 w-1.5 rounded-full ${running ? "k-dot-pulse bg-[var(--run)] text-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
-                {running} running
-              </span>
-            )}
+        {/* The GTM Factory Campaigns header (FACTORY-USER-DASHBOARD-1102): a live sentence, then what a campaign is. */}
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em] tabular-nums">
+              {listSettled && q.data ? `${running} of ${q.data.length} ${q.data.length === 1 ? "campaign" : "campaigns"} running` : "Campaigns"}
+            </h1>
+            <p className="k-fg2 mt-1.5 max-w-[720px] text-[14px]">A campaign orders results: a Target, a budget, where it starts and a brief. Each day it pulls on its Target, or pushes each new one up to it.</p>
           </div>
+          {listSettled && q.data && (
+            <span className="k-chip inline-flex items-center gap-1.5 tabular-nums">
+              <span className={`h-1.5 w-1.5 rounded-full ${running ? "k-dot-pulse bg-[var(--run)] text-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
+              {running} running now
+            </span>
+          )}
         </header>
         {!settled ? (
           <Shimmer className="h-10 w-full" />
@@ -353,7 +362,7 @@ function Picker<T extends string>({ label, value, options, onChange }: { label: 
 
 const DASH = <span className="k-fg4">—</span>;
 
-function CampaignLine({
+export function CampaignLine({
   orgId,
   campaign,
   row,
@@ -402,6 +411,9 @@ function CampaignLine({
     if (copySettled && copy && !copy.path) console.error("[funnel-campaigns] path not served", { id: copy.id, reason: copy.copyUnavailableReason ?? null });
   }, [copy, copySettled]);
   const wait = <Shimmer className="ml-auto h-4 w-12 rounded" />;
+  const catalogue = useLegCatalogue();
+  const catalogueReady = catalogue.steps.size > 0;
+  const targetLabel = stepLabel(catalogue, campaign.target);
   return (
     <div
       role="link"
@@ -412,7 +424,7 @@ function CampaignLine({
       }}
       onMouseEnter={() => prefetch(href)}
       onFocus={() => prefetch(href)}
-      className="k-row grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,1fr)_150px_104px_96px_190px]"
+      className="k-row grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 px-4 py-3 md:grid-cols-[minmax(0,1fr)_104px_120px_116px_120px_76px_170px]"
     >
       <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
         <span className="flex min-w-0 items-center gap-2">
@@ -429,15 +441,28 @@ function CampaignLine({
           <Shimmer className="h-3 w-48 rounded" />
         )}
       </MarkLines>
-      <div className="hidden md:block">{copy ? <TypeTag row={copy} /> : copySettled ? DASH : <Shimmer className="h-4 w-14 rounded" />}</div>
-      <div className="hidden text-right md:block">
-        <div className="k-label">
-          <RoiLabel />
-        </div>
-        <div className="mt-0.5 text-[13px] font-medium tabular-nums">{!rowSettled ? wait : row ? <FunnelRoi row={row} /> : DASH}</div>
+      <div className="hidden min-w-0 md:block">
+        <div className="k-label">Starts from</div>
+        <div className="mt-0.5">{copy ? <TypeTag row={copy} /> : copySettled ? DASH : <Shimmer className="h-4 w-14 rounded" />}</div>
+      </div>
+      <div className="hidden min-w-0 md:block">
+        <div className="k-label">Target</div>
+        <div className="mt-0.5 truncate text-[13px]">{targetLabel ?? (campaign.target && !catalogueReady ? <Shimmer className="h-4 w-16 rounded" /> : DASH)}</div>
       </div>
       <div className="hidden text-right md:block">
-        <div className="k-label">$ Invested</div>
+        <div className="k-label">
+          <RoiLabel>Expected ROI</RoiLabel>
+        </div>
+        <div className="mt-0.5 text-[13px] tabular-nums">{!rowSettled ? wait : row ? <ExpectedRoi row={row} /> : DASH}</div>
+      </div>
+      <div className="hidden text-right md:block">
+        <div className="k-label">
+          <RoiLabel>Measured ROI</RoiLabel>
+        </div>
+        <div className="mt-0.5 text-[13px] font-medium tabular-nums">{!rowSettled ? wait : row ? <MeasuredRoi row={row} /> : DASH}</div>
+      </div>
+      <div className="hidden text-right md:block">
+        <div className="k-label">$ Spent</div>
         <div className="mt-0.5 text-[13px] tabular-nums">{!rowSettled ? wait : row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH}</div>
       </div>
       <div className="flex justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
@@ -453,6 +478,21 @@ function CampaignLine({
       </div>
     </div>
   );
+}
+
+/** The campaign's EXPECTED return, as features-service serves it (same formula on today's estimates), else its reason. */
+function ExpectedRoi({ row }: { row: FunnelCampaignRow }) {
+  const e = row.expectedReturn ?? null;
+  if (e?.roiMultiple != null) return <span className={roiIsGood(e.roiMultiple) ? "text-[var(--run)]" : ""}>{formatRoi(e.roiMultiple)}</span>;
+  return <span className="k-fg3 text-[12px]">{expectedReasonWords(e?.unavailableReason ?? null)}</span>;
+}
+
+/** The return MEASURED on the campaign's own results, under features-service's maturity verdict: "Not mature yet" until then. */
+function MeasuredRoi({ row }: { row: FunnelCampaignRow }) {
+  const shown = funnelRoiShown(row);
+  if (shown.learning) return <span className="k-fg3 text-[12px] font-normal">Not mature yet</span>;
+  if (shown.value == null) return <span className="k-fg3 text-[12px] font-normal">{unpricedWords(shown.unpriced)}</span>;
+  return <span className={roiIsGood(shown.value) ? "text-[var(--run)]" : ""}>{formatRoi(shown.value)}</span>;
 }
 
 /**
