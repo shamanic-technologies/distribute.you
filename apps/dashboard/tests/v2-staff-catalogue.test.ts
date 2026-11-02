@@ -297,14 +297,13 @@ describe("staff Triggers section (owner 2026-10-11): what starts a reactive pipe
     expect(pages).not.toContain("campaignsOnPipes(");
     expect(read("src/components/v2/staff-catalogue-data.ts")).toContain("trigger: f?.trigger ?? null");
   });
-  it("its pages sit behind <StaffOnly>, and the sidebar lists it in staff mode with each ongoing trigger", () => {
+  it("its pages sit behind <StaffOnly>; the sidebar no longer lists it (owner 2026-11-02)", () => {
     const base = "src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/catalogue/[object]/";
     expect(read(`${base}page.tsx`)).toMatch(/<StaffOnly>\s*<TriggersOverviewPage \/>/);
     expect(read(`${base}[id]/page.tsx`)).toMatch(/<StaffOnly>\s*<TriggerPage /);
     const shell = read("src/components/v2/v2-shell.tsx");
     const sections = shell.slice(shell.indexOf("function StaffObjectSections("));
-    expect(sections).toContain("<Group title={TRIGGER_LABELS.title}>");
-    expect(sections).toContain("ongoing.triggers.map((t)");
+    expect(sections).not.toContain("<Group title={TRIGGER_LABELS.title}>");
   });
   it("reads the gateway's staff route, and a pipe's Trigger fact links its page", () => {
     expect(read("src/lib/api.ts")).toContain('STAFF_CATALOGUE_PATHS.list("triggers")');

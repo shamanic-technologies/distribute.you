@@ -190,7 +190,7 @@ describe("wiring", () => {
     const shell = read("components/v2/v2-shell.tsx");
     const at = shell.indexOf('href={v2Href(orgId, brandId, "unibox")}');
     expect(at).toBeGreaterThan(shell.indexOf('href={v2Href(orgId, brandId, "deals")}'));
-    expect(at).toBeLessThan(shell.indexOf('href={v2Href(orgId, brandId, "workflows")}'));
+    expect(at).toBeLessThan(shell.indexOf("function StaffObjectSections("));
     expect(shell.slice(at - 80, at)).not.toContain("staffMode &&");
   });
   it("is no longer a tab of Integrations; its old URL redirects to the Unibox", () => {

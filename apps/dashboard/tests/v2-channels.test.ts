@@ -101,9 +101,11 @@ describe("sidebar", () => {
     expect(shell).not.toContain('<Group title="Staff">');
     for (const l of ["Workflows", "Sales path", "Channels", "Sourcing", "Posts"]) expect(gaNav).not.toContain(`label="${l}"`);
     const sections = shell.slice(at("function StaffObjectSections("));
-    expect(sections).toContain("CATALOGUE_OBJECTS.map((object)");
+    expect(sections).toContain("NAV_CATALOGUE_OBJECTS.map((object)");
     expect(sections).toContain("<Group key={object} title={CATALOGUE_OBJECT_LABELS[object].title}>");
-    expect(sections).toContain('<Group title="Workflows">');
+    // Owner 2026-11-02: only Steps (and staff Campaigns) stay; Engines run every campaign.
+    expect(shell).toContain('const NAV_CATALOGUE_OBJECTS = CATALOGUE_OBJECTS.filter((o) => o === "steps");');
+    for (const gone of ['<Group title="Workflows">', "<Group title={TRIGGER_LABELS.title}>"]) expect(sections).not.toContain(gone);
     expect(sections.indexOf('label="Overview"')).toBeLessThan(sections.indexOf("(ongoing[object]"));
     expect(sections).not.toContain("indent");
   });

@@ -15,13 +15,9 @@ describe("dashboard v2 Workflows: staff mode only, no badge", () => {
     expect(page).toContain("!t.staff || staffMode");
   });
 
-  it("the sidebar entry is staff mode only and untagged", () => {
+  it("left the sidebar (owner 2026-11-02: Engines run every campaign); the shell carries no beta tag", () => {
     const shell = read("src/components/v2/v2-shell.tsx");
-    // The Workflows section of the staff object sections (owner 2026-10-10), mounted in staff mode only.
-    const entry = shell.indexOf('<Group title="Workflows">');
-    expect(entry).toBeGreaterThan(shell.indexOf("function StaffObjectSections("));
-    expect(shell).toContain("{staffMode && <StaffObjectSections");
-    expect(shell.slice(entry, entry + 400)).toContain('href={v2Href(orgId, brandId, "workflows")}');
+    expect(shell).not.toContain('<Group title="Workflows">');
     expect(shell).not.toContain("isBeta");
     expect(shell).not.toContain("MaturityBadge");
   });
