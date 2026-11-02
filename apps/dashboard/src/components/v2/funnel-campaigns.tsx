@@ -46,7 +46,6 @@ import {
   type FunnelCampaignRow,
   type FunnelCampaignCopy,
   type FunnelPathItem,
-  missingChannelGaps,
   orderPipesByFunnel,
   funnelRoiShown,
   funnelRowSettled,
@@ -57,14 +56,12 @@ import { paymentHoldKind } from "@/lib/payment-declined";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { useLegCatalogue, usePublicPipe } from "@/lib/use-leg-catalogue";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { v2CampaignHref, v2Href, type V2CampaignTab } from "@/lib/v2/routes";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { useCampaigns } from "@/components/v2/use-campaigns";
-import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { CampaignHoldNote, useCampaignHolds } from "@/components/v2/campaign-hold";
 import { holdOutlivesLimitChange } from "@/lib/campaign-hold";
@@ -78,9 +75,7 @@ import { roiToShow } from "@/lib/expected-return";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview } from "@/lib/v2/campaign-layout-preview";
 import { FunnelCampaignPageNext } from "@/components/v2/campaign-page-next";
-import { FactoryPlanSection } from "@/components/v2/factory-plan-card";
 import { CampaignAimSection } from "@/components/v2/campaign-aim";
-import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 
 /**
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
@@ -447,71 +442,30 @@ function ContactedCell({ volume, type }: { volume: MaxVolume; type: ReturnType<t
 
 // ─── Campaigns > Overview: the offer's campaigns (owner spec 2026-10-11) ─────────────────
 
-/**
- * The campaign's path on one line, as features-service serves it: every step label with the channel
- * (or channels: several sources on Start → Lead found) between each two of them, ours or the client's
- * own team ("Start → [Apollo] [LinkedIn] → Lead found → [Sales Cold Email Outreach] → Positive reply →
- * [Your team: closing calls] → Paid client"). The chip is the staff pipe rows' own (`ChannelChip`);
- * nothing is parsed or skipped.
- */
+/** The campaign's path on one line: the outcomes it makes, from Start (or its trigger) to its Target. */
 export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
-  const channels = useAcquisitionChannels();
-  const { staffMode } = useStaffMode();
-  // Every two steps have a channel between them, the client's own team included (owner
-  // 2026-10-11). A pair served without one is a producer gap: logged and drawn as an error.
-  const gaps = missingChannelGaps(items);
-  useEffect(() => {
-    if (gaps.length > 0) console.error("[funnel-campaigns] a leg of the path is served with no channel", { gaps, items });
-  }, [gaps.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The outcomes the campaign makes, in order (owner 2026-11-02): each outcome has its Engine, whose scripts
+  // compete (the Plan on the campaign page). No channel or pipe between them: no surface names a pipe anymore.
+  const outcomes = items.filter((it) => it.kind !== "channel");
   return (
     <HoverScroll>
     <span className="k-fg2 flex items-center gap-1 whitespace-nowrap text-[11px]">
-      {items.map((it, i) => (
+      {outcomes.map((it, i) => (
         <span key={i} className="contents">
-          {/* Several channels on one leg (sources on Start → Lead found) sit side by side, one group
-              between its two steps: an arrow only where a step meets a channel. */}
-          {i > 0 && !(it.kind === "channel" && items[i - 1].kind === "channel") && <span className="k-fg3">→</span>}
-          {i > 0 && it.kind === "step" && items[i - 1].kind === "step" && (
-            <>
-              <span className="k-chip shrink-0 text-[var(--data-rose)]" title="This step has no channel">
-                Unknown
-              </span>
-              <span className="k-fg3">→</span>
-            </>
-          )}
-          {it.kind === "step" ? (
-            <span className="shrink-0">{it.label}</span>
-          ) : it.kind === "trigger" ? (
+          {i > 0 && <span className="k-fg3">→</span>}
+          {it.kind === "trigger" ? (
             // A reactive path starts with its trigger: one lightning for every trigger (owner 2026-10-11).
             <span className="k-chip inline-flex shrink-0 items-center gap-1">
               <LightningIcon size={12} weight="duotone" aria-hidden className="shrink-0" />
               {it.name}
             </span>
-          ) : it.pipeId ? (
-            // The served mark; staff read the code name, a client the channel's served name (owner rule: code names are staff only).
-            <PipeChip pipeId={it.pipeId} servedName={it.name} codeName={staffMode} />
           ) : (
-            <ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />
+            <span className="shrink-0">{it.label}</span>
           )}
         </span>
       ))}
     </span>
     </HoverScroll>
-  );
-}
-
-/**
- * A step of a path line: the served mark of what performs it (public catalogue), then its name. A client reads the
- * channel's served name ("Threads posts"); staff mode reads the code name (owner rule: code names are staff only),
- * the channel name on hover.
- */
-function PipeChip({ pipeId, servedName, codeName }: { pipeId: string; servedName: string; codeName: boolean }) {
-  const { pipe } = usePublicPipe(codeName ? pipeId : null);
-  return (
-    <span className="k-chip shrink-0" style={{ fontSize: 11, height: 18, gap: 4, padding: "0 5px" }} title={codeName ? servedName : undefined}>
-      <ServedPipeMark pipeId={pipeId} size={12} />
-      {codeName ? (pipe?.name ?? servedName) : servedName}
-    </span>
   );
 }
 
@@ -766,12 +720,6 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
               billingHref={v2Href(orgId, campaign.brandId, "billing")}
             />
           ))}
-
-        {/* GTM Factory step 1 (FACTORY-P1-DASH): staff mode only, renders nothing for a customer. */}
-        <FactoryPlanSection
-          campaign={campaign}
-          type={copyOf ? <TypeTag row={copyOf} /> : copyQ.isFetchedAfterMount ? DASH : <Shimmer className="h-5 w-24" />}
-        />
 
         <section>
           <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>

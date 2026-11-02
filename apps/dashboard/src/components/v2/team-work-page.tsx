@@ -7,25 +7,24 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recha
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getPipeQueue, getPublicCatalogueSteps, type PublicCatalogueStep } from "@/lib/api";
-import { personName, teamPipes, type PipeQueue, type PipeQueuePerson, type TeamPipe } from "@/lib/v2/team-work";
+import { personName, teamOutcomes, type PipeQueue, type PipeQueuePerson, type TeamOutcome } from "@/lib/v2/team-work";
 import { formatCount } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useCampaigns } from "@/components/v2/use-campaigns";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
-import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { LeadStatus } from "@/components/v2/today-roi-panel";
 import { EmptyNote, Initials, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 
 /**
- * Done by your team (staff, FACTORY-P4-PAGES): the work the client's OWN team performs. One card
- * per pipe a customer-operated channel runs for the offer (meetings to attend, calls to close...):
- * the people waiting on the team there, oldest wait first, and what the team moved per week.
- * lead-service serves who waits, since when, and the weekly counts; the catalogue serves the pipe,
- * its leg and who operates it. A person opens the SAME "Update this lead" control as Today
+ * Done by your team (FACTORY-P4-PAGES): the work the client's OWN team performs. One card per
+ * outcome the team makes for the offer (meetings attended, clients closed...): the people waiting
+ * on the team before it, oldest wait first, and what the team moved per week. lead-service serves
+ * who waits, since when, and the weekly counts; the catalogue serves the outcomes and who performs
+ * the work. No outcome is named (owner 2026-11-02). A person opens the SAME "Update this lead" control as Today
  * (Happened / Mark as won / Won't happen), never a new one.
  */
 
@@ -37,12 +36,10 @@ export function V2TeamWork() {
   const channels = useAcquisitionChannels();
   const steps = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000 });
   const { offerId } = useSelectedOffer();
-  const pipes = useMemo(
+  const outcomes = useMemo(
     () =>
-      teamPipes(
+      teamOutcomes(
         allCampaigns.map((c) => ({
-          pipeId: c.pipe.id,
-          pipeName: c.pipe.name,
           running: c.running,
           operatedBy: acquisitionChannelForFeatureSlug(c.row.campaign.featureSlug, channels)?.operatedBy ?? null,
           fromKey: c.leg?.fromKey ?? null,
@@ -53,54 +50,54 @@ export function V2TeamWork() {
       ),
     [allCampaigns, channels],
   );
-  return <TeamWorkBody brandId={brandId} pipes={pipes} settled={settled} offerPicked={offerId !== null} steps={steps.data} />;
+  return <TeamWorkBody brandId={brandId} outcomes={outcomes} settled={settled} offerPicked={offerId !== null} steps={steps.data} />;
 }
 
-/** The page under its hooks: the pipes the team works, each with its people and weekly moves. */
+/** The page under its hooks: the outcomes the team makes, each with its people and weekly moves. */
 export function TeamWorkBody({
   brandId,
-  pipes,
+  outcomes,
   settled,
   offerPicked,
   steps,
 }: {
   brandId: string;
-  pipes: TeamPipe[];
+  outcomes: TeamOutcome[];
   settled: boolean;
   offerPicked: boolean;
   steps: PublicCatalogueStep[] | undefined;
 }) {
-  const [open, setOpen] = useState<{ person: PipeQueuePerson; pipe: TeamPipe } | null>(null);
+  const [open, setOpen] = useState<{ person: PipeQueuePerson; outcome: TeamOutcome } | null>(null);
   return (
     <>
       <TopBar crumbs={[{ label: "Done by your team" }]} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         {settled ? (
           <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-            {pipes.length === 0 ? "Your team works no pipe yet" : `Your team works ${pipes.length} ${pipes.length === 1 ? "pipe" : "pipes"}`}
+            {outcomes.length === 0 ? "Your team makes no outcome yet" : `Your team makes ${outcomes.length} ${outcomes.length === 1 ? "outcome" : "outcomes"}`}
           </h1>
         ) : (
           <Shimmer className="h-[34px] w-72" />
         )}
-        <p className="k-fg2 mt-1 text-[14px]">Who waits on your team at each step, and how many your team moved each week.</p>
+        <p className="k-fg2 mt-1 text-[14px]">Who waits on your team before each outcome, and how many your team moved each week.</p>
 
         {!settled ? (
           <div className="mt-6 space-y-3">
             <Shimmer className="h-[320px] w-full rounded-[12px]" />
           </div>
-        ) : pipes.length === 0 ? (
+        ) : outcomes.length === 0 ? (
           <div className="k-card mt-6">
             <EmptyNote>{offerPicked ? "No running campaign of this offer is worked by the client's own team." : "Pick an offer to see its team's work."}</EmptyNote>
           </div>
         ) : (
           <div className="mt-6 space-y-6">
-            {pipes.map((p) => (
-              <PipeCard key={p.pipeId} brandId={brandId} pipe={p} steps={steps} onOpen={(person) => setOpen({ person, pipe: p })} />
+            {outcomes.map((p) => (
+              <OutcomeCard key={`${p.fromKey}>${p.toKey}`} brandId={brandId} outcome={p} steps={steps} onOpen={(person) => setOpen({ person, outcome: p })} />
             ))}
           </div>
         )}
       </div>
-      {open && <PersonDrawer person={open.person} pipe={open.pipe} steps={steps} onClose={() => setOpen(null)} />}
+      {open && <PersonDrawer person={open.person} outcome={open.outcome} steps={steps} onClose={() => setOpen(null)} />}
     </>
   );
 }
@@ -115,22 +112,21 @@ function StepLabel({ stepKey, fallback, steps }: { stepKey: string; fallback: st
   );
 }
 
-function PipeCard({ brandId, pipe, steps, onOpen }: { brandId: string; pipe: TeamPipe; steps: PublicCatalogueStep[] | undefined; onOpen: (p: PipeQueuePerson) => void }) {
-  const q = useAuthQuery(["pipeQueue", brandId, pipe.fromKey, pipe.toKey], () => getPipeQueue(brandId, pipe.fromKey, pipe.toKey), { ...pollOptions, retry: false });
+function OutcomeCard({ brandId, outcome, steps, onOpen }: { brandId: string; outcome: TeamOutcome; steps: PublicCatalogueStep[] | undefined; onOpen: (p: PipeQueuePerson) => void }) {
+  const q = useAuthQuery(["pipeQueue", brandId, outcome.fromKey, outcome.toKey], () => getPipeQueue(brandId, outcome.fromKey, outcome.toKey), { ...pollOptions, retry: false });
   const data = q.data;
-  const fromName = steps?.find((s) => s.key === pipe.fromKey)?.name ?? pipe.fromLabel;
-  const toName = steps?.find((s) => s.key === pipe.toKey)?.name ?? pipe.toLabel;
+  const fromName = steps?.find((s) => s.key === outcome.fromKey)?.name ?? outcome.fromLabel;
+  const toName = steps?.find((s) => s.key === outcome.toKey)?.name ?? outcome.toLabel;
   return (
     <section className="k-card overflow-hidden">
       <div className="k-line-subtle flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <ServedPipeMark pipeId={pipe.pipeId} size={36} />
+          <CatalogueMark icon={steps?.find((s) => s.key === outcome.toKey)?.icon ?? null} name={toName} size={36} />
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-medium">{pipe.pipeName}</p>
+            <p className="truncate text-[14px] font-medium">{toName}</p>
             <p className="k-fg2 mt-0.5 flex flex-wrap items-center gap-1.5 text-[12px]">
-              <StepLabel stepKey={pipe.fromKey} fallback={pipe.fromLabel} steps={steps} />
-              <span className="k-fg4" aria-hidden="true">→</span>
-              <StepLabel stepKey={pipe.toKey} fallback={pipe.toLabel} steps={steps} />
+              <span>From</span>
+              <StepLabel stepKey={outcome.fromKey} fallback={outcome.fromLabel} steps={steps} />
             </p>
           </div>
         </div>
@@ -147,7 +143,7 @@ function PipeCard({ brandId, pipe, steps, onOpen }: { brandId: string; pipe: Tea
       </div>
       {data === undefined ? (
         q.isFetchedAfterMount && q.isError ? (
-          <EmptyNote>Could not read who waits on this pipe. Retrying.</EmptyNote>
+          <EmptyNote>Could not read who waits on your team here. Retrying.</EmptyNote>
         ) : (
           <div className="space-y-2 p-4">
             {[0, 1, 2].map((i) => (
@@ -281,7 +277,7 @@ function Throughput({ data, fromName, toName }: { data: PipeQueue; fromName: str
 }
 
 /** One waiting person, right panel: who, since when, and the shared "Update this lead" control. */
-function PersonDrawer({ person, pipe, steps, onClose }: { person: PipeQueuePerson; pipe: TeamPipe; steps: PublicCatalogueStep[] | undefined; onClose: () => void }) {
+function PersonDrawer({ person, outcome, steps, onClose }: { person: PipeQueuePerson; outcome: TeamOutcome; steps: PublicCatalogueStep[] | undefined; onClose: () => void }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => setHost(document.getElementById("v2-portal")), []);
   useEffect(() => {
@@ -290,7 +286,7 @@ function PersonDrawer({ person, pipe, steps, onClose }: { person: PipeQueuePerso
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   if (!host) return null;
-  const fromName = steps?.find((s) => s.key === pipe.fromKey)?.name ?? pipe.fromLabel;
+  const fromName = steps?.find((s) => s.key === outcome.fromKey)?.name ?? outcome.fromLabel;
   return createPortal(
     <aside
       role="dialog"
@@ -315,7 +311,7 @@ function PersonDrawer({ person, pipe, steps, onClose }: { person: PipeQueuePerso
         <p className="k-fg2 text-[13px]">
           {person.waitingSince ? `${fromName} ${timeAgo(person.waitingSince).toLowerCase()}.` : `${fromName}, date unknown.`}
         </p>
-        <LeadStatus lead={{ campaignLeadId: person.campaignLeadId, step: { key: pipe.fromKey } }} lifetimeRevenueUsd={null} />
+        <LeadStatus lead={{ campaignLeadId: person.campaignLeadId, step: { key: outcome.fromKey } }} lifetimeRevenueUsd={null} />
       </div>
     </aside>,
     host,

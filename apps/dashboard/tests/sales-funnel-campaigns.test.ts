@@ -396,35 +396,19 @@ describe("Campaigns order + one modal (owner 2026-10-11)", () => {
   });
 });
 
-describe("path: a channel between every two steps (owner correction 2026-10-11)", () => {
-  it("finds every step pair served with no channel; a full path has none", async () => {
-    const { missingChannelGaps } = await import("../src/lib/sales-funnel-campaigns");
-    const step = (label: string) => ({ kind: "step" as const, key: label, label });
-    const ch = (name: string) => ({ kind: "channel" as const, slug: name, name });
-    expect(missingChannelGaps([step("Lead found"), ch("Sales Cold Email Outreach"), step("Positive reply"), ch("Your team: closing calls"), step("Paid client")])).toEqual([]);
-    expect(missingChannelGaps([step("Lead found"), ch("Cold email"), step("Positive reply"), step("Paid client")])).toEqual([{ from: "Positive reply", to: "Paid client" }]);
-  });
-
-  it("the path line never skips a gap silently: it logs and draws it", () => {
+describe("path: the outcomes only, no channel or pipe between them (owner 2026-11-02)", () => {
+  it("the path line draws step and trigger items and skips every channel item", () => {
     const f = src("src/components/v2/funnel-campaigns.tsx");
-    expect(f).toContain('"[funnel-campaigns] a leg of the path is served with no channel"');
-    expect(f).toContain('it.kind === "step" && items[i - 1].kind === "step"');
-  });
-});
-
-describe("path: several channels on one leg read as one group (owner 2026-10-11)", () => {
-  it("no arrow between two channels of the same leg; a gap is only step after step", async () => {
-    const { missingChannelGaps } = await import("../src/lib/sales-funnel-campaigns");
-    const step = (label: string) => ({ kind: "step" as const, key: label, label });
-    const ch = (name: string) => ({ kind: "channel" as const, slug: name, name });
-    expect(missingChannelGaps([step("Start"), ch("Apollo"), ch("LinkedIn"), ch("CRM"), step("Lead found")])).toEqual([]);
-    expect(src("src/components/v2/funnel-campaigns.tsx")).toContain('!(it.kind === "channel" && items[i - 1].kind === "channel")');
+    const line = f.slice(f.indexOf("export function FunnelPathLine("), f.indexOf("/** The Type tag"));
+    expect(line).toContain('items.filter((it) => it.kind !== "channel")');
+    expect(line).not.toContain("ServedPipeMark");
+    expect(line).not.toContain("ChannelChip");
   });
 });
 
 describe("path: a reactive path starts with its trigger tag (owner 2026-10-11)", () => {
   it("parses a trigger item and draws it as one lightning tag", async () => {
-    const { FunnelCampaignRowsSchema, missingChannelGaps } = await import("../src/lib/sales-funnel-campaigns");
+    const { FunnelCampaignRowsSchema } = await import("../src/lib/sales-funnel-campaigns");
     const items = [
       { kind: "trigger", slug: "positive_reply", name: "Positive Reply" },
       { kind: "channel", slug: "ai-meeting-booking", name: "AI Meeting Booking" },
@@ -434,7 +418,6 @@ describe("path: a reactive path starts with its trigger tag (owner 2026-10-11)",
       salesFunnelCampaigns: [{ id: "x", salesFunnelId: "f", name: "Motivate", status: "ongoing", type: "reactive", typeLabel: "Positive replies", path: { items }, investedUsd: 0, roiMultiple: null, costEconomics: null }],
     });
     expect(parsed.salesFunnelCampaigns[0].path?.items[0].kind).toBe("trigger");
-    expect(missingChannelGaps(parsed.salesFunnelCampaigns[0].path!.items)).toEqual([]);
     expect(src("src/components/v2/funnel-campaigns.tsx")).toContain('it.kind === "trigger" ? (');
   });
 });
