@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/landing/v2/styles.css?v=23">
-<link rel="stylesheet" href="/landing/v2/agent.css?v=4">
+<link rel="stylesheet" href="/landing/v2/agent.css?v=5">
 </head>
 <body>
 
@@ -32,7 +32,6 @@
 <!-- Hero: explee light + the oxygen provider orbit around our WhatsApp agent -->
 <section class="hero hero-agent">
   <div class="hero-glow" aria-hidden="true"></div>
-  <canvas class="hero-lines" id="hero-lines" aria-hidden="true"></canvas>
   <div class="wrap hero-inner">
     <div class="hero-grid">
       <div class="hero-copy">
@@ -64,7 +63,7 @@
           <div class="orbit" data-motion="orbit" data-motion-speed="70">
             <span class="orbit-logo" data-tool="anthropic.com" style="--a:0deg;--i:0"><img src="https://img.logo.dev/anthropic.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
             <span class="orbit-logo" data-tool="apollo.io" style="--a:36deg;--i:1"><img src="https://img.logo.dev/apollo.io?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
-            <span class="orbit-logo" data-tool="google.com" style="--a:72deg;--i:2"><img src="https://img.logo.dev/google.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
+            <span class="orbit-logo" data-tool="gemini" style="--a:72deg;--i:2"><img src="/landing/v2/assets/gemini.svg" alt="" width="28" height="28"></span>
             <span class="orbit-logo" data-tool="instantly.ai" style="--a:108deg;--i:3"><img src="https://img.logo.dev/instantly.ai?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
             <span class="orbit-logo" data-tool="openai.com" style="--a:144deg;--i:4"><img src="https://img.logo.dev/openai.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
             <span class="orbit-logo" data-tool="firecrawl.dev" style="--a:180deg;--i:5"><img src="https://img.logo.dev/firecrawl.dev?token=pk_J1iY4__HSfm9acHjR8FibA&size=64&format=png" alt="" width="28" height="28"></span>
@@ -81,8 +80,8 @@
             <div class="wa-row in" style="--t:2.3s" data-tools="apollo.io serper.dev deepseek.com"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg">40 emails ready. Go?</div></div>
             <div class="wa-row out" style="--t:3.3s"><div class="wa-msg">Go!</div></div>
             <div class="wa-day" style="--t:4.1s">Thursday</div>
-            <div class="wa-row in" style="--t:4.9s" data-tools="instantly.ai openai.com"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg">Northwind Health said yes to Thursday 10am.</div></div>
-            <div class="wa-row in" style="--t:6.1s" data-tools="google.com"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg booked">Meeting booked in your calendar.</div></div>
+            <div class="wa-row in" style="--t:4.9s" data-tools="instantly.ai gemini"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg">Northwind Health said yes to Thursday 10am.</div></div>
+            <div class="wa-row in" style="--t:6.1s"><i class="wa-dots" aria-hidden="true"><b></b><b></b><b></b></i><div class="wa-msg booked">Meeting booked in your calendar.</div></div>
           </div>
           <script>/* Plays the thread once, before first paint; reduced motion keeps the final state. */if(!(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches))document.currentScript.previousElementSibling.classList.add("play");</script>
         </div>
@@ -677,8 +676,7 @@
 <section class="framed">
   <div class="wrap">
     <div class="cta-box rv">
-      <svg class="cta-lines l" viewBox="0 0 260 320" fill="none" stroke="#2563eb" stroke-opacity="0.35" aria-hidden="true"><path d="M20 20c60 40 80 100 60 160s-60 100-40 130"/><path d="M60 10c70 50 90 110 70 170s-70 110-50 140"/><path d="M100 0c80 60 100 120 80 180s-80 120-60 150"/><path d="M140 -10c90 70 110 130 90 190s-90 130-70 160"/></svg>
-      <svg class="cta-lines r" viewBox="0 0 260 320" fill="none" stroke="#2563eb" stroke-opacity="0.35" aria-hidden="true"><path d="M20 20c60 40 80 100 60 160s-60 100-40 130"/><path d="M60 10c70 50 90 110 70 170s-70 110-50 140"/><path d="M100 0c80 60 100 120 80 180s-80 120-60 150"/><path d="M140 -10c90 70 110 130 90 190s-90 130-70 160"/></svg>
+      <canvas class="flow-lines" data-rgb="110,160,255" aria-hidden="true"></canvas>
       <p class="why">Revenue made easy.</p>
       <h2>Your next <span class="accent">customers</span><br>are already out there.</h2>
       <p class="lead">Paste your website and let our agent find them.</p>
@@ -709,8 +707,8 @@
     <!--site-footer-->
   </div>
 </footer>
-<script src="/landing/v2/main.js?v=12" defer></script>
+<script src="/landing/v2/main.js?v=13" defer></script>
 <script src="/landing/v2/motion.js?v=11" defer></script>
-<script src="/landing/v2/home.js?v=1" defer></script>
+<script src="/landing/v2/home.js?v=2" defer></script>
 </body>
 </html>
