@@ -364,6 +364,7 @@ function V2Sidebar() {
         {/* Production (the GTM Factory sidebar, FACTORY-USER-DASHBOARD-1102, every client): the work the client's own
             team does for its campaigns, and the accounts the campaigns send and read from. */}
         <Group title="Production">
+          <NavItem href={v2Href(orgId, brandId, "ledger")} label="Ledger" icon={<I d={ICONS.ledger} />} active={pathname.startsWith(v2Href(orgId, brandId, "ledger"))} />
           <NavItem
             href={v2Href(orgId, brandId, "team-work")}
             label="Done by your team"
@@ -433,10 +434,6 @@ function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: str
   const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
   return (
     <>
-      {/* The factory's books (FACTORY-P4-PAGES): staff until the gateway serves a client their own brand's ledger. */}
-      <Group title="Factory">
-        <NavItem href={v2Href(orgId, brandId, "ledger")} label="Ledger" icon={<I d={ICONS.ledger} />} active={pathname.startsWith(v2Href(orgId, brandId, "ledger"))} />
-      </Group>
       {CATALOGUE_OBJECTS.map((object) => {
         const overview = v2CatalogueHref(orgId, brandId, object);
         return (

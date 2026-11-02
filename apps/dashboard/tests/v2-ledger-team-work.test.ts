@@ -78,16 +78,15 @@ describe("Done by your team: the client's own pipes, lead-service's queue", () =
   });
 });
 
-describe("Done by your team is a client page, the Ledger stays staff until its gateway read is open to clients", () => {
-  it("Done by your team: no StaffOnly, in the client sidebar's Production group; Ledger: StaffOnly, staff sidebar only", () => {
-    expect(read(`${BRAND}/team-work/page.tsx`)).not.toContain("StaffOnly");
-    expect(read(`${BRAND}/ledger/page.tsx`)).toContain("<StaffOnly>");
+describe("Ledger and Done by your team are client pages (FACTORY-USER-DASHBOARD-1102)", () => {
+  it("no StaffOnly; both in the client sidebar's Production group; the Ledger reads the org-scoped route", () => {
+    for (const p of ["ledger/page.tsx", "team-work/page.tsx"]) expect(read(`${BRAND}/${p}`)).not.toContain("StaffOnly");
     const shell = read("components/v2/v2-shell.tsx");
     const client = shell.slice(0, shell.indexOf("function StaffObjectSections("));
     const production = client.slice(client.indexOf('<Group title="Production">'), client.indexOf('<Group title="Setup">'));
-    expect(production).toContain('v2Href(orgId, brandId, "team-work")');
-    expect(production).toContain('label="Connected accounts"');
-    expect(client).not.toContain('"ledger"');
-    expect(shell.slice(shell.indexOf("function StaffObjectSections("))).toContain('v2Href(orgId, brandId, "ledger")');
+    for (const r of ['"ledger"', '"team-work"', 'label="Connected accounts"']) expect(production).toContain(r);
+    const api = read("lib/api.ts");
+    expect(api).toContain("apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/ledger`)");
+    expect(api).not.toContain("`/runs/brands/${encodeURIComponent(brandId)}/ledger");
   });
 });
