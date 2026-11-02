@@ -99,3 +99,15 @@ export function personCompanyDomain(emails: string[]): string | null {
   }
   return null;
 }
+
+/**
+ * A message we sent that the brand's own team wrote from its own mailbox (the client answering
+ * in the thread, `chaim@beyondlogic.tech` on Beyond Logic): it reads as THEIR mark, never
+ * Distribute's (owner 2026-11-02). Same domain as the brand, or one of its subdomains.
+ */
+export function isBrandTeamAddress(email: string | null, brandDomain: string | null): boolean {
+  const domain = email?.split("@")[1]?.trim().toLowerCase();
+  const own = brandDomain?.trim().toLowerCase().replace(/^www\./, "");
+  if (!domain || !own) return false;
+  return domain === own || domain.endsWith(`.${own}`);
+}

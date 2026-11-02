@@ -29,7 +29,8 @@ import {
 } from "@/lib/people-conversations";
 import { EmptyNote, Initials, MarkLines, Shimmer } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
-import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
+import { isBrandTeamAddress, parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
+import { useBrandInfo } from "@/components/v2/data";
 import { RecordsToolbar } from "@/components/v2/records";
 import { THREAD_SCROLL_STEP, uniboxKeyAction, type UniboxPane } from "@/lib/unibox-keys";
 import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
@@ -967,6 +968,15 @@ function Message({
   // sender, and never read as "You" typed it (owner 2026-10-27).
   const automated = outbound && isAutomatedSend(item);
   const who = sender.name ?? sender.email ?? (outbound ? (automated ? mark.name : "You") : "Them");
+  // The brand's own team answering from its own mailbox wears its company logo, not ours.
+  const brandDomain = useBrandInfo(brandId).data?.brand.domain ?? null;
+  const ourMark = outbound && !isBrandTeamAddress(sender.email, brandDomain);
+  const senderMark = (size: number) =>
+    ourMark ? (
+      <SourceLogo mark={mark} size={size} />
+    ) : (
+      <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={size} />
+    );
   if (!expanded) {
     return (
       <button
@@ -975,11 +985,7 @@ function Message({
         aria-label={`Open the message from ${who}`}
         className={`flex h-9 w-full max-w-[92%] items-center gap-2 rounded-lg px-3 text-left text-[12px] sm:max-w-[85%] ${outbound ? "k-inset ml-auto" : "k-panel"}`}
       >
-        {outbound ? (
-          <SourceLogo mark={mark} size={16} />
-        ) : (
-          <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
-        )}
+        {senderMark(16)}
         <span className="max-w-[40%] shrink-0 truncate font-medium">{who}</span>
         {automated && <span className="k-chip shrink-0">Automated</span>}
         <span className="k-fg2 min-w-0 flex-1 truncate">{firstWords(item) ?? "—"}</span>
@@ -991,11 +997,7 @@ function Message({
     <article className={`max-w-[92%] rounded-lg px-3 py-2 sm:max-w-[85%] ${outbound ? "k-inset ml-auto" : "k-panel"}`}>
       {/* On a narrow bubble the line WRAPS: squeezed, the sender's name and address shrank to nothing. */}
       <p className="k-fg3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
-        {outbound ? (
-          <SourceLogo mark={mark} size={16} />
-        ) : (
-          <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
-        )}
+        {senderMark(16)}
         <span className="min-w-0 max-w-full truncate">{who}</span>
         {automated && <span className="k-chip shrink-0">Automated</span>}
         {/* The address it was written FROM, on every message: a person can write from
