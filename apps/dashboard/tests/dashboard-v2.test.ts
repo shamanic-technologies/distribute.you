@@ -302,7 +302,8 @@ describe("Keel parity, second pass", () => {
 
   it("the reply preview reads lead-service's merged history on the key the person page uses", () => {
     const data = read(V2 + "data.ts");
-    expect(data).toContain('["leadHistory", leadRowId, brandId, "campaign"]');
+    expect(data).toContain('["leadHistory", leadRowId, brandId, "brand"]');
+    expect(read(V2 + "person-page.tsx")).toContain('["leadHistory", leadRowId, brandId, "brand"]');
     expect(read(V2 + "today-page.tsx")).toContain("useTheirLastWords(lead.id, brandId)");
   });
 

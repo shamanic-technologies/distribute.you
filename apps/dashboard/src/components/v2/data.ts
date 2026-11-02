@@ -288,8 +288,8 @@ export function useLatestInBucket(
 /** The latest message the person SENT us, off lead-service's merged history. */
 export function useTheirLastWords(leadRowId: string, brandId: string) {
   const q = useAuthQuery(
-    ["leadHistory", leadRowId, brandId, "campaign"],
-    () => getLeadHistory(leadRowId, { brandId, scope: "campaign" }),
+    ["leadHistory", leadRowId, brandId, "brand"],
+    () => getLeadHistory(leadRowId, { brandId, scope: "brand" }),
     { enabled: !!leadRowId && !!brandId },
   );
   const inbound = useMemo(() => {
