@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseEnginePlaces, placesByCaller, replayFamiliesOf, selectedPlace, splitsByPlace } from "../src/lib/research/engine-places";
+import { outcomesPer100, parseEnginePlaces, placesByCaller, replayFamiliesOf, selectedPlace, splitsByPlace } from "../src/lib/research/engine-places";
 import { outcomeStudiesOf, pipesOutsideOutcomes, type ResearchFile } from "../src/lib/research/research";
 
 const REPO = join(__dirname, "..", "..", "..");
@@ -72,6 +72,13 @@ describe("Research engine places (FACTORY-RESEARCH-1102)", () => {
     const g = splitsByPlace(parseEnginePlaces(body).strategySplits);
     expect(g.map((x) => [x.placeKey, x.splits.map((s) => s.tacticId)])).toEqual([["conversation|target", ["t1", "t2"]], ["meeting_booked|target", ["t1"]]]);
     expect(read("apps/dashboard/src/components/v2/research-engines.tsx")).toContain("data.strategySplits.filter((s) => s.proposed).length");
+  });
+
+  it("a split side reads outcomes per 100 decisions under the new served name, the old one until the rename deploys", () => {
+    const side = { workflows: 1, outcomes: 3, decisions: 2 };
+    expect(outcomesPer100(parseEnginePlaces({ ...body, strategySplits: [{ ...body.strategySplits[0], inside: { ...side, outcomesPer100Decisions: 150 } }] }).strategySplits[0]!.inside)).toBe(150);
+    expect(outcomesPer100({ ...side, ratePct: 11 })).toBe(11);
+    expect(outcomesPer100({ ...side, outcomesPer100Decisions: null })).toBeNull();
   });
 
   it("the headline and the counts are the served summary, the chance the served favourite's, nothing divided in the browser", () => {

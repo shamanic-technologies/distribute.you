@@ -10,7 +10,7 @@ import { formatRatePct } from "@/lib/pipe-stats";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { regretPct } from "@/lib/factory-shadow";
 import { useResearchEnginePlaces } from "@/lib/research/research-source";
-import { placesByCaller, replayFamiliesOf, selectedPlace, splitsByPlace, type EnginePlace, type EnginePlaces, type StrategySplit } from "@/lib/research/engine-places";
+import { outcomesPer100, placesByCaller, replayFamiliesOf, selectedPlace, splitsByPlace, type EnginePlace, type EnginePlaces, type StrategySplit } from "@/lib/research/engine-places";
 
 /**
  * The Engine half of Research (FACTORY-RESEARCH-1102, owner 2026-11-02 « on adaptera la page Research qui est outdate
@@ -309,11 +309,12 @@ const VERDICT_LOOK: Record<StrategySplit["verdict"], { label: string; cls: strin
   noise: { label: "Noise", cls: "k-fg3" },
 };
 
-/** One half of a split: outcomes per 100 decisions (served `ratePct`, over 100 when a decision yields several), on how many decisions and workflows. */
+/** One half of a split: outcomes per 100 decisions (served, over 100 when a decision yields several), on how many decisions and workflows. */
 function SplitSide({ side }: { side: StrategySplit["inside"] }) {
+  const rate = outcomesPer100(side);
   return (
     <>
-      {side.ratePct == null ? <span className="k-fg4">{"—"}</span> : side.ratePct.toLocaleString("en-US", { maximumFractionDigits: side.ratePct < 1 ? 1 : 0 })}{" "}
+      {rate == null ? <span className="k-fg4">{"—"}</span> : rate.toLocaleString("en-US", { maximumFractionDigits: rate < 1 ? 1 : 0 })}{" "}
       <span className="k-fg3">
         on {Math.round(side.decisions).toLocaleString("en-US")} · {side.workflows} {side.workflows === 1 ? "workflow" : "workflows"}
       </span>

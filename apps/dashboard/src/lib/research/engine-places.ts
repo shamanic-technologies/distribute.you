@@ -21,7 +21,15 @@ const CandidateSchema = z.object({
   fleetOutcomes: z.number(),
 });
 
-const SplitSideSchema = z.object({ workflows: z.number().int(), outcomes: z.number(), decisions: z.number(), ratePct: z.number().nullable() });
+// `ratePct` renamed `outcomesPer100Decisions` by features-service (2026-11-02, a pure rename: over 100 when one decision makes
+// several outcomes); both optional while the rename rolls out, read through `outcomesPer100` (`??` only for this rename).
+const SplitSideSchema = z.object({
+  workflows: z.number().int(),
+  outcomes: z.number(),
+  decisions: z.number(),
+  outcomesPer100Decisions: z.number().nullish(),
+  ratePct: z.number().nullish(),
+});
 
 export const EnginePlacesSchema = z.object({
   computedAt: z.string().nullable(),
@@ -130,4 +138,9 @@ export function splitsByPlace(splits: readonly StrategySplit[]): Array<{ placeKe
     else groups.push({ placeKey: s.placeKey, outcomeName: s.outcomeName, consumerName: s.consumerName, splits: [s] });
   }
   return groups;
+}
+
+/** A split side's outcomes per 100 decisions, under its new served name or the old one (a rename, never two concepts). */
+export function outcomesPer100(side: StrategySplit["inside"]): number | null {
+  return side.outcomesPer100Decisions ?? side.ratePct ?? null;
 }
