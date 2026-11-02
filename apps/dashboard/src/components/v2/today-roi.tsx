@@ -146,7 +146,7 @@ export function OfferOutcomesTable({
     : null;
   return (
     <section>
-      <SectionTitle right={<span>Since you started</span>}>Pipeline by step</SectionTitle>
+      <SectionTitle right={<span>Since you started</span>}>Milestones</SectionTitle>
       <div className="k-card overflow-hidden">
         <div className="k-scroll overflow-x-auto">
           <table className="w-full text-[13px]">
