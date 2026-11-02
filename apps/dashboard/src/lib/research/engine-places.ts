@@ -46,6 +46,11 @@ export const EnginePlacesSchema = z.object({
       favourite: CandidateSchema.extend({ chancePct: z.number().nullable() }).nullable(),
       clearWinner: z.boolean(),
       candidates: z.array(CandidateSchema),
+      /** Asked of features-service 2026-11-02 (Factory's spark and « value lost per day »): drawn once served. */
+      daily: z
+        .array(z.object({ day: z.string(), decisions: z.number(), favouriteSharePct: z.number().nullable(), lostUsd: z.number().nullable() }))
+        .optional(),
+      dailyBasis: z.string().optional(),
     }),
   ),
   engines: z.array(
@@ -143,4 +148,13 @@ export function splitsByPlace(splits: readonly StrategySplit[]): Array<{ placeKe
 /** A split side's outcomes per 100 decisions, under its new served name or the old one (a rename, never two concepts). */
 export function outcomesPer100(side: StrategySplit["inside"]): number | null {
   return side.outcomesPer100Decisions ?? side.ratePct ?? null;
+}
+
+/** A mark colour per outcome, fixed by its key (a display tint, the way GTM Factory tints each place; no figure). */
+// hex, the form CatalogueMark tints with; the keel data hues
+const OUTCOME_TINTS = ["#7c5cff", "#0d9488", "#d97706", "#0284c7", "#e11d48", "#65a30d"];
+export function outcomeTint(outcome: string): string {
+  let h = 0;
+  for (let i = 0; i < outcome.length; i++) h = (h * 31 + outcome.charCodeAt(i)) >>> 0;
+  return OUTCOME_TINTS[h % OUTCOME_TINTS.length]!;
 }
