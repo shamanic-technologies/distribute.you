@@ -49,6 +49,13 @@ describe("Research engine places (FACTORY-RESEARCH-1102)", () => {
     expect(() => parseEnginePlaces({ ...body, places: "nope" })).toThrow();
   });
 
+  it("a place's daily series reads null until the first pass writes it, and parses once served", () => {
+    const withDaily = { ...body, dailyBasis: "picks_that_ran_fleet_ledger_vs_todays_favourite", places: body.places.map((p, i) => ({ ...p, daily: i === 0 ? null : [{ day: "2026-11-01", decisions: 3, favouriteSharePct: 90, lostUsd: 0.4 }] })) };
+    const parsed = parseEnginePlaces(withDaily);
+    expect(parsed.places[0]!.daily).toBeNull();
+    expect(parsed.places[1]!.daily?.[0]?.lostUsd).toBe(0.4);
+  });
+
   it("groups places by caller in served order, never re-sorted", () => {
     const g = placesByCaller(parseEnginePlaces(body).places);
     expect(g.map((x) => x.consumer)).toEqual(["target", "meeting_booked"]);
