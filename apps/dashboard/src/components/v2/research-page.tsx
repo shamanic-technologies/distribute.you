@@ -29,6 +29,8 @@ import {
   monthText,
 } from "@/components/v2/research-bits";
 import { V2ResearchCatalogView, PipeCatalogLinks } from "@/components/v2/research-catalog";
+import { EngineHeadline, EngineSection } from "@/components/v2/research-engines";
+import type { ResearchPipe } from "@/lib/research/research";
 import { useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
 import { CatalogueName } from "@/components/v2/catalogue-name";
@@ -48,8 +50,9 @@ import {
   pointHref,
   researchPipeEntry,
   researchWorkflow,
-  studiesFor,
-  studiesForOutcome,
+  outcomeStudiesOf,
+  pipesOutsideOutcomes,
+  type OutcomeStudies,
   studyById,
   studyOutcomeText,
   studySpark,
@@ -62,9 +65,9 @@ import {
 } from "@/lib/research/research";
 
 /**
- * Research: what we measured across every org's campaigns, one card per question, in three groups
- * (owner 2026-10-18): Pipes (one leg x one channel each), Outcomes (one row per outcome, asked
- * across every pipe that lands on it), Other (Jev). Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
+ * Research (FACTORY-RESEARCH-1102, the GTM Factory way): how the Engines decide, outcome by outcome
+ * (`research-engines.tsx`), then every study homed under the outcome it measures, a pipe's studies and
+ * pages inside its outcome's section, never a pipe heading. Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
  *
  * Built on Keel's own anatomy (see the dashboard-v2-ux skill): the hub is a card grid
  * (mark + question + state, an inset block of stat cells with a mini chart in the mark's
@@ -246,179 +249,153 @@ function StudyGrid({ studies, base }: { studies: ResearchStudy[]; base: string }
   );
 }
 
-/**
- * One section of the hub (owner 2026-10-18: « collapse les pages par pipe, avec un logo un nom,
- * et en dessous du nom le path pour notre rappel »): a header button with the served mark and
- * name, the path under the name, the study and conclusion counts and a chevron; under it, the
- * section's links and study cards, shown on click.
- */
-function ResearchSectionBlock({
-  id,
-  section,
-  studies,
-  open,
-  onToggle,
-  animate,
-  line,
-  children,
-}: {
-  id: string;
-  section: ResearchSection;
-  studies: ResearchStudy[];
-  open: boolean;
-  onToggle: () => void;
-  animate: boolean;
-  /** The second line when the section has no path (Jev). */
-  line?: string | null;
-  children: React.ReactNode;
-}) {
+/** How many studies a section holds and how many reached a conclusion: the counts on its header. */
+function studiesMeta(studies: ResearchStudy[]): string {
   const conclusions = studies.filter((st) => studyState(st) === "conclusion").length;
+  return `${studies.length} ${studies.length === 1 ? "study" : "studies"} · ${conclusions} ${conclusions === 1 ? "conclusion" : "conclusions"}`;
+}
+
+/**
+ * The workflow, template and model pages of the pipes landing on one outcome: one line per pipe (served mark and name)
+ * with its page chips. A list inside the outcome's section, never a heading of its own.
+ */
+function OutcomeCatalogue({ base, pipes }: { base: string; pipes: ResearchPipe[] }) {
+  if (pipes.length === 0) return null;
   return (
-    <HubSectionBlock
-      id={`research-${id}`}
-      open={open}
-      onToggle={onToggle}
-      animate={animate}
-      mark={(px) => <SectionMark section={section} size={px} />}
-      name={<SectionName section={section} />}
-      line={line ?? <SectionPath section={section} />}
-      meta={`${studies.length} ${studies.length === 1 ? "study" : "studies"} · ${conclusions} ${conclusions === 1 ? "conclusion" : "conclusions"}`}
-    >
-      {children}
-    </HubSectionBlock>
+    <div className="k-card mb-3 divide-y divide-[var(--line-subtle)]">
+      <p className="k-label px-4 py-2.5">Workflows, templates and models, by the pipe that runs them</p>
+      {pipes.map((pipe) => (
+        <div key={pipe} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+          <span className="inline-flex min-w-[200px] items-center gap-2 text-[13px] font-medium">
+            <SectionMark section={{ pipe }} size={16} />
+            <SectionName section={{ pipe }} />
+          </span>
+          <PipeCatalogLinks base={base} pipe={pipe} />
+        </div>
+      ))}
+    </div>
   );
 }
 
+/** The served pipes as one line, each by its mark and name (the reminder under an outcome no lead state names). */
+function PipesLine({ pipes }: { pipes: ResearchPipe[] }) {
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1">
+      {pipes.map((p, i) => (
+        <span key={p} className="inline-flex items-center gap-1">
+          <SectionMark section={{ pipe: p }} size={12} />
+          <SectionName section={{ pipe: p }} />
+          {i < pipes.length - 1 && <span>,</span>}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Research, the GTM Factory way (FACTORY-RESEARCH-1102, owner 2026-11-02 « on adaptera la page Research qui est outdate
+ * avec tous les pipes »): the Engines first (where a clear winner exists, where the Engine still explores, what each pick
+ * costs), then every study homed under the OUTCOME it measures, in the served lead-track order; a pipe is never a
+ * heading, its studies and pages sit in its outcome's section.
+ */
 function V2ResearchHub({ base }: { base: string }) {
   const RESEARCH = useResearch().file;
   const { open, toggle, ready } = useOpenSections(OPEN_SECTIONS_KEY);
   const v = RESEARCH.volume;
   const called = RESEARCH.studies.filter((st) => studyState(st) === "conclusion").length;
-  const signals = RESEARCH.studies.filter((st) => studyState(st) === "signal").length;
-  const maxMonth = v ? Math.max(...v.byMonth.map((m) => m.emails), 1) : 1;
-  // Every pipe the file serves, in its order (WA-PIPE-RESEARCH-1023): a pipe with no study yet keeps its section and tabs.
-  const pipeRows = RESEARCH.pipes.map(({ id: pipe }) => ({ pipe, studies: studiesFor(pipe, RESEARCH) }));
   const groups = outcomeGroups(RESEARCH);
-  const withStudies = (metas: typeof groups.other) =>
-    metas.map((meta) => ({ meta, studies: sectionStudiesPriceFirst(meta.id, studiesForOutcome(meta.id, RESEARCH)) })).filter((r) => r.studies.length > 0);
-  const leadTrackRows = groups.leadTracks.map((t) => ({ ...t, rows: withStudies(t.entries) })).filter((t) => t.rows.length > 0);
-  const otherRows = withStudies(groups.other);
+  const rowsOf = (metas: typeof groups.other) => metas.map((meta) => outcomeStudiesOf(meta, RESEARCH)).filter((r) => r.studies.length > 0 || r.pipes.length > 0);
+  const leadTrackRows = groups.leadTracks.map((t) => ({ ...t, rows: rowsOf(t.entries) })).filter((t) => t.rows.length > 0);
+  const otherRows = rowsOf(groups.other);
+  const outside = pipesOutsideOutcomes(RESEARCH);
+  const outcomeBlock = ({ entry, pipes, studies }: OutcomeStudies, line?: string) => {
+    const id = `outcome-${entry.id}`;
+    return (
+      <HubSectionBlock
+        key={entry.id}
+        id={`research-${id}`}
+        open={open.has(id)}
+        onToggle={() => toggle(id)}
+        animate={ready}
+        mark={(px) => <SectionMark section={{ outcome: entry.id }} size={px} />}
+        name={<SectionName section={{ outcome: entry.id }} />}
+        line={line ?? <SectionPath section={{ outcome: entry.id }} />}
+        meta={studiesMeta(studies)}
+      >
+        <p className="k-fg3 mb-3 text-[12px] leading-5">{entry.population}</p>
+        <OutcomeCatalogue base={base} pipes={pipes} />
+        {studies.length > 0 && <StudyGrid studies={studies} base={base} />}
+      </HubSectionBlock>
+    );
+  };
   return (
     <>
       <TopBar crumbs={[{ label: "Research" }]} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {RESEARCH.studies.length} questions, {called} with a conclusion, {signals} with a signal
-            </h1>
-            <p className="k-fg2 mt-1 text-[14px]">
-              What works in cold email, measured on every campaign we ran for every client, {monthText(RESEARCH.window.from)} to{" "}
-              {monthText(RESEARCH.window.to)}.
-            </p>
-            <p className="k-fg3 mt-1 text-[12px] leading-5">{RESEARCH.maturation.note}</p>
-          </div>
+          <EngineHeadline />
           <ResearchLive file={RESEARCH} />
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile
-            label="Emails studied"
-            note={v ? `People first written to from ${v.byMonth[0]?.label ?? ""} to ${dayText(RESEARCH.maturation.cutoff)}, old enough to count` : "Not served live yet"}
+        <EngineSection />
+
+        {/* The studies, outcome by outcome: one group per served lead track, then Other; every row collapsed by default. */}
+        <section className="mt-10">
+          <SectionTitle
+            count={RESEARCH.studies.length}
+            right={
+              <span>
+                {called} with a conclusion
+                {v ? ` · ${v.emails.toLocaleString("en-US")} emails, ${v.orgs} clients` : ""} · {monthText(RESEARCH.window.from)} to {monthText(RESEARCH.window.to)}
+              </span>
+            }
           >
-            <div className="flex items-end justify-between gap-2">
-              <Figure value={v ? v.emails.toLocaleString("en-US") : <span className="k-fg4">—</span>} />
-              <div className="flex h-6 items-end gap-[3px]" aria-hidden="true">
-                {(v?.byMonth ?? []).map((m) => (
-                  <span
-                    key={m.label}
-                    className="w-[6px] rounded-[2px] bg-[var(--accent)]"
-                    style={{ height: `${Math.max(3, (m.emails / maxMonth) * 24)}px`, opacity: 0.55 }}
-                  />
-                ))}
+            Studies, outcome by outcome
+          </SectionTitle>
+          <p className="k-fg3 -mt-1 mb-4 text-[12px] leading-5">{RESEARCH.maturation.note}</p>
+          <div className="space-y-8">
+            {leadTrackRows.map((t) => (
+              <div key={t.leadTrack}>
+                <p className="k-label mb-2 px-1">{t.label}</p>
+                <div className="space-y-3">{t.rows.map((r) => outcomeBlock(r))}</div>
               </div>
-            </div>
-          </StatTile>
-          <StatTile label="Clients" note={v ? "all orgs, pooled" : "Not served live yet"}>
-            <Figure value={v ? v.orgs.toLocaleString("en-US") : <span className="k-fg4">—</span>} />
-          </StatTile>
-          <StatTile label="Workflows compared" note={v ? undefined : "Not served live yet"}>
-            <Figure value={v ? v.workflows.toLocaleString("en-US") : <span className="k-fg4">—</span>} />
-          </StatTile>
-          <StatTile label="Conclusions" note={`of ${RESEARCH.studies.length}`}>
-            <div className="flex items-end justify-between gap-2">
-              <Figure value={called} />
-              <div className="flex min-w-0 flex-wrap justify-end gap-[3px]" aria-hidden="true">
-                {RESEARCH.studies.map((st) => (
-                  <span
-                    key={st.id}
-                    className="h-4 w-[4px] rounded-full"
-                    style={{ background: studyState(st) === "conclusion" ? "var(--data-teal)" : studyState(st) === "signal" ? "var(--data-amber)" : "var(--data-track)" }}
-                  />
-                ))}
-              </div>
-            </div>
-          </StatTile>
-        </div>
+            ))}
 
-        {/* Groups: Pipes, one per served lead track (owner 2026-10-25), Other; every row collapsed by default. */}
-        <div className="mt-8 space-y-8">
-          <div>
-            <SectionTitle count={pipeRows.length}>Pipes</SectionTitle>
-            <div className="space-y-3">
-              {pipeRows.map(({ pipe, studies }) => (
-                <ResearchSectionBlock key={pipe} id={pipe} section={{ pipe }} studies={studies} open={open.has(pipe)} onToggle={() => toggle(pipe)} animate={ready}>
-                  <PipeCatalogLinks base={base} pipe={pipe} />
-                  {studies.length > 0 && <StudyGrid studies={studies} base={base} />}
-                </ResearchSectionBlock>
-              ))}
-            </div>
+            {outside.length > 0 && (
+              <div>
+                <p className="k-label mb-2 px-1">Other outcomes</p>
+                <div className="space-y-3">
+                  {outside.map((g) => {
+                    const id = `outcome-pipes-${g.outcome}`;
+                    return (
+                      <HubSectionBlock
+                        key={g.outcome}
+                        id={`research-${id}`}
+                        open={open.has(id)}
+                        onToggle={() => toggle(id)}
+                        animate={ready}
+                        mark={(px) => <SectionMark section={{ pipe: g.pipes[0]! }} size={px} />}
+                        name={g.outcome}
+                        line={<PipesLine pipes={g.pipes} />}
+                        meta={studiesMeta(g.studies)}
+                      >
+                        <OutcomeCatalogue base={base} pipes={g.pipes} />
+                        {g.studies.length > 0 && <StudyGrid studies={g.studies} base={base} />}
+                      </HubSectionBlock>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {otherRows.length > 0 && (
+              <div>
+                <p className="k-label mb-2 px-1">Other</p>
+                <div className="space-y-3">{otherRows.map((r) => outcomeBlock(r, r.entry.description))}</div>
+              </div>
+            )}
           </div>
-
-          {/* One group per served lead track (CRM lifecycle, Website visits), titled by the file; one row per lead state in its ladder order, the pipes named under it. */}
-          {leadTrackRows.map((t) => (
-            <div key={t.leadTrack}>
-              <SectionTitle count={t.rows.length}>{t.label}</SectionTitle>
-              <div className="space-y-3">
-                {t.rows.map(({ meta, studies }) => {
-                  const id = `outcome-${meta.id}`;
-                  return (
-                    <ResearchSectionBlock key={meta.id} id={id} section={{ outcome: meta.id }} studies={studies} open={open.has(id)} onToggle={() => toggle(id)} animate={ready}>
-                      <p className="k-fg3 mb-3 text-[12px] leading-5">{meta.population}</p>
-                      <StudyGrid studies={studies} base={base} />
-                    </ResearchSectionBlock>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-          {otherRows.length > 0 && (
-            <div>
-              <SectionTitle count={otherRows.length}>Other</SectionTitle>
-              <div className="space-y-3">
-                {otherRows.map(({ meta, studies }) => {
-                  const id = `outcome-${meta.id}`;
-                  return (
-                    <ResearchSectionBlock
-                      key={meta.id}
-                      id={id}
-                      section={{ outcome: meta.id }}
-                      studies={studies}
-                      open={open.has(id)}
-                      onToggle={() => toggle(id)}
-                      animate={ready}
-                      line={meta.description}
-                    >
-                      <p className="k-fg3 mb-3 text-[12px] leading-5">{meta.population}</p>
-                      <StudyGrid studies={studies} base={base} />
-                    </ResearchSectionBlock>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        </section>
       </div>
     </>
   );
