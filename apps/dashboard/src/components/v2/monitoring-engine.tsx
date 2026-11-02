@@ -8,10 +8,13 @@ import { Failed, Loading, OK, RED } from "@/components/v2/monitoring-sending";
 import { useFactoryShadowMonitoring } from "@/components/v2/monitoring-factory";
 import { formatRatePct } from "@/lib/pipe-stats";
 import {
+  engineBrokenRows,
   engineReasonWords,
   enginePlaceRows,
+  unpickedReasonWords,
   regretPct,
   resultStatusLook,
+  type EngineBrokenRow,
   type EngineResult,
   type EngineMonitoring,
   type EnginePlaceSummary,
@@ -19,7 +22,10 @@ import {
 } from "@/lib/factory-shadow";
 
 /**
- * Monitoring > Factory plan > Engine pick (staff only, ENGINE-PER-OUTCOME-SHADOW, owner 2026-10-31). GTM Factory v10's
+ * Monitoring > Factory plan > Engine pick (staff only, ENGINE-PER-OUTCOME-SHADOW, owner 2026-10-31). Since
+ * ENGINE-FULL-MIGRATION-1102 the Engine drives every result of every live campaign: a result a live campaign works with no
+ * Engine pick is red ("No Engine pick", its campaigns named with the served reason), a rolled-back unit says when it
+ * re-tries. GTM Factory v10's
  * "one Engine per outcome", SHADOW: at each place of each live campaign (the outcome a leg makes), today's pick (the pipe
  * the campaign runs and its best-ROI workflow) beside the Engine's (Thompson sampling on value per dollar over every
  * workflow of every pipe making that outcome). Then the daily agreement and the 30-day replay regret. Nothing runs from
@@ -37,7 +43,9 @@ function useBrandNames() {
 function Verdict({ engine }: { engine: EngineMonitoring }) {
   const red = engine.verdict.red;
   const last = engine.last;
-  const live = (engine.results ?? []).filter((r) => r.status === "switched");
+  const results = engine.results ?? [];
+  const used = results.filter((r) => r.status !== "shadow");
+  const switched = used.filter((r) => r.status === "switched");
   return (
     <div className="k-card flex items-start gap-3 px-4 py-3">
       <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: red ? RED : OK }} aria-hidden="true" />
@@ -50,9 +58,9 @@ function Verdict({ engine }: { engine: EngineMonitoring }) {
               : "Nothing broken. No place has both picks yet."}
         </p>
         <p className="k-fg3 mt-0.5 text-[12px]">
-          {live.length > 0
-            ? `Live on ${live.map((r) => r.outcomeName).join(", ")}; every other result is shadow. Recomputed every 3 hours.`
-            : "Shadow only: nothing runs from it. Recomputed with the factory plan, every 3 hours."}
+          {used.length > 0
+            ? `The Engine drives ${switched.length} of the ${used.length} results live campaigns use. Recomputed every 3 hours.`
+            : "No live campaign uses a result yet. Recomputed with the factory plan, every 3 hours."}
         </p>
       </div>
     </div>
@@ -167,6 +175,37 @@ function ReplayRows({ engine }: { engine: EngineMonitoring }) {
   );
 }
 
+const retryWords = (row: Extract<EngineBrokenRow, { kind: "rolled_back" }>) => {
+  const when = row.retryAt ? `re-tries ${dayLabel(row.retryAt.slice(0, 10), { month: "short", day: "numeric" })}` : "re-try date not set";
+  return row.rollBacks && row.rollBacks > 1 ? `Rolled back ${row.rollBacks} times, ${when}` : `Rolled back, ${when}`;
+};
+
+/** Every broken item, one row each: the campaign (served name, else its brand), the result, and why in plain words. */
+function BrokenRows({ rows, data }: { rows: EngineBrokenRow[]; data: FactoryShadowMonitoring }) {
+  const brand = useBrandNames();
+  // Display lookup only: a funnel campaign's served name from the same payload.
+  const names = new Map(data.campaigns.map((c) => [c.campaignId, c.salesFunnelName]));
+  const campaignName = (row: EngineBrokenRow) => (row.kind === "failed" ? row.name : names.get(row.campaignId));
+  return (
+    <ul>
+      {rows.map((row) => (
+        <li key={row.key} className="k-line-subtle grid grid-cols-1 gap-x-3 border-b px-4 py-2 text-[13px] last:border-b-0 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+          <span className="min-w-0">
+            <p className="truncate">{campaignName(row) ?? brand(row.brandId)}</p>
+            {campaignName(row) && <p className="k-fg3 truncate text-[12px]">{brand(row.brandId)}</p>}
+          </span>
+          <span className="min-w-0">
+            {row.kind !== "failed" && <p className="truncate">{row.outcomeName}</p>}
+            <p className="text-[12px]" style={{ color: RED }}>
+              {row.kind === "failed" ? row.failure : row.kind === "unpicked" ? `No Engine pick: ${unpickedReasonWords(row.reason)}` : retryWords(row)}
+            </p>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Per result: whether the Engine drives it live, rolled back (red), or stays in shadow; its replay regrets beside it. */
 function ResultRows({ results }: { results: EngineResult[] }) {
   if (results.length === 0) return <EmptyNote>No result has been replayed yet.</EmptyNote>;
@@ -191,13 +230,20 @@ function ResultRows({ results }: { results: EngineResult[] }) {
                 <td className="px-3 py-2">
                   <span className="inline-flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: look.tone }} aria-hidden="true" />
-                    <span style={r.status === "rolled_back" ? { color: look.tone } : undefined}>{look.word}</span>
+                    <span style={r.status === "rolled_back" || r.status === "no_engine_pick" ? { color: look.tone } : undefined}>{look.word}</span>
                   </span>
+                  {r.status !== "no_engine_pick" && (r.unpicked ?? 0) > 0 && (
+                    <p className="text-[12px]" style={{ color: RED }}>{`No Engine pick on ${r.unpicked}`}</p>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{regretPct(r.todayRegret) ?? <span className="k-fg4">—</span>}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{regretPct(r.engineRegret) ?? <span className="k-fg4">—</span>}</td>
                 <td className="k-fg2 px-3 py-2 pr-4 text-right tabular-nums text-[12px]">
-                  {r.units === 0 ? <span className="k-fg4">—</span> : `${r.driving} of ${r.units} campaigns${r.heldDays !== null ? `, ${r.heldDays} d` : ""}`}
+                  {r.units === 0 ? (
+                    (r.unpicked ?? 0) > 0 ? <span style={{ color: RED }}>{`none of ${r.unpicked}`}</span> : <span className="k-fg4">—</span>
+                  ) : (
+                    `${r.driving} of ${r.units} campaigns${r.heldDays !== null ? `, ${r.heldDays} d` : ""}`
+                  )}
                 </td>
               </tr>
             );
@@ -214,27 +260,15 @@ export function EngineView({ data }: { data: FactoryShadowMonitoring }) {
   const periods = engine.series.map((d) => ({ ...d, period: d.day }));
   const short = (d: string, s?: boolean) => dayLabel(d, s ? { month: "short", day: "numeric" } : undefined);
   const totals = engine.replay?.totals;
+  const broken = engineBrokenRows(engine);
   return (
     <div className="space-y-8">
       <Verdict engine={engine} />
 
       <section>
-        <SectionTitle count={engine.problems.length}>Broken</SectionTitle>
+        <SectionTitle count={broken.length}>Broken</SectionTitle>
         <div className="k-card overflow-hidden">
-          {engine.problems.length === 0 ? (
-            <EmptyNote>Nothing broken on the last pass.</EmptyNote>
-          ) : (
-            <ul>
-              {engine.problems.map((p) => (
-                <li key={p.campaignId} className="k-line-subtle flex gap-3 border-b px-4 py-2 text-[13px] last:border-b-0">
-                  <span className="truncate">{p.salesFunnelName}</span>
-                  <span className="truncate" style={{ color: RED }}>
-                    {p.failure}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          {broken.length === 0 ? <EmptyNote>Nothing broken on the last pass.</EmptyNote> : <BrokenRows rows={broken} data={data} />}
         </div>
       </section>
 
@@ -301,7 +335,7 @@ export function EngineTile({ href }: { href: string }) {
           ) : !engine ? (
             <span className="k-fg4">—</span>
           ) : (
-            <span style={{ color: engine.verdict.red ? RED : undefined }}>{engine.problems.length}</span>
+            <span style={{ color: engine.verdict.red ? RED : undefined }}>{engineBrokenRows(engine).length}</span>
           )
         }
         sub={!engine ? undefined : engine.verdict.red ? engine.verdict.reasons.map(engineReasonWords).join(", ") : "nothing broken"}

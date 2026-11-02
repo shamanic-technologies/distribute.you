@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MONITORING_PAGES, parseMonitoringPath } from "../src/lib/monitoring/monitoring";
-import { FactoryShadowMonitoringSchema, enginePlaceRows, engineReasonWords, regretPct, resultStatusLook } from "../src/lib/factory-shadow";
+import { FactoryShadowMonitoringSchema, engineBrokenRows, enginePlaceRows, engineReasonWords, regretPct, resultStatusLook, unpickedReasonWords } from "../src/lib/factory-shadow";
 
 /**
  * ENGINE-PER-OUTCOME-SHADOW (owner 2026-10-31, GTM Factory v10 "one Engine per outcome"): features-service's factory pass
@@ -44,7 +44,7 @@ const body = {
     series: [{ day: "2026-10-31", places: 1, agreed: 0, disagreed: 1, agreementPct: 0, expectedAgreementPct: 12.5, failed: 0 }],
     problems: [],
     results: [
-      { family: "lead_found|start|-", outcome: "lead_found", outcomeName: "Lead, from Start", todayRegret: 0.08, engineRegret: 0.01, status: "switched", units: 1, driving: 1, rolledBack: 0, switchedSince: "2026-11-01T12:00:00Z", heldDays: 0, fleetEligible: false, drives: [] },
+      { family: "lead_found|start|-", outcome: "lead_found", outcomeName: "Lead, from Start", todayRegret: 0.08, engineRegret: 0.01, status: "switched", units: 1, driving: 1, rolledBack: 0, switchedSince: "2026-11-01T12:00:00Z", heldDays: 0, fleetEligible: true, drives: [] },
       { family: "conversation|start|-", outcome: "conversation", outcomeName: "Positive reply, from Lead found", todayRegret: 0.15, engineRegret: 0.54, status: "shadow", units: 0, driving: 0, rolledBack: 0, switchedSince: null, heldDays: null, fleetEligible: false, drives: [] },
     ],
     replay: {
@@ -78,6 +78,77 @@ describe("engine shadow: served shape", () => {
     expect(regretPct(0.31)).toBe("31%");
     expect(regretPct(null)).toBeNull();
     expect(engineReasonWords("replay_failed")).toBe("the 30-day replay failed");
+  });
+});
+
+/**
+ * ENGINE-FULL-MIGRATION-1102 (owner 2026-11-02, « mets sur tout partout pour tous les clients »): the Engine drives every
+ * result of every live campaign. A result a live campaign works with no Engine pick is red with its campaigns named; a
+ * switched result missing a pick on some campaigns shows that count; a rolled-back unit says when it re-tries;
+ * `fleetEligible` is deprecated and may be absent.
+ */
+const result = (over: Record<string, unknown>) => ({
+  family: "f",
+  outcome: "o",
+  outcomeName: "Positive reply, from Lead found",
+  todayRegret: null,
+  engineRegret: null,
+  status: "switched",
+  units: 3,
+  driving: 3,
+  rolledBack: 0,
+  unpicked: 0,
+  switchedSince: "2026-11-02T00:00:00Z",
+  heldDays: 0,
+  drives: [],
+  unpickedCampaigns: [],
+  ...over,
+});
+const withResults = (results: unknown[], reasons: string[] = []) => ({
+  ...body,
+  engine: { ...body.engine, verdict: { red: reasons.length > 0, reasons }, results },
+});
+const unpicked = (id: string, reason: string) => ({ funnelCampaignId: id, orgId: "o1", brandId: "b1", pipeId: "sales-cold-email-outreach|lead_found_to_positive_reply", unitCampaignId: null, reason });
+
+describe("engine full migration: every result driven", () => {
+  it("today's prod shape (all switched, green, fleetEligible served) parses with nothing broken", () => {
+    const parsed = FactoryShadowMonitoringSchema.parse(withResults([result({ fleetEligible: true }), result({ family: "g", status: "shadow", units: 0, driving: 0, fleetEligible: false })]));
+    expect(parsed.engine!.verdict.red).toBe(false);
+    expect(parsed.engine!.results!.map((r) => resultStatusLook(r.status).word)).toEqual(["Switched", "Shadow"]);
+    expect(engineBrokenRows(parsed.engine!)).toEqual([]);
+  });
+  it("a body WITHOUT fleetEligible parses", () => {
+    const parsed = FactoryShadowMonitoringSchema.parse(withResults([result({})]));
+    expect(parsed.engine!.results![0].status).toBe("switched");
+  });
+  it("a no_engine_pick result reads red with its campaigns listed and the reason in words", () => {
+    const parsed = FactoryShadowMonitoringSchema.parse(
+      withResults([result({ status: "no_engine_pick", units: 0, driving: 0, unpicked: 1, switchedSince: null, heldDays: null, unpickedCampaigns: [unpicked("c1", "no_candidate_priced")] })], ["results_without_engine"]),
+    );
+    expect(resultStatusLook("no_engine_pick")).toEqual({ word: "No Engine pick", tone: "var(--data-rose)" });
+    expect(engineReasonWords("results_without_engine")).toBe("a result of a live campaign runs without an Engine pick");
+    const rows = engineBrokenRows(parsed.engine!);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ kind: "unpicked", campaignId: "c1", outcomeName: "Positive reply, from Lead found" });
+    expect(unpickedReasonWords("no_candidate_priced")).toBe("no workflow for this result has a price yet");
+  });
+  it("a switched result carrying unpicked: 2 shows the count and both campaigns", () => {
+    const parsed = FactoryShadowMonitoringSchema.parse(withResults([result({ unpicked: 2, unpickedCampaigns: [unpicked("c1", "no_unit_campaign"), unpicked("c2", "no_candidate_on_pipe")] })], ["results_without_engine"]));
+    expect(parsed.engine!.results![0].unpicked).toBe(2);
+    expect(engineBrokenRows(parsed.engine!).map((r) => r.campaignId)).toEqual(["c1", "c2"]);
+    const src = read("components/v2/monitoring-engine.tsx");
+    expect(src).toContain("`No Engine pick on ${r.unpicked}`");
+  });
+  it("a rolled-back unit states when it re-tries", () => {
+    const drive = { unitCampaignId: "u1", brandId: "b1", state: "rolled_back", workflowDynastySlug: "a", serviceDynastySlug: "b", switchedAt: "2026-10-20T00:00:00Z", rolledBackAt: "2026-11-01T00:00:00Z", guard: { verdict: "worse", rollBacks: 1, retryAt: "2026-11-15T00:00:00.000Z" } };
+    const parsed = FactoryShadowMonitoringSchema.parse(withResults([result({ status: "rolled_back", rolledBack: 1, drives: [drive] })], ["rolled_back"]));
+    expect(engineBrokenRows(parsed.engine!)[0]).toMatchObject({ kind: "rolled_back", rollBacks: 1, retryAt: "2026-11-15T00:00:00.000Z" });
+    expect(read("components/v2/monitoring-engine.tsx")).toContain("re-tries ${");
+  });
+  it("shows nothing about a fleet gate", () => {
+    const src = read("components/v2/monitoring-engine.tsx") + read("lib/factory-shadow.ts");
+    expect(src).not.toMatch(/fleetEligible\s*:/);
+    expect(src).not.toMatch(/after 7 days/i);
   });
 });
 
