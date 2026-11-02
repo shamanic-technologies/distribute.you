@@ -49,11 +49,10 @@ describe("the served copy carries the running funnel and each pipe", () => {
 describe("the client campaign page", () => {
   const aim = read("components/v2/campaign-aim.tsx");
   const page = read("components/v2/funnel-campaigns.tsx");
-  it("opens on what the campaign aims at, for every customer (no staff gate), above the staff card and This campaign", () => {
+  it("opens on what the campaign aims at, for every customer (no staff gate), above This campaign", () => {
     expect(aim).not.toMatch(/useStaffMode|StaffOnly|useIsAdminUser/);
     const at = page.indexOf("<CampaignAimSection");
     expect(at).toBeGreaterThan(-1);
-    expect(at).toBeLessThan(page.indexOf("<FactoryPlanSection"));
     expect(at).toBeLessThan(page.indexOf(">This campaign</SectionTitle>"));
   });
   it("shows the Target by its served step label, the Type tag, the brief editable in place with its one-line purpose", () => {
@@ -63,22 +62,14 @@ describe("the client campaign page", () => {
     expect(aim).toContain("Tell us in plain words how to run this campaign. We follow it.");
     expect(aim).not.toMatch(/>\s*Save\s*</);
   });
-  it("draws the path it runs now (the served copy) and the plan-changes sentence; no staff concept", () => {
-    expect(aim).toContain("<FunnelPathLine items={copy.path.items} />");
-    expect(aim).toContain('["salesFunnelPlanChanges", campaign.id]');
-    expect(aim).toContain("pathChangeSentence(changedAt, targetLabel)");
-    // Code only (comments stripped): the docstring names the staff concepts it keeps out.
+  it("draws no pipe line and no staff concept: what runs is the Plan below (owner 2026-11-02)", () => {
     const code = aim.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    for (const staff of ["Jev", "play", "strategy", "tactic", "useFactoryShadow", "useStaffCatalogueObject"]) expect(code).not.toContain(staff);
+    expect(code).not.toContain("FunnelPathLine");
+    expect(code).not.toContain("salesFunnelPlanChanges");
+    for (const staff of ["Jev", "play", "strategy", "tactic", "useFactoryShadow", "useStaffCatalogueObject", "Pipe"]) expect(code).not.toContain(staff);
   });
-  it("a client reads the channel's served name; only staff read the code name; the mark is always served", () => {
-    const line = page.slice(page.indexOf("export function FunnelPathLine("), page.indexOf("/** The Type tag"));
-    expect(line).toContain("const { staffMode } = useStaffMode();");
-    expect(line).toContain("<PipeChip pipeId={it.pipeId} servedName={it.name} codeName={staffMode} />");
-    const chip = page.slice(page.indexOf("function PipeChip("), page.indexOf("/** The Type tag"));
-    expect(chip).toContain("{codeName ? (pipe?.name ?? servedName) : servedName}");
-    expect(chip).toContain("<ServedPipeMark pipeId={pipeId} size={12} />");
-    expect(chip).toContain("usePublicPipe(codeName ? pipeId : null)");
+  it("the campaign page renders no staff plan card (pipes, plays, fixed funnel)", () => {
+    expect(page).not.toContain("<FactoryPlanSection");
   });
 });
 

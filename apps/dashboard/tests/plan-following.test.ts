@@ -83,16 +83,6 @@ describe("plan following: words", () => {
 });
 
 describe("plan following: surfaces", () => {
-  it("campaign card shows the switch read only, inside the staff-only section", () => {
-    const card = read("components/v2/factory-plan-card.tsx");
-    const body = card.slice(card.indexOf("function FactoryPlanBody("), card.indexOf("function PlanSwitchRow("));
-    expect(body).toContain("<PlanSwitchRow campaign={campaign} />");
-    const row = card.slice(card.indexOf("function PlanSwitchRow("), card.indexOf("// ─── Plan changes"));
-    expect(row).toContain("followsPlanWords(follows)");
-    expect(row).toContain("DRAINING_WORDS");
-    expect(row).not.toMatch(/onClick|onChange|useMutation/);
-  });
-
   it("is a Monitoring page with its red tile above the rows, on the staff gateway route, never persisted", () => {
     expect(MONITORING_PAGES).toContain("factory/following");
     expect(parseMonitoringPath("/factory/following")).toEqual({ view: "page", page: "factory/following" });
@@ -138,7 +128,7 @@ describe("plan changes", () => {
     expect(PlanChangesSchema.parse({ ...BODY, changes: [] }).changes).toEqual([]);
   });
 
-  it("is read through the /v1 relay, never persisted, inside the staff-only card, nothing drawn when empty", () => {
+  it("is read through the /v1 relay, never persisted", () => {
     const api = read("lib/api.ts");
     const reader = api.slice(api.indexOf("export async function getSalesFunnelCampaignPlanChanges("));
     expect(reader.slice(0, 400)).toContain("/sales-funnel-campaigns/${encodeURIComponent(id)}/plan-changes");
@@ -146,14 +136,5 @@ describe("plan changes", () => {
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
     expect(sensitive).toContain('"salesFunnelPlanChanges"');
-    const card = read("components/v2/factory-plan-card.tsx");
-    const body = card.slice(card.indexOf("function FactoryPlanBody("), card.indexOf("function PlanSwitchRow("));
-    expect(body).toContain("<PlanChangesRow campaignId={campaign.id} />");
-    const row = card.slice(card.indexOf("function PlanChangesRow("), card.indexOf("function PlanChangeLine("));
-    expect(row).toContain('["salesFunnelPlanChanges", campaignId]');
-    expect(row).toContain("if (changes.length === 0) return null;");
-    const pipes = card.slice(card.indexOf("function FunnelPipes("), card.indexOf("// ─── Brief: text"));
-    expect(pipes).toContain('useStaffCatalogueObject("sales-funnels", salesFunnelId)');
-    expect(pipes).toContain("<ServedPipeMark pipeId={l.pipe.id}");
   });
 });

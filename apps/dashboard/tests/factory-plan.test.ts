@@ -116,46 +116,6 @@ describe("factory shadow: Monitoring read parses as served", () => {
   });
 });
 
-describe("factory shadow: the campaign page (staff mode only)", () => {
-  const card = read("components/v2/factory-plan-card.tsx");
-  it("renders nothing, and reads nothing, outside staff mode", () => {
-    const section = card.slice(card.indexOf("export function FactoryPlanSection("), card.indexOf("function FactoryPlanBody("));
-    expect(section).toContain("useStaffMode()");
-    expect(section).toContain("if (!staffMode) return null;");
-    // The read lives in the body, mounted only past the gate.
-    expect(section).not.toContain("useFactoryShadow(");
-  });
-
-  it("is mounted on the funnel campaign page above This campaign", () => {
-    const page = read("components/v2/funnel-campaigns.tsx");
-    const at = page.indexOf("<FactoryPlanSection");
-    expect(at).toBeGreaterThan(-1);
-    expect(at).toBeLessThan(page.indexOf(">This campaign</SectionTitle>"));
-  });
-
-  it("edits the brief through the funnel campaign PATCH, never a Save button", () => {
-    const api = read("lib/api.ts");
-    const writer = api.slice(api.indexOf("export async function setSalesFunnelCampaignBrief("), api.indexOf("/** One funnel campaign with its units. */"));
-    expect(writer).toContain('method: "PATCH"');
-    expect(writer).toContain("body: { brief }");
-    // One brief field for the staff card and the client page (P5.1): campaign-brief-field.tsx.
-    const field = read("components/v2/campaign-brief-field.tsx");
-    expect(card).toContain("<BriefField");
-    expect(field).toContain("setSalesFunnelCampaignBrief(");
-    expect(field).toContain('e.key === "Escape"');
-    expect(field).toContain("onBlur={commit}");
-    expect(field).not.toMatch(/>\s*Save\s*</);
-    expect(card).not.toMatch(/>\s*Save\s*</);
-  });
-
-  it("draws served figures only: no client sort or sum", () => {
-    expect(card).toContain("f.costPerTargetUsd");
-    expect(card).toContain("formatRoi(f.roi)");
-    expect(card).not.toMatch(/\.sort\(/);
-    expect(card).not.toMatch(/\.reduce\(/);
-  });
-});
-
 describe("factory shadow: Monitoring page and hub", () => {
   it("reads the staff gateway route, never persisted to disk", () => {
     const api = read("lib/api.ts");

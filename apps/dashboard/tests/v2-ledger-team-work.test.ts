@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ledgerRunsQuery, nextLedgerRunsCursor, runResult, BrandLedgerSchema } from "../src/lib/v2/brand-ledger";
-import { personName, pipeQueueQuery, teamPipes } from "../src/lib/v2/team-work";
+import { personName, pipeQueueQuery, teamOutcomes } from "../src/lib/v2/team-work";
 
 // FACTORY-P4-PAGES: the staff Ledger and Done by your team pages.
 const SRC = join(__dirname, "..", "src");
@@ -52,20 +52,27 @@ describe("Ledger: runs-service's books, drawn not computed", () => {
   });
 });
 
-describe("Done by your team: the client's own pipes, lead-service's queue", () => {
+describe("Done by your team: the outcomes the client's own team makes, lead-service's queue (owner 2026-11-02: no pipe)", () => {
   const base = { running: true, operatedBy: "customer", fromKey: "meeting_booked", fromLabel: "Meeting booked", toKey: "meeting_attended", toLabel: "Meeting attended" };
-  it("keeps running pipes a customer-operated channel works, from a step, once each", () => {
-    const pipes = teamPipes([
-      { ...base, pipeId: "your-team-meeting-attendance|meeting_booked_to_meeting_attended", pipeName: "Heron" },
-      { ...base, pipeId: "your-team-meeting-attendance|meeting_booked_to_meeting_attended", pipeName: "Heron" },
-      { ...base, pipeId: "cold-email|start_to_conversation", pipeName: "Dotterel", operatedBy: "platform", fromKey: null },
-      { ...base, pipeId: "your-team-closing-calls|meeting_attended_to_paid_client", pipeName: "Kite", running: false },
-      { ...base, pipeId: "your-team-x|start", pipeName: "Entry", fromKey: null },
+  it("keeps running parts a customer-operated channel works, from an outcome, once per outcome pair", () => {
+    const outcomes = teamOutcomes([
+      { ...base },
+      { ...base },
+      { ...base, operatedBy: "platform", fromKey: "lead_found", toKey: "conversation" },
+      { ...base, fromKey: "meeting_attended", toKey: "paid_client", running: false },
+      { ...base, fromKey: null, toKey: "lead_found" },
     ]);
-    expect(pipes.map((p) => p.pipeName)).toEqual(["Heron"]);
+    expect(outcomes).toEqual([{ fromKey: "meeting_booked", fromLabel: "Meeting booked", toKey: "meeting_attended", toLabel: "Meeting attended" }]);
   });
 
-  it("asks lead-service by the pipe's leg, and names a person as served", () => {
+  it("names no pipe on the page", () => {
+    const page = read("components/v2/team-work-page.tsx").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(page).not.toContain("ServedPipeMark");
+    expect(page).not.toMatch(/>[^<{]*\bpipes?\b/i);
+    expect(page).not.toMatch(/"[^"]*\bpipes?\b[^"]*"/i);
+  });
+
+  it("asks lead-service by from and to outcome, and names a person as served", () => {
     expect(pipeQueueQuery("b", "meeting_booked", "meeting_attended")).toBe("brandId=b&from=meeting_booked&to=meeting_attended");
     expect(personName({ firstName: "Ada", lastName: null, name: "Ada L.", orgName: "Acme" })).toBe("Ada");
     expect(personName({ firstName: null, lastName: null, name: null, orgName: "Acme" })).toBe("Acme");
