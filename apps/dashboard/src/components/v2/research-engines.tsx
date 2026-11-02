@@ -92,7 +92,7 @@ function Engines({ data }: { data: EnginePlaces }) {
   return (
     <>
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Candidate places" note="one outcome as one caller asks for it">
+        <StatTile label="Places" note="outcome x caller">
           <Figure value={data.summary.places} />
         </StatTile>
         <StatTile label="Clear winners" note={`chance ${data.clearWinnerPct}% or more`}>
@@ -169,8 +169,9 @@ function PlaceDetail({ data, place }: { data: EnginePlaces; place: EnginePlace }
     <>
       <SectionTitle right={<span>for {place.consumerName}</span>}>{place.outcomeName}</SectionTitle>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        <StatTile label="Chance the favourite is the best" note={fav ? <CatalogueName kind="workflow" name={fav.workflowName} servedKey={fav.workflowDynastySlug} /> : "no favourite yet"}>
+        <StatTile label="Chance the favourite is the best">
           <p className={`text-[22px] font-medium leading-7 tabular-nums ${place.clearWinner ? "text-[var(--run)]" : ""}`}>{pct(fav?.chancePct ?? null)}</p>
+          <p className="k-fg3 mt-0.5 flex min-w-0 text-[12px]">{fav ? <CatalogueName kind="workflow" name={fav.workflowName} servedKey={fav.workflowDynastySlug} /> : "no favourite yet"}</p>
         </StatTile>
         <StatTile label="Verdict">
           <p className="text-[15px] font-medium leading-7">{place.clearWinner ? "Clear winner" : fav ? "Still exploring" : "No pick yet"}</p>
