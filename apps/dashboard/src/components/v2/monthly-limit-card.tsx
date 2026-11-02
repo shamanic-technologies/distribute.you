@@ -8,6 +8,20 @@ import { parseMonthlyLimitUsd } from "@/lib/v2/monthly-limit";
 import { Meter, Shimmer } from "@/components/v2/ui";
 
 /**
+ * The calendar month billing counts (`period_start`, UTC), by name. "This month" sat
+ * under a Balance card counting since the last charge, so $79.95 read as a third
+ * figure for the same money (2026-11-02): a hold made in October counts in October.
+ */
+function periodMonth(periodStart: string): string {
+  const at = new Date(periodStart);
+  if (Number.isNaN(at.getTime())) {
+    console.error("[billing v2] monthly limit period_start is not a date:", periodStart);
+    return "this month";
+  }
+  return at.toLocaleString("en-US", { month: "long", timeZone: "UTC" });
+}
+
+/**
  * The monthly limit on Billing (owner 2026-10-21): a cap on what the org's campaigns SPEND in a
  * month. billing-service stops campaign runs at it and never refuses a charge, so the bar reads
  * the served spend of the month (`spent_this_period_cents`), never card charges. The "limit
@@ -115,7 +129,7 @@ export function MonthlyLimitCard() {
           <Meter value={spent} max={limitCents} />
           <p className="k-fg3 mt-1.5 flex justify-between gap-3 text-[12px] tabular-nums">
             <span>
-              {formatCentsAsUsd(spent)} of {formatCentsAsUsd(limitCents, 0)} spent (billed + provisioned) this month
+              {formatCentsAsUsd(spent)} of {formatCentsAsUsd(limitCents, 0)} spent in {periodMonth(data.period_start)}, provisioned included
             </span>
             {pending === undefined && data.remaining_cents !== null && <span>{formatCentsAsUsd(data.remaining_cents)} left</span>}
           </p>

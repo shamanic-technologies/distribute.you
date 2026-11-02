@@ -9,7 +9,7 @@ import {
 
 const base = {
   has_payment_method: true,
-  balance_cents: "-9150.0000000000",
+  actual_balance_cents: "-9150.0000000000",
 };
 
 describe("cardChangeSettleCents", () => {
@@ -18,9 +18,21 @@ describe("cardChangeSettleCents", () => {
     expect(cardChangeSettleCents(base)).toBe(9150);
   });
 
+  it("states only what is BILLED, never the holds for emails not sent yet", () => {
+    // Beyond Logic 2026-11-02: $26.40 billed, $93.21 provisioned. The notice said
+    // $119.60 (balance_cents) while billing settles $26.40 (credited - billed).
+    expect(
+      cardChangeSettleCents({
+        has_payment_method: true,
+        actual_balance_cents: "-2639.5000000000",
+        balance_cents: "-11959.5505783000",
+      } as Parameters<typeof cardChangeSettleCents>[0]),
+    ).toBe(2640);
+  });
+
   it("rounds a fractional deficit UP, as billing does", () => {
     // Rounding down would state a cent less than what is charged.
-    expect(cardChangeSettleCents({ ...base, balance_cents: "-100.4200000000" })).toBe(101);
+    expect(cardChangeSettleCents({ ...base, actual_balance_cents: "-100.4200000000" })).toBe(101);
   });
 
   it("is null with no card on file — there is nothing to charge", () => {
@@ -41,13 +53,13 @@ describe("cardChangeSettleCents", () => {
   });
 
   it("is null on a non-negative balance", () => {
-    expect(cardChangeSettleCents({ ...base, balance_cents: "0" })).toBeNull();
-    expect(cardChangeSettleCents({ ...base, balance_cents: "4200.0000000000" })).toBeNull();
+    expect(cardChangeSettleCents({ ...base, actual_balance_cents: "0" })).toBeNull();
+    expect(cardChangeSettleCents({ ...base, actual_balance_cents: "4200.0000000000" })).toBeNull();
   });
 
   it("is null under the acquirer minimum, which billing refuses outright", () => {
-    expect(cardChangeSettleCents({ ...base, balance_cents: "-49" })).toBeNull();
-    expect(cardChangeSettleCents({ ...base, balance_cents: `-${MIN_SETTLE_CHARGE_CENTS}` })).toBe(
+    expect(cardChangeSettleCents({ ...base, actual_balance_cents: "-49" })).toBeNull();
+    expect(cardChangeSettleCents({ ...base, actual_balance_cents: `-${MIN_SETTLE_CHARGE_CENTS}` })).toBe(
       MIN_SETTLE_CHARGE_CENTS,
     );
   });
@@ -55,8 +67,8 @@ describe("cardChangeSettleCents", () => {
   it("is null — never 0 — on a balance it cannot read", () => {
     // `Number("")` and `Number("  ")` are both 0, so a blank that fell through
     // would read as a settled account rather than an unreadable one.
-    for (const balance_cents of ["", "   ", "not-a-number"]) {
-      expect(cardChangeSettleCents({ ...base, balance_cents })).toBeNull();
+    for (const actual_balance_cents of ["", "   ", "not-a-number"]) {
+      expect(cardChangeSettleCents({ ...base, actual_balance_cents })).toBeNull();
     }
   });
 
