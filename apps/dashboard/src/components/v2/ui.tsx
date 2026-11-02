@@ -159,7 +159,7 @@ export function Figure({ value, unit, sub }: { value: React.ReactNode; unit?: st
 }
 
 /** A served series as a soft line. Draws what it is handed; computes nothing. */
-export function SparkLine({ values, className = "h-8" }: { values: number[] | null; className?: string }) {
+export function SparkLine({ values, className = "h-8", color }: { values: number[] | null; className?: string; /** A tone other than the accent (a served state: `var(--run)`). */ color?: string }) {
   const id = useId();
   if (!values || values.length < 2) return <div className={className} />;
   const w = 200;
@@ -171,7 +171,7 @@ export function SparkLine({ values, className = "h-8" }: { values: number[] | nu
   const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const [lx, ly] = pts[pts.length - 1];
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={`w-full text-[var(--accent)] ${className}`} aria-hidden="true">
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={`w-full text-[var(--accent)] ${className}`} style={color ? { color } : undefined} aria-hidden="true">
       <defs>
         <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor="currentColor" stopOpacity="0.14" />
