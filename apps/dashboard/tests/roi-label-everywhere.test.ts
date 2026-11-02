@@ -18,7 +18,8 @@ describe("every customer ROI label carries the expected (i)", () => {
 
   it("the Campaigns surfaces label ROI with the (i): campaign page (1: its This campaign tile) and the list rows", () => {
     expect(read("components/v2/funnel-campaigns.tsx").match(/<RoiLabel \/>/g)?.length).toBe(1);
-    expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<RoiLabel />");
+    expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<RoiLabel>Expected ROI</RoiLabel>");
+    expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<RoiLabel>Measured ROI</RoiLabel>");
   });
 
   it("no customer surface prints a bare ROI header", () => {

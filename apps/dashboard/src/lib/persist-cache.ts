@@ -217,6 +217,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
  * SENSITIVE_QUERY_ROOTS; a future UNKNOWN root is default-OFF until listed here.
  */
 export const PERSISTABLE_QUERY_ROOTS = new Set([
+  // Today > Why each one was picked (FACTORY-USER-DASHBOARD-1102).
+  "offerEnginePicks",
   // The brand's own LinkedIn company page (Brand settings).
   "brandLinkedinPage",
   // Who each person is to a brand: the People page's questions and settled answers.

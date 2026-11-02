@@ -286,16 +286,15 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
   const funnel = () => src("src/components/v2/campaigns-overview-page.tsx");
   const section = () => funnel().slice(funnel().indexOf("function CampaignLine("), funnel().indexOf("function UnconvertedRunningCampaigns("));
 
-  it("a row reads, in order: face + name + sentence, Type, ROI (i), $ Invested, Status; Spent / Volume / Budget dropped", () => {
+  // FACTORY-USER-DASHBOARD-1102: the GTM Factory Campaigns columns.
+  it("a row reads, in order: face + name + path, Starts from, Target, Expected ROI (i), Measured ROI (i), $ Spent, Status", () => {
     const s = section();
     const at = (t: string) => s.indexOf(t);
-    expect(at("<FunnelFace name={campaign.salesFunnelName}")).toBeGreaterThan(-1);
-    expect(at("<TypeTag row={copy} />")).toBeGreaterThan(at("<FunnelFace name={campaign.salesFunnelName}"));
-    // ROI carries the expected (i) (owner 2026-10-11).
-    expect(at("<RoiLabel />")).toBeGreaterThan(at("<TypeTag row={copy} />"));
-    expect(at(">$ Invested</div>")).toBeGreaterThan(at("<RoiLabel />"));
-    expect(at("<FunnelCampaignStatus campaign={campaign}")).toBeGreaterThan(at(">$ Invested</div>"));
-    for (const gone of [">Spent<", ">Volume<", ">Budget<"]) expect(s).not.toContain(gone);
+    const order = ["<FunnelFace name={campaign.salesFunnelName}", "<TypeTag row={copy} />", ">Target</div>", "<RoiLabel>Expected ROI</RoiLabel>", "<RoiLabel>Measured ROI</RoiLabel>", ">$ Spent</div>", "<FunnelCampaignStatus campaign={campaign}"].map(at);
+    expect(order.every((i) => i > -1)).toBe(true);
+    expect([...order].sort((x, y) => x - y)).toEqual(order);
+    expect(s).toContain("stepLabel(catalogue, campaign.target)");
+    for (const gone of [">Spent<", ">Volume<", ">Budget<", ">$ Invested</div>"]) expect(s).not.toContain(gone);
   });
 
   it("every cell reads features-service's served row: running path, type label, roiMultiple, investedUsd; nothing composed", () => {
