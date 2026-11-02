@@ -110,10 +110,15 @@
 @keyframes orbit-pop { 40% { scale: 1.14; } }
 @keyframes wa-got { 30% { box-shadow: 0 30px 60px -24px rgba(10, 20, 60, 0.45), 0 0 0 1px rgba(10, 10, 10, 0.1), 0 0 0 6px rgba(37, 99, 235, 0.22); } }
 /* The call travels: a line from the tool to the thread, drawn then faded (home.js). */
-.orbit-beams { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }
+/* Under the logos (z 1) and the thread (z 3): a line never crosses an image. */
+.orbit-beams { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; overflow: visible; }
 .orbit-beams line { stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 4 5; opacity: 0; }
 .orbit-beams line.on { animation: beam 1.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes beam { 0% { opacity: 0; stroke-dashoffset: 40; } 20%, 60% { opacity: 0.85; } 100% { opacity: 0; stroke-dashoffset: 0; } }
+
+/* The travelling dots (main.js) live in the closing call to action, away from the orbit. */
+.flow-lines { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.cta-box > :not(.flow-lines) { position: relative; z-index: 1; }
 
 /* ---------- The offer strip (treg.to) ---------- */
 .offer-strip { padding: 8px 0 72px; }

@@ -38,12 +38,12 @@ describe("the homepage is self-contained", () => {
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
     expect(html).toContain('href="/landing/v2/styles.css?v=23"');
-    expect(html).toContain('src="/landing/v2/main.js?v=12"');
+    expect(html).toContain('src="/landing/v2/main.js?v=13"');
     // PAGE-REVENUE-AGENT-1029: the AI Agent sections have their own sheet, and the page
     // carries `data-motion` effects, so it loads the motion kit at the shell's version.
-    expect(html).toContain('href="/landing/v2/agent.css?v=4"');
+    expect(html).toContain('href="/landing/v2/agent.css?v=5"');
     // The homepage's own motion (hero thread calling the orbit tools, the "why" rows).
-    expect(html).toContain('src="/landing/v2/home.js?v=1"');
+    expect(html).toContain('src="/landing/v2/home.js?v=2"');
     expect(html).toContain(`src="/landing/v2/motion.js?v=${MOTION_VERSION}"`);
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");

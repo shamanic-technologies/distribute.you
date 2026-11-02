@@ -57,6 +57,14 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(readerBody("getOfferOutcomeCostSeries")).toContain('pricing: "net"');
   });
 
+  it("getFunnelCampaignMilestones requests net pricing (campaign page Milestones)", () => {
+    expect(readerBody("getFunnelCampaignMilestones")).toContain("?pricing=net");
+  });
+
+  it("getFunnelCampaignPeopleJourneys requests net pricing (What its people went through)", () => {
+    expect(readerBody("getFunnelCampaignPeopleJourneys")).toContain("?pricing=net");
+  });
+
   it("getLegWorkflowRanking requests net pricing (Research workflow figures)", () => {
     expect(readerBody("getLegWorkflowRanking")).toContain('pricing: "net"');
   });
