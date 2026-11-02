@@ -29,6 +29,8 @@ export const BoxHealthSchema = z.object({
     swapUsedPctMax: num,
     oomWindowHours: num,
     staleAfterMinutes: num,
+    // Disk (BOX-DISK-1101): additive, absent until features-service serves it.
+    diskAvailablePctMin: num.nullish(),
   }),
   latest: z
     .object({
@@ -46,6 +48,9 @@ export const BoxHealthSchema = z.object({
       oomKills: num.nullish(),
       oomKillsLast24h: num.nullish(),
       containers: z.array(BoxContainerSchema).nullish(),
+      diskTotalMb: num.nullish(),
+      diskAvailableMb: num.nullish(),
+      diskAvailablePct: num.nullish(),
     })
     .nullable(),
   windowDays: num,
@@ -58,6 +63,8 @@ export const BoxHealthSchema = z.object({
       memAvailableMinMb: num,
       swapUsedPctMax: num.nullable(),
       oomKills: num.nullable(),
+      diskAvailableMinMb: num.nullish(),
+      diskAvailablePctMin: num.nullish(),
     }),
   ),
   recentHours: num,
@@ -69,6 +76,7 @@ export const BoxHealthSchema = z.object({
       load15: num,
       memAvailableMb: num,
       swapUsedPct: num.nullable(),
+      diskAvailablePct: num.nullish(),
     }),
   ),
   topContainers: z.object({
@@ -90,6 +98,11 @@ export function containerLabel(name: string): string {
 /** Megabytes as people read memory: "1.5 GB" from 1,000 MB up, "820 MB" below. */
 export function memLabel(mb: number): string {
   return mb >= 1000 ? `${(mb / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 })} GB` : `${Math.round(mb).toLocaleString("en-US")} MB`;
+}
+
+/** Disk space always in gigabytes, one decimal: "12.4 GB". Display only. */
+export function gbLabel(mb: number): string {
+  return `${(mb / 1024).toLocaleString("en-US", { maximumFractionDigits: 1 })} GB`;
 }
 
 /** A load average or a CPU figure to one decimal. */

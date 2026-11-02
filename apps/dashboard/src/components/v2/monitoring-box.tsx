@@ -7,7 +7,7 @@ import { getStaffBoxHealth } from "@/lib/api";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { DailyLines, dayLabel, type Line } from "@/components/v2/monitoring-charts";
 import { Failed, Loading, OK, RED } from "@/components/v2/monitoring-sending";
-import { containerLabel, loadLabel, memLabel, type BoxDailyPoint, type BoxHealth, type BoxRecentPoint } from "@/lib/monitoring/box-health";
+import { containerLabel, gbLabel, loadLabel, memLabel, type BoxDailyPoint, type BoxHealth, type BoxRecentPoint } from "@/lib/monitoring/box-health";
 
 /**
  * Monitoring > Box > Load and memory (staff only, BOX-OVERLOAD-1026-MONITORING). The production box (every service +
@@ -120,11 +120,46 @@ function TopList({ title, rows, format, color }: { title: string; rows: { name: 
   );
 }
 
+const pctLabel = (v: number) => `${loadLabel(v)}%`;
+
+/**
+ * Disk free (BOX-DISK-1101: the box reached 97 % full unseen). Same anatomy as the other charts; a sample or day without
+ * a disk reading is left out (a gap, never a zero), and no reading at all is a plain note, not red: features-service
+ * serves the disk fields from its own deploy on, and its verdict stays the only red.
+ */
+function DiskChart({ data }: { data: BoxHealth }) {
+  const limit = data.thresholds.diskAvailablePctMin;
+  const recent = data.recent.filter((p) => p.diskAvailablePct != null);
+  const daily = data.daily.filter((p) => p.diskAvailablePctMin != null);
+  if (recent.length === 0 && daily.length === 0) {
+    return (
+      <section>
+        <SectionTitle>Disk free</SectionTitle>
+        <div className="k-card">
+          <EmptyNote>No disk sample yet.</EmptyNote>
+        </div>
+      </section>
+    );
+  }
+  const limitLine = limit != null ? [{ key: "limit", label: "Limit", color: LIMIT, dashed: true, get: () => limit }] : [];
+  return (
+    <Chart
+      title="Disk free"
+      data={{ ...data, recent, daily }}
+      format={pctLabel}
+      recentLines={[{ key: "disk", label: "Free", color: ACCENT, get: (p) => p.diskAvailablePct ?? null }, ...limitLine]}
+      dailyLines={[{ key: "min", label: "Lowest of the day", color: ACCENT, get: (p) => p.diskAvailablePctMin ?? null }, ...limitLine]}
+    />
+  );
+}
+
 export function BoxHealthView({ data }: { data: BoxHealth }) {
   const t = data.thresholds;
   const l = data.latest;
   const red = data.status === "red";
   const limitLoad = t.load5Max;
+  const diskPct = l?.diskAvailablePct ?? null;
+  const diskLow = diskPct != null && t.diskAvailablePctMin != null && diskPct < t.diskAvailablePctMin;
   return (
     <div className="space-y-8">
       <div className="k-card flex items-start gap-3 px-4 py-3">
@@ -138,13 +173,13 @@ export function BoxHealthView({ data }: { data: BoxHealth }) {
           <p className="k-fg3 mt-0.5 text-[12px]">
             {l ? `Latest sample ${utcTime(l.sampledAt)} UTC` : "No sample yet"}
             {data.minutesSinceLastSample != null && `, ${Math.round(data.minutesSinceLastSample)} min ago`}. Red when the load average over 5 minutes is above{" "}
-            {limitLoad != null ? loadLabel(limitLoad) : `${t.loadPerCoreMax}x the cores`} ({t.loadPerCoreMax}x {l?.cores ?? "the"} cores), available memory is under {memLabel(t.memAvailableMinMb)}, swap is over {t.swapUsedPctMax}% full, the kernel killed a process for memory in the last {t.oomWindowHours} h, or no sample came for {t.staleAfterMinutes} min.
+            {limitLoad != null ? loadLabel(limitLoad) : `${t.loadPerCoreMax}x the cores`} ({t.loadPerCoreMax}x {l?.cores ?? "the"} cores), available memory is under {memLabel(t.memAvailableMinMb)}, swap is over {t.swapUsedPctMax}% full, the kernel killed a process for memory in the last {t.oomWindowHours} h{t.diskAvailablePctMin != null && `, disk free is under ${t.diskAvailablePctMin}%`}, or no sample came for {t.staleAfterMinutes} min.
           </p>
         </div>
       </div>
 
       {l && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <StatTile label="Load, 5 min" note={`${l.cores} cores`}>
             <Figure value={<span style={{ color: limitLoad != null && l.load5 > limitLoad ? RED : undefined }}>{loadLabel(l.load5)}</span>} sub={limitLoad != null ? `limit ${loadLabel(limitLoad)}` : undefined} />
           </StatTile>
@@ -159,6 +194,12 @@ export function BoxHealthView({ data }: { data: BoxHealth }) {
           </StatTile>
           <StatTile label="Memory kills" note={`last ${t.oomWindowHours} h`}>
             <Figure value={l.oomKillsLast24h == null ? <span className="k-fg4">—</span> : <span style={{ color: l.oomKillsLast24h > 0 ? RED : undefined }}>{l.oomKillsLast24h}</span>} />
+          </StatTile>
+          <StatTile label="Disk free" note={l.diskTotalMb != null ? `of ${gbLabel(l.diskTotalMb)}` : undefined}>
+            <Figure
+              value={diskPct == null ? <span className="k-fg4">—</span> : <span style={{ color: diskLow ? RED : undefined }}>{pctLabel(diskPct)}</span>}
+              sub={diskPct == null ? "No disk sample yet" : [l.diskAvailableMb != null ? `${gbLabel(l.diskAvailableMb)} free` : null, t.diskAvailablePctMin != null ? `limit ${t.diskAvailablePctMin}%` : null].filter(Boolean).join(", ") || undefined}
+            />
           </StatTile>
         </div>
       )}
@@ -207,6 +248,8 @@ export function BoxHealthView({ data }: { data: BoxHealth }) {
         ]}
       />
 
+      <DiskChart data={data} />
+
       <section>
         <SectionTitle right={<span>averaged over the last {data.topContainers.windowMinutes} min, {data.topContainers.sampleCount} {data.topContainers.sampleCount === 1 ? "sample" : "samples"}</span>}>Containers</SectionTitle>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -245,7 +288,7 @@ export function BoxHealthTile({ href }: { href: string }) {
             <span style={{ color: red ? RED : undefined }}>Load {loadLabel(l.load5)}</span>
           )
         }
-        sub={l ? `${memLabel(l.memAvailableMb)} free, ${l.swapUsedPct == null ? "no swap" : `swap ${l.swapUsedPct}%`}` : undefined}
+        sub={l ? `${memLabel(l.memAvailableMb)} free, ${l.swapUsedPct == null ? "no swap" : `swap ${l.swapUsedPct}%`}${l.diskAvailablePct != null ? `, disk ${pctLabel(l.diskAvailablePct)} free` : ""}` : undefined}
       />
       {data && <p className="k-fg3 mt-0.5 line-clamp-2 text-[12px]" title={data.reason}>{data.reason}</p>}
     </StatTile>
