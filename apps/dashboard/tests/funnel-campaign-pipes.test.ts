@@ -136,5 +136,6 @@ describe("a journey with no script share says why, in words", () => {
     const { milestoneReasonWords } = await import("../src/lib/factory-campaign");
     expect(milestoneReasonWords("no_spend_yet")).toBe("Nobody yet");
     expect(milestoneReasonWords("spend_recorded_under_another_pipe")).toBe("Its cost is counted on the next step");
+    expect(milestoneReasonWords("done_by_your_team")).toBe("Done by your team");
   });
 });

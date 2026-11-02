@@ -120,6 +120,8 @@ export function milestoneReasonWords(reason: string | null): string | null {
       return "Nobody yet";
     case "spend_recorded_under_another_pipe":
       return "Its cost is counted on the next step";
+    case "done_by_your_team":
+      return "Done by your team";
     case null:
       return null;
     default:
