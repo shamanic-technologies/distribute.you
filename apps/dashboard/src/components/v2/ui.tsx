@@ -216,6 +216,20 @@ export function Meter({ value, max, className = "" }: { value: number | null; ma
   );
 }
 
+/**
+ * A row's served figure as a thin bar beside it, scaled on the biggest one in its list (owner
+ * 2026-11-02: « des graphiques plutôt que masse de chiffres »). Display only: `value` and `max`
+ * are served figures, nothing here is a new stat. Negative or missing values draw an empty track.
+ */
+export function ShareBar({ value, max, color = "var(--accent)", className = "w-16" }: { value: number | null; max: number | null; color?: string; className?: string }) {
+  const pct = value != null && value > 0 && max ? Math.min(100, (value / max) * 100) : 0;
+  return (
+    <span className={`block h-1.5 shrink-0 overflow-hidden rounded-full bg-[var(--data-track)] ${className}`} aria-hidden="true">
+      <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+    </span>
+  );
+}
+
 /** A square initials tile, the way Keel draws a company or a person. */
 export function Initials({ name, size = 20, round = false }: { name: string; size?: number; round?: boolean }) {
   const letters = name
