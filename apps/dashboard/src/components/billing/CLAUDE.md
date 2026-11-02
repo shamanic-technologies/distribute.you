@@ -14,7 +14,7 @@ The click settles on the card (6.3 s measured) before the session is minted; sil
 - Stricter than `availableCents < 0`: billing skips settle for non-off_session cards (India/RBI) and deficits under the acquirer 50-cent minimum; do not promise a charge that cannot fire.
 - Nothing owed: open the page DIRECTLY, no modal.
 - Modal shows `Charging $91.50...`, both buttons disabled, keep-page-open line.
-- Unreadable `balance_cents` is `null`, never `0`.
+- Reads `actual_balance_cents` (credited minus BILLED), never `balance_cents` (also minus provisioned holds): billing's `computeSettleBalanceCents` charges only what is billed (2026-11-02: notice said $119.60 beside a $26.40 balance due). Unreadable is `null`, never `0`.
 - **Read the side-effect outcome before redirecting**: billing states `settle_result` (`charged|declined|failed|not_attempted`) + `settle_decline_message`; `cardSessionSettleProblem` turns `declined`/`failed` into a modal and keeps the prepared card page one click away. Keep declined vs failed apart.
 - Open: "View invoices" opens the card-update flow (stripe-service `POST /v1/billing_portal/sessions` without `flow_data` is not proxied by api-service). Nothing retries the debt on the NEW card.
 

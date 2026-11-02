@@ -135,6 +135,6 @@ describe("no referral or free credit surface for a no-free-money org", () => {
     const from = page.indexOf("return (", at);
     const branch = page.slice(from, page.indexOf("  return (\n    <V2Page", from));
     expect(branch).not.toMatch(/REFERRAL_CREDIT_USD|free|credit/i);
-    expect(src("src/components/v2/billing-page.tsx")).toContain('{account && !offersNoFreeMoney(account) && (\n        <Section id="free-credit"');
+    expect(src("src/components/v2/billing-page.tsx")).toContain('{account && !offersNoFreeMoney(account) && hasFreeCredit && (\n        <Section id="free-credit"');
   });
 });

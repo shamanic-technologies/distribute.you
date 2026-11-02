@@ -2,7 +2,7 @@
 
 import { offersNoFreeMoney } from "@/lib/v2/get-started";
 import { useState } from "react";
-import { configureAutoTopup, disableAutoTopup, getOrgUsage } from "@/lib/api";
+import { configureAutoTopup, disableAutoTopup, getFreeCreditPromises, getOrgUsage } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollIntervalFor } from "@/lib/query-options";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
@@ -142,6 +142,10 @@ export function V2BillingPage() {
   const owed = postpaidOwed(account);
   const cardName =
     account?.card_brand && account?.card_last4 ? `${cardBrandLabel(account.card_brand)} ending ${account.card_last4}` : null;
+  // Free credit shows only once there is some, given or on the way (owner 2026-11-02:
+  // "No free credit yet" was a section saying nothing). Same key as ComingCreditsCard.
+  const promises = useAuthQuery(["freeCreditPromises"], () => getFreeCreditPromises());
+  const hasFreeCredit = c.grants.length > 0 || (promises.data?.promises.length ?? 0) > 0;
   const customCents = c.customAmount ? Math.round(parseFloat(c.customAmount) * 100) || 0 : c.topupSelected;
 
   const sub = c.accountPending
@@ -525,17 +529,10 @@ export function V2BillingPage() {
 
         {/* Free credit: what was given, then what is on the way. None on billing's
             no-free-money offers (owner 2026-10-29): its $5 at creation is an advance. */}
-        {account && !offersNoFreeMoney(account) && (
+        {account && !offersNoFreeMoney(account) && hasFreeCredit && (
         <Section id="free-credit" title="Free credit" description="Credit we added to your account, and credit that unlocks as your payments grow.">
+          {c.grants.length > 0 && (
           <div className="k-card overflow-hidden">
-            {c.grantsPending && c.grants.length === 0 ? (
-              <div className="space-y-3 p-4">
-                <Shimmer className="h-4 w-48" />
-                <Shimmer className="h-4 w-40" />
-              </div>
-            ) : c.grants.length === 0 ? (
-              <EmptyNote>No free credit yet.</EmptyNote>
-            ) : (
               <ul>
                 {c.grants.map((grant) => (
                   <li key={grant.id} className="k-row k-line-subtle flex items-center justify-between gap-3 border-b px-4 py-2.5 last:border-b-0">
@@ -552,9 +549,9 @@ export function V2BillingPage() {
                   </li>
                 ))}
               </ul>
-            )}
           </div>
-          <div className="v2-embed mt-3">
+          )}
+          <div className={`v2-embed ${c.grants.length > 0 ? "mt-3" : ""}`}>
             <ComingCreditsCard />
           </div>
         </Section>
@@ -628,7 +625,12 @@ export function V2BillingPage() {
           </div>
         </Section>
 
-        <UsageSection billedCents={c.confirmedChargesCents} setAsideCents={c.provisionedChargesCents} />
+        <UsageSection
+          billedCents={c.confirmedChargesCents}
+          setAsideCents={c.provisionedChargesCents}
+          dueCents={mode === "postpaid" ? owed.owedCents : null}
+          creditedCents={account ? parseFloat(account.credited_cents) : null}
+        />
       </div>
     </>
   );
@@ -651,7 +653,19 @@ const USAGE_CATCH_UP_MS = 1_500;
  * figures at the top, re-reads every 1.5s until both show the same moment
  * (BILLING-PAGE-COHERENT-1021). The compare is a freshness check, never a figure shown.
  */
-function UsageSection({ billedCents, setAsideCents }: { billedCents: number | null; setAsideCents: number | null }) {
+function UsageSection({
+  billedCents,
+  setAsideCents,
+  dueCents,
+  creditedCents,
+}: {
+  billedCents: number | null;
+  setAsideCents: number | null;
+  /** Postpaid only: billing's balance due, the "Billed" at the top. */
+  dueCents: number | null;
+  /** billing's `credited_cents`: everything paid in (and credit added), since joining. */
+  creditedCents: number | null;
+}) {
   const { data: usage, isPending, isError } = useAuthQuery(["orgUsage"], () => getOrgUsage(), {
     refetchInterval: (query) => {
       const base = pollIntervalFor(query);
@@ -672,7 +686,11 @@ function UsageSection({ billedCents, setAsideCents }: { billedCents: number | nu
     <Section
       id="usage"
       title="Usage"
-      description="What you have been billed, by what it paid for. The total matches Billed at the top of this page."
+      description={
+        dueCents !== null
+          ? "Everything billed since you joined, by what it paid for: what you already paid, plus the balance due."
+          : "Everything billed since you joined, by what it paid for. The total matches Billed at the top of this page."
+      }
     >
       <div className="k-card overflow-hidden">
         {isPending && !isError ? (
@@ -701,6 +719,14 @@ function UsageSection({ billedCents, setAsideCents }: { billedCents: number | nu
             <li className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold">Total</p>
+                {/* Postpaid: the Total spans every month, Balance due only since the last charge
+                    ($66.53 beside $26.40 read as a contradiction, 2026-11-02). Both halves are
+                    billing's own fields, printed side by side, never subtracted here. */}
+                {dueCents !== null && creditedCents !== null && (
+                  <p className="k-fg3 text-[12px] tabular-nums">
+                    {formatBillingCents(creditedCents)} already paid, {formatCentsAsUsd(dueCents, 2)} balance due.
+                  </p>
+                )}
                 {setAsideCentsServed >= 0.5 && (
                   <p className="k-fg3 text-[12px]">
                     Plus {formatBillingCents(setAsideCentsServed)} provisioned for emails already scheduled.

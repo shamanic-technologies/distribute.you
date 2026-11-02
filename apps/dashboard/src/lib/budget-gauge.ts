@@ -144,9 +144,10 @@ export function budgetGaugeView(
     const charged = `Card charged at ${formatCentsAsUsd(line, 0)}`;
     return {
       label: "Spent since last charge",
-      figure: formatCentsAsUsd(owed, 2),
+      // Rounded UP like the charge and the Billing page's Balance due ($26.39 beside $26.40, 2026-11-02).
+      figure: formatBillingCents(owed),
       meter: { value: owed, max: line },
-      line: reserved >= 1 ? `${charged} · ${formatCentsAsUsd(reserved, 0)} reserved for running work` : `${charged}.`,
+      line: reserved >= 1 ? `${charged} · ${formatCentsAsUsd(reserved, 0)} provisioned` : `${charged}.`,
       tone: "ok",
     };
   }

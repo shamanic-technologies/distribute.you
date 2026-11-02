@@ -29,6 +29,10 @@ describe("formatUsd", () => {
   it("adds thousand separators and dollar sign", () => {
     expect(formatUsd(1234.56)).toBe("$1,234.56");
     expect(formatUsd(1000000)).toBe("$1,000,000.00");
+    // A correction is "-$0.05", never "$-0.05"; a value rounding to zero has no sign.
+    expect(formatUsd(-0.05)).toBe("-$0.05");
+    expect(formatUsd(-1234.5)).toBe("-$1,234.50");
+    expect(formatUsd(-0.001)).toBe("$0.00");
   });
 });
 

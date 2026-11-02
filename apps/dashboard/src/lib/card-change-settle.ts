@@ -31,8 +31,13 @@ export const MIN_SETTLE_CHARGE_CENTS = 50;
 export interface CardChangeSettleAccount {
   /** Nothing to charge without one, so billing attempts nothing. */
   has_payment_method: boolean;
-  /** Full-precision decimal string. Negative = postpaid usage running on credit. */
-  balance_cents: string;
+  /**
+   * Full-precision decimal string: credited minus BILLED usage, provisioned holds
+   * NOT counted. Billing settles exactly this on a card change (its
+   * `computeSettleBalanceCents`); `balance_cents` also subtracts the holds for
+   * emails not sent yet and stated $119.60 beside a $26.40 balance due (2026-11-02).
+   */
+  actual_balance_cents?: string | null;
   /**
    * Off-session charging is impossible for some issuing countries (India, RBI
    * e-mandates), and billing skips the settle entirely for those. Absent on an
@@ -64,7 +69,7 @@ export function cardChangeSettleCents(
   // Only an explicit `false` blocks it — the field is absent on older deploys.
   if (account.auto_reload_supported === false) return null;
 
-  const raw = account.balance_cents;
+  const raw = account.actual_balance_cents;
   // `Number("")` and `Number("  ")` are both 0, so a blank has to be refused
   // BEFORE the finiteness check or it reads as a settled account.
   if (typeof raw !== "string" || raw.trim().length === 0) return null;

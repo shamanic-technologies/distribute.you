@@ -69,7 +69,9 @@ export function formatLocaleInteger(
 
 /** Format a USD dollar amount with thousand separators. */
 export function formatUsd(usd: number, decimals = 2): string {
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  // The sign goes before the dollar: "-$0.05", never "$-0.05" (2026-11-02).
+  const body = Math.abs(usd).toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return usd < 0 && Number(body.replace(/,/g, "")) !== 0 ? `-$${body}` : `$${body}`;
 }
 
 /** Format cents as USD with thousand separators. */
