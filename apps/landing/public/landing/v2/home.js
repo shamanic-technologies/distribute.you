@@ -52,6 +52,10 @@
       // End on the thread's edge nearest the tool, not its centre (the line never crosses the chat).
       var x2 = Math.min(Math.max(x1, w.left - s.left), w.right - s.left);
       var y2 = Math.min(Math.max(y1, w.top - s.top + 40), w.bottom - s.top - 20);
+      // Start on the logo's edge, not its centre (the line never crosses the logo either).
+      var dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var off = Math.min(len, l.width / 2 + 6);
+      x1 += dx / len * off; y1 += dy / len * off;
       var line = document.createElementNS(NS, "line");
       line.setAttribute("x1", x1); line.setAttribute("y1", y1);
       line.setAttribute("x2", x2); line.setAttribute("y2", y2);

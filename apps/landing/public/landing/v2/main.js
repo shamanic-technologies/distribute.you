@@ -309,9 +309,10 @@
   }
   if (hotEl && !reduced) hotSchedule();
 
-  /* Hero line art (explee canvas): curves from both edges converging on the launch
-     field, with dots travelling along them toward the centre. */
-  var canvas = document.getElementById("hero-lines");
+  /* Line art (explee canvas): curves from both edges converging on the launch field of
+     the block holding the canvas, with dots travelling along them toward the centre.
+     The homepage plays it in the closing call to action, away from the hero's orbit. */
+  var canvas = document.querySelector(".flow-lines, #hero-lines");
   if (canvas && !reduced) {
     var ctx = canvas.getContext("2d");
     var W = 0;
@@ -333,13 +334,15 @@
     function build() {
       curves = [];
       dots = [];
-      var field = document.getElementById("hero-website");
+      var field = canvas.parentElement.querySelector("input");
       var cx = W / 2;
       var cy = H * 0.5;
+      var edge = null;
       if (field) {
-        var fr = field.getBoundingClientRect();
+        var fr = (field.closest(".launch-field") || field).getBoundingClientRect();
         var pr = canvas.parentElement.getBoundingClientRect();
         cy = fr.top - pr.top + fr.height / 2;
+        edge = [fr.left - pr.left, fr.right - pr.left];
       }
       var n = W < 700 ? 4 : 7;
       for (var side = -1; side <= 1; side += 2) {
@@ -347,7 +350,7 @@
           var t = (i + 0.5) / n;
           var y0 = H * (0.08 + 0.84 * t);
           var x0 = side < 0 ? -20 : W + 20;
-          var x1 = cx + side * (W < 700 ? 200 : 290);
+          var x1 = edge ? edge[side < 0 ? 0 : 1] : cx + side * (W < 700 ? 200 : 290);
           var c1x = side < 0 ? W * 0.28 : W * 0.72;
           var c2x = side < 0 ? cx - 380 : cx + 380;
           curves.push({ p0: [x0, y0], p1: [c1x, y0], p2: [c2x, cy], p3: [x1, cy], seed: Math.random() });
@@ -365,6 +368,7 @@
       return [x, y];
     }
     var last = 0;
+    var rgb = canvas.getAttribute("data-rgb") || "37,99,235";
     function draw(ts) {
       var dt = last ? Math.min(50, ts - last) : 16;
       last = ts;
@@ -373,8 +377,8 @@
       curves.forEach(function (c) {
         var g = ctx.createLinearGradient(c.p0[0], 0, c.p3[0], 0);
         var from = c.p0[0] < c.p3[0];
-        g.addColorStop(0, from ? "rgba(37,99,235,0)" : "rgba(37,99,235,0.22)");
-        g.addColorStop(1, from ? "rgba(37,99,235,0.22)" : "rgba(37,99,235,0)");
+        g.addColorStop(0, from ? "rgba(" + rgb + ",0)" : "rgba(" + rgb + ",0.22)");
+        g.addColorStop(1, from ? "rgba(" + rgb + ",0.22)" : "rgba(" + rgb + ",0)");
         ctx.strokeStyle = g;
         ctx.beginPath();
         ctx.moveTo(c.p0[0], c.p0[1]);
@@ -386,7 +390,7 @@
         if (d.t > 1) d.t = 0;
         var p = bez(d.c, d.t);
         var a = Math.sin(d.t * Math.PI);
-        ctx.fillStyle = "rgba(37,99,235," + (0.15 + 0.6 * a) + ")";
+        ctx.fillStyle = "rgba(" + rgb + "," + (0.15 + 0.6 * a) + ")";
         ctx.beginPath();
         ctx.arc(p[0], p[1], 2.2, 0, Math.PI * 2);
         ctx.fill();
