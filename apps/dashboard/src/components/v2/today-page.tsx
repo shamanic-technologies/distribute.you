@@ -43,6 +43,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { awaitingReason } from "@/lib/awaiting-reason";
+import { EnginePicksSection } from "@/components/v2/engine-picks-section";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import {
   useNeedsYourCall,
@@ -403,6 +404,10 @@ export function TodayPage() {
                       {formatCount(needsCall - callLeads.length)} more in Inbox →
                     </Link>
                   )}
+                </div>
+                {/* The GTM Factory Today feed (FACTORY-USER-DASHBOARD-1102): what each Engine picked and why. */}
+                <div className="mt-8">
+                  <EnginePicksSection orgId={orgId} brandId={brandId} offerId={selectedOfferId} />
                 </div>
               </section>
 

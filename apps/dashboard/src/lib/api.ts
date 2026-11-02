@@ -2329,6 +2329,7 @@ import {
   type FactoryShadowMonitoring,
 } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
+import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
 import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
 /**
@@ -2346,6 +2347,12 @@ export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunne
     if (err instanceof ApiError && err.status === 404 && err.body?.error === "factory_shadow_not_computed") return null;
     throw err;
   }
+}
+
+/** Today's "Why each one was picked": the offer's latest Engine picks, newest first (features-service, FACTORY-USER-DASHBOARD-1102). */
+export async function getOfferEnginePicks(brandId: string, offerId: string): Promise<EnginePicks> {
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/engine-picks?brandId=${encodeURIComponent(brandId)}`);
+  return parseStaff("getOfferEnginePicks", EnginePicksSchema, raw);
 }
 
 /** Monitoring > Factory plan > Following its plan: status, the red campaigns with their served state, one row per UTC day. */
