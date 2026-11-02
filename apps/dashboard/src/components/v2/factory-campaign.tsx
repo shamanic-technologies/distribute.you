@@ -4,18 +4,18 @@ import { PlayIcon } from "@phosphor-icons/react/dist/csr/Play";
 import { TargetIcon } from "@phosphor-icons/react/dist/csr/Target";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { stepLabel, type LegCatalogue } from "@/lib/legs";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/brand-conversion-rates";
 import {
-  pricedRunning,
   type EngineCandidateRow,
   type EnginePlaceFull,
-  type FactoryFigureLeg,
   type FactoryShadowPlan,
   type PipeVerdict,
 } from "@/lib/factory-shadow";
-import { planLegsFromTarget, strategyOfPlace, type PlanNode } from "@/lib/factory-campaign";
+import { milestoneReasonWords, planLegsFromTarget, strategyOfPlace, type MilestoneValue, type PlanNode } from "@/lib/factory-campaign";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { pollOptions } from "@/lib/query-options";
+import { getFunnelCampaignMilestones, getFunnelCampaignPeopleJourneys } from "@/lib/api";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
@@ -28,8 +28,9 @@ import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
  * l'ancienne façon de faire vers la nouvelle »). The anatomy of the GTM Factory dashboard's campaign page
  * (repo gtm-factory, docs/screenshots/campaign.png), drawn with v2 primitives over what features-service serves for
  * the campaign (its factory body, recomputed every 3 hours):
- * - Milestones: each milestone of the line the campaign runs, Start to its Target, with its expected $ per outcome,
- *   % conversion and outcomes needed per Target (the running line's served legs);
+ * - What its people went through: per step to step, how many people, the share each script made (`people-journeys`);
+ * - Milestones: each milestone, Start to its Target: # outcomes, $ per outcome, $ from Start, % conversion, needed per
+ *   Target, each MEASURED on the campaign else EXPECTED from its plan, greyed (`milestones`);
  * - Plan: the tree from the Target down, each outcome's Engine with every script competing there, its share of the
  *   Engine's picks, the pick of this pass highlighted;
  * - Strategy per Engine: which ways the brief keeps at each Engine and which it rules out (the brief judge);
@@ -42,10 +43,6 @@ const DASH = <span className="k-fg4">—</span>;
 const EXPECTED_TIP = "Expected, from each step's rate on today's estimates. It sharpens as your campaign's own results come in.";
 const SHARE_TIP = "How often the Engine picks this script when it draws from what it believes about each one. A script with little data gets tried now and then.";
 
-/** Who performs a leg nobody competes on (served `costSource`): the client's own team is named so. */
-function performedByWords(leg: FactoryFigureLeg): string | null {
-  return leg.costSource === "customer_team" ? "Done by your team" : null;
-}
 
 /** The four Factory sections of a campaign page, off ONE read of its factory body (the staff card shares the key). */
 export function FactoryCampaignSections({ campaign }: { campaign: SalesFunnelCampaign }) {
@@ -55,7 +52,8 @@ export function FactoryCampaignSections({ campaign }: { campaign: SalesFunnelCam
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   return (
     <>
-      <FactoryMilestones shadow={shadow} settled={settled} />
+      <FactoryJourneys brandId={campaign.brandId} campaignId={campaign.id} />
+      <FactoryMilestones brandId={campaign.brandId} campaignId={campaign.id} />
       <FactoryPlan shadow={shadow} settled={settled} />
       <FactoryStrategies shadow={shadow} />
       <FactoryScripts shadow={shadow} />
@@ -63,16 +61,71 @@ export function FactoryCampaignSections({ campaign }: { campaign: SalesFunnelCam
   );
 }
 
-// ─── Milestones ───────────────────────────────────────────────────────────────────────────────
+// ─── What its people went through ──────────────────────────────────────────────────────────────
 
-export function FactoryMilestones({ shadow, settled }: { shadow: FactoryShadowPlan | null; settled: boolean }) {
-  const catalogue = useLegCatalogue();
-  const running = pricedRunning(shadow?.plan?.running ?? null);
-  const legs = running?.figures.legs ?? [];
-  const targetLabel = stepLabel(catalogue, shadow?.plan?.target) ?? "Target";
+export function FactoryJourneys({ brandId, campaignId }: { brandId: string; campaignId: string }) {
+  const q = useAuthQuery(["funnelCampaignPeopleJourneys", brandId, campaignId], () => getFunnelCampaignPeopleJourneys(brandId, campaignId), pollOptions);
+  const settled = q.data !== undefined || q.isFetchedAfterMount;
+  const rows = q.data?.transitions ?? [];
   return (
     <section>
-      <SectionTitle count={legs.length > 0 ? legs.length + 1 : null} right={<span>Expected, on today&apos;s estimates</span>}>
+      <SectionTitle right={<span>Since it started, share by what each script spent</span>}>What its people went through</SectionTitle>
+      <div className="k-card divide-y divide-[var(--line-subtle)]">
+        {!settled ? (
+          <div className="space-y-2 p-4">
+            <Shimmer className="h-6 w-full" />
+            <Shimmer className="h-6 w-full" />
+          </div>
+        ) : q.isError && !q.data ? (
+          <EmptyNote>Could not read what your people went through. Retrying.</EmptyNote>
+        ) : rows.length === 0 ? (
+          <EmptyNote>Nobody has moved through this campaign yet.</EmptyNote>
+        ) : (
+          rows.map((t) => (
+            <div key={t.pipeId} className="grid gap-x-4 gap-y-1 px-4 py-2.5 text-[13px] md:grid-cols-[minmax(0,280px)_96px_minmax(0,1fr)]">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="k-fg2 truncate">{t.fromLabel}</span>
+                <span className="k-fg3">→</span>
+                <span className="truncate font-medium">{t.toLabel}</span>
+              </span>
+              <span className="tabular-nums md:text-right">
+                {formatCount(t.people)} {t.people === 1 ? "person" : "people"}
+              </span>
+              <span className="k-fg2 min-w-0 text-[12px]">
+                {t.scripts.length > 0
+                  ? t.scripts.map((sc, i) => (
+                      <span key={sc.workflowDynastySlug}>
+                        {i > 0 && ", "}
+                        <span className="k-fg tabular-nums">{formatShare(sc.sharePct)}%</span> by {sc.workflowName}
+                      </span>
+                    ))
+                  : (milestoneReasonWords(t.scriptsUnavailableReason) ?? DASH)}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─── Milestones ───────────────────────────────────────────────────────────────────────────────
+
+/** A milestone figure: measured in the ordinary colour, expected greyed with its word, none = its reason or "—". */
+function MilestoneCell({ v, format }: { v: MilestoneValue; format: (n: number) => string }) {
+  if (v.value === null) return DASH;
+  if (v.basis === "expected") return <span className="k-fg3" title="Expected, from the plan">{format(v.value)}<span className="ml-1 text-[11px]">exp.</span></span>;
+  return <>{format(v.value)}</>;
+}
+
+export function FactoryMilestones({ brandId, campaignId }: { brandId: string; campaignId: string }) {
+  const q = useAuthQuery(["funnelCampaignMilestones", brandId, campaignId], () => getFunnelCampaignMilestones(brandId, campaignId), pollOptions);
+  const settled = q.data !== undefined || q.isFetchedAfterMount;
+  const rows = q.data?.milestones ?? [];
+  const target = rows.find((r) => r.isTarget)?.label ?? "Target";
+  return (
+    <section>
+      <SectionTitle count={rows.length > 0 ? rows.length : null} right={<span>Measured since it started, else expected</span>}>
         Milestones
       </SectionTitle>
       <div className="k-card overflow-hidden">
@@ -82,91 +135,61 @@ export function FactoryMilestones({ shadow, settled }: { shadow: FactoryShadowPl
             <Shimmer className="h-6 w-full" />
             <Shimmer className="h-6 w-full" />
           </div>
-        ) : !running || legs.length === 0 ? (
-          <EmptyNote>{shadow ? "This campaign does not reach its Target on a priced line yet." : "Your campaign's plan is computed every 3 hours. It shows here after the next pass."}</EmptyNote>
+        ) : q.isError && !q.data ? (
+          <EmptyNote>Could not read this campaign&apos;s milestones. Retrying.</EmptyNote>
+        ) : rows.length === 0 ? (
+          <EmptyNote>{milestoneReasonWords(q.data?.milestonesUnavailableReason ?? null) ?? "No milestone to show yet."}</EmptyNote>
         ) : (
           <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[720px] text-[13px]">
+            <table className="w-full min-w-[760px] text-[13px]">
               <thead>
                 <tr className="k-line-subtle border-b">
                   <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Milestone</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">Made by</th>
+                  <th className="k-label px-3 py-2.5 text-right font-normal"># Outcomes</th>
                   <th className="k-label px-3 py-2.5 text-right font-normal">
                     <span className="inline-flex justify-end">
                       <ExpectedLabel tip={EXPECTED_TIP}>$ / Outcome</ExpectedLabel>
                     </span>
                   </th>
+                  <th className="k-label px-3 py-2.5 text-right font-normal">$ From Start</th>
                   <th className="k-label px-3 py-2.5 text-right font-normal">% Conversion</th>
-                  <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">Needed per {targetLabel}</th>
+                  <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">Needed per {target}</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="k-line-subtle border-b">
-                  <td className="px-3 py-2 pl-4">
-                    <span className="inline-flex items-center gap-2">
-                      <PlayIcon size={14} weight="duotone" className="k-fg3" aria-hidden />
-                      {stepLabel(catalogue, shadow?.plan?.startStep) ?? "Start"}
-                    </span>
-                  </td>
-                  <td className="k-fg3 px-3 py-2 text-[12px]">Where it starts</td>
-                  <td className="px-3 py-2 text-right">{DASH}</td>
-                  <td className="px-3 py-2 text-right">{DASH}</td>
-                  <td className="px-3 py-2 pr-4 text-right">{DASH}</td>
-                </tr>
-                {legs.map((leg, i) => {
-                  const lineLeg = running.legs[i];
-                  const toLabel = legTo(catalogue, leg.legKey);
-                  return (
-                    <tr key={`${leg.legKey}-${i}`} className="k-line-subtle border-b last:border-b-0">
-                      <td className="px-3 py-2 pl-4 font-medium">
-                        <span className="inline-flex items-center gap-2">
-                          {i === legs.length - 1 && <TargetIcon size={14} weight="duotone" className="text-[var(--accent)]" aria-hidden />}
-                          {toLabel}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="inline-flex items-center gap-1.5">
-                          {leg.pipeId && <ServedPipeMark pipeId={leg.pipeId} size={16} />}
-                          <span className="truncate">{lineLeg?.channelName ?? leg.legKey}</span>
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {leg.costPerOutcomeUsd != null ? (
-                          performedByWords(leg) && leg.costPerOutcomeUsd === 0 ? (
-                            <span className="k-fg2">$0 · your team</span>
-                          ) : (
-                            formatUsdAdaptive(leg.costPerOutcomeUsd)
-                          )
-                        ) : (
-                          DASH
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{leg.ratePct != null ? formatRatePct(leg.ratePct) : DASH}</td>
-                      <td className="px-3 py-2 pr-4 text-right tabular-nums">
-                        {leg.outcomesNeededPerPayingClient != null ? formatAbout(leg.outcomesNeededPerPayingClient) : DASH}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {rows.map((r) => (
+                  <tr key={r.step} className="k-line-subtle border-b last:border-b-0">
+                    <td className="px-3 py-2 pl-4">
+                      <span className={`inline-flex items-center gap-2 ${r.step === "start" ? "" : "font-medium"}`}>
+                        {r.step === "start" ? <PlayIcon size={14} weight="duotone" className="k-fg3" aria-hidden /> : r.isTarget ? <TargetIcon size={14} weight="duotone" className="text-[var(--accent)]" aria-hidden /> : null}
+                        {r.label}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.outcomes !== null ? formatCount(r.outcomes) : DASH}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      <MilestoneCell v={r.costPerOutcomeUsd} format={formatUsdAdaptive} />
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      <MilestoneCell v={r.costFromStartUsd} format={formatUsdAdaptive} />
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      <MilestoneCell v={r.conversionFromAbovePct} format={formatRatePct} />
+                    </td>
+                    <td className="px-3 py-2 pr-4 text-right tabular-nums">
+                      <MilestoneCell v={r.attemptsPerTarget} format={formatAbout} />
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
-        {running && running.figures.costPerTargetUsd != null && (
-          <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px] tabular-nums">
-            One {targetLabel.toLowerCase()} costs {formatUsdAdaptive(running.figures.costPerTargetUsd)} from Start on this line
-            {running.figures.targetValueUsd != null ? `, worth ${formatUsdAdaptive(running.figures.targetValueUsd)} to you` : ""}
-            {running.figures.roi != null ? `: an expected return of ${formatRoi(running.figures.roi)}.` : "."}
-          </p>
-        )}
+        <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
+          Measured on your campaign&apos;s own people and spend; a greyed figure is expected from its plan until the campaign measures it.
+        </p>
       </div>
     </section>
   );
-}
-
-function legTo(catalogue: LegCatalogue, legKey: string): string {
-  const to = legKey.split("_to_")[1] ?? null;
-  return stepLabel(catalogue, to) ?? to ?? legKey;
 }
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────────────────────
