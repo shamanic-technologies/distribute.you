@@ -719,7 +719,6 @@ function LimitsCard({ caps, settled, failed, onSet }: { caps: SalesFunnelCaps | 
         <>
           <p className="mt-1 text-[13px] tabular-nums">{used ?? <span className="k-fg3 text-[12px]">{unavailable}</span>}</p>
           {used && <Meter value={value} max={max} className="mt-1.5" />}
-          {reached && <p className="mt-1 text-[12px] text-[var(--data-rose)]">Reached for this period.</p>}
         </>
       )}
     </div>

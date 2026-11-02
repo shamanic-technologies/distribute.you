@@ -35,6 +35,7 @@ import {
   statedBudget,
   statedVolume,
   volumeFundingLabel,
+  funnelOnLabel,
   volumeUnitWords,
   parseWholeAmount,
   type CapPeriod,
@@ -172,28 +173,6 @@ export function FunnelCampaignStatus({
         <Chevron />
       </button>
       {open && <FunnelCampaignModal campaign={campaign} caps={caps.data ?? null} onClose={() => setOpen(false)} />}
-    </>
-  );
-}
-
-/**
- * The limits as a button in the campaign type's words ("Max $50/week" Proactive, "Up to $50/week"
- * Reactive), opening the same modal. "Set a budget" when none.
- */
-export function FunnelLimitsButton({ campaign, caps }: { campaign: SalesFunnelCampaign; caps: SalesFunnelCaps | null }) {
-  const [open, setOpen] = useState(false);
-  // A volume-only funnel shows its max volume, never a $ amount (owner 2026-10-11).
-  const limit = fundingLimit(caps);
-  const type = funnelTypeOf(caps);
-  return (
-    <>
-      <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="k-btn gap-1.5 tabular-nums">
-        <span className={limit ? "" : "k-fg3"}>
-          {limit?.kind === "budget" ? statedBudget(type, limit.budget) : limit?.kind === "volume" ? volumeFundingLabel(type, limit.volume) : "Set a budget"}
-        </span>
-        <Chevron />
-      </button>
-      {open && <FunnelCampaignModal campaign={campaign} caps={caps} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -609,7 +588,6 @@ function LimitCell({
   consumed,
   consumedValue,
   max,
-  reached,
   unavailable,
   window,
   unit,
@@ -622,7 +600,6 @@ function LimitCell({
   /** The same figure in the cap's unit, for the meter (dollars or people). */
   consumedValue: number | null;
   max: number | null;
-  reached: boolean | null;
   unavailable: string | null;
   window: string | null;
   unit: string;
@@ -654,7 +631,6 @@ function LimitCell({
             <Figure value={consumed} unit={`${unit} ${window ?? ""}`.trim()} />
           </div>
           <Meter value={consumedValue} max={max} className="mt-2" />
-          {reached && <p className="mt-1.5 text-[12px] text-[var(--data-rose)]">Reached for this period.</p>}
         </>
       )}
     </div>
@@ -715,6 +691,9 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   // The campaign's type picks the words (owner 2026-10-10): Proactive "Max budget", Reactive "Up to $X".
   const type = funnelTypeOf(c);
   const words = capWords(type);
+  // A limit not set shows no cell (owner 2026-11-02: "Max volume Not set" said nothing); with neither set, both stay to Set.
+  const showBudget = b !== null || v === null;
+  const showVolume = v !== null || b === null;
   // Why a running pipe sends nothing (campaign-service holds each PIPE): one note per reason.
   const runningPipes = units.filter((u) => campaignById.get(u.campaignId)?.running);
   const holds = useCampaignHolds(runningPipes.map((u) => u.campaignId));
@@ -736,8 +715,8 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
       tabs={tabs}
       actions={
         <>
-          {capsSettled && !(caps.isError && !c) && <FunnelLimitsButton campaign={campaign} caps={c} />}
-          <FunnelCampaignStatus campaign={campaign} />
+          {/* ONE button like the Campaigns table (owner 2026-11-02): green with the budget when on, "Off" when off. */}
+          <FunnelCampaignStatus campaign={campaign} onLabel={capsSettled ? funnelOnLabel(copyOf?.type === "reactive" ? "reactive" : type, c) : null} />
         </>
       }
       width="max-w-[1280px]"
@@ -825,31 +804,33 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
               <EmptyNote>Could not read this campaign&apos;s limits. Retrying.</EmptyNote>
             </div>
           ) : (
-            <div className="k-card grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-2 md:divide-x md:divide-y-0">
+            <div className={`k-card grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:divide-x md:divide-y-0 ${showBudget && showVolume ? "md:grid-cols-2" : ""}`}>
+              {showBudget && (
               <LimitCell
                 label={words.budget}
                 stated={b ? statedBudget(type, b) : null}
                 consumed={b && b.consumedCents !== null ? formatCapUsd(b.consumedCents) : null}
                 consumedValue={b ? centsToUsd(b.consumedCents) : null}
                 max={b ? centsToUsd(b.amountCents) : null}
-                reached={b?.reached ?? null}
                 unavailable={b ? capUnavailableSentence(b.consumedUnavailableReason) : null}
                 window={b ? capWindowWords(b.period) : null}
                 unit="spent"
                 onSet={() => setEditing(true)}
               />
+              )}
+              {showVolume && (
               <LimitCell
                 label={words.volume}
                 stated={v ? statedVolume(type, v) : null}
                 consumed={v && v.consumed !== null ? formatCount(v.consumed) : null}
                 consumedValue={v?.consumed ?? null}
                 max={v ? v.count : null}
-                reached={v?.reached ?? null}
                 unavailable={v ? capUnavailableSentence(v.consumedUnavailableReason) : null}
                 window={v ? capWindowWords(v.period) : null}
                 unit={volumeUnitWords(v?.unit ?? null, type, v?.consumed ?? 2)}
                 onSet={() => setEditing(true)}
               />
+              )}
             </div>
           )}
           </div>

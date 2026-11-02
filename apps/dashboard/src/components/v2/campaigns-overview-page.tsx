@@ -9,7 +9,7 @@ import { pollOptions } from "@/lib/query-options";
 import { getSalesFunnelCaps, listFunnelCampaignCopies, listFunnelCampaignRows, listOfferSalesFunnels } from "@/lib/api";
 import {
   compareFunnelCampaigns,
-  fundingLimit,
+  funnelOnLabel,
   funnelFunded,
   funnelRoiShown,
   funnelRowSettled,
@@ -18,9 +18,7 @@ import {
   funnelSortKey,
   funnelTypeOf,
   isOngoingFunnelCampaign,
-  maxBudgetLabel,
   splitFunnelCampaigns,
-  volumeFundingLabel,
   type FunnelCampaignCopy,
   type FunnelCampaignRow,
   type SalesFunnelCampaign,
@@ -396,14 +394,8 @@ export function CampaignLine({
   const notFunded = caps !== null && funnelFunded(caps) === false;
   const on = isOngoingFunnelCampaign(campaign);
   const reactive = (copy?.type ?? funnelTypeOf(caps)) === "reactive";
-  const b = caps?.maxBudget ?? null;
-  const limit = fundingLimit(caps);
   // The status button reads the budget when on, as the current table's does.
-  const onLabel = b
-    ? `${reactive ? "Up to " : ""}${maxBudgetLabel(b)}`
-    : limit?.kind === "volume"
-      ? volumeFundingLabel(reactive ? "reactive" : funnelTypeOf(caps), limit.volume)
-      : "On";
+  const onLabel = funnelOnLabel(reactive ? "reactive" : funnelTypeOf(caps), caps);
   // A missing served field reads "—" and is logged by name (no fallback).
   useEffect(() => {
     if (!rowSettled) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@/lib/use-auth-query";
 import { setSalesFunnelCampaignBrief } from "@/lib/api";
@@ -32,6 +32,15 @@ export function BriefField({
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dropped = useRef(false);
+  // The field opens at the height the text read at (owner 2026-11-02: it shrank to 3 rows on click), and grows as it is typed.
+  const readHeight = useRef(0);
+  const field = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = field.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(readHeight.current, el.scrollHeight + 2)}px`;
+  }, [text]);
   const save = useMutation({
     mutationFn: (next: string | null) => setSalesFunnelCampaignBrief(campaign.id, next, campaign.brandId),
     onSuccess: async (saved) => {
@@ -71,10 +80,11 @@ export function BriefField({
     return (
       <>
         <textarea
+          ref={field}
           autoFocus
           aria-label="Brief"
           value={text}
-          rows={Math.max(3, text.split("\n").length)}
+          rows={3}
           maxLength={8000}
           onChange={(e) => setText(e.target.value)}
           onBlur={commit}
@@ -93,7 +103,7 @@ export function BriefField({
           placeholder={placeholder}
           className={`k-input ${box} resize-y`}
           // keel.css is unlayered: the box's padding, height and font ride inline so the field opens in the text's own box.
-          style={{ font: "inherit", fontSize: 13, lineHeight: "20px", height: "auto", padding: "6px 8px" }}
+          style={{ font: "inherit", fontSize: 13, lineHeight: "20px", padding: "6px 8px" }}
         />
         <p className="k-fg3 mt-1 text-[11px]">Enter saves, Shift+Enter for a new line, Esc drops.</p>
         {error && <p className="mt-1 text-[12px]" style={{ color: ROSE }}>{error}</p>}
@@ -104,8 +114,9 @@ export function BriefField({
     <>
       <button
         type="button"
-        onClick={() => {
+        onClick={(e) => {
           dropped.current = false;
+          readHeight.current = e.currentTarget.offsetHeight;
           setText(shown);
         }}
         className={`k-hover cursor-text ${box}`}

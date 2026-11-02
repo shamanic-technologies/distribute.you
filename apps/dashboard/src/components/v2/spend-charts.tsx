@@ -238,7 +238,9 @@ function CostCard({ chart, answered, outcome, outcomes }: { chart: SpendChart | 
       <ChartBox answered={answered}>
         {unavailable ? (
           <EmptyNote>{unavailableWords(unavailable)}</EmptyNote>
-        ) : !chart || chart.daily.every((p) => p.costPerOutcomeUsd == null) ? (
+        ) : !chart || (chart.daily.every((p) => p.costPerOutcomeUsd == null) && expected == null) ? (
+          // With an expected cost served, the chart draws its dotted Expected line before the first result (owner 2026-11-02:
+          // like the % chart beside it); the measured line starts with the first one.
           <EmptyNote>
             {t && t.outcomes > 0
               ? "Nothing spent on this step yet, so it has no cost per result."
