@@ -192,7 +192,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "tools/intake": { section: "tools", title: "Records taken in", question: "Does every tool a client connected still bring records in?" },
   "factory/plan": { section: "factory", title: "Would change", question: "Which client campaigns would change if they followed their plan?" },
   "factory/following": { section: "factory", title: "Following its plan", question: "Does every campaign switched to its plan actually run it?" },
-  "factory/engine": { section: "factory", title: "Engine pick", question: "Would one Engine per outcome pick what our campaigns run today?" },
+  "factory/engine": { section: "factory", title: "Engine pick", question: "Does the Engine pick the workflow of every result our live campaigns use?" },
   "scripts/engines": { section: "scripts", title: "Engines", question: "Does each script work as well as the code it replaced?" },
   "ai/credit": { section: "ai", title: "Credit", question: "Does every AI vendor we call still have credit?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },

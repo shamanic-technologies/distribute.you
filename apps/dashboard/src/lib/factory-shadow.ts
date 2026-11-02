@@ -193,6 +193,22 @@ const EngineReplayFamilySchema = z
   })
   .passthrough();
 
+/** A live campaign working a result with no Engine pick, and why (served `reason`). */
+const UnpickedCampaignSchema = z
+  .object({ funnelCampaignId: z.string(), orgId: z.string(), brandId: z.string(), pipeId: z.string(), unitCampaignId: z.string().nullable(), reason: z.string() })
+  .passthrough();
+
+/** One unit the Engine drives; on a roll-back its guard states the roll-backs so far and when it re-tries. */
+const EngineDriveSchema = z
+  .object({
+    unitCampaignId: z.string(),
+    brandId: z.string(),
+    state: z.string(),
+    rolledBackAt: z.string().nullable(),
+    guard: z.object({ rollBacks: num.optional(), retryAt: z.string().nullish() }).passthrough().nullable(),
+  })
+  .passthrough();
+
 export const EngineMonitoringSchema = z
   .object({
     verdict: z.object({ red: z.boolean(), reasons: z.array(z.string()) }).passthrough(),
@@ -215,7 +231,11 @@ export const EngineMonitoringSchema = z
             rolledBack: num,
             switchedSince: z.string().nullable(),
             heldDays: num.nullable(),
-            fleetEligible: z.boolean(),
+            // ENGINE-FULL-MIGRATION-1102: units of live campaigns working this result with no Engine pick, and which.
+            // `fleetEligible` (deprecated, no fleet gate any more) is not read: the parse accepts its absence.
+            unpicked: num.optional(),
+            unpickedCampaigns: z.array(UnpickedCampaignSchema).optional(),
+            drives: z.array(EngineDriveSchema).optional(),
           })
           .passthrough(),
       )
@@ -406,15 +426,17 @@ const ENGINE_REASON_WORDS: Record<string, string> = {
   replay_failed: "the 30-day replay failed",
   rolled_back: "a switched result rolled back to the service path",
   drives_unreadable: "the switched results could not be read",
+  results_without_engine: "a result of a live campaign runs without an Engine pick",
 };
 
 const RESULT_STATUS: Record<string, { word: string; tone: string }> = {
   switched: { word: "Switched", tone: "var(--run)" },
   shadow: { word: "Shadow", tone: "var(--fg-4)" },
   rolled_back: { word: "Rolled back", tone: "var(--data-rose)" },
+  no_engine_pick: { word: "No Engine pick", tone: "var(--data-rose)" },
 };
 
-/** A served result status as the page shows it: its word and its tone (red only for a roll-back). */
+/** A served result status as the page shows it: its word and its tone (red only for a roll-back or a missing pick). */
 export function resultStatusLook(status: string): { word: string; tone: string } {
   return RESULT_STATUS[status] ?? { word: status, tone: "var(--fg-4)" };
 }
@@ -432,4 +454,36 @@ export function regretPct(v: number | null | undefined): string | null {
 /** The last pass's campaign places where both picks exist, in served order (campaign order, then line order). */
 export function enginePlaceRows(data: FactoryShadowMonitoring): Array<{ campaign: FactoryShadowMonitoringCampaign; place: EnginePlaceSummary }> {
   return data.campaigns.flatMap((c) => (c.engine?.places ?? []).map((place) => ({ campaign: c, place })));
+}
+
+const UNPICKED_REASON_WORDS: Record<string, string> = {
+  no_unit_campaign: "the campaign runs nothing on this pipe yet",
+  no_engine_place: "the Engine found no place for this result",
+  no_candidate: "no workflow makes this result yet",
+  no_candidate_priced: "no workflow for this result has a price yet",
+  no_candidate_on_pipe: "no workflow the Engine picks runs on this pipe",
+};
+
+/** Why a live campaign has no Engine pick on a result, in everyday words; an unknown code reads as served. */
+export function unpickedReasonWords(code: string): string {
+  return UNPICKED_REASON_WORDS[code] ?? code.replace(/_/g, " ");
+}
+
+/** What is broken on the Engine, as rows: failed campaigns, live campaigns without an Engine pick, rolled-back units. */
+export type EngineBrokenRow =
+  | { kind: "failed"; key: string; campaignId: string; brandId: string; name: string; failure: string | null }
+  | { kind: "unpicked"; key: string; campaignId: string; brandId: string; outcomeName: string; reason: string }
+  | { kind: "rolled_back"; key: string; campaignId: string; brandId: string; outcomeName: string; rollBacks: number | null; retryAt: string | null };
+
+/** The served problems, unpicked campaigns and rolled-back units, in served order. A list, nothing graded here. */
+export function engineBrokenRows(engine: EngineMonitoring): EngineBrokenRow[] {
+  const rows: EngineBrokenRow[] = engine.problems.map((p) => ({ kind: "failed", key: `f:${p.campaignId}`, campaignId: p.campaignId, brandId: p.brandId, name: p.salesFunnelName, failure: p.failure }));
+  for (const r of engine.results ?? []) {
+    for (const u of r.unpickedCampaigns ?? [])
+      rows.push({ kind: "unpicked", key: `u:${r.family}:${u.funnelCampaignId}:${u.pipeId}`, campaignId: u.funnelCampaignId, brandId: u.brandId, outcomeName: r.outcomeName, reason: u.reason });
+    for (const d of r.drives ?? [])
+      if (d.state === "rolled_back")
+        rows.push({ kind: "rolled_back", key: `r:${r.family}:${d.unitCampaignId}`, campaignId: d.unitCampaignId, brandId: d.brandId, outcomeName: r.outcomeName, rollBacks: d.guard?.rollBacks ?? null, retryAt: d.guard?.retryAt ?? null });
+  }
+  return rows;
 }
