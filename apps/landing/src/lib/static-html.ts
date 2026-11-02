@@ -16,7 +16,7 @@ import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { formatReturnMultiple } from "@/lib/landing-format";
 import { reseedFounderCount } from "@/lib/founder-count";
-import { INDEX_LINKS_TOKEN, fetchIndexDetail, fetchIndexList, indexLinksHtml, isExpected, type IndexDetail } from "@/lib/fleet-indexes";
+import { INDEX_LINKS_TOKEN, displayValue, fetchIndexDetail, fetchIndexList, indexLinksHtml, isExpected, type IndexDetail } from "@/lib/fleet-indexes";
 import {
   renderProofSelection,
   renderShowcaseSelection,
@@ -361,10 +361,11 @@ export function hotLeadRowHtml(
   );
 }
 
-// Whole dollars: this is a headline price, and cents on a figure that moves with
-// every outcome read as precision we do not have.
+// The index rounding (owner 2026-11-02): nearest ten from $10, so $457 reads $460.
+// Cents, or single dollars, on a figure that moves with every outcome read as
+// precision we do not have.
 function formatMeetingCost(usd: number): string {
-  return `$${Math.round(usd).toLocaleString("en-US")}`;
+  return `$${displayValue(usd).toLocaleString("en-US")}`;
 }
 
 /**
@@ -430,7 +431,7 @@ export function hotLeadBandHtml(
     `<div class="stat rv"><div class="n"><span data-count="${stats.hotLeads}">0</span></div><div class="l">engaged leads for ${companies} companies</div></div>` +
     (meetingCostUsd === null
       ? ""
-      : `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(meetingCostUsd)}">0</span></div><div class="l">${meetingCostExpected ? "expected cost per booked meeting" : "cost per booked meeting"}</div></div>`) +
+      : `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${displayValue(meetingCostUsd)}">0</span></div><div class="l">${meetingCostExpected ? "expected cost per booked meeting" : "cost per booked meeting"}</div></div>`) +
     (returnFigure
       ? `<div class="stat rv"><div class="n"><span data-count="${returnFigure.text}" data-decimals="${returnFigure.decimals}">0</span><span class="u">x</span></div><div class="l">median ROI of our clients</div></div>`
       : "") +

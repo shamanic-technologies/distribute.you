@@ -193,8 +193,11 @@ describe("the signature motion: the provider orbit and the WhatsApp agent", () =
     const wa = html.slice(html.indexOf('<div class="wa"'), html.indexOf("</script>", html.indexOf('<div class="wa"')));
     expect(wa).toContain('prefers-reduced-motion: reduce)").matches))document.currentScript.previousElementSibling.classList.add("play")');
     const times = [...wa.matchAll(/--t:([\d.]+)s/g)].map((m) => Number(m[1]));
-    expect(times.length).toBe(5);
+    // Five messages plus the day chip that says time passed before the reply.
+    expect(times.length).toBe(6);
     expect([...times].sort((a, b) => a - b)).toEqual(times);
+    expect(wa).toContain('<div class="wa-day" style="--t:4.1s">Thursday</div>');
+    expect(wa).not.toContain("priced before I send");
     // A thread with no invented person: the buyer is a company already used in the mocks.
     expect(wa).toContain("Northwind Health");
   });
