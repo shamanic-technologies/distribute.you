@@ -117,6 +117,9 @@ describe("milestones and people journeys (features-service, served measured-or-e
     const code = read("components/v2/factory-campaign.tsx");
     expect(code).not.toContain("figures.roi");
     expect(code).not.toContain("costPerTargetUsd");
+  });
+});
+
 describe("a part's own page is staff only (FACTORY-USER-DASHBOARD-1102)", () => {
   it("a client opening a part lands on the campaign it belongs to, same tab; staff keep the part page", () => {
     const src = read("components/v2/campaign-page.tsx");
