@@ -96,7 +96,9 @@ describe("a pipe is one leg x one channel, and every pipe is the one the file se
     expect(lib).not.toMatch(/PIPE_ORDER|PIPE_KEY|isResearchPipe/);
     expect(lib).toContain("export type ResearchPipe = string;");
     const page = read("apps/dashboard/src/components/v2/research-page.tsx");
-    expect(page).toContain("const pipeRows = RESEARCH.pipes.map(({ id: pipe }) => ({ pipe, studies: studiesFor(pipe, RESEARCH) }));");
+    // FACTORY-RESEARCH-1102: every served pipe is homed under its outcome (served `pipes[]`), the rest under Other outcomes
+    expect(page).toContain("outcomeStudiesOf(meta, RESEARCH)");
+    expect(page).toContain("const outside = pipesOutsideOutcomes(RESEARCH);");
     expect(page).not.toMatch(/study\.pipe === "/);
     // a pipe's pages render only for a pipe the file serves
     expect(page).toContain("researchPipeEntry(file, pipe) ? <>{children}</> : <V2ResearchStudy base={base} studyId={rest} />");
@@ -178,12 +180,12 @@ describe("Research names each pipe by its served name and mark, one collapsible 
   });
 
   it("the hub header is a toggle button: served mark + name, the path under the name, counts, a chevron", () => {
-    const block = page.slice(page.indexOf("function ResearchSectionBlock("), page.indexOf("function V2ResearchHub("));
+    const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
     // the row anatomy is the shared hub block (Monitoring wears it too), never a fork
-    expect(block).toContain("<HubSectionBlock");
-    expect(block).toContain("mark={(px) => <SectionMark section={section} size={px} />}");
-    expect(block).toContain("<SectionName section={section} />");
-    expect(block.indexOf("<SectionPath section={section} />")).toBeGreaterThan(block.indexOf("<SectionName section={section} />"));
+    expect(hub).toContain("<HubSectionBlock");
+    expect(hub).toContain("mark={(px) => <SectionMark section={{ outcome: entry.id }} size={px} />}");
+    expect(hub).toContain("name={<SectionName section={{ outcome: entry.id }} />}");
+    expect(hub).toContain("line={line ?? <SectionPath section={{ outcome: entry.id }} />}");
     const shared = read("apps/dashboard/src/components/v2/hub-section.tsx");
     const sharedBlock = shared.slice(shared.indexOf("export function HubSectionBlock("), shared.indexOf("function ChipArrow("));
     expect(sharedBlock).toContain('<button type="button" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}');
@@ -195,23 +197,22 @@ describe("Research names each pipe by its served name and mark, one collapsible 
     expect(shared).toContain("useState<ReadonlySet<string>>(() => new Set())");
     expect(shared).toContain("window.localStorage.setItem(storageKey");
     expect(page).toContain("useOpenSections(OPEN_SECTIONS_KEY)");
-    const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
-    // one row anatomy for the three groups
-    expect(hub.match(/<ResearchSectionBlock/g)?.length).toBe(3);
   });
 
-  it("an outcome row: the step's mark and name, the pipes under it, its population line, then its studies", () => {
+  it("an outcome row (FACTORY-RESEARCH-1102): the step's mark and name, its population, its pipes' pages, then its studies; no pipe heading", () => {
     const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
-    const outcomes = hub.slice(hub.indexOf("{leadTrackRows.map((t) => ("), hub.indexOf(">Other</SectionTitle>"));
     // the group title is the served leadTrackLabel, never a local word
-    expect(outcomes).toContain("<SectionTitle count={t.rows.length}>{t.label}</SectionTitle>");
-    expect(outcomes).toContain("section={{ outcome: meta.id }}");
-    // no `line` override: the line under the name is the pipes (SectionPath -> OutcomePipes)
-    expect(outcomes).not.toContain("line=");
-    expect(outcomes.indexOf("{meta.population}")).toBeLessThan(outcomes.indexOf("<StudyGrid studies={studies} base={base} />"));
+    expect(hub).toContain('<p className="k-label mb-2 px-1">{t.label}</p>');
+    expect(hub.indexOf("{entry.population}")).toBeLessThan(hub.indexOf("<OutcomeCatalogue base={base} pipes={pipes} />"));
+    expect(hub.indexOf("<OutcomeCatalogue base={base} pipes={pipes} />")).toBeLessThan(hub.indexOf("<StudyGrid studies={studies} base={base} />"));
     // Jev, under Other, is named by its description
-    const other = hub.slice(hub.indexOf(">Other</SectionTitle>"));
-    expect(other).toContain("line={meta.description}");
+    expect(hub).toContain("otherRows.map((r) => outcomeBlock(r, r.entry.description))");
+    // the per-pipe group is gone: no pipe is a section of the hub
+    expect(hub).not.toContain(">Pipes</SectionTitle>");
+    expect(hub).not.toContain("section={{ pipe }} studies=");
+    // the Engines come first, the Factory way
+    expect(hub.indexOf("<EngineHeadline />")).toBeLessThan(hub.indexOf("<EngineSection />"));
+    expect(hub.indexOf("<EngineSection />")).toBeLessThan(hub.indexOf("Studies, outcome by outcome"));
   });
 });
 

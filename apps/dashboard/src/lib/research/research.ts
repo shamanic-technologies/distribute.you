@@ -799,3 +799,36 @@ export function researchPipeFor(pipes: readonly ResearchPipeEntry[] | null | und
   if (!pipes || !channel || !legKey) return null;
   return pipes.find((p) => p.channel === channel && sameLegKey(p.leg, legKey))?.id ?? null;
 }
+
+/**
+ * FACTORY-RESEARCH-1102 (owner 2026-11-02): the studies are homed under their OUTCOME, never a pipe heading. An outcome
+ * section holds its own studies (price over time first) then the studies of every pipe the file says lands on it
+ * (`pipes[]`, served), with those pipes' workflow, template and model pages.
+ */
+export interface OutcomeStudies {
+  entry: ResearchOutcomeEntry;
+  pipes: ResearchPipe[];
+  studies: ResearchStudy[];
+}
+export function outcomeStudiesOf(entry: ResearchOutcomeEntry, file: ResearchFile): OutcomeStudies {
+  const pipes = (entry.pipes ?? []).filter((p) => file.pipes.some((x) => x.id === p));
+  return { entry, pipes, studies: [...sectionStudiesPriceFirst(entry.id, studiesForOutcome(entry.id, file)), ...pipes.flatMap((p) => studiesFor(p, file))] };
+}
+
+/**
+ * The pipes no outcome section lists (a pipe whose outcome is no lead state: Lead found, a post published), grouped by
+ * the outcome the file names for each pipe (`pipes[].outcome`, served words), in the file's order.
+ */
+export function pipesOutsideOutcomes(file: ResearchFile): Array<{ outcome: string; pipes: ResearchPipe[]; studies: ResearchStudy[] }> {
+  const homed = new Set((file.outcomes ?? []).flatMap((o) => o.pipes ?? []));
+  const groups: Array<{ outcome: string; pipes: ResearchPipe[]; studies: ResearchStudy[] }> = [];
+  for (const p of file.pipes) {
+    if (homed.has(p.id)) continue;
+    const g = groups.find((x) => x.outcome === p.outcome);
+    if (g) {
+      g.pipes.push(p.id);
+      g.studies.push(...studiesFor(p.id, file));
+    } else groups.push({ outcome: p.outcome, pipes: [p.id], studies: studiesFor(p.id, file) });
+  }
+  return groups;
+}

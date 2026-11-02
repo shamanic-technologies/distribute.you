@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin-allowlist";
-import { readLiveCatalog, readLivePerformance, readLiveResearch, readLiveTemplateTexts, type ResearchBasisParam } from "@/lib/research/live-file";
+import { readLiveCatalog, readLiveEnginePlaces, readLivePerformance, readLiveResearch, readLiveTemplateTexts, type ResearchBasisParam } from "@/lib/research/live-file";
 import { parseMaturityView } from "@/lib/v2/maturity-view-cookie";
 import { createLiveMemory } from "@/lib/research/live-cache";
 import { CATALOG_KINDS, catalogPipes, pipeCatalog, type ResearchCatalog, type ResearchFile } from "@/lib/research/research";
@@ -9,7 +9,7 @@ import { CATALOG_KINDS, catalogPipes, pipeCatalog, type ResearchCatalog, type Re
 /**
  * GET /api/research/{basis}/{part} — STAFF ONLY. Every byte of Research, read LIVE from
  * features-service (`lib/research/live-file.ts`): the file (`file`), its catalogue (`catalog`) and
- * the template texts (`texts`), the Performance tab (`performance`), on the billed basis (`user`) or the vendor-cost one (`actual`,
+ * the template texts (`texts`), the Performance tab (`performance`), the Engines' places (`engine-places`, one body on both bases), on the billed basis (`user`) or the vendor-cost one (`actual`,
  * which reveals our margin). Each part is held in memory for a minute and re-read in the background
  * up to five minutes (`lib/research/live-cache.ts`, owner 2026-10-23 « instantanées »), so a page
  * answers in milliseconds; past five minutes, or after a failed re-read, the request reads live
@@ -24,7 +24,7 @@ import { CATALOG_KINDS, catalogPipes, pipeCatalog, type ResearchCatalog, type Re
  * allowlist, so the `isAdminEmail` check below is the sole boundary.
  */
 const BASES = new Set<ResearchBasisParam>(["user", "actual"]);
-const PARTS = new Set(["file", "catalog", "texts", "performance"]);
+const PARTS = new Set(["file", "catalog", "texts", "performance", "engine-places"]);
 
 /** One memory for every staff reader: Research is fleet-wide, the same bytes for each of them. */
 const memory = createLiveMemory();
@@ -58,6 +58,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ basis: s
         return { ...file, catalogCounts: catalogCountsOf(cat) };
       });
     } else if (part === "catalog") body = await catalog();
+    // the Engines' places are the same bytes on both bases and both views: one entry
+    else if (part === "engine-places") body = await memory.read("engine-places", () => readLiveEnginePlaces(email));
     else if (part === "performance") body = await memory.read(`${b}/${v}/performance`, () => readLivePerformance(b, v, email));
     // the texts are the same on both bases and both views: one entry
     else body = await memory.read("texts", () => readLiveTemplateTexts(email));
