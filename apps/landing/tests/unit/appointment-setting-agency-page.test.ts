@@ -174,8 +174,8 @@ describe("the Appointment Setting Agency page", () => {
     expect(MEETING_OUTCOMES).toEqual(["meeting_booked", "positive_reply"]);
     expect(meetingIndexes(LIST).map((i) => i.slug)).toEqual(["meeting", "reply"]);
     const proof = meetingProofHtml(LIST);
-    expect(proof).toContain('<span class="v">$609.98</span>');
-    expect(proof).not.toContain("$10.89");
+    expect(proof).toContain('<span class="v">$610</span>');
+    expect(proof).not.toContain('<span class="v">$10</span>');
     expect(meetingProofHtml(null)).toBe("");
     expect(meetingProofHtml({ ...LIST, indexes: [LIST.indexes[1]] })).toBe("");
     const bare = renderAppointmentSettingAgencyPage(null);

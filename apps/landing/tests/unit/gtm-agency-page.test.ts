@@ -109,8 +109,8 @@ describe("the GTM Agency page", () => {
 
   it("every index figure is the served one; an unmeasured one is said in words; expected is labelled", () => {
     const proof = proofHtml(LIST);
-    expect(proof).toContain('<span class="v">$152.08</span>');
-    expect(proof).toContain('<span class="v">$609.97</span>');
+    expect(proof).toContain('<span class="v">$150</span>');
+    expect(proof).toContain('<span class="v">$610</span>');
     expect(proof).toContain("<em>Expected</em>");
     expect(proof).toContain('class="v words"');
     expect(proof).not.toContain("$0");

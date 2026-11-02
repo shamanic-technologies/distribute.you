@@ -7,6 +7,7 @@ import {
   INDEX_LINKS_TOKEN,
   RENAMED_INDEX_SLUGS,
   formatIndexValue,
+  formatTick,
   indexLinksHtml,
   parseIndexDetail,
   parseIndexList,
@@ -65,9 +66,22 @@ const LIST: IndexList = {
 
 describe("values are formatted, never shown raw", () => {
   it("dollars and percents", () => {
-    expect(formatIndexValue(4.3512, "usd")).toBe("$4.35");
+    expect(formatIndexValue(4.3512, "usd")).toBe("$4");
     expect(formatIndexValue(1240.4, "usd")).toBe("$1,240");
-    expect(formatIndexValue(2.0812, "percent")).toBe("2.08%");
+    expect(formatIndexValue(2.0812, "percent")).toBe("2%");
+    // 10 or more: the nearest ten, never a decimal (owner 2026-11-02).
+    expect(formatIndexValue(1243.57, "usd")).toBe("$1,240");
+    expect(formatIndexValue(14.99, "usd")).toBe("$10");
+    expect(formatIndexValue(12.34, "percent")).toBe("10%");
+    expect(formatIndexValue(9.4, "usd")).toBe("$9");
+    // Under 1 the unit would print 0% for a measured rate: one meaningful digit.
+    expect(formatIndexValue(0.1816, "percent")).toBe("0.2%");
+    expect(formatIndexValue(0.0454, "percent")).toBe("0.05%");
+    expect(formatTick(43.7, "usd")).toBe("$40");
+    // The chart draws and labels the same rounded figure, ticks on round tens.
+    const chart = chartHtml([point("2026-10-18", 43.7), point("2026-10-19", 61.2)], "usd", "x");
+    expect(chart).toContain('title="Oct 19, 2026: $60"');
+    expect(chart).not.toMatch(/<span>\$\d+\.\d/);
   });
 
   it("a null value reads as a sentence, never $0 or NaN", () => {
@@ -132,7 +146,7 @@ describe("the pages", () => {
 
   it("the hero is the index: value, unit, status, chart", () => {
     const hero = page.slice(page.indexOf('class="ix-hero"'), page.indexOf('id="measures"'));
-    expect(hero).toContain('<div class="ix-value" data-motion="count-up">$4.35</div>');
+    expect(hero).toContain('<div class="ix-value" data-motion="count-up">$4</div>');
     expect(hero).toContain("per website visit");
     expect(hero).toContain("Robust");
     expect(hero).toContain("ix-chart");
@@ -158,8 +172,8 @@ describe("the pages", () => {
   it("the list links every served index with its value", () => {
     const list = renderIndexListPage(LIST, new Map());
     expect(list).toContain('href="/indexes/cold-email-cost-per-click"');
-    expect(list).toContain("$4.35");
-    expect(list).toContain("2.08%");
+    expect(list).toContain(">$4<");
+    expect(list).toContain(">2%<");
   });
 
   it("a failed read says so", () => {
@@ -230,14 +244,14 @@ describe("an index page is built to be found (2026-10-19)", () => {
   const dataset = ld.find((n) => n["@type"] === "Dataset");
 
   it("the title carries today's value and the search words", () => {
-    expect(page).toContain("<title>Distribute.you Cost Per Click Index: $4.35 per website visit | Cold email benchmark</title>");
+    expect(page).toContain("<title>Distribute.you Cost Per Click Index: $4 per website visit | Cold email benchmark</title>");
   });
 
   it("every recorded day is in a text table, newest first", () => {
     const table = page.slice(page.indexOf('id="history"'), page.indexOf('id="why"'));
     expect(table.indexOf("Oct 19, 2026")).toBeGreaterThan(-1);
     expect(table.indexOf("Oct 19, 2026")).toBeLessThan(table.indexOf("Oct 18, 2026"));
-    expect(table).toContain("<td>$4.10</td>");
+    expect(table).toContain("<td>$4</td>");
     expect(historyTableHtml([], "usd", "x")).toBe("");
   });
 
@@ -299,11 +313,11 @@ describe("a return index reads like the hero ROI (cold-email-roi, 2026-10-19)", 
   });
 
   it("value, ticks, table and JSON-LD speak in x", () => {
-    expect(formatIndexValue(3.62, "multiple")).toBe("3.6x");
-    expect(formatIndexValue(18.3, "multiple")).toBe("18x");
+    expect(formatIndexValue(3.62, "multiple")).toBe("4x");
+    expect(formatIndexValue(18.3, "multiple")).toBe("20x");
     const page = renderIndexPage("cold-email-roi", { statusRule: RULE, index: roi, points: [point("2026-10-18", 3.4), point("2026-10-19", 3.62)] }, LIST);
-    expect(page).toContain('<div class="ix-value" data-motion="count-up">3.6x</div>');
-    expect(page).toContain("<td>3.4x</td>");
+    expect(page).toContain('<div class="ix-value" data-motion="count-up">4x</div>');
+    expect(page).toContain("<td>3x</td>");
     expect(page).not.toMatch(/\$3\.6/);
     const ds = [...page.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1])).find((n) => n["@type"] === "Dataset");
     expect(ds.variableMeasured.unitText).toBe("multiple of spend");
@@ -328,11 +342,11 @@ describe("an expected value says so wherever it prints (MEETING-INDEX-EXPECTED-L
 
   it("the index page labels the value, its title, the chart and every day of the table", () => {
     const page = renderIndexPage(meeting.slug, { statusRule: RULE, index: meeting, points }, LIST);
-    expect(page).toContain('<div class="ix-value" data-motion="count-up">$794.12</div>');
+    expect(page).toContain('<div class="ix-value" data-motion="count-up">$790</div>');
     expect(page).toContain('<span class="ix-expected">Expected</span>');
-    expect(page).toContain("<title>Cold Email Cost Per Meeting Index: $794.12 expected per meeting booked");
-    expect(page).toContain("<td>$794.12 expected</td>");
-    expect(page).toContain('title="Oct 25, 2026: $794.12 expected"');
+    expect(page).toContain("<title>Cold Email Cost Per Meeting Index: $790 expected per meeting booked");
+    expect(page).toContain("<td>$790 expected</td>");
+    expect(page).toContain('title="Oct 25, 2026: $790 expected"');
     expect(page).not.toContain("$0");
   });
 

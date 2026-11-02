@@ -4,6 +4,7 @@ import {
   STATUS_LABEL,
   UNIT_TEXT,
   esc,
+  displayValue,
   formatDay,
   formatIndexValue,
   formatTick,
@@ -86,7 +87,9 @@ function pct(n: number): string {
  * that fades in from the left and ends on today's dot: the chart reads as "this is
  * where it starts", and every new day pushes the history leftwards.
  */
-export function chartHtml(points: IndexPoint[], unit: IndexUnit, ariaName: string): string {
+export function chartHtml(served: IndexPoint[], unit: IndexUnit, ariaName: string): string {
+  // Drawn at the shown figure, so a dot sits where its label says.
+  const points = served.map((p) => (p.value === null ? p : { ...p, value: displayValue(p.value) }));
   const measured = points.filter((p) => p.value !== null) as (IndexPoint & { value: number })[];
   if (measured.length === 0) {
     return `<div class="ix-chart ix-chart-empty" role="img" aria-label="${esc(ariaName)}: no value recorded yet">
@@ -135,7 +138,9 @@ export function chartHtml(points: IndexPoint[], unit: IndexUnit, ariaName: strin
 
   // A scale around one level would be invented numbers: ticks appear once the series moves.
   const flat = measured.every((p) => p.value === measured[0].value);
-  const ticks = flat ? [] : [0.2, 0.5, 0.8].map((k) => lo + (hi - lo) * k);
+  const raw = flat ? [] : [0.2, 0.5, 0.8].map((k) => lo + (hi - lo) * k);
+  // A tick of 10 or more sits on its round ten; two ticks rounding alike draw once.
+  const ticks = raw.map(displayValue).filter((t, i, all) => all.indexOf(t) === i && t >= lo && t <= hi);
   const grid = ticks
     .map((t) => `<div class="ix-grid" style="top:${pct((yOf(t) / H) * 100)}"><span>${esc(formatTick(t, unit))}</span></div>`)
     .join("");
@@ -207,7 +212,9 @@ export function ribbonHtml(points: IndexPoint[]): string {
 
 /** A small line for the list page; nothing when fewer than two days carry a value. */
 export function sparklineHtml(points: IndexPoint[]): string {
-  const measured = points.filter((p) => p.value !== null) as (IndexPoint & { value: number })[];
+  const measured = points
+    .filter((p) => p.value !== null)
+    .map((p) => ({ ...p, value: displayValue(p.value as number) }));
   if (measured.length < 2) return "";
   const { lo, hi } = chartDomain(measured.map((p) => p.value));
   const first = dayNumber(measured[0].day);
