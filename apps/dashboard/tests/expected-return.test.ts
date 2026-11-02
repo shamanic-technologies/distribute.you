@@ -72,7 +72,6 @@ describe("measured first while Learning", () => {
     expect(src).toContain("`Expected ${expected}`");
   });
   it.each([
-    ["components/v2/pipe-sections.tsx", "<CostValue cost={costShown} learning={cost.learning} />"],
     ["components/v2/campaign-page.tsx", "<CostValue cost={costShown} learning={cost.learning} />"],
     ["components/v2/campaign-page-next.tsx", "<CostValue cost={costShown} learning={cost.learning} />"],
     ["components/v2/today-page.tsx", "roiShown.learning"],
@@ -105,7 +104,6 @@ describe("every ROI surface reads the expected return", () => {
   it.each([
     ["components/v2/today-page.tsx", "roiToShow(shownRoi, data?.expectedReturn)"],
     ["components/v2/copilot-chat.tsx", "roiToShow(roi, rev.data?.expectedReturn)"],
-    ["components/v2/pipe-sections.tsx", "roiToShow(roi, g?.expectedReturn)"],
     ["components/v2/campaign-page.tsx", "roiToShow(roi, campaign.row.revenue?.expectedReturn)"],
     ["components/v2/offer-campaigns.tsx", "roiToShow(roi, g?.expectedReturn)"],
     ["components/v2/funnel-campaigns.tsx", "roiToShow(shown, row.expectedReturn)"],

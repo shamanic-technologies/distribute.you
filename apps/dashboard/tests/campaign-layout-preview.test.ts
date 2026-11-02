@@ -31,8 +31,8 @@ describe("campaign page next layout: staff preview only", () => {
     expect(body).toContain("return <FunnelCampaignPageCurrent campaign={campaign} />;");
     // The current page keeps its whole anatomy.
     const current = page.slice(page.indexOf("function FunnelCampaignPageCurrent("), page.indexOf("export function useFunnelCampaignById("));
-    expect(current).toContain("<PipeSections");
-    expect(current).toContain("<FunnelResults");
+    expect(current).toContain("<FactoryCampaignSections campaign={campaign} />");
+    expect(current).not.toContain("<PipeSections");
   });
 
   it("the preview computes no metric in the browser", () => {

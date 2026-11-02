@@ -9,11 +9,12 @@ import { stepLabel } from "@/lib/legs";
 import { pathChangeSentence, pathChangedAt, shortUtcDay } from "@/lib/campaign-path-change";
 import type { FunnelCampaignCopy, SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { BriefField } from "@/components/v2/campaign-brief-field";
-import { FunnelPathLine, TypeTag } from "@/components/v2/funnel-campaigns";
+import { FunnelCapsWords, FunnelPathLine, TypeTag } from "@/components/v2/funnel-campaigns";
 import { SectionTitle, Shimmer } from "@/components/v2/ui";
 
 /**
- * WHAT A CAMPAIGN AIMS AT, for EVERY customer (P5.1, owner 2026-10-31): the campaign page opens on it.
+ * WHAT A CAMPAIGN AIMS AT, for EVERY customer (P5.1, owner 2026-10-31; the GTM Factory "Goal" header since
+ * FACTORY-USER-DASHBOARD-1102): the campaign page opens on it.
  * - its Target (campaign-service `target`, named by the served step label) and its Type (📅 Daily / ⚡ trigger);
  * - its brief, the client's own words on how to run it, edited in place (blur saves, no Save button);
  * - the path it runs NOW (features-service serves `path` for the RUNNING funnel, each pipe by its served name and
@@ -47,13 +48,25 @@ export function CampaignAimSection({
   const dash = <span className="k-fg4">—</span>;
   return (
     <section>
-      <SectionTitle>What this campaign aims at</SectionTitle>
+      <SectionTitle>Goal</SectionTitle>
       <div className="k-card divide-y divide-[var(--line-subtle)]">
-        <div className="grid gap-4 px-4 py-3.5 md:grid-cols-[240px_minmax(0,1fr)]">
+        {/* The GTM Factory campaign header (FACTORY-USER-DASHBOARD-1102): Target, where it starts, its budget, its brief. */}
+        <div className="grid gap-4 px-4 py-3.5 md:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,180px)_minmax(0,1fr)]">
           <div className="min-w-0">
             <p className="k-label">Target</p>
             <p className="mt-1.5 text-[14px] font-medium">{targetLabel ?? (campaign.target && !catalogueReady ? <Shimmer className="h-5 w-24" /> : dash)}</p>
-            <div className="mt-2">{copy ? <TypeTag row={copy} /> : copySettled ? dash : <Shimmer className="h-5 w-24" />}</div>
+            <p className="k-fg3 mt-0.5 text-[12px]">What it orders</p>
+          </div>
+          <div className="min-w-0">
+            <p className="k-label">Starts from</p>
+            <div className="mt-1.5">{copy ? <TypeTag row={copy} /> : copySettled ? dash : <Shimmer className="h-5 w-24" />}</div>
+            <p className="k-fg3 mt-1 text-[12px]">{copy?.type === "reactive" ? "Pushes each new one up to its Target" : "Pulls new people every day"}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="k-label">Budget</p>
+            <p className="mt-1.5 text-[14px] font-medium tabular-nums">
+              <FunnelCapsWords brandId={campaign.brandId} salesFunnelCampaignId={campaign.id} />
+            </p>
           </div>
           <div className="min-w-0">
             <p className="k-label">Brief</p>
