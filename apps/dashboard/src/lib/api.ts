@@ -2330,6 +2330,7 @@ import {
 } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
+import { CampaignMilestonesSchema, PeopleJourneysSchema, type CampaignMilestones, type PeopleJourneys } from "./factory-campaign";
 import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
 /**
@@ -2353,6 +2354,22 @@ export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunne
 export async function getOfferEnginePicks(brandId: string, offerId: string): Promise<EnginePicks> {
   const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/engine-picks?brandId=${encodeURIComponent(brandId)}`);
   return parseStaff("getOfferEnginePicks", EnginePicksSchema, raw);
+}
+
+/** A funnel campaign's milestones, Start to its Target, each figure measured or expected (FACTORY-USER-DASHBOARD-1102). */
+export async function getFunnelCampaignMilestones(brandId: string, salesFunnelCampaignId: string): Promise<CampaignMilestones> {
+  const raw = await apiCall<unknown>(
+    `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/milestones?pricing=net`,
+  );
+  return parseStaff("getFunnelCampaignMilestones", CampaignMilestonesSchema, raw);
+}
+
+/** What a funnel campaign's people went through: per step to step, how many, and the share each script made (FACTORY-USER-DASHBOARD-1102). */
+export async function getFunnelCampaignPeopleJourneys(brandId: string, salesFunnelCampaignId: string): Promise<PeopleJourneys> {
+  const raw = await apiCall<unknown>(
+    `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/people-journeys?pricing=net`,
+  );
+  return parseStaff("getFunnelCampaignPeopleJourneys", PeopleJourneysSchema, raw);
 }
 
 /** Monitoring > Factory plan > Following its plan: status, the red campaigns with their served state, one row per UTC day. */

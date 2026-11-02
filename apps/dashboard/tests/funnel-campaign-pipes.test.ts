@@ -24,11 +24,11 @@ describe("sales-funnel campaign page: the GTM Factory anatomy", () => {
     expect(body).toContain("tabs={tabs}");
   });
 
-  it("reads ONE factory body and draws Milestones, Plan, Strategy per Engine, Scripts per Engine in that order", () => {
+  it("draws What its people went through, Milestones, Plan, Strategy per Engine, Scripts per Engine in that order", () => {
     const at = factory.indexOf("export function FactoryCampaignSections(");
     const fn = factory.slice(at, factory.indexOf("// ─── Milestones"));
     expect(fn).toContain("useFactoryShadow(campaign.brandId, campaign.id, true)");
-    const order = ["<FactoryMilestones", "<FactoryPlan", "<FactoryStrategies", "<FactoryScripts"].map((m) => fn.indexOf(m));
+    const order = ["<FactoryJourneys", "<FactoryMilestones", "<FactoryPlan", "<FactoryStrategies", "<FactoryScripts"].map((m) => fn.indexOf(m));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((x, y) => x - y)).toEqual(order);
   });
@@ -92,6 +92,31 @@ describe("the plan tree joins", () => {
     expect(orderPipesByFunnel(served, (k) => legs[k] ?? null)).toEqual(["source", "email", "email2", "close", "x"]);
     // A funnel starting mid-way (reactive) still orders from its first served step.
     expect(orderPipesByFunnel(["close", "email"], (k) => legs[k] ?? null)).toEqual(["email", "close"]);
+  });
+});
+
+describe("milestones and people journeys (features-service, served measured-or-expected)", () => {
+  it("parse the served bodies; a figure carries its basis or its reason", async () => {
+    const { CampaignMilestonesSchema, PeopleJourneysSchema } = await import("../src/lib/factory-campaign");
+    const none = { value: null, basis: null, unavailableReason: "start_is_the_market" };
+    const m = CampaignMilestonesSchema.parse({
+      salesFunnelCampaignId: "c", brandId: "b", pricing: "net", target: "paid_client", planComputedAt: "x", milestonesUnavailableReason: null,
+      milestones: [
+        { step: "start", label: "Start", isTarget: false, outcomes: null, outcomesUnavailableReason: "start_is_the_market", costPerOutcomeUsd: none, costFromStartUsd: { value: 0, basis: "measured", unavailableReason: null }, conversionFromAbovePct: none, attemptsPerTarget: none },
+        { step: "paid_client", label: "Paid client", isTarget: true, outcomes: 2, outcomesUnavailableReason: null, costPerOutcomeUsd: { value: 0, basis: "expected", unavailableReason: null }, costFromStartUsd: { value: 412.5, basis: "measured", unavailableReason: null }, conversionFromAbovePct: { value: 5, basis: "expected", unavailableReason: null }, attemptsPerTarget: { value: 1, basis: "expected", unavailableReason: null } },
+      ],
+    });
+    expect(m.milestones[1].costFromStartUsd.basis).toBe("measured");
+    const j = PeopleJourneysSchema.parse({ salesFunnelCampaignId: "c", brandId: "b", pricing: "net", transitions: [{ pipeId: "p", fromStep: "start", fromLabel: "Start", toStep: "lead_found", toLabel: "Lead", people: 23, shareBasis: "spend", scripts: [{ workflowDynastySlug: "s", workflowName: "Lead Sourcing Alterf", sharePct: 86 }], scriptsUnavailableReason: null }] });
+    expect(j.transitions[0].scripts[0].sharePct).toBe(86);
+  });
+  it("the page reads both through the gateway on net pricing, and never shows the planner's internal ROI", () => {
+    const api = read("lib/api.ts");
+    expect(api).toContain("/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/milestones?pricing=net");
+    expect(api).toContain("/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/people-journeys?pricing=net");
+    const code = read("components/v2/factory-campaign.tsx");
+    expect(code).not.toContain("figures.roi");
+    expect(code).not.toContain("costPerTargetUsd");
   });
 });
 
