@@ -10,7 +10,7 @@ import { z } from "zod";
  */
 
 export const LedgerMoneySchema = z
-  .object({ grossCents: z.string(), netCents: z.string(), vendorCents: z.string(), unpricedGrossCents: z.string() })
+  .object({ grossCents: z.string(), netCents: z.string(), vendorCents: z.string().optional(), unpricedGrossCents: z.string().optional() })
   .passthrough();
 export type LedgerMoney = z.infer<typeof LedgerMoneySchema>;
 
