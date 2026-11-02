@@ -87,7 +87,7 @@ describe("an expected meeting price is labelled expected (MEETING-INDEX-EXPECTED
   });
 
   it("hero, How it works step 3 and the compare band all say expected", () => {
-    expect(hotLeadRowHtml(794.12, null, true)).toContain("<b>$794</b>");
+    expect(hotLeadRowHtml(794.12, null, true)).toContain("<b>$790</b>");
     expect(hotLeadRowHtml(794.12, null, true)).toContain(">expected cost per booked meeting<");
     expect(stepMeetingCostHtml(794.12, true)).toContain(">Expected cost / meeting<");
     expect(hotLeadBandHtml(stats, null, 794.12, true)).toContain(">expected cost per booked meeting<");
@@ -115,9 +115,9 @@ describe("an expected meeting price is labelled expected (MEETING-INDEX-EXPECTED
 });
 
 describe("hotLeadRowHtml", () => {
-  it("states a whole-dollar meeting price and no engaged-lead count (owner 2026-10-21)", () => {
+  it("states the meeting price to the nearest ten and no engaged-lead count (owner 2026-10-21, 2026-11-02)", () => {
     const row = hotLeadRowHtml(457.2);
-    expect(row).toContain(">$457</b>");
+    expect(row).toContain(">$460</b>");
     expect(row).toContain("cost per booked meeting");
     expect(row).not.toContain("engaged leads");
     expect(row).not.toContain("data-hot-leads");
@@ -125,7 +125,8 @@ describe("hotLeadRowHtml", () => {
   });
 
   it("rounds the price rather than flooring it", () => {
-    expect(hotLeadRowHtml(456.6)).toContain(">$457</b>");
+    expect(hotLeadRowHtml(456.6)).toContain(">$460</b>");
+    expect(hotLeadRowHtml(5.4)).toContain(">$5</b>");
   });
 
   it("states the fleet's median return after the price when one can be measured", () => {
@@ -155,13 +156,13 @@ describe("hotLeadRowHtml", () => {
 });
 
 describe("step 03 prices a meeting with the hero's figure (owner 2026-10-21)", () => {
-  it("states the same whole-dollar price as the hero row, with the mock's downward trend", () => {
+  it("states the same rounded price as the hero row, with the mock's downward trend", () => {
     const tile = stepMeetingCostHtml(67.6);
-    expect(tile).toContain('<div class="v">$68</div>');
-    expect(hotLeadRowHtml(67.6)).toContain(">$68</b>");
+    expect(tile).toContain('<div class="v">$70</div>');
+    expect(hotLeadRowHtml(67.6)).toContain(">$70</b>");
     expect(tile).toContain("Cost / meeting booked");
     // Owner 2026-10-21: keep "↓ from $X", at the ratio the mock shipped with ($600 from $740).
-    expect(tile).toContain('<span class="ok">↓ from $83</span>');
+    expect(tile).toContain('<span class="ok">↓ from $80</span>');
     expect(stepMeetingCostHtml(600)).toContain("↓ from $740");
   });
 
@@ -195,7 +196,7 @@ describe("hotLeadBandHtml", () => {
     expect(band).toContain('class="stats two"');
     expect(band).toContain('data-count="760"');
     expect(band).toContain("engaged leads for 21 companies");
-    expect(band).toContain('<span class="u">$</span><span data-count="457">0</span>');
+    expect(band).toContain('<span class="u">$</span><span data-count="460">0</span>');
     expect(band).toContain("cost per booked meeting");
   });
 
@@ -255,7 +256,7 @@ describe("the hero proof row on the homepage", () => {
   it("bumps the asset cache-busters, or the edge keeps serving the old css and js", () => {
     expect(html).toContain('href="/landing/v2/styles.css?v=23"');
     expect(html).toContain('src="/landing/v2/main.js?v=12"');
-    expect(html).toContain('href="/landing/v2/agent.css?v=3"');
+    expect(html).toContain('href="/landing/v2/agent.css?v=4"');
   });
 });
 

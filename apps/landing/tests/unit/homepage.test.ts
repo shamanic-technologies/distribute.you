@@ -41,7 +41,7 @@ describe("the homepage is self-contained", () => {
     expect(html).toContain('src="/landing/v2/main.js?v=12"');
     // PAGE-REVENUE-AGENT-1029: the AI Agent sections have their own sheet, and the page
     // carries `data-motion` effects, so it loads the motion kit at the shell's version.
-    expect(html).toContain('href="/landing/v2/agent.css?v=3"');
+    expect(html).toContain('href="/landing/v2/agent.css?v=4"');
     // The homepage's own motion (hero thread calling the orbit tools, the "why" rows).
     expect(html).toContain('src="/landing/v2/home.js?v=1"');
     expect(html).toContain(`src="/landing/v2/motion.js?v=${MOTION_VERSION}"`);

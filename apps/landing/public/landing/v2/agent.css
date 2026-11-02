@@ -77,6 +77,8 @@
 .wa-row.in .wa-msg { background: #fff; border-top-left-radius: 2px; }
 .wa-row.out .wa-msg { background: #d9fdd3; border-top-right-radius: 2px; }
 .wa-msg.booked { color: #0b6b3a; font-weight: 500; }
+/* A day chip between messages: time passed before the reply came in. */
+.wa-day { align-self: center; padding: 1px 8px; border-radius: 6px; background: #fff; font-size: 10.5px; color: #54656f; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
 .wa-msg.booked::before { content: "\2713\00a0"; }
 /* explee's typing dots: shown in a message's own slot for the moment before it lands. */
 .wa-dots { position: absolute; left: 0; top: 0; display: none; gap: 3px; padding: 10px 12px; border-radius: 10px; border-top-left-radius: 2px; background: #fff; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
@@ -84,6 +86,7 @@
 @media (prefers-reduced-motion: no-preference) {
   .wa-body.play .wa-msg { animation: wa-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1.15) both; animation-delay: var(--t); transform-origin: left bottom; }
   .wa-body.play .wa-row.out .wa-msg { transform-origin: right bottom; }
+  .wa-body.play .wa-day { animation: wa-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1.15) both; animation-delay: var(--t); }
   .wa-body.play .wa-dots { display: flex; animation: wa-dots 0.9s linear both; animation-delay: calc(var(--t) - 0.9s); }
   .wa-body.play .wa-dots b { animation: wa-dot 0.9s ease-in-out infinite; }
   .wa-body.play .wa-dots b:nth-child(2) { animation-delay: 0.15s; }
