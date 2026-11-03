@@ -29,7 +29,11 @@ import {
   addressTab,
   bucketQueued,
   mailboxInProduction,
+  MAILBOX_TABS,
+  mailboxStatus,
+  mailboxTab,
   type AddressTabKey,
+  type MailboxTabKey,
   type InboxProvider,
   type SeedPlacementCell,
 } from "@/lib/monitoring/sending";
@@ -519,62 +523,106 @@ export function DomainsPage({ base }: { base: string }) {
   );
 }
 
+/**
+ * Every mailbox, one tab per status, closest to production first (In production, In recovery,
+ * Deactivated, No address, Gone, then Other when a value no tab names shows up). Tabs filter the
+ * served rows; an empty No address tab is not shown.
+ */
 export function MailboxesPage({ base }: { base: string }) {
   const q = useOpsMailboxes();
+  const [tab, setTab] = useState<MailboxTabKey>("production");
+  const all = q.data?.mailboxes ?? [];
+  const rows = all.filter((m) => mailboxTab(m) === tab);
   const rules = useLifecycleRules();
   const bar = rules.data?.bars.deliveryPctBar ?? null;
-  const { limit, footer } = useShowAll(q.data?.mailboxes.length ?? 0);
+  const { limit, footer } = useShowAll(rows.length);
+  const counts = new Map<MailboxTabKey, number>();
+  for (const m of all) counts.set(mailboxTab(m), (counts.get(mailboxTab(m)) ?? 0) + 1);
+  // One status per tab except Deactivated (by Instantly / by us) and Other: the column shows only there.
+  const showStatus = tab === "deactivated" || tab === "other";
+  const tabs = [...MAILBOX_TABS.filter((t) => t.key !== "none" || counts.get("none")), ...(counts.get("other") ? [{ key: "other" as MailboxTabKey, label: "Other" }] : [])];
   if (q.isError) return <Failed what="the mailboxes" />;
   if (!q.data) return <Loading />;
   return (
     <section>
-      <SectionTitle count={q.data.mailboxes.length} right={<span>Capacity ramps up each day toward its ceiling</span>}>
+      <SectionTitle count={all.length} right={<span>Capacity ramps up each day toward its ceiling</span>}>
         Every mailbox
       </SectionTitle>
-      <Table
-        head={
-          <>
-            <th className={TH}>Mailbox</th>
-            <th className={TH}>Vendor</th>
-            <th className={TH}>Status</th>
-            <th className={THR}>Inbox %</th>
-            <th className={TH}>Tested</th>
-            <th className={THR}>Cap today</th>
-            <th className={TH}>Ramp</th>
-            <th className={THR}>Campaign, 7 days</th>
-            <th className={THR}>Warmup, 7 days</th>
-            <th className={THR}>Tests, 7 days</th>
-          </>
-        }
-      >
-        {q.data.mailboxes.slice(0, limit).map((m) => {
-          const ramp = m.rampProjection;
-          const last = ramp[ramp.length - 1];
-          return (
-            <tr key={m.login} className="k-row">
-              <td className={`${TD} k-mono text-[12px]`}>
-                <Link href={`${base}/${entityPath("mailbox", m.login)}`} className="hover:underline">
-                  {m.login}
-                </Link>
-              </td>
-              <td className={TD}>{m.provider ? vendorName(m.provider) : <Dash />}</td>
-              <td className={TD}>{m.absentSince ? <span className="k-fg3 text-[12px]">Gone since {shortDay(m.absentSince)}</span> : <StatusWord status={m.addresses[0]?.lifecycleStatus ?? null} />}</td>
-              <td className={TDR}>
-                <InboxCell value={m.delivery.inboxPct} bar={bar} />
-              </td>
-              <td className={`${TD} k-mono k-fg2 text-[12px]`}>{m.delivery.testedAt ? shortDay(m.delivery.testedAt) : <Dash />}</td>
-              <td className={TDR}>{m.effectiveDailyCap == null ? <Dash /> : n(m.effectiveDailyCap)}</td>
-              <td className={`${TD} k-fg2 whitespace-nowrap text-[12px] tabular-nums`} title={ramp.map((r) => `${shortDay(r.date)} ${r.cap}`).join(", ")}>
-                {ramp.length > 1 && last ? `${ramp[0].cap} → ${last.cap} by ${shortDay(last.date)}` : ramp[0] ? `${ramp[0].cap} a day` : <Dash />}
-              </td>
-              <td className={TDR}>{n(m.volume7d.outreach)}</td>
-              <td className={TDR}>{n(m.volume7d.warmup)}</td>
-              <td className={TDR}>{n(m.volume7d.seed)}</td>
-            </tr>
-          );
-        })}
-      </Table>
-      {footer}
+      <div className="k-card overflow-hidden">
+        <div className="k-line-subtle flex gap-5 overflow-x-auto border-b px-4" role="tablist">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={t.key === tab}
+              aria-current={t.key === tab ? "page" : undefined}
+              onClick={() => setTab(t.key)}
+              className="k-tab shrink-0 text-[13px]"
+            >
+              {t.label}
+              <span className="k-fg3 tabular-nums">{n(counts.get(t.key) ?? 0)}</span>
+            </button>
+          ))}
+        </div>
+        {rows.length === 0 ? (
+          <EmptyNote>No mailbox here.</EmptyNote>
+        ) : (
+          <div className="k-scroll overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead className="k-line-subtle border-b">
+                <tr>
+                  <th className={TH}>Mailbox</th>
+                  <th className={TH}>Vendor</th>
+                  {showStatus && <th className={TH}>Status</th>}
+                  {tab === "gone" && <th className={TH}>Gone since</th>}
+                  <th className={THR}>Inbox %</th>
+                  <th className={TH}>Tested</th>
+                  <th className={THR}>Cap today</th>
+                  <th className={TH}>Ramp</th>
+                  <th className={THR}>Campaign, 7 days</th>
+                  <th className={THR}>Warmup, 7 days</th>
+                  <th className={THR}>Tests, 7 days</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line-subtle)]">
+                {rows.slice(0, limit).map((m) => {
+                  const ramp = m.rampProjection;
+                  const last = ramp[ramp.length - 1];
+                  return (
+                    <tr key={m.login} className="k-row">
+                      <td className={`${TD} k-mono text-[12px]`}>
+                        <Link href={`${base}/${entityPath("mailbox", m.login)}`} className="hover:underline">
+                          {m.login}
+                        </Link>
+                      </td>
+                      <td className={TD}>{m.provider ? vendorName(m.provider) : <Dash />}</td>
+                      {showStatus && (
+                        <td className={TD}>
+                          <StatusWord status={mailboxStatus(m)} />
+                        </td>
+                      )}
+                      {tab === "gone" && <td className={`${TD} k-mono k-fg2 text-[12px]`}>{m.absentSince ? shortDay(m.absentSince) : <Dash />}</td>}
+                      <td className={TDR}>
+                        <InboxCell value={m.delivery.inboxPct} bar={bar} />
+                      </td>
+                      <td className={`${TD} k-mono k-fg2 text-[12px]`}>{m.delivery.testedAt ? shortDay(m.delivery.testedAt) : <Dash />}</td>
+                      <td className={TDR}>{m.effectiveDailyCap == null ? <Dash /> : n(m.effectiveDailyCap)}</td>
+                      <td className={`${TD} k-fg2 whitespace-nowrap text-[12px] tabular-nums`} title={ramp.map((r) => `${shortDay(r.date)} ${r.cap}`).join(", ")}>
+                        {ramp.length > 1 && last ? `${ramp[0].cap} → ${last.cap} by ${shortDay(last.date)}` : ramp[0] ? `${ramp[0].cap} a day` : <Dash />}
+                      </td>
+                      <td className={TDR}>{n(m.volume7d.outreach)}</td>
+                      <td className={TDR}>{n(m.volume7d.warmup)}</td>
+                      <td className={TDR}>{n(m.volume7d.seed)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {footer}
+      </div>
     </section>
   );
 }

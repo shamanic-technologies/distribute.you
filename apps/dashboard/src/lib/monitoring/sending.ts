@@ -616,6 +616,36 @@ export function addressTab(status: string | null): AddressTabKey {
   return tab ? tab.key : "other";
 }
 
+/**
+ * The Mailboxes page tabs, closest to production first: the address tabs, No address (a vendor
+ * mailbox with no sending address yet), then Gone (the vendor no longer lists it). The page adds
+ * Other only when a value no tab names shows up.
+ */
+export type MailboxTabKey = AddressTabKey | "none" | "gone";
+export const MAILBOX_TABS: Array<{ key: MailboxTabKey; label: string }> = [
+  ...ADDRESS_TABS.map((t) => ({ key: t.key as MailboxTabKey, label: t.label })),
+  { key: "none", label: "No address" },
+  { key: "gone", label: "Gone" },
+];
+
+/** A mailbox's status = the served status of its address closest to production (same rule as `mailboxInProduction`). */
+export function mailboxStatus(m: { addresses: Array<{ lifecycleStatus: string | null }> }): string | null {
+  const rank = (s: string | null) => {
+    const i = ADDRESS_TABS.findIndex((t) => (t.statuses as readonly string[]).includes(s ?? ""));
+    return i < 0 ? ADDRESS_TABS.length : i;
+  };
+  let best: string | null = null;
+  for (const a of m.addresses) if (best === null || rank(a.lifecycleStatus) < rank(best)) best = a.lifecycleStatus;
+  return best;
+}
+
+/** The tab a mailbox sits under: Gone once absent, No address without one, else its status's address tab, so the counts always add up. */
+export function mailboxTab(m: { absentSince: string | null; addresses: Array<{ lifecycleStatus: string | null }> }): MailboxTabKey {
+  if (m.absentSince != null) return "gone";
+  if (m.addresses.length === 0) return "none";
+  return addressTab(mailboxStatus(m));
+}
+
 /** Queued emails buckets (fit to prod on 2026-10-21: 11 at 0, 7 under 10, the rest 53 to 177). `max` inclusive, null = no ceiling. */
 export const QUEUE_BUCKETS: Array<{ label: string; min: number; max: number | null }> = [
   { label: "0", min: 0, max: 0 },
