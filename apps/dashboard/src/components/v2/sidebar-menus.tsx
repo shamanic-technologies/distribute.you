@@ -14,7 +14,6 @@ import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 import { BrandLogo } from "@/components/brand-logo";
 import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
-import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
@@ -25,7 +24,6 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, pe
 import { companyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, v2NewBrandHref, v2OfferHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
-import { useFreeMoneyShown } from "@/lib/use-no-free-money";
 import { moveOrgCursor, showOrgSearch, switcherOrgs } from "@/lib/v2/org-switcher-list";
 
 /**
@@ -332,7 +330,7 @@ export function TenantSwitcherV2() {
 
 /**
  * Explee's user menu, in its order and its words: the email on top, then Team, API
- * Keys, Billing, Refer a friend (with what it earns), Help, then Sign out. Each item
+ * Keys, Billing, Help, then Sign out (no Refer a friend: program ended, owner 2026-11-03). Each item
  * opens a v2 page with our data; Help opens the support chat the FAB opens. Price catalog
  * (owner 2026-10-06) opens the public unit-price page in a new tab, marked as leaving.
  *
@@ -348,7 +346,6 @@ const MENU_ICON = {
   external: "M9.5 2.5h4v4M13.5 2.5 7.5 8.5M11.5 9.5v4h-9v-9h4",
   monitoring: "M2.5 13.5h11M4 11V8M7 11V4.5M10 11V6.5M13 11V9",
   research: "M6 2.5h4M6.5 2.5v4L3 12.3a.9.9 0 0 0 .8 1.2h8.4a.9.9 0 0 0 .8-1.2L9.5 6.5v-4M4.8 9.5h6.4",
-  gift: "M2.5 6h11v2.5h-11zM3.5 8.5v5h9v-5M8 6v7.5M8 6c-1-2.5-4-2.5-4-.8C4 6 6 6 8 6Zm0 0c1-2.5 4-2.5 4-.8C12 6 10 6 8 6Z",
   help: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.4.2-.7.5-.7 1v.5M8 11.3v.2",
   out: "M9.5 3.5h3v9h-3M6.5 5 3.5 8l3 3M3.5 8h7",
   staff: "M8 2 3 4v4c0 3 2.2 5.2 5 6 2.8-.8 5-3 5-6V4L8 2ZM6 8l1.5 1.5L10.5 6.5",
@@ -385,11 +382,10 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
   const name = user?.fullName || user?.firstName || "";
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const base = v2Base(orgId, brandId);
-  const freeMoney = useFreeMoneyShown();
   const close = () => setOpen(false);
   // Every account page lives under a brand; an org with no brand yet (its first brand
   // not added) gets the menu without them: who is signed in, help, sign out.
-  const links: { href: string; label: string; icon: string; pill?: string; prefetch?: boolean; external?: boolean }[] = brandId
+  const links: { href: string; label: string; icon: string; prefetch?: boolean; external?: boolean }[] = brandId
     ? [
         { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
         { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
@@ -400,8 +396,6 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
         ...(staffMode ? [{ href: `${base}/monitoring`, label: "Monitoring", icon: MENU_ICON.monitoring, prefetch: true }] : []),
         // Research compares workflows, models and templates: below a campaign, so staff mode only.
         ...(staffMode ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, prefetch: true }] : []),
-        // No referral reward on billing's no-free-money offers (owner 2026-10-29).
-        ...(freeMoney.show ? [{ href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` }] : []),
       ]
     : [];
   const avatar = (size: number) =>
@@ -436,11 +430,6 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
             <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close} prefetch={l.prefetch ? true : undefined}>
               <MI d={l.icon} />
               <span className="min-w-0 truncate">{l.label}</span>
-              {l.pill && (
-                <span className="ml-auto shrink-0 rounded-[6px] bg-[color-mix(in_oklab,var(--run)_12%,transparent)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--run)]">
-                  {l.pill}
-                </span>
-              )}
             </Link>
             ),
           )}
@@ -536,7 +525,6 @@ const SETUP: { section: V2Section; label: string }[] = [
   { section: "billing", label: "Billing" },
   { section: "team", label: "Team" },
   { section: "api-keys", label: "API Keys" },
-  { section: "referral", label: "Refer a friend" },
 ];
 
 function matches(text: string, q: string): boolean {
@@ -572,7 +560,6 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
   }, [q]);
 
   const { staffMode } = useStaffMode();
-  const freeMoney = useFreeMoneyShown();
   const revenue = useBrandRevenue(brandId).data;
   const buckets = useBucketCounts(brandId).data;
   const call = useNeedsYourCall(brandId, 5).data?.leads ?? [];
@@ -606,7 +593,6 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       }
     }
     for (const s of SETUP) {
-      if (s.section === "referral" && !freeMoney.show) continue;
       if (!term || matches(s.label, term)) out.push({ key: `setup-${s.section}`, group: "Setup", text: s.label, label: s.label, href: v2Href(orgId, brandId, s.section) });
     }
     // Unibox, Campaigns and Outcomes, GA like their sidebar entries (owner 2026-10-10).
@@ -633,7 +619,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       for (const l of peopleQ.data?.leads ?? []) out.push(personItem("People", l));
     }
     return out;
-  }, [q, call, staffMode, freeMoney.show, revenue, peopleQ.data, orgId, brandId]);
+  }, [q, call, staffMode, revenue, peopleQ.data, orgId, brandId]);
 
   useEffect(() => setCursor(0), [q, items.length]);
   useEffect(() => {

@@ -121,10 +121,10 @@ describe("no referral or free credit surface for a no-free-money org", () => {
     expect(offersNoFreeMoney({ free_credit_offer: "legacy" })).toBe(false);
   });
 
-  it("the account menu and the palette offer Refer a friend only when billing says so", () => {
+  it("the account menu and the palette never offer Refer a friend (program ended, owner 2026-11-03)", () => {
     const menus = src("src/components/v2/sidebar-menus.tsx");
-    expect(menus).toContain('...(freeMoney.show ? [{ href: `${base}/referral`, label: "Refer a friend"');
-    expect(menus).toContain('if (s.section === "referral" && !freeMoney.show) continue;');
+    expect(menus).not.toContain("Refer a friend\"");
+    expect(menus).not.toContain("/referral");
     expect(src("src/lib/use-no-free-money.ts")).toContain("show: account !== undefined && !offersNoFreeMoney(account)");
   });
 

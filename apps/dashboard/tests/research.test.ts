@@ -24,10 +24,9 @@ const ROOT = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 
 describe("Research is GA", () => {
-  it("draws the menu entry for every reader, above Refer a friend, with no tag", () => {
+  it("draws the menu entry for every reader, with no tag", () => {
     const src = read("components/v2/sidebar-menus.tsx");
     expect(src).toContain('{ href: `${base}/research`, label: "Research"');
-    expect(src.indexOf('label: "Research"')).toBeLessThan(src.indexOf('label: "Refer a friend", icon'));
     expect(src).not.toContain("isAdminEmail");
     expect(src).not.toContain("MaturityBadge");
   });
