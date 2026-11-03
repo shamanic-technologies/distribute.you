@@ -11,9 +11,20 @@ export interface GhlBooking {
  * prints as served.
  */
 export const GHL_SCOPE_LABELS: Record<string, string> = {
+  "contacts.readonly": "View Contacts",
+  "opportunities.readonly": "View Opportunities",
+  "calendars.readonly": "View Calendars",
+  "calendars/events.readonly": "View Calendar Events",
+  "forms.readonly": "View Forms",
+  "locations/customFields.readonly": "View Custom Fields",
   "contacts.write": "Edit Contacts",
   "calendars/events.write": "Edit Calendar Events",
 };
+
+/** Every permission a new connection needs, read then book, in crm-service's order, once each. */
+export function ghlScopesToGrant(scopes: { mirror: string[]; booking: string[] }): string[] {
+  return [...new Set([...scopes.mirror, ...scopes.booking])];
+}
 
 export function ghlScopeLabel(scope: string): string {
   return GHL_SCOPE_LABELS[scope] ?? scope;

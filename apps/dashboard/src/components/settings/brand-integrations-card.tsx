@@ -19,6 +19,7 @@ import {
   listCrmConnections,
   listSourceConnections,
   recheckCrmBookingAccess,
+  getGhlScopes,
   setBrandKey,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -37,7 +38,7 @@ import {
 import { GOOGLE_RETURN_KEY, OUTCOME_PARAMS, googleCallbackUrl, withLoginHint } from "@/lib/google-connect";
 import { GoogleCalendarLine } from "@/components/settings/google-calendar-line";
 import { GmailMailboxLine } from "@/components/settings/gmail-mailbox-line";
-import { GhlBookingLine, type GhlBooking } from "@/components/settings/ghl-booking-line";
+import { GhlBookingLine, ghlScopeLabel, ghlScopesToGrant, type GhlBooking } from "@/components/settings/ghl-booking-line";
 import {
   connectErrorMessage,
   credentialErrorMessage,
@@ -507,6 +508,8 @@ function IntegrationRow({
             connect.mutate();
           }}
         >
+          {def.slug === "gohighlevel" ? <GhlConnectPermissions brandId={brandId} /> : null}
+
           {def.fields.map((f) => (
             <label key={f.key} className="block">
               <span className="text-sm font-medium text-gray-700">{f.label}</span>
@@ -584,6 +587,35 @@ function IntegrationRow({
  * that asks crm-service to probe GoHighLevel once more. Its answer is the connection: written
  * into the `crmConnections` list, then the list re-read.
  */
+/**
+ * The permissions to tick on a NEW GoHighLevel Private Integration, as crm-service lists
+ * them (read the CRM, then book meetings), so a fresh connection books from day one.
+ * Never a hard-coded list: the producer owns which scopes it needs; we only name them.
+ */
+function GhlConnectPermissions({ brandId }: { brandId: string }) {
+  const scopesQ = useAuthQuery(["ghlScopes", brandId], () => getGhlScopes(brandId));
+  return (
+    <div data-testid="ghl-connect-permissions">
+      <p className="text-sm text-gray-700">
+        Give your Private Integration these permissions. Our AI then reads your CRM and books meetings for your prospects.
+      </p>
+      {scopesQ.data ? (
+        <ul className="mt-2 flex flex-wrap gap-1.5">
+          {ghlScopesToGrant(scopesQ.data).map((scope) => (
+            <li key={scope} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700">
+              {ghlScopeLabel(scope)}
+            </li>
+          ))}
+        </ul>
+      ) : scopesQ.isError ? (
+        <p className="mt-2 text-sm text-red-600">We could not load the permissions just now. Reload the page to see them.</p>
+      ) : (
+        <span className="mt-2 block h-6 w-64 animate-pulse rounded bg-gray-100" />
+      )}
+    </div>
+  );
+}
+
 function GhlBookingSection({ brandId, connection }: { brandId: string; connection: Connection }) {
   const queryClient = useQueryClient();
   const [stillMissing, setStillMissing] = useState(false);

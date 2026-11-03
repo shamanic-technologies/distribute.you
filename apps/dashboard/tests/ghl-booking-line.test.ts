@@ -76,3 +76,20 @@ describe("GoHighLevel booking line", () => {
     expect(api).toContain("canBook: z.boolean().nullable(),");
   });
 });
+
+describe("new GoHighLevel connection lists every permission (AUTO-BOOK-1103-CARD)", () => {
+  it("reads crm-service's scopes, read then book, once each, never hard-coded", async () => {
+    const { ghlScopesToGrant, ghlScopeLabel } = await import("../src/components/settings/ghl-booking-line");
+    expect(ghlScopesToGrant({ mirror: ["contacts.readonly", "calendars.readonly"], booking: ["contacts.write", "contacts.readonly"] })).toEqual([
+      "contacts.readonly",
+      "calendars.readonly",
+      "contacts.write",
+    ]);
+    expect(ghlScopeLabel("contacts.readonly")).toBe("View Contacts");
+    expect(ghlScopeLabel("unknown.scope")).toBe("unknown.scope");
+    const fs = await import("node:fs");
+    const src = fs.readFileSync(new URL("../src/components/settings/brand-integrations-card.tsx", import.meta.url), "utf8");
+    expect(src).toContain('def.slug === "gohighlevel" ? <GhlConnectPermissions brandId={brandId} />');
+    expect(src).toContain("getGhlScopes(brandId)");
+  });
+});
