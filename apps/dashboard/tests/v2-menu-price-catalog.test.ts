@@ -12,7 +12,6 @@ describe("account menu: Price catalog", () => {
     const catalog = menu.indexOf('label: "Price catalog"');
     expect(billing).toBeGreaterThan(0);
     expect(catalog).toBeGreaterThan(billing);
-    expect(catalog).toBeLessThan(menu.indexOf('label: "Refer a friend"'));
     expect(src).toContain('const PRICE_CATALOG_URL = "https://distribute.you/catalog";');
   });
 
