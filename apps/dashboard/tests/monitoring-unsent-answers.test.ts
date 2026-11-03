@@ -21,13 +21,21 @@ describe("Monitoring > Unsent answers: campaign-service's read parses as served"
     expect(d.unsent.some((a) => a.state === "refused" && a.refusalCode && a.refusalReason)).toBe(true);
     expect(d.unsent.some((a) => a.state === "failed" && a.refusalCode === null)).toBe(true);
     expect(d.unsent.some((a) => a.person === null)).toBe(true);
-    expect(Object.keys(d.byDay[0]).sort()).toEqual(["answered", "answeredByTeam", "day", "failed", "refused", "refusedByCode", "replaying"]);
+    expect(Object.keys(d.byDay[0]).sort()).toEqual(["answered", "answeredByTeam", "day", "failed", "nothingToDo", "refused", "refusedByCode", "replaying"]);
   });
 
   it("a day answered only by the brand's team carries no refused and no failed answer (stays normal)", () => {
     const d = UnsentAnswersSchema.parse(fixture());
     const team = d.byDay.find((x) => x.day === "2026-10-22");
     expect(team).toMatchObject({ answeredByTeam: 3, refused: 0, failed: 0 });
+  });
+
+  it("UNSENT-ANSWERED-ELSEWHERE-1103: a served nothingToDo count is read; an older payload without it reads 0", () => {
+    const old = UnsentAnswersSchema.parse(fixture());
+    expect(old.byDay.every((x) => x.nothingToDo === 0)).toBe(true);
+    const raw = fixture();
+    raw.byDay[0] = { ...raw.byDay[0], nothingToDo: 7 };
+    expect(UnsentAnswersSchema.parse(raw).byDay[0].nothingToDo).toBe(7);
   });
 
   it("an ok read with nothing unsent parses too", () => {
@@ -78,5 +86,9 @@ describe("Monitoring > Unsent answers: page and hub", () => {
     // The normal ones never wear red.
     expect(src).toMatch(/key: "answeredByTeam", label: "[^"]+", color: "var\(--data-violet\)"/);
     expect(src).toMatch(/key: "replaying", label: "[^"]+", color: "var\(--data-sky\)"/);
+    // UNSENT-ANSWERED-ELSEWHERE-1103: nothing owed is drawn from the served field, in grey, never red, and only on the "everything" chart.
+    expect(src).toContain('{ key: "nothingToDo", label: "Nothing owed", color: "var(--fg-4)", get: (m) => m.nothingToDo }');
+    expect(src.match(/key: "nothingToDo"/g)?.length).toBe(1);
+    expect(src).toContain("A run that finds nothing owed is not a failure.");
   });
 });
