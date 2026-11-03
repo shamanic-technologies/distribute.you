@@ -88,7 +88,6 @@ export interface WorkflowGrainBlock {
   projected?: {
     costPerPaidClientUsd: number | null;
     costPerMeetingBookedUsd: number | null;
-    cacPct: number | null;
   } | null;
   /** The grain's maturity pair (features-service#1196). Absent only on a goal-keyed body. */
   basis?: string;

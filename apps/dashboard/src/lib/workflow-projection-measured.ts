@@ -8,7 +8,7 @@
  * becomes reachable, so it can earn its first run instead of staying invisible forever
  * because it never spent. Its `resolved.costPerOutcomeUsd` is an EXPLORE ALLOWANCE — a
  * cost floor deliberately set at the price of one outreach, not a result — and it
- * states no return at all (`costPerPaidClientUsd` / `cacPct` null,
+ * states no return at all (`costPerPaidClientUsd` null,
  * `grain` null, `estimatesByGrain` empty).
  *
  * So an unmeasured row is the CHEAPEST row by construction. Every dashboard surface
