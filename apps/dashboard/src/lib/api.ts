@@ -676,6 +676,19 @@ const CrmConnectionSchema = z.object({
   lastError: z.string().nullable(),
   lastRunId: z.string().nullable(),
   createdAt: z.string(),
+  // Can our AI book meetings for prospects through this connection (crm-service #246,
+  // AUTO-BOOK-1103): canBook true = the token can write contacts + calendar events,
+  // false = it cannot (GoHighLevel's own words in vendorError), null = not known yet.
+  // `.optional()` decouples the rollout; `access` is the producer's vocabulary, a string.
+  booking: z
+    .object({
+      canBook: z.boolean().nullable(),
+      access: z.string(),
+      checkedAt: z.string().nullable(),
+      vendorError: z.string().nullable(),
+      requiredScopes: z.array(z.string()),
+    })
+    .optional(),
 });
 
 export type CrmConnection = z.infer<typeof CrmConnectionSchema>;
@@ -832,6 +845,48 @@ export async function connectCrm(
   if (!parsed.success) {
     console.error("[api] connectCrm response shape mismatch", parsed.error.flatten());
     throw new Error("connectCrm returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+const GhlScopesSchema = z.object({
+  scopes: z.object({ mirror: z.array(z.string()), booking: z.array(z.string()) }),
+});
+
+export type GhlScopes = z.infer<typeof GhlScopesSchema>["scopes"];
+
+/**
+ * The GoHighLevel token scopes a brand grants: `mirror` (read the CRM) and `booking`
+ * (book meetings for prospects). crm-service owns the list; the connect form shows it.
+ * `brandId` rides the query so the gateway forwards it as identity.
+ */
+export async function getGhlScopes(brandId: string, token?: string): Promise<GhlScopes> {
+  const raw = await apiCall<unknown>(`/orgs/gohighlevel/scopes?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = GhlScopesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getGhlScopes response shape mismatch", parsed.error.flatten());
+    throw new Error("getGhlScopes returned an unexpected shape");
+  }
+  return parsed.data.scopes;
+}
+
+/**
+ * Ask GoHighLevel again whether this connection's token can book meetings (after the
+ * customer changed the token's scopes in GoHighLevel). Nothing is created there.
+ */
+export async function recheckGhlBookingAccess(
+  connectionId: string,
+  brandId: string,
+  token?: string,
+): Promise<{ connection: CrmConnection }> {
+  const raw = await apiCall<unknown>(
+    `/orgs/gohighlevel/connections/${connectionId}/booking-access?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "POST", body: {} },
+  );
+  const parsed = z.object({ connection: CrmConnectionSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] recheckGhlBookingAccess response shape mismatch", parsed.error.flatten());
+    throw new Error("recheckGhlBookingAccess returned an unexpected shape");
   }
   return parsed.data;
 }

@@ -12,6 +12,8 @@ import {
   disconnectGoogleAccount,
   disconnectGoogleCalendar,
   deleteBrandKey,
+  getGhlScopes,
+  recheckGhlBookingAccess,
   listGoogleAccounts,
   listGoogleCalendars,
   startGoogleConnect,
@@ -41,6 +43,7 @@ import {
   credentialErrorMessage,
   disconnectErrorMessage,
 } from "@/lib/integration-write";
+import { GHL_BOOKING_COPY, ghlBookingState, ghlScopesToGrant, type GhlBookingView } from "@/lib/ghl-booking";
 
 /**
  * The third-party accounts a brand has connected.
@@ -70,6 +73,9 @@ interface Connection {
   /** Stripe: the key-service provider holding this account's key, and the account it reads. */
   credentialProvider?: string;
   account?: { id: string; name: string | null } | null;
+  /** GoHighLevel: the sub-account it reads, and whether our AI can book meetings through it. */
+  locationId?: string;
+  booking?: GhlBookingView;
 }
 
 /**
@@ -426,6 +432,10 @@ function IntegrationRow({
             <p className="mt-2 text-sm text-amber-700">{connection.lastError}</p>
           ) : null}
 
+          {def.slug === "gohighlevel" && connection ? (
+            <GhlBookingLine brandId={brandId} connection={connection} onChanged={onChanged} />
+          ) : null}
+
           {connection && orgId ? (
             <Link
               href={def.surfaceHref(orgId, brandId)}
@@ -499,6 +509,13 @@ function IntegrationRow({
             connect.mutate();
           }}
         >
+          {def.slug === "gohighlevel" ? (
+            <div>
+              <p className="text-sm text-gray-700">{GHL_BOOKING_COPY.connectScopes}</p>
+              <GhlScopeChips brandId={brandId} />
+            </div>
+          ) : null}
+
           {def.fields.map((f) => (
             <label key={f.key} className="block">
               <span className="text-sm font-medium text-gray-700">{f.label}</span>
@@ -564,6 +581,172 @@ function IntegrationRow({
                 Still needed: {blocked.map((f) => f.label).join(", ")}
               </span>
             ) : null}
+          </div>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The GoHighLevel token scopes to tick, as crm-service lists them (read the CRM, then
+ * book meetings). Never a hard-coded list: the producer owns which scopes it needs.
+ */
+function GhlScopeChips({ brandId }: { brandId: string }) {
+  const scopesQ = useAuthQuery(["ghlScopes", brandId], () => getGhlScopes(brandId));
+  if (scopesQ.isError) {
+    return <p className="mt-2 text-sm text-red-600">We could not load the scopes just now. Reload the page to see them.</p>;
+  }
+  if (!scopesQ.data) {
+    return <span className="mt-2 block h-6 w-64 animate-pulse rounded bg-gray-100" />;
+  }
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5">
+      {ghlScopesToGrant(scopesQ.data).map((scope) => (
+        <li key={scope} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 font-mono text-xs text-gray-700">
+          {scope}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Can our AI book meetings for this brand's prospects (AUTO-BOOK-1103)? crm-service
+ * checks the token's write access and serves the verdict on the connection. When it
+ * cannot, the customer fixes it here: tick the scopes in GoHighLevel, paste the new
+ * token (or keep the same one), and we ask GoHighLevel again. Not known yet = no line.
+ */
+function GhlBookingLine({
+  brandId,
+  connection,
+  onChanged,
+}: {
+  brandId: string;
+  connection: Connection;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [token, setToken] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [stillRefused, setStillRefused] = useState(false);
+  const state = ghlBookingState(connection.booking);
+
+  const check = useMutation({
+    mutationFn: async () => {
+      const typed = token.trim();
+      if (!typed) {
+        try {
+          return await recheckGhlBookingAccess(connection.id, brandId);
+        } catch (err) {
+          console.error("[integrations] re-checking GoHighLevel booking access failed", err);
+          throw new Error("We could not reach GoHighLevel just now. Try again.");
+        }
+      }
+      // A new token: stored where credentials live, then the same connect as the first
+      // time (crm-service proves it, updates this connection and checks booking again).
+      if (!connection.locationId) throw new Error("This connection has no sub-account id. Disconnect it and connect again.");
+      try {
+        await setBrandKey(brandId, "gohighlevel", typed);
+      } catch (err) {
+        console.error("[integrations] storing the GoHighLevel token failed", err);
+        throw new Error(credentialErrorMessage(err));
+      }
+      try {
+        return await connectCrm(brandId, connection.locationId);
+      } catch (err) {
+        console.error("[integrations] reconnecting GoHighLevel failed", err);
+        throw new Error(connectErrorMessage(err));
+      }
+    },
+    onSuccess: ({ connection: next }) => {
+      setError(null);
+      setToken("");
+      const refused = ghlBookingState(next.booking) !== "can_book";
+      setStillRefused(refused);
+      if (!refused) setOpen(false);
+      onChanged();
+    },
+    // Every message thrown above is our own copy, never the downstream body.
+    onError: (err: Error) => setError(err.message),
+  });
+
+  if (state === "unknown") return null;
+  if (state === "can_book") {
+    return (
+      <p className="mt-2 flex items-center gap-1.5 text-sm text-green-700" data-testid="ghl-booking-on">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-green-600" />
+        {GHL_BOOKING_COPY.canBook}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-2" data-testid="ghl-booking-off">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="flex items-center gap-1.5 text-sm text-amber-700">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          {GHL_BOOKING_COPY.cannotBook}
+        </p>
+        {open ? null : (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="rounded-lg border border-gray-200 px-2.5 py-1 text-sm font-medium text-gray-900 hover:bg-gray-50"
+          >
+            {GHL_BOOKING_COPY.reconnect}
+          </button>
+        )}
+      </div>
+      {open ? (
+        <form
+          className="mt-3 space-y-3 rounded-lg border border-gray-200 p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError(null);
+            check.mutate();
+          }}
+        >
+          <ol className="list-decimal space-y-3 pl-5 text-sm text-gray-700">
+            <li>{GHL_BOOKING_COPY.stepOpen}</li>
+            <li>
+              {GHL_BOOKING_COPY.stepScopes}
+              <GhlScopeChips brandId={brandId} />
+            </li>
+            <li>
+              {GHL_BOOKING_COPY.stepToken}
+              <input
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="pit-..."
+                autoComplete="off"
+                spellCheck={false}
+                aria-label="Private Integration Token"
+                className="mt-1.5 block w-full max-w-md rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300/40"
+              />
+            </li>
+          </ol>
+          {stillRefused ? <p className="text-sm text-amber-700">{GHL_BOOKING_COPY.stillRefused}</p> : null}
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={check.isPending}
+              className={`rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white ${check.isPending ? "cursor-wait" : "hover:bg-brand-700"}`}
+            >
+              {check.isPending ? "Checking with GoHighLevel..." : GHL_BOOKING_COPY.submit}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setError(null);
+                setStillRefused(false);
+              }}
+              className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
           </div>
         </form>
       ) : null}
