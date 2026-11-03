@@ -32,7 +32,7 @@ Owner rule 2026-09-27: no chargeable card (removed or never added) also stops th
 - Retry opens the hard-402 modal (`showPaymentRequired`, `depleted` when out); do NOT pass the refused amount as `required_cents`.
 - Billing page only. Guard `tests/payment-failure.test.ts`.
 
-## Free-credit promise (`V2ReferralPage` in `components/v2/setup-pages.tsx`)
+## Free-credit promise (Billing's coming-credits card; the Refer a friend page is deleted, owner 2026-11-03, `/referral` redirects to Billing)
 - Confirmation is a TOAST (`components/toast.tsx`, `role="status"`, centred bottom: the support FAB owns bottom-right).
 - Heading = billing's served `outstanding_total_cents` (`.optional()`, absent is not zero); never sum rows here. Bar + line describe the NEAREST promise only (billing orders cheapest-bar-first).
 - Line from `promiseUnlockLine` (`lib/free-credit-promise-view`): `Unlock $347 free credits after $376 more in payments.`; a referral row (referrer only, earned on the REFERRED org's payments) reads `Get $500 free credits once Acme has paid $300 more.` Promises WHOLE dollars (`formatBillingCentsWhole`), charges keep cents; remaining bar CEILED; no measured progress => no bar. Key `["freeCreditPromises"]` is Billing's; link reads org from the URL, never `useParams`. Guards `tests/referral-invite-wiring.test.ts`, `tests/free-credit-promise-view.test.ts`.

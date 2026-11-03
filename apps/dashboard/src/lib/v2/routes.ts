@@ -24,7 +24,6 @@ export type V2Section =
   | "api-keys"
   | "account"
   | "team"
-  | "referral"
   | "research"
   | "monitoring"
   | "posts"
@@ -117,7 +116,6 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "api-keys",
     "account",
     "team",
-    "referral",
     "research",
     "monitoring",
     "posts",

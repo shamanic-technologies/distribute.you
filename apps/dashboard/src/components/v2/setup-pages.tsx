@@ -1,23 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import {
-  getBillingAccount,
-  getFreeCreditPromises,
-  getInviteStatus,
-  listBrandOffers,
-  type BillingAccount,
-  type FreeCreditPromise,
-  type InviteStatus,
-} from "@/lib/api";
-import { formatBillingCentsWhole } from "@/lib/format-number";
-import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
-import { promiseProgressSentence, promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
+import { listBrandOffers } from "@/lib/api";
 import { v2Base, v2Href, v2OfferHref } from "@/lib/v2/routes";
-import { offersNoFreeMoney } from "@/lib/v2/get-started";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
@@ -34,7 +22,6 @@ import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
 import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
-import { Toast } from "@/components/toast";
 import { Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useUser } from "@clerk/nextjs";
@@ -414,111 +401,5 @@ export function V2AccountFrame({ label, children }: { label: string; children: R
       <TopBar crumbs={[{ label: "Account" }, { label }]} />
       <div className="v2-embed">{children}</div>
     </>
-  );
-}
-
-/**
- * Refer a friend: Explee's referral page, with our invite link and our promises. Every
- * value is billing's (the code, the promises, the total still to come) and the words are
- * the ones the v1 sidebar card and the Billing rows read, so they cannot disagree.
- */
-export function V2ReferralPage() {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  const { orgId: clerkOrgId, brandId } = useIds();
-  const { data: account } = useAuthQuery<BillingAccount>(["billingAccount"], () => getBillingAccount());
-  const orgId = account?.org_id ?? null;
-  const inviteQ = useAuthQuery<InviteStatus>(["inviteStatus", orgId ?? "none"], () => getInviteStatus(orgId!), { enabled: !!orgId });
-  const promisesQ = useAuthQuery<{ paidTopupsCents: string; outstandingTotalCents: string | null; promises: FreeCreditPromise[] }>(
-    ["freeCreditPromises"],
-    () => getFreeCreditPromises(),
-  );
-  const link = inviteLinkForCode(inviteQ.data?.code);
-  const promises = promisesQ.data?.promises ?? [];
-  const copy = async () => {
-    if (!link) return;
-    await navigator.clipboard.writeText(link);
-    setCopied(true);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(false), 2500);
-  };
-  const linkCard = (
-    <div className="k-card p-4">
-      <p className="k-label">Your invite link</p>
-      {link ? (
-        <div className="mt-2 flex items-center gap-2">
-          <input readOnly value={link} aria-label="Invite link" className="k-input min-w-0 flex-1 px-2" onFocus={(e) => e.currentTarget.select()} />
-          <button type="button" onClick={copy} className="k-btn-strong shrink-0">
-            {copied ? "Copied" : "Copy link"}
-          </button>
-        </div>
-      ) : inviteQ.isError ? (
-        <p className="k-fg3 mt-2 text-[13px]">We could not read your invite link right now.</p>
-      ) : (
-        <Shimmer className="mt-2 h-7 w-full" />
-      )}
-    </div>
-  );
-  // billing gives this org no referral reward (owner 2026-10-29: « les $ gratuits de
-  // referral » stop for every org created since): the link only, no reward promised.
-  if (offersNoFreeMoney(account)) {
-    return (
-      <V2Page
-        crumbs={[{ label: "Account" }, { label: "Refer a friend" }]}
-        title="Refer a friend"
-        sub="Share your link with a founder who wants more revenue."
-        width="max-w-[760px]"
-      >
-        {linkCard}
-        {copied && <Toast message="Invite link copied" />}
-      </V2Page>
-    );
-  }
-  return (
-    <V2Page
-      crumbs={[{ label: "Account" }, { label: "Refer a friend" }]}
-      title={`Get $${REFERRAL_CREDIT_USD} for each referral`}
-      sub={`Share your link. Once someone who signs up through it has paid us $${REFERRAL_CREDIT_USD}, you get $${REFERRAL_CREDIT_USD} in free credits. There is no limit.`}
-      width="max-w-[760px]"
-    >
-      {linkCard}
-
-      <div className="k-card mt-4 p-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="k-label">Credits on the way</p>
-          <Link href={`${v2Base(clerkOrgId, brandId)}/billing`} className="k-fg3 text-[12px] hover:text-[var(--fg-1)]">
-            Billing →
-          </Link>
-        </div>
-        {promisesQ.data === undefined ? (
-          promisesQ.isError ? <p className="k-fg3 mt-2 text-[13px]">We could not read your credits right now.</p> : <Shimmer className="mt-2 h-10 w-full" />
-        ) : promises.length === 0 ? (
-          <p className="k-fg3 mt-2 text-[13px]">Nothing on the way yet. Credits appear here the moment somebody signs up through your link.</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {promises.map((p) => {
-              const width = promiseProgressWidth(p.progressPct);
-              const remaining = p.remainingToUnlockCents ? formatBillingCentsWhole(p.remainingToUnlockCents) : null;
-              return (
-                <li key={p.id}>
-                  <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                    <span>{promiseUnlockLine(formatBillingCentsWhole(p.amountCents), remaining, p)}</span>
-                    <span className="font-medium tabular-nums">{formatBillingCentsWhole(p.amountCents)}</span>
-                  </div>
-                  {width !== null && (
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--data-track)]">
-                      <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${width}%` }} />
-                    </div>
-                  )}
-                  {promiseProgressSentence(p.progressPct) && <p className="k-fg3 mt-1 text-[11px]">{promiseProgressSentence(p.progressPct)}</p>}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-      {copied && <Toast message="Invite link copied" />}
-    </V2Page>
   );
 }
