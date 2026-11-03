@@ -18,6 +18,7 @@ import {
   listBrandKeys,
   listCrmConnections,
   listSourceConnections,
+  recheckCrmBookingAccess,
   setBrandKey,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -36,6 +37,7 @@ import {
 import { GOOGLE_RETURN_KEY, OUTCOME_PARAMS, googleCallbackUrl, withLoginHint } from "@/lib/google-connect";
 import { GoogleCalendarLine } from "@/components/settings/google-calendar-line";
 import { GmailMailboxLine } from "@/components/settings/gmail-mailbox-line";
+import { GhlBookingLine, type GhlBooking } from "@/components/settings/ghl-booking-line";
 import {
   connectErrorMessage,
   credentialErrorMessage,
@@ -70,6 +72,8 @@ interface Connection {
   /** Stripe: the key-service provider holding this account's key, and the account it reads. */
   credentialProvider?: string;
   account?: { id: string; name: string | null } | null;
+  /** GoHighLevel: can our AI book meetings on this account's calendar (crm-service). */
+  booking?: GhlBooking;
 }
 
 /**
@@ -426,6 +430,10 @@ function IntegrationRow({
             <p className="mt-2 text-sm text-amber-700">{connection.lastError}</p>
           ) : null}
 
+          {def.slug === "gohighlevel" && connection ? (
+            <GhlBookingSection brandId={brandId} connection={connection} />
+          ) : null}
+
           {connection && orgId ? (
             <Link
               href={def.surfaceHref(orgId, brandId)}
@@ -568,6 +576,36 @@ function IntegrationRow({
         </form>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * GoHighLevel: whether our AI can book meetings on the brand's calendar, and a Check again
+ * that asks crm-service to probe GoHighLevel once more. Its answer is the connection: written
+ * into the `crmConnections` list, then the list re-read.
+ */
+function GhlBookingSection({ brandId, connection }: { brandId: string; connection: Connection }) {
+  const queryClient = useQueryClient();
+  const [stillMissing, setStillMissing] = useState(false);
+  const check = useMutation({
+    mutationFn: () => recheckCrmBookingAccess(connection.id, brandId),
+    onSuccess: async ({ connection: fresh }) => {
+      setStillMissing(fresh.booking?.canBook === false);
+      queryClient.setQueryData<{ connections: Connection[] }>(["crmConnections", brandId], (prev) =>
+        prev ? { connections: prev.connections.map((c) => (c.id === fresh.id ? fresh : c)) } : prev,
+      );
+      await queryClient.invalidateQueries({ queryKey: ["crmConnections", brandId] });
+    },
+    onError: (err) => console.error("[integrations] GoHighLevel booking check failed", err),
+  });
+  return (
+    <GhlBookingLine
+      booking={connection.booking ?? null}
+      checking={check.isPending}
+      checkFailed={check.isError}
+      stillMissing={stillMissing && !check.isPending}
+      onCheck={() => check.mutate()}
+    />
   );
 }
 

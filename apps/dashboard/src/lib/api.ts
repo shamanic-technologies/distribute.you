@@ -676,9 +676,21 @@ const CrmConnectionSchema = z.object({
   lastError: z.string().nullable(),
   lastRunId: z.string().nullable(),
   createdAt: z.string(),
+  // Can our AI book meetings on this account's calendar (crm-service, AUTO-BOOK-1103).
+  // `canBook` null = not known yet. Optional until crm-service serves it everywhere.
+  booking: z
+    .object({
+      canBook: z.boolean().nullable(),
+      access: z.string(),
+      checkedAt: z.string().nullable(),
+      vendorError: z.string().nullable(),
+      requiredScopes: z.array(z.string()),
+    })
+    .optional(),
 });
 
 export type CrmConnection = z.infer<typeof CrmConnectionSchema>;
+export type CrmBookingAccess = NonNullable<CrmConnection["booking"]>;
 
 const ListCrmConnectionsResponseSchema = z.object({
   connections: z.array(CrmConnectionSchema),
@@ -852,6 +864,28 @@ export async function disconnectCrm(
     `/orgs/gohighlevel/connections/${connectionId}?brandId=${encodeURIComponent(brandId)}`,
     { token, method: "DELETE" },
   );
+}
+
+/**
+ * Ask GoHighLevel again whether this connection can book meetings (after the customer
+ * added the permissions to their token). crm-service probes and answers the connection.
+ * `brandId` rides the query so the gateway promotes it to `x-brand-id` (see `connectCrm`).
+ */
+export async function recheckCrmBookingAccess(
+  connectionId: string,
+  brandId: string,
+  token?: string,
+): Promise<{ connection: CrmConnection }> {
+  const raw = await apiCall<unknown>(
+    `/orgs/gohighlevel/connections/${encodeURIComponent(connectionId)}/booking-access?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "POST" },
+  );
+  const parsed = z.object({ connection: CrmConnectionSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] recheckCrmBookingAccess response shape mismatch", parsed.error.flatten());
+    throw new Error("recheckCrmBookingAccess returned an unexpected shape");
+  }
+  return parsed.data;
 }
 
 // ==================== GMAIL (google-service), per organization ====================
