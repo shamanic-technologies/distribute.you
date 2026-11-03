@@ -31,7 +31,6 @@ export interface FunnelProjection {
   meetings: number | null;
   closes: number;
   revenue: number;
-  cacPct: number | null;
   cacAbs: number | null;
 }
 
@@ -68,11 +67,10 @@ export function projectFunnel(
   const meetings = (replies ?? 0) * econ.r2m + (visits ?? 0) * econ.v2m;
   const closes = budgetUsd * closesPerBudget;
   const revenue = closes * econ.ltv;
-  const cacPct = revenue > 0 ? (budgetUsd / revenue) * 100 : null;
   const cacAbs = closes > 0 ? budgetUsd / closes : null;
 
   return {
     costPerCloseUsd,
-    projection: { contactedLeads, replies, visits, meetings, closes, revenue, cacPct, cacAbs },
+    projection: { contactedLeads, replies, visits, meetings, closes, revenue, cacAbs },
   };
 }

@@ -40,7 +40,6 @@ const measured = {
         costPerPaidClientUsd: 337,
         costPerMeetingBookedUsd: 337,
         roiMultiple: 2.4,
-        cacPct: 41,
       },
     },
   },
@@ -51,7 +50,6 @@ const measured = {
     costPerPaidClientUsd: 337,
     costPerMeetingBookedUsd: 337,
     roiMultiple: 2.4,
-    cacPct: 41,
   },
 };
 
@@ -68,7 +66,6 @@ const unmeasured = {
     costPerPaidClientUsd: null,
     costPerMeetingBookedUsd: null,
     roiMultiple: null,
-    cacPct: null,
   },
 };
 
@@ -209,7 +206,6 @@ const retired = {
     costPerPaidClientUsd: null,
     costPerMeetingBookedUsd: null,
     roiMultiple: null,
-    cacPct: null,
     conversionRatePct: null,
   },
   measured: true,

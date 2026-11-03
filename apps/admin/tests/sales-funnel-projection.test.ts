@@ -45,18 +45,17 @@ describe("projectFunnel — funnel at a budget", () => {
     expect(at100.contactedLeads!).toBeCloseTo(at1.contactedLeads! * 100, 6);
   });
 
-  it("cacPct and cacAbs are budget-invariant ratios", () => {
+  it("cacAbs is a budget-invariant cost per close", () => {
     const at1 = projectFunnel({ contactedUsd: 0.5, replyUsd: 5, clickUsd: 2 }, ECON, 1).projection!;
     const at500 = projectFunnel({ contactedUsd: 0.5, replyUsd: 5, clickUsd: 2 }, ECON, 500).projection!;
-    expect(at500.cacPct!).toBeCloseTo(at1.cacPct!, 8);
     expect(at500.cacAbs!).toBeCloseTo(at1.cacAbs!, 8);
   });
 
-  it("revenue = closes × ltv; cacPct = budget/revenue × 100", () => {
+  it("revenue = closes × ltv", () => {
     const budget = 200;
     const { projection } = projectFunnel({ contactedUsd: 0.5, replyUsd: 5, clickUsd: 2 }, ECON, budget);
     expect(projection!.revenue).toBeCloseTo(projection!.closes * ECON.ltv, 6);
-    expect(projection!.cacPct!).toBeCloseTo((budget / projection!.revenue) * 100, 8);
+    expect(projection).not.toHaveProperty("cacPct");
   });
 
   it("meetings sum both routes: replies×r2m + visits×v2m", () => {

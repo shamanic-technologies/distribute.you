@@ -145,7 +145,6 @@ interface SalesProjectionView {
   meetings: number | null;
   closes: number;
   revenue: number;
-  cacPct: number | null;
   cacAbs: number | null;
 }
 
@@ -509,19 +508,6 @@ export default function FeatureCreateCampaignPage() {
       if (!w) return null;
       return projectFunnel({ contactedUsd: w.contactedUsd, replyUsd: w.replyUsd, clickUsd: w.clickUsd }, econLive, null)
         .costPerCloseUsd;
-    },
-    [projByDynasty, econLive],
-  );
-
-  // CAC as a % of the customer's LTV — budget-invariant, so compute at $1.
-  const cacPctFor = useCallback(
-    (dynastySlug: string): number | null => {
-      const w = projByDynasty.get(dynastySlug);
-      if (!w) return null;
-      return (
-        projectFunnel({ contactedUsd: w.contactedUsd, replyUsd: w.replyUsd, clickUsd: w.clickUsd }, econLive, 1)
-          .projection?.cacPct ?? null
-      );
     },
     [projByDynasty, econLive],
   );
@@ -1485,7 +1471,6 @@ export default function FeatureCreateCampaignPage() {
                         {proj && (
                           <div className="mt-2 text-[11px] leading-relaxed">
                             <div className="text-green-700 font-semibold">~{fmtUsd0(proj.revenue)} revenue / month</div>
-                            <div className="text-gray-500"><InfoLabel label="CAC" tip="Customer acquisition cost as a share of the revenue it generates (spend ÷ revenue)." /> {proj.cacPct != null ? `${fmtNum(proj.cacPct)}%` : "—"}</div>
                           </div>
                         )}
                       </button>
@@ -1724,8 +1709,6 @@ export default function FeatureCreateCampaignPage() {
                       const isSel = modalSelectedWorkflowId === w.id;
                       const isReco = salesAutoPick?.id === w.id;
                       const isOverride = salesWorkflowOverrideId === w.id;
-                      // CAC as % of LTV (lower = better) instead of a scary "$ / close" figure (served).
-                      const cacPct = cacPctFor(w.workflowDynastySlug);
                       const sent = Number(w.stats.recipientsSent) || 0;
                       const workflowProjection = projByDynasty.get(w.workflowDynastySlug);
                       const testing = isTestRunning(tests[w.id]?.status) || testStarting[w.id];
@@ -1749,12 +1732,6 @@ export default function FeatureCreateCampaignPage() {
                               <span>Sent {fmtNum(sent)}</span>
                               <span>{fmtUsdPerOutcome(workflowProjection?.clickUsd)} / link click</span>
                               <span>{fmtUsdPerOutcome(workflowProjection?.replyUsd)} / positive reply</span>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className="text-sm font-semibold text-gray-800">{fmtPct(cacPct)}</div>
-                            <div className="text-[10px] text-gray-400">
-                              <InfoLabel label="CAC" tip="Customer Acquisition Cost — what you spend to win one customer, as a share of their lifetime value (LTV). Lower is better." />
                             </div>
                           </div>
                         </button>

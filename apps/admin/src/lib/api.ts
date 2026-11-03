@@ -2309,8 +2309,6 @@ const WorkflowFunnelProjectionSchema = z.object({
   meetings: z.number().nullable(),
   closes: z.number().nullable(),
   revenue: z.number().nullable(),
-  /** (budget / revenue) × 100 — budget-invariant. */
-  cacPct: z.number().nullable(),
   /** budget / closes (absolute cost per close) — budget-invariant. */
   cacAbs: z.number().nullable(),
 });
@@ -2388,8 +2386,8 @@ export function keepLastGoodWorkflowProjection(
  * `WorkflowProjectionItem`. Every value is read VERBATIM from the row's resolved grain
  * block (the finest present) — no arithmetic. The funnel COUNT projection
  * (contactedLeads/replies/visits/meetings/closes/revenue) no longer exists in the
- * reshaped contract, so those are null (fail to "-", never fabricated); `cacPct`/`cacAbs`
- * carry the resolved values so any consumer reading them stays correct.
+ * reshaped contract, so those are null (fail to "-", never fabricated); `cacAbs`
+ * carries the resolved cost per paid client so any consumer reading them stays correct.
  */
 function ladderRowToWorkflowItem(row: WorkflowProjectionRow): WorkflowProjectionItem {
   const block = row.estimatesByGrain[row.resolved.grain];
@@ -2411,7 +2409,6 @@ function ladderRowToWorkflowItem(row: WorkflowProjectionRow): WorkflowProjection
       meetings: null,
       closes: null,
       revenue: null,
-      cacPct: row.resolved.cacPct,
       cacAbs: row.resolved.costPerPaidClientUsd,
     },
   };
@@ -2483,7 +2480,6 @@ const WorkflowGrainProjectedSchema = z.object({
   costPerSignupUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable(),
-  cacPct: z.number().nullable(),
 });
 
 const WorkflowGrainBlockSchema = z.object({
@@ -2501,7 +2497,6 @@ const WorkflowResolvedSchema = z.object({
   costPerOutcomeUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable(),
-  cacPct: z.number().nullable(),
 });
 
 const WorkflowProjectionRowSchema = z.object({
@@ -5056,11 +5051,10 @@ export interface CustomerEconomics {
 
 export interface CustomerCurrentEconomics {
   /** COMMITTED spend (billed + open holds) — the single basis, and the number
-   *  `currentCacUsd` and `cacPct` below divide by. The billed-only
+   *  `currentCacUsd` below divides by. The billed-only
    *  sibling the producer still serves is deliberately not read here. */
   committedSpendUsd: number | null;
   currentCacUsd: number | null;
-  cacPct: number | null; // CAC as a share of LTR, percent
 }
 
 // Pool figures are human-service's own (Σ sizeCount / Σ availableToContactCount over the
