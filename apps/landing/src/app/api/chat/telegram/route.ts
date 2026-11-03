@@ -1,6 +1,7 @@
 import { ACTIVE_WINDOW_MS, explicitCode, threadCode, unroutedText } from "@/lib/chat/rules";
 import { activeThreads, addMessage, threadForCode, threadForTelegramMessage } from "@/lib/chat/store";
 import { linkOwnerChat, OWNER_LINK_REPLIES, startCode } from "@/lib/chat/owner-link";
+import { NOT_LINKED_REPLY, RELAY_UNAVAILABLE_REPLY, relayToCopilot } from "@/lib/chat/copilot-relay";
 import { sendToChat, sendToTeam, telegramConfig, type TelegramUpdate } from "@/lib/chat/telegram";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +9,9 @@ export const dynamic = "force-dynamic";
 /**
  * Telegram's webhook. `/start <code>` from ANY chat links that chat to a customer's org
  * (client-service records it and says "Connected"; a bad code gets a plain answer here).
- * Everything else is listened to from the team chat only. A message reaches a visitor when
+ * Any other message from a customer's chat goes to Sophie, their Copilot (chat-service
+ * answers a linked chat itself; an unlinked one gets the linking guidance here).
+ * The team chat keeps the visitor relay below. A message reaches a visitor when
  * it addresses their thread (a reply to a relayed message, or `#code text`), or when it
  * addresses nobody and exactly one visitor wrote in the last 30 minutes; the bot then
  * confirms where it went. With several visitors chatting it asks which one.
@@ -24,8 +27,8 @@ export async function POST(request: Request) {
   }
   const update = (await request.json().catch(() => null)) as TelegramUpdate | null;
   const msg = update?.message;
-  if (!msg?.text) return Response.json({ ok: true });
-  const linkCode = startCode(msg.text);
+  if (!msg) return Response.json({ ok: true });
+  const linkCode = msg.text ? startCode(msg.text) : null;
   if (linkCode) {
     const outcome = await linkOwnerChat(linkCode, msg.chat.id);
     if (outcome !== "linked") {
@@ -35,7 +38,18 @@ export async function POST(request: Request) {
     }
     return Response.json({ ok: true });
   }
-  if (String(msg.chat.id) !== config.ownerChatId) return Response.json({ ok: true });
+  if (String(msg.chat.id) !== config.ownerChatId) {
+    // A photo or voice note carries no text: chat-service tells them to write.
+    const outcome = await relayToCopilot(msg.chat.id, msg.message_id, msg.text ?? msg.caption ?? null);
+    const reply = outcome === "not_linked" ? NOT_LINKED_REPLY : outcome === "unavailable" ? RELAY_UNAVAILABLE_REPLY : null;
+    if (reply) {
+      await sendToChat(config, msg.chat.id, reply).catch((err) =>
+        console.error(`[landing/chat] Copilot relay answer (${outcome}) not sent to chat ${msg.chat.id}:`, err),
+      );
+    }
+    return Response.json({ ok: true });
+  }
+  if (!msg.text) return Response.json({ ok: true });
   if (msg.text.trim() === "/start") {
     await sendToTeam(config, "Connected. Visitor messages from distribute.you land here. Reply to one to answer in the chat.");
     return Response.json({ ok: true });
