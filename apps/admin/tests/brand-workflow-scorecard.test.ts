@@ -108,12 +108,8 @@ describe("buildBrandWorkflowRows", () => {
   const group = (slug: string) => ({
     workflowDynastySlug: slug,
     workflowDynastyName: `Brand ${slug}`,
-    headline: { totalPipelineUsd: 4200 },
     costEconomics: {
       committedCostUsd: 1299.47,
-      costOfAcquisitionPct: 31,
-      costPerAcquisitionUsd: 92.8,
-      roiMultiple: 3.2,
     },
     outcomes: {
       recipientsContacted: 638,
@@ -147,7 +143,7 @@ describe("buildBrandWorkflowRows", () => {
 
   it("reads NOTHING when the committed figure is absent, rather than borrowing the billed one", () => {
     // The producer still serves a billed-only sibling. Falling back onto it would put
-    // a smaller number under a label the ROI was computed from, which is the exact
+    // a smaller number under the committed label, which is the exact
     // contradiction the single-basis fix removed. "-" is the honest cell.
     const g = group("wf-a");
     const [row] = buildBrandWorkflowRows([
@@ -171,8 +167,7 @@ describe("buildBrandWorkflowRows", () => {
       brandGroupKey({
         workflowDynastySlug: null,
         workflowSlug: "wf-b-v2",
-        headline: { totalPipelineUsd: null },
-        costEconomics: { costOfAcquisitionPct: null, roiMultiple: null },
+        costEconomics: {},
       }),
     ).toBe("wf-b-v2");
   });
@@ -182,8 +177,7 @@ describe("buildBrandWorkflowRows", () => {
       {
         workflowDynastySlug: null,
         workflowSlug: null,
-        headline: { totalPipelineUsd: 100 },
-        costEconomics: { costOfAcquisitionPct: null, roiMultiple: null },
+        costEconomics: {},
       },
     ]);
     expect(rows).toHaveLength(0);
@@ -193,8 +187,7 @@ describe("buildBrandWorkflowRows", () => {
     const [row] = buildBrandWorkflowRows([
       {
         workflowDynastySlug: "wf-a",
-        headline: { totalPipelineUsd: null },
-        costEconomics: { costOfAcquisitionPct: null, roiMultiple: null },
+        costEconomics: {},
       },
     ]);
     expect(row.investedUsd).toBeNull();
@@ -207,8 +200,7 @@ describe("buildBrandWorkflowRows", () => {
     const [row] = buildBrandWorkflowRows([
       {
         workflowDynastySlug: "wf-a",
-        headline: { totalPipelineUsd: 4200 },
-        costEconomics: { costOfAcquisitionPct: 31, roiMultiple: 3.2 },
+        costEconomics: { committedCostUsd: 1299.47 },
         outcomes: {
           recipientsContacted: 638,
           recipientsClicked: 0,
@@ -229,8 +221,7 @@ describe("buildBrandWorkflowRows", () => {
     const [row] = buildBrandWorkflowRows([
       {
         workflowDynastySlug: "wf-a",
-        headline: { totalPipelineUsd: 4200 },
-        costEconomics: { costOfAcquisitionPct: 31, roiMultiple: 3.2 },
+        costEconomics: { committedCostUsd: 1299.47 },
       },
     ]);
     expect(row.slug).toBe("wf-a");

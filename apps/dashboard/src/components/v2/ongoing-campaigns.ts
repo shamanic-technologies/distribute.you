@@ -8,7 +8,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getOfferSalesPaths, listSalesFunnelCampaigns } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
 import { isOngoingFunnelCampaign, type SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
-import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { campaignKey, campaignsOfOffer, sortCampaigns, sourceCampaignsOfOffer, type OfferCampaign } from "@/lib/offer-campaigns";
 import { canonicalStepKey } from "@/lib/step-marks";
 import { LEAD_FOUND_STEP } from "@/lib/outbound-leg-key";
@@ -59,8 +58,8 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
     const byKey = new Map<string, OfferCampaign>();
     // Source campaigns are campaigns too (owner 2026-10-07): an ON one is listed, named, like the rest.
     const listed = [
-      ...campaignsOfOffer(salesPaths.data?.campaigns ?? [], salesPaths.data?.paths ?? [], roiUnavailableLabel),
-      ...sourceCampaignsOfOffer(salesPaths.data?.sourceCampaigns ?? [], roiUnavailableLabel),
+      ...campaignsOfOffer(salesPaths.data?.campaigns ?? [], salesPaths.data?.paths ?? []),
+      ...sourceCampaignsOfOffer(salesPaths.data?.sourceCampaigns ?? []),
     ];
     sortCampaigns(listed, () => true).forEach((c, i) => {
       order.set(campaignKey(c.featureSlug, c.legKey), i);

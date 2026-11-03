@@ -4,7 +4,6 @@ import * as path from "path";
 import { parseFeatureRevenue } from "../src/lib/revenue-parse";
 import { keepLastGoodFeatureRevenue } from "../src/lib/api";
 import type { RevenueOverview } from "../src/lib/revenue-view";
-import { NULL_PAIR } from "./fixtures/maturity";
 
 const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
@@ -31,9 +30,7 @@ function rawRevenue(
   return {
     featureSlug: "sales-cold-email-outreach",
     ...(series ?? {}),
-    headline: { totalPipelineUsd: 1000 },
-    costEconomics: { maturity: NULL_PAIR, committedCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
-    timeSeries: [],
+    costEconomics: { committedCostUsd: 10 },
     organizations: [],
     leads: [],
     events: [],
@@ -85,7 +82,7 @@ describe("parseFeatureRevenue → outreachContacted (server-computed, render-onl
     const view = parseFeatureRevenue(rawRevenue(), "test");
     expect(view.outreachContacted).toBeUndefined();
     // the rest of the overview still parses
-    expect(view.totalPipelineUsd).toBe(1000);
+    expect(view.costEconomics.committedCostUsd).toBe(10);
   });
 
   it("parses clicked/goal-outcome series from the same signal-series schema", () => {

@@ -83,9 +83,6 @@ export const SpendChartSchema = z.object({
     conversionBasis: z.string().nullable().optional(),
     conversionSource: z.string().nullable().optional(),
     conversionUnavailableReason: z.string().nullable().optional(),
-    roiMultiple: numOrNull.optional(),
-    roiBasis: z.string().nullable().optional(),
-    roiUnavailableReason: z.string().nullable().optional(),
   }),
 });
 export type SpendChart = z.infer<typeof SpendChartSchema>;

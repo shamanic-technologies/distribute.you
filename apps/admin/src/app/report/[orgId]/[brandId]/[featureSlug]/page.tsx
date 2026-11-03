@@ -202,15 +202,15 @@ async function RevenueSection({ orgId, brandId, featureSlug }: { orgId: string; 
     console.error("[dashboard-report] revenue section failed; omitting", err);
     return null;
   }
-  // No saved economics / no funnel → omit the section (the public viewer can't set it up).
-  if (!data || data.totalPipelineUsd === null) return null;
+  // Nothing converted yet → omit the section (the public viewer can't set it up).
+  if (!data || (data.organizations.length === 0 && data.leads.length === 0)) return null;
 
   return (
     <div className="space-y-3">
       <div>
         <h2 className="font-display text-xl font-bold text-gray-800 mb-1">Revenue &amp; Conversions</h2>
         <p className="text-sm text-gray-500">
-          Expected pipeline revenue + conversions, computed from each offer&apos;s lifetime revenue and conversion rates.
+          The organizations and leads this campaign converted.
         </p>
       </div>
       <ReportRevenueView data={data} />

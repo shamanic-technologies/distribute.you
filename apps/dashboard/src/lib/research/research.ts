@@ -250,13 +250,6 @@ export interface ResearchFigures {
   thin: boolean;
   sample: string;
   charts: ResearchChart[];
-  /**
-   * Its return as printed (`"3.20x"`), written by features-service (TPL-DYNASTY-ROWS-1021-FS, on templates
-   * and versions); its detail (basis, multiple) rides `roiDetail`. v0.179.328 served the OBJECT here for a
-   * few minutes before its hotfix moved it to `roiDetail`: read both through `researchRoiOf`. Absent = no tile.
-   */
-  roi?: string | ResearchRoi | null;
-  roiDetail?: ResearchRoi | null;
 }
 
 /**
@@ -288,27 +281,6 @@ export function postCountText(n: number): string {
 /** A served $ per signup, printed; null (no signup yet) is « Learning », the repo's word for a cost at zero outcomes. */
 export function costPerSignupText(usd: number | null): string {
   return usd == null ? "Learning" : formatUsdAdaptive(usd);
-}
-
-/** A served return (features-service `CatalogRoi`). */
-export interface ResearchRoi {
-  /** The multiple: 3.2 = $3.20 of pipeline per $1 billed. */
-  value: number | null;
-  display: string | null;
-  basis: "measured" | "expected" | null;
-  source: string | null;
-  spendCovered: number | null;
-  unavailableReason: string | null;
-}
-
-/**
- * A row's served return, ready to print: `show` (the `RoiValue` input) when the detail is served,
- * else `text` (the printed string alone), else null (no tile).
- */
-export function researchRoiOf(f: Pick<ResearchFigures, "roi" | "roiDetail">): { show: { value: number | null; expected: boolean; reason: string | null } } | { text: string } | null {
-  const d = f.roiDetail ?? (f.roi != null && typeof f.roi === "object" ? f.roi : null);
-  if (d) return { show: { value: d.value, expected: d.value != null && d.basis === "expected", reason: d.value == null ? d.unavailableReason : null } };
-  return typeof f.roi === "string" ? { text: f.roi } : null;
 }
 
 /** A reference to another catalogue page; `linked` when that page exists in this pipe. */

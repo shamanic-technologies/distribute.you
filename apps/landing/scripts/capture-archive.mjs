@@ -62,8 +62,33 @@ const RECIPES = {
     handler: "apps/landing/src/lib/static-html.ts",
     /** The product URLs the handler substituted into every page. */
     urls: "shared/content/src/urls.ts",
+    /**
+     * Pages the owner removed from every surface after the capture. Not stored, and every
+     * link to them unwrapped to its text (pages) or its card dropped (`ARTICLES` in
+     * `main.js`), so no archived page points at a 404.
+     * `/cold-email-cost-guide/cold-email-roi`: no ROI page anymore (ROI-CONSISTENCY-1103).
+     */
+    removed: ["/cold-email-cost-guide/cold-email-roi"],
   },
 };
+
+/** An archived page with every link to a removed page unwrapped to its text. */
+function unlinkRemoved(html, removed) {
+  let out = html;
+  for (const url of removed) {
+    out = out.replaceAll(new RegExp(`<a href="${url}">([^<]*)</a>`, "g"), "$1");
+    if (out.includes(`"${url}"`)) throw new Error(`[capture] a link to ${url} survived unlinking`);
+  }
+  return out;
+}
+
+/** An archived script with every line naming a removed page dropped (its related-article card). */
+function dropRemovedLines(source, removed) {
+  return source
+    .split("\n")
+    .filter((line) => !removed.some((url) => line.includes(`url: '${url}'`)))
+    .join("\n");
+}
 
 function git(...args) {
   return execFileSync("git", ["-C", REPO_ROOT, ...args], {
@@ -230,10 +255,13 @@ function capture(slug) {
   const pages = routeMap(recipe);
 
   let written = 0;
+  const removed = recipe.removed ?? [];
   for (const [url, file] of [...pages].sort()) {
+    if (removed.includes(url)) continue;
     let html = git("show", `${recipe.commit}:${recipe.pagesDir}/${file}`);
     for (const [from, to] of rewrites) html = html.replaceAll(from, to);
     for (const [from, to] of tokens) html = html.replaceAll(from, to);
+    html = unlinkRemoved(html, removed);
 
     const target = path.join(root, storedPathFor(url));
     mkdirSync(path.dirname(target), { recursive: true });
@@ -250,7 +278,8 @@ function capture(slug) {
     if (relative.endsWith(".html")) continue;
     const target = path.join(root, "landing", relative);
     mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, gitBinary("show", `${recipe.commit}:${file}`));
+    const bytes = gitBinary("show", `${recipe.commit}:${file}`);
+    writeFileSync(target, relative.endsWith(".js") ? dropRemovedLines(bytes.toString("utf8"), removed) : bytes);
     assets += 1;
     console.log(`[capture] /landing/${relative}`);
   }

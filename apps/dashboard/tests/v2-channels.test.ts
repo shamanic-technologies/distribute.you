@@ -121,7 +121,7 @@ describe("channel pages", () => {
     expect(existsSync(join(__dirname, "..", "src/components/v2/offer-campaigns-page.tsx"))).toBe(false);
     expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/offers/[offerId]/campaigns/page.tsx")).toContain("/sales-path`);");
     // Outbound lists ticked-path campaigns AND every one that ran, with their results.
-    expect(outbound).toContain("roiUnavailableLabel, (k) => ran.has(k))");
+    expect(outbound).toContain("paths.data?.paths ?? [], (k) => ran.has(k))");
     expect(outbound).toMatch(/<OfferCampaigns[\s\S]*?\bresults\b[\s\S]*?\/>/);
     const results = table.slice(table.indexOf("{results ? (\n                  <tr"), table.indexOf(") : (\n                  <tr"));
     // Column order: name, type, # outcomes, $ / outcome, $ invested, status. No per-pipe return and

@@ -32,7 +32,6 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview, withLayoutNext } from "@/lib/v2/campaign-layout-preview";
 import { getOfferSalesPaths } from "@/lib/api";
 import { campaignKey, campaignsOfOffer, sourceCampaignsOfOffer } from "@/lib/offer-campaigns";
-import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { useCampaigns } from "@/components/v2/use-campaigns";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { v2CampaignHref } from "@/lib/v2/routes";
@@ -160,8 +159,8 @@ function CreateBox() {
 /**
  * features-service's sales funnels FITTED TO THIS OFFER (`listOfferSalesFunnels`: only funnels
  * built on the offer's own steps, priced with its stated lifetime revenue), minus the funnels the
- * offer already runs, drafts left out, in the producer's order (measured before estimated, then
- * ROI): no browser sort. An estimated ROI reads "expected", never "across clients".
+ * offer already runs, drafts left out, in the producer's order: no browser sort. No per-funnel
+ * return is shown (ROI-CONSISTENCY-1103).
  */
 function Suggested({ brandId, offerId, campaigns }: { brandId: string; offerId: string; campaigns: SalesFunnelCampaign[] | null }) {
   const dock = useCopilotDock();
@@ -189,12 +188,6 @@ function Suggested({ brandId, offerId, campaigns }: { brandId: string; offerId: 
             <div key={f.id} className="k-card flex min-w-0 flex-col p-4">
               <MarkLines mark={(px) => <FunnelFace name={f.name} size={px} />}>
                 <span className="block truncate text-[14px] font-medium">{f.name}</span>
-                <span className="k-fg3 inline-flex items-center gap-1 text-[12px]">
-                  <RoiLabel>Expected ROI</RoiLabel>
-                  <span className="k-fg2 tabular-nums">
-                    <RoiValue roi={{ value: f.roi, expected: false, reason: null }} learning />
-                  </span>
-                </span>
               </MarkLines>
               <p className="k-fg2 mt-3 line-clamp-2 min-h-[40px] text-[13px] leading-5">{f.line}</p>
               {dock.available && (
@@ -528,8 +521,8 @@ function UnconvertedRunningCampaigns({ orgId, brandId, offerId }: { orgId: strin
   const campaigns = useMemo(
     () =>
       [
-        ...campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel, (k) => running.has(k)),
-        ...sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),
+        ...campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], (k) => running.has(k)),
+        ...sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? []),
       ].filter((c) => running.has(campaignKey(c.featureSlug, c.legKey))),
     [paths.data, running],
   );

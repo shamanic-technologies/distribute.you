@@ -76,7 +76,6 @@ const EngineRefSchema = z
 /** One script competing at a place: its share of the Engine's draws, its belief's rate and cost per decision. */
 const EngineCandidateRowSchema = EngineRefSchema.extend({
   fromStep: z.string().nullable(),
-  valueAddedUsd: num.nullable(),
   clientDecisions: num.nullable(),
   clientOutcomes: num.nullable(),
   fleetDecisions: num,

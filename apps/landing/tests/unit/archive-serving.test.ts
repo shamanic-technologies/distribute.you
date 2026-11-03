@@ -121,8 +121,13 @@ describe("the 2026-06-15 capture", () => {
   it("carries every page the commit served, reachable at the URL it served it from", () => {
     // The capture read the route handlers themselves, so this is the count they produced.
     // Each URL is walked through the SAME reader the route uses — a disagreement here is
-    // a 404 on a page sitting on disk.
-    expect(pages.length).toBe(22);
+    // a 404 on a page sitting on disk. 22 served, minus the ROI page the owner removed
+    // (ROI-CONSISTENCY-1103, the recipe's `removed`): no archived page links to it.
+    expect(pages.length).toBe(21);
+    for (const file of pages) {
+      expect(readFileSync(path.join(root, file), "utf8"), file).not.toContain("cold-email-roi");
+    }
+    expect(readFileSync(path.join(root, "landing/js/main.js"), "utf8")).not.toContain("cold-email-roi");
     for (const url of ["/", "/pro", "/agency", "/pricing", "/performance", "/how-it-works", "/use-cases"]) {
       const stored = clonePathFor(url);
       expect(stored).not.toBeNull();
@@ -130,7 +135,7 @@ describe("the 2026-06-15 capture", () => {
     }
     for (const url of [
       "/cold-email-cost-guide",
-      "/cold-email-cost-guide/cold-email-roi",
+      "/cold-email-cost-guide/cold-email-setup-cost",
       "/cold-email-for-saas-founders/b2b-cold-email-reply-rate",
       "/cold-email-vs-linkedin/multichannel-outreach-strategy",
     ]) {

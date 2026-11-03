@@ -54,7 +54,6 @@ export function catalogueStatusLabel(status: string): string {
 const StatusSchema = z.string();
 const Econ = {
   costUsd: z.number().nullable(),
-  roi: z.number().nullable(),
   status: StatusSchema,
 };
 
@@ -66,8 +65,6 @@ export const CatalogueRowSchema = z
     icon: z.string().optional(),
     line: z.string(),
     ...Econ,
-    // "measured" | "estimated" (null when roi is null); a string: the producer owns the vocabulary.
-    roiBasis: z.string().nullable().optional(),
     color: z.string().optional(),
     face: z.string().optional(),
     valueUsd: z.number().nullable().optional(),

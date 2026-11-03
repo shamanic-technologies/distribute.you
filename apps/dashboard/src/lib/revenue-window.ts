@@ -56,14 +56,6 @@ export const RevenueWindowSchema = z.object({
   queuedEmailsUnavailableReason: z.enum(["sender_queue_unreadable", "stats_unreadable"]).nullable().optional(),
   recipientsRepliesPositive: z.object({ total: z.number(), daily: z.array(DayCount) }),
   recipientsClicked: z.object({ total: z.number(), daily: z.array(DayCount) }),
-  /** Expected pipeline, the headline's own basis, as a cumulative curve. */
-  expectedPipeline: z
-    .object({
-      totalPipelineUsd: z.number(),
-      undatedPipelineUsd: z.number(),
-      daily: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
-    })
-    .nullable(),
 });
 
 export type RevenueWindow = z.infer<typeof RevenueWindowSchema>;

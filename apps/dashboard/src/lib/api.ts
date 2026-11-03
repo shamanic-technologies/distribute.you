@@ -143,7 +143,7 @@ import {
 import type { PublishedChannelTerms } from "./channel-minimums";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields } from "./keep-last-good";
-import type { RevenueOverview, RoiHistory } from "./revenue-view";
+import type { RevenueOverview } from "./revenue-view";
 import { RevenueWindowResponseSchema, type RevenueWindow, type RevenueWindowDays } from "./revenue-window";
 import type {
   WorkflowCatalogueRow,
@@ -153,9 +153,9 @@ import type {
 } from "./campaign-workflow-rows";
 import type { LeadStanding } from "./lead-standing";
 import type { LeadConversation } from "./lead-conversation";
-import { EconomicsMaturitySchema, RoiHistorySchema, ScopeMaturitySchema, parseFeatureRevenue } from "./revenue-parse";
+import { ScopeMaturitySchema, parseFeatureRevenue } from "./revenue-parse";
 import { maturityPairSchema, type MaturityPair } from "./maturity";
-import type { EconomicsFigures, OutcomeFigures, ScopeMaturity } from "./revenue-view";
+import type { OutcomeFigures, ScopeMaturity } from "./revenue-view";
 import { LeadHistorySchema, type LeadHistory } from "./lead-history";
 import { WrittenBySchema, type WrittenBy } from "./written-by";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
@@ -6015,9 +6015,8 @@ export type FeatureAudienceStatsGoal =
   | "websiteVisit"
   | "positiveReply"
   | "formSubmission";
-/** `returnPerDollar` is the BRAND-level order (descending, unmeasurable last); the two
- *  cost metrics order a campaign-scoped read (ascending, cheapest first). */
-export type FeatureAudienceStatsSortMetric = "cpc" | "cppr" | "returnPerDollar";
+/** The producer's own order for the read; a vocabulary it owns, read as a plain string. */
+export type FeatureAudienceStatsSortMetric = string;
 
 export interface FeatureAudienceStatsRow {
   audienceId: string;
@@ -6070,13 +6069,6 @@ export interface FeatureAudienceStatsRow {
      */
     maturity?: MaturityPair<AudienceCostFigures> | null;
   };
-  /** PROJECTED return for this audience, on the brand's own economics. See
-   *  {@link AudienceProjection}. Optional only for rollout tolerance — features-service
-   *  v0.127.0 requires it on every row. */
-  projection?: AudienceProjection & {
-    /** The three projections served twice with this row's maturity verdict. */
-    maturity?: MaturityPair<AudienceProjectionFigures> | null;
-  };
 }
 
 /** One half of an audience row's `metrics.maturity` pair. */
@@ -6088,46 +6080,6 @@ export interface AudienceCostFigures {
   cpsaleCents: number | null;
 }
 
-/** One half of an audience row's `projection.maturity` pair. */
-export interface AudienceProjectionFigures {
-  returnPerDollar: number | null;
-  costOfAcquisitionPct: number | null;
-  costPerPaidClientUsd: number | null;
-}
-
-/**
- * What an audience is PROJECTED to return, on the brand's own declared economics.
- *
- * Rank a brand's audiences on `returnPerDollar`, never on cost per outcome: cost per
- * outcome ranks by CHEAPNESS, so an audience that converts to nothing outranks an
- * expensive one that pays. It is the identical definition the brand's own return is
- * computed on, so an audience's return and the brand's return are one statistic at two
- * grains.
- *
- * Distinct from `/revenue`'s REALIZED `costEconomics.roiMultiple`, which divides
- * measured pipeline by measured spend — this is what the evidence projects.
- */
-export interface AudienceProjection {
-  /** PROJECTED cost to win ONE paying client from this audience — the denominator of
-   *  `returnPerDollar`. Null (never 0) when there is no path to a paying client. */
-  costPerPaidClientUsd: number | null;
-  /** PROJECTED dollars of lifetime revenue per dollar spent. Null (never 0) when
-   *  unmeasurable. An audience with no measured grain inherits `brandProjection`. */
-  returnPerDollar: number | null;
-  /** Brand-level read only: the lifetime revenue this row values a client at. */
-  lifetimeRevenueUsd?: number | null;
-  /**
-   * PROJECTED cost of winning a customer as a SHARE of what that customer is worth —
-   * `100 / returnPerDollar`, served rather than divided here so two surfaces cannot
-   * print two numbers for one statistic.
-   *
-   * Do NOT pair it with `/revenue`'s `costEconomics.costOfAcquisitionPct`, which is
-   * REALIZED (measured spend over measured pipeline). Same projected-vs-realized split
-   * the return already carries against `roiMultiple`.
-   */
-  costOfAcquisitionPct?: number | null;
-}
-
 export interface FeatureAudienceStatsResponse {
   featureSlug: string;
   brandId: string;
@@ -6136,24 +6088,10 @@ export interface FeatureAudienceStatsResponse {
   brandProfileId: string | null;
   sortMetric: FeatureAudienceStatsSortMetric;
   audiences: FeatureAudienceStatsRow[];
-  /** The BRAND-level twin of every row's projection, on the same economics and the same
-   *  formula — read a row's return against it ("this audience beats the brand"). */
-  brandProjection?: AudienceProjection & {
-    /** The lifetime revenue per paying client this whole payload was projected on,
-     *  surfaced so a consumer can never pair a return with an LTR it did not use. */
-    lifetimeRevenueUsd: number | null;
-  };
   /** THE SCOPE'S MATURITY (features-service#1196): the same object the scope's /revenue
    *  serves, so a campaign's own price on its Audiences page is its Overview's figure. */
   maturity?: ScopeMaturity | null;
 }
-
-const AudienceProjectionSchema = z.object({
-  costPerPaidClientUsd: z.coerce.number().nullable(),
-  returnPerDollar: z.coerce.number().nullable(),
-  costOfAcquisitionPct: z.coerce.number().nullable().optional(),
-  lifetimeRevenueUsd: z.coerce.number().nullable().optional(),
-});
 
 const AudienceCostMaturitySchema = maturityPairSchema(
   z.object({
@@ -6162,13 +6100,6 @@ const AudienceCostMaturitySchema = maturityPairSchema(
     cpfsCents: z.coerce.number().nullable(),
     cpsCents: z.coerce.number().nullable(),
     cpsaleCents: z.coerce.number().nullable(),
-  }),
-);
-const AudienceProjectionMaturitySchema = maturityPairSchema(
-  z.object({
-    returnPerDollar: z.coerce.number().nullable(),
-    costOfAcquisitionPct: z.coerce.number().nullable(),
-    costPerPaidClientUsd: z.coerce.number().nullable(),
   }),
 );
 
@@ -6203,7 +6134,6 @@ const FeatureAudienceStatsRowSchema = z.object({
     // Optional as the producer declares it; absent -> `—`, never the legacy figure.
     maturity: AudienceCostMaturitySchema.nullish(),
   }),
-  projection: AudienceProjectionSchema.extend({ maturity: AudienceProjectionMaturitySchema.nullish() }).optional(),
 });
 
 const FeatureAudienceStatsResponseSchema = z.object({
@@ -6219,15 +6149,8 @@ const FeatureAudienceStatsResponseSchema = z.object({
     z.literal("formSubmission"),
   ]).nullable(),
   brandProfileId: z.string().nullable(),
-  sortMetric: z.union([
-    z.literal("cpc"),
-    z.literal("cppr"),
-    z.literal("returnPerDollar"),
-  ]),
+  sortMetric: z.string(),
   audiences: z.array(FeatureAudienceStatsRowSchema),
-  brandProjection: AudienceProjectionSchema.extend({
-    lifetimeRevenueUsd: z.coerce.number().nullable(),
-  }).optional(),
   // Optional as served; absent -> the scope line states no figure.
   maturity: ScopeMaturitySchema.nullish(),
 });
@@ -6470,11 +6393,9 @@ const LostStepPersonSchema = StepPersonSchema.extend({
 // The pipeline sliced (features-service #1416): every person on ONE row, rows add to the
 // total. A colleague whose company another member already carries adds 0.
 const ExclusivePersonSchema = StepPersonSchema.extend({
-  pipelineUsd: z.coerce.number().nullable(),
   countedWithColleague: z.boolean(),
 });
 const ExclusiveLostPersonSchema = LostStepPersonSchema.extend({
-  pipelineUsd: z.coerce.number().nullable(),
   countedWithColleague: z.boolean(),
 });
 // The sliced row's "% Conversion" (owner 2026-10-08, features-service #1429): the row above
@@ -6495,7 +6416,6 @@ const ExclusiveLadderSchema = z.object({
     cannotConvertCount: z.coerce.number(),
     unpricedCount: z.coerce.number(),
     valuePerPersonUsd: z.coerce.number().nullable(),
-    pipelineUsd: z.coerce.number().nullable(),
     countedWithColleagueUsd: z.coerce.number().nullable(),
     explanation: z
       .object({
@@ -6521,7 +6441,6 @@ const ExclusiveLadderSchema = z.object({
       step: OutcomeStepRefSchema,
       pricedPeople: z.coerce.number().nullable(),
       valuePerOutcomeUsd: z.coerce.number().nullable(),
-      pipelineUsd: z.coerce.number().nullable(),
       countedWithColleagueUsd: z.coerce.number().nullable(),
       people: z
         .object({
@@ -6542,8 +6461,6 @@ const ExclusiveLadderSchema = z.object({
   ),
   total: z.object({
     people: z.coerce.number(),
-    pipelineUsd: z.coerce.number().nullable(),
-    headlinePipelineUsd: z.coerce.number().nullable(),
     gapUsd: z.coerce.number().nullable(),
     gapReason: z.string().nullable(),
     // Where the hot leads stand on the sliced ladder (#1424): onRows + onContactedRow + onNoRow = count.
@@ -6846,29 +6763,6 @@ export async function getOfferRevenueWindow(
 }
 
 /**
- * ONE campaign's return curve (features-service `/features/:slug/revenue?campaignId=`, its
- * `roiHistory`): cumulative committed spend and realized pipeline per UTC day since the
- * campaign identity's first day, net. The producer pins its last `roiMultiple` to the body's
- * `costEconomics.roiMultiple`, the figure the campaign's ROI tile reads, so the line ends on
- * the tile. Null when the producer could not build the curve (it is fail-soft there).
- */
-export async function getCampaignRoiHistory(
-  featureSlug: string,
-  brandId: string,
-  campaignId: string,
-  token?: string,
-): Promise<RoiHistory | null> {
-  const query = new URLSearchParams({ brandId, campaignId, pricing: "net" });
-  const raw = await apiCall<unknown>(`/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`, { token });
-  const parsed = z.object({ roiHistory: RoiHistorySchema.nullish() }).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getCampaignRoiHistory: response shape mismatch", { featureSlug, campaignId, issues: parsed.error.issues });
-    throw new Error("[dashboard] getCampaignRoiHistory: invalid response shape");
-  }
-  return parsed.data.roiHistory ?? null;
-}
-
-/**
  * ONE campaign's `window` block (features-service `/features/:slug/revenue?campaignId=&windowDays=`,
  * #1363): the offer window's figures over the campaign identity alone, its own spend only. The
  * campaign page's cards read their email counts and the provisioned follow-ups from it.
@@ -6921,9 +6815,9 @@ export function keepLastGoodFeatureRevenue(
 // ─── Per-campaign revenue (grouped) ──────────────────────────────────────────
 // features-service `GET /features/:slug/revenue?groupBy=campaignId` returns one
 // LEAN group per campaign that has runs for the brand+feature: campaignId +
-// headline.totalPipelineUsd + costEconomics only (no timeSeries/orgs/leads/events).
+// costEconomics only (no orgs/leads/events).
 // Each group is byte-equal to the standalone ?campaignId= call. Every displayed
-// stat (pipeline / $CAC / ROI / %CAC) is a ready features-service field — the
+// stat (spend, expected and realized return) is a ready features-service field — the
 // dashboard renders, never computes (CLAUDE.md: a displayed stat is
 // features-service-owned). One call powers the whole Campaigns table.
 const CampaignRevenueCostEconomicsSchema = z.object({
@@ -6941,14 +6835,8 @@ const CampaignRevenueCostEconomicsSchema = z.object({
   // "Spent" over committed told a client $67 for 185 emails (2026-10-06, Legistai). The
   // surface states both served figures, it never subtracts one from the other.
   actualCostUsd: z.number().nullish(),
-  costOfAcquisitionPct: z.number().nullable(),
-  roiMultiple: z.number().nullable(),
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
-  // The three ratios above, served twice with the group's own maturity verdict
-  // (lib/maturity.ts). Every row states `mature`, and Learning where `isMature` is false.
-  // Optional as served (see EconomicsMaturitySchema); absent -> `—`.
-  maturity: EconomicsMaturitySchema.nullish(),
   // The campaign's REALIZED return (ROI-CONSISTENCY-1103). Nullish as served.
   realizedReturn: RealizedReturnSchema.nullish(),
 });
@@ -7001,7 +6889,6 @@ const FeatureRevenueByCampaignSchema = z.object({
   groups: z.array(
     z.object({
       campaignId: z.string(),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: CampaignRevenueCostEconomicsSchema,
       outcomes: CampaignRevenueOutcomesSchema.nullish(),
       // The scope's EXPECTED return (features-service EXPECTED-ROI-1011): never empty, read where the
@@ -7013,15 +6900,12 @@ const FeatureRevenueByCampaignSchema = z.object({
 
 export interface CampaignRevenueGroup {
   campaignId: string;
-  totalPipelineUsd: number | null;
   /** COMMITTED spend for this campaign — the number ROI and %CAC divide by. Null means
    *  "we have no figure", never "it cost nothing", so the cell reads "—" rather than $0. */
   committedCostUsd: number | null;
   /** BILLED-only spend (cost status actual): the "Spent" figure. Committed minus this is
    *  money reserved for follow-ups not sent yet; never subtract it here, it is not served. */
   actualCostUsd: number | null;
-  costOfAcquisitionPct: number | null;
-  roiMultiple: number | null;
   expectedConversions: number | null;
   costPerConversionUsd: number | null;
   /** Positive replies attributed to this campaign identity. Undefined = the producer did
@@ -7044,8 +6928,6 @@ export interface CampaignRevenueGroup {
   expectedReturn?: ExpectedReturn | null;
   /** The campaign's REALIZED return (Paid clients over money spent); null when not served. */
   realizedReturn: RealizedReturn | null;
-  /** ROI, % CAC and $ CAC served twice with this campaign's maturity verdict. */
-  economicsMaturity: MaturityPair<EconomicsFigures> | null;
   /** Cost per visit and per positive reply, served twice. Null when the producer served no
    *  outcomes block for this group (nothing wired for its channel). */
   outcomesMaturity: MaturityPair<OutcomeFigures> | null;
@@ -7071,11 +6953,8 @@ export async function getFeatureRevenueByCampaign(
   }
   return parsed.data.groups.map((g) => ({
     campaignId: g.campaignId,
-    totalPipelineUsd: g.headline.totalPipelineUsd,
     committedCostUsd: g.costEconomics.committedCostUsd ?? null,
     actualCostUsd: g.costEconomics.actualCostUsd ?? null,
-    costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
-    roiMultiple: g.costEconomics.roiMultiple,
     expectedConversions: g.costEconomics.expectedConversions ?? null,
     costPerConversionUsd: g.costEconomics.costPerConversionUsd ?? null,
     positiveReplies: g.outcomes?.recipientsRepliesPositive,
@@ -7087,7 +6966,6 @@ export async function getFeatureRevenueByCampaign(
     positiveReplyRatePct: g.outcomes?.sending?.positiveReplyRatePct,
     expectedReturn: g.expectedReturn ?? null,
     realizedReturn: g.costEconomics.realizedReturn ?? null,
-    economicsMaturity: g.costEconomics.maturity ?? null,
     outcomesMaturity: g.outcomes?.maturity ?? null,
   }));
 }
@@ -7204,7 +7082,6 @@ const FeatureRevenueByWorkflowSchema = z.object({
       // rather than inventing a name, and the row falls back to the slug.
       workflowDynastyName: z.string().nullish(),
       workflowSlugs: z.array(z.string()),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: CampaignRevenueCostEconomicsSchema,
       outcomes: WorkflowRevenueOutcomesSchema.nullish(),
     }),
@@ -7333,16 +7210,12 @@ async function readWorkflowGroups(
     workflowDynastySlug: g.workflowDynastySlug,
     workflowDynastyName: g.workflowDynastyName ?? null,
     workflowSlugs: g.workflowSlugs,
-    totalPipelineUsd: g.headline.totalPipelineUsd,
     committedCostUsd: g.costEconomics.committedCostUsd ?? null,
-    roiMultiple: g.costEconomics.roiMultiple,
-    costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
     recipientsContacted: g.outcomes?.recipientsContacted ?? null,
     recipientsClicked: g.outcomes?.recipientsClicked ?? null,
     recipientsRepliesPositive: g.outcomes?.recipientsRepliesPositive ?? null,
     cpprCents: g.outcomes?.cpprCents ?? null,
     cpcCents: g.outcomes?.cpcCents ?? null,
-    economicsMaturity: g.costEconomics.maturity ?? null,
     outcomesMaturity: g.outcomes?.maturity ?? null,
   }));
 }
@@ -7555,7 +7428,6 @@ const BrandOfferMoneySchema = z.object({
   offers: z.array(
     z.object({
       offerId: z.string(),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: CampaignRevenueCostEconomicsSchema,
     }),
   ),
@@ -7563,15 +7435,9 @@ const BrandOfferMoneySchema = z.object({
 
 export interface OfferRevenueGroup {
   offerId: string;
-  totalPipelineUsd: number | null;
   /** COMMITTED spend for this offer — the number ROI and %CAC divide by. Null means
    *  "we have no figure", never "it cost nothing", so the cell reads "—" rather than $0. */
   committedCostUsd: number | null;
-  costOfAcquisitionPct: number | null;
-  roiMultiple: number | null;
-  /** ROI, % CAC and $ CAC served twice with this OFFER's maturity verdict (lib/maturity.ts).
-   *  Null when the body carried no pair. */
-  economicsMaturity: MaturityPair<EconomicsFigures> | null;
 }
 
 /**
@@ -7600,11 +7466,7 @@ export async function getBrandOfferMoney(
   }
   return parsed.data.offers.map((o) => ({
     offerId: o.offerId,
-    totalPipelineUsd: o.headline.totalPipelineUsd,
     committedCostUsd: o.costEconomics.committedCostUsd ?? null,
-    costOfAcquisitionPct: o.costEconomics.costOfAcquisitionPct,
-    roiMultiple: o.costEconomics.roiMultiple,
-    economicsMaturity: o.costEconomics.maturity ?? null,
   }));
 }
 
@@ -9093,72 +8955,6 @@ export interface PlatformPrompt {
   updatedAt: string;
 }
 
-/** One day of a workflow's curve on the ACTUAL-cost basis (vendor cost, before markup). */
-export interface ActualCostPoint {
-  date: string;
-  /** Null = some billed spend that day has no known vendor cost. Never the billed figure. */
-  cumulativeSpendUsd: number | null;
-  cumulativePipelineUsd: number;
-  roiMultiple: number | null;
-}
-
-export interface ActualCostHistory {
-  daily: ActualCostPoint[];
-  unpricedBilledCostUsd: number;
-  unpricedFromDate: string | null;
-}
-
-/** One day of a workflow's fleet curve on the billed basis (what clients were charged, net). */
-export interface FleetReturnPoint {
-  date: string;
-  cumulativeSpendUsd: number;
-  cumulativePipelineUsd: number;
-  roiMultiple: number | null;
-}
-
-const FLEET_POINT = z.object({
-  date: z.string(),
-  cumulativeSpendUsd: z.coerce.number(),
-  cumulativePipelineUsd: z.coerce.number(),
-  roiMultiple: z.coerce.number().nullable(),
-});
-
-/**
- * The query both fleet return reads send. A `legKey` narrows BOTH legs of the curve (spend
- * and value) to the campaigns performing that leg (features-service#1188), so a workflow
- * viewed under one pipe states that pipe's history, never the dynasty's across every leg.
- * Absent, the answer is the whole fleet, unchanged.
- */
-function fleetReturnQuery(featureSlug: string, workflowDynastySlug: string, legKey?: string): URLSearchParams {
-  const query = new URLSearchParams({ featureSlug, workflowDynastySlug });
-  if (legKey) query.set("leg", legKey);
-  return query;
-}
-
-/**
- * ONE workflow across EVERY client org, day by day: cumulative billed spend, cumulative
- * pipeline value and their ratio (features-service#1151 via api-service#1005). An
- * aggregate: no org is named. Null `roiHistory` = the producer could not read the dated
- * spend. The workflow page's three charts render it verbatim.
- */
-export async function getFleetWorkflowReturnHistory(
-  featureSlug: string,
-  workflowDynastySlug: string,
-  legKey?: string,
-  token?: string,
-): Promise<FleetReturnPoint[] | null> {
-  const query = fleetReturnQuery(featureSlug, workflowDynastySlug, legKey);
-  const raw = await apiCall<unknown>(`/public/features/workflow-return-history?${query.toString()}`, { token });
-  const parsed = z
-    .object({ roiHistory: z.object({ daily: z.array(FLEET_POINT) }).passthrough().nullable() })
-    .passthrough()
-    .safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getFleetWorkflowReturnHistory: invalid response shape", parsed.error.issues);
-    throw new Error("[dashboard] getFleetWorkflowReturnHistory: invalid response shape");
-  }
-  return parsed.data.roiHistory ? parsed.data.roiHistory.daily : null;
-}
 
 /** One served figure: the measured value, else the pipe's expected one (basis says which), else why neither. */
 const ServedFigureSchema = z.object({
@@ -9172,7 +8968,6 @@ const WorkflowFiguresSchema = z
   .object({
     pricing: z.enum(["gross", "net"]),
     half: z.enum(["mature", "flash"]),
-    roi: ServedFigureSchema,
     costPerOutcomeUsd: ServedFigureSchema,
     conversionRatePct: ServedFigureSchema,
     spentUsd: z.object({ value: z.number().nullable(), basis: z.literal("measured").nullable(), unavailableReason: z.string().nullable() }),
@@ -9205,7 +9000,6 @@ const LegWorkflowRankingSchema = z
         conversionRatePct: z.number().nullable(),
         outcomes: z.number(),
         spentUsd: z.number(),
-        roiMultiple: z.number().nullable(),
         goesFirst: z.boolean(),
         moneyGoesHere: z.boolean(),
         // Why the row stands where it does (WF-ORDER-EXPLORE-1018): `.optional()` while a stored
@@ -9253,38 +9047,6 @@ export async function getLegWorkflowRanking(featureSlug: string, legKey: string,
     throw new Error("[dashboard] getLegWorkflowRanking: invalid response shape");
   }
   return parsed.data;
-}
-
-/**
- * STAFF ONLY. The same fleet curve costed at what the vendors charged us before our
- * markup. It reveals our margin, so the gateway refuses anyone off the staff list.
- */
-export async function getFleetWorkflowActualCostHistory(
-  featureSlug: string,
-  workflowDynastySlug: string,
-  legKey?: string,
-  token?: string,
-): Promise<ActualCostHistory | null> {
-  const query = fleetReturnQuery(featureSlug, workflowDynastySlug, legKey);
-  const raw = await apiCall<unknown>(`/features/workflow-return-history/actual-cost?${query.toString()}`, { token });
-  const parsed = z
-    .object({
-      actualCostHistory: z
-        .object({
-          daily: z.array(FLEET_POINT.extend({ cumulativeSpendUsd: z.coerce.number().nullable() })),
-          unpricedBilledCostUsd: z.coerce.number(),
-          unpricedFromDate: z.string().nullable(),
-        })
-        .passthrough()
-        .nullable(),
-    })
-    .passthrough()
-    .safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getFleetWorkflowActualCostHistory: invalid response shape", parsed.error.issues);
-    throw new Error("[dashboard] getFleetWorkflowActualCostHistory: invalid response shape");
-  }
-  return parsed.data.actualCostHistory;
 }
 
 /** What a staff prompt edit produced, as workflow-service states it (#454). */
@@ -9752,10 +9514,6 @@ const WorkflowProjectionItemSchema = z.object({
   costPerOutcomeUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable().optional(),
-  // Lifetime ROI multiple = LTR / costPerCloseUsd (= 100 / cacPct), budget-
-  // independent — rendered VERBATIM instead of inverting cacPct client-side
-  // (features-service#396). `.optional()` decouples the backend rollout.
-  roiMultiple: z.number().nullable().optional(),
   // null when budgetUsd is absent/≤0 or the workflow has no usable data.
   projection: WorkflowCountProjectionSchema.nullable(),
 });
@@ -9801,7 +9559,6 @@ function ladderRowToWorkflowItem(row: WorkflowProjectionRow): WorkflowProjection
     costPerOutcomeUsd: row.resolved.costPerOutcomeUsd,
     costPerCloseUsd: row.resolved.costPerPaidClientUsd,
     costPerMeetingBookedUsd: row.resolved.costPerMeetingBookedUsd,
-    roiMultiple: row.resolved.roiMultiple,
     projection: {
       contactedLeads: null,
       replies: null,
@@ -9891,7 +9648,6 @@ const WorkflowGrainProjectedSchema = z.object({
   costPerSignupUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable(),
-  roiMultiple: z.number().nullable(),
   cacPct: z.number().nullable(),
 });
 
@@ -9910,7 +9666,6 @@ const WorkflowResolvedSchema = z.object({
   costPerOutcomeUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable(),
-  roiMultiple: z.number().nullable(),
   cacPct: z.number().nullable(),
 });
 
@@ -10089,7 +9844,6 @@ const WorkflowRankGrainSchema = z.object({
     costPerSignupUsd: z.number().nullable(),
     costPerPaidClientUsd: z.number().nullable(),
     costPerMeetingBookedUsd: z.number().nullable(),
-    roiMultiple: z.number().nullable(),
     cacPct: z.number().nullable(),
   }),
   /** THE MATURITY PAIR of this grain (features-service#1196), served on a LEG-keyed read.
@@ -10134,7 +9888,6 @@ const WorkflowRankResolvedSchema = z.object({
   costPerOutcomeUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable(),
-  roiMultiple: z.number().nullable(),
   cacPct: z.number().nullable(),
   conversionRatePct: z.number().nullable(),
 });

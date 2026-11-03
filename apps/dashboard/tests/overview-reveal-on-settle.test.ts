@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { parseFeatureRevenue } from "../src/lib/revenue-parse";
-import { NULL_PAIR } from "./fixtures/maturity";
 
 /**
  * The money on the brand / offer Overview is asked at the grain the PAGE is.
@@ -66,15 +65,9 @@ describe("the shared parser accepts every grain's body", () => {
   // The three bodies differ ONLY in how they name their subject.
   const body = (subject: Record<string, unknown>) => ({
     ...subject,
-    headline: { totalPipelineUsd: 7000 },
     costEconomics: {
-      maturity: NULL_PAIR,
       committedCostUsd: 2668.62,
-      costOfAcquisitionPct: 38.12,
-      roiMultiple: 2.62,
-      costPerAcquisitionUsd: 953.08,
     },
-    timeSeries: [],
     organizations: [],
     leads: [],
     events: [],
@@ -88,9 +81,7 @@ describe("the shared parser accepts every grain's body", () => {
       body({ brandId: "75d7e3e8-6926-4f85-a557-976895400666", channels: [] }),
       "getBrandRevenue",
     );
-    expect(view.totalPipelineUsd).toBe(7000);
-    expect(view.costEconomics.roiMultiple).toBe(2.62);
-    expect(view.costEconomics.costPerAcquisitionUsd).toBe(953.08);
+    expect(view.costEconomics.committedCostUsd).toBe(2668.62);
     expect(view.featureSlug).toBeUndefined();
   });
 
@@ -99,7 +90,6 @@ describe("the shared parser accepts every grain's body", () => {
       body({ offerId: "o-1", brandId: "b-1", channels: [] }),
       "getOfferRevenue",
     );
-    expect(view.totalPipelineUsd).toBe(7000);
     expect(view.costEconomics.committedCostUsd).toBe(2668.62);
     expect(view.featureSlug).toBeUndefined();
   });

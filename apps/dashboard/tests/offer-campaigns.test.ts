@@ -8,7 +8,7 @@ describe("offer campaigns", () => {
   it("keeps the served campaigns a ticked path uses, run by a channel, with step labels from the paths", () => {
     const served = (o: Partial<Parameters<typeof campaignsOfOffer>[0][number]>) => ({
       channelSlug: "sales-cold-email-outreach", channelName: "Sales Cold Email Outreach", legKey: "start_to_conversation", campaignName: "Jubilation",
-      reactive: false, managed: true, operatedBy: "platform", selectedPathCount: 1, roi: 2.48, roiUnavailableReason: null, ...o,
+      reactive: false, managed: true, operatedBy: "platform", selectedPathCount: 1, ...o,
     });
     const paths = [
       {
@@ -22,27 +22,26 @@ describe("offer campaigns", () => {
       [
         served({}),
         served({ channelSlug: "ai-meeting-booking", channelName: "AI Meeting Booking", legKey: "conversation_to_meeting_booked", campaignName: "Prism", reactive: true }),
-        served({ legKey: "start_to_website_visit", campaignName: "Lumen", selectedPathCount: 0, roi: null, roiUnavailableReason: "not_on_a_selected_path" }),
+        served({ legKey: "start_to_website_visit", campaignName: "Lumen", selectedPathCount: 0 }),
         served({ channelSlug: "your-team-closing-calls", operatedBy: "customer", campaignName: "Rise" }),
       ],
       paths,
-      (r) => r,
     );
-    expect(list.map((c) => [c.name, c.reactive, c.fromLabel, c.toLabel, c.roi])).toEqual([
-      ["Jubilation", false, null, "Positive reply", 2.48],
-      ["Prism", true, "Positive reply", "Meeting booked", 2.48],
+    expect(list.map((c) => [c.name, c.reactive, c.fromLabel, c.toLabel])).toEqual([
+      ["Jubilation", false, null, "Positive reply"],
+      ["Prism", true, "Positive reply", "Meeting booked"],
     ]);
   });
   it("tags a campaign by when it works", () => {
     expect(campaignTag({ reactive: false, fromKey: null, fromLabel: null }, SERVED_STEPS)).toBe("Daily Proactive");
     expect(campaignTag({ reactive: true, fromKey: "conversation", fromLabel: "Positive reply" }, SERVED_STEPS)).toBe("Reactive on positive replies");
   });
-  it("sorts on first, then proactive, then ROI high to low, unmeasured last", () => {
-    const c = (name: string, reactive: boolean, roi: number | null): OfferCampaign => ({
-      kind: "outreach", featureSlug: name, legKey: "l", name, channelName: name, managed: true, reactive, fromKey: null, fromLabel: null, fedByLabel: null, toLabel: "x", roi, roiUnavailable: null, providerDomain: null,
+  it("sorts on first, then proactive, else keeps the served order", () => {
+    const c = (name: string, reactive: boolean): OfferCampaign => ({
+      kind: "outreach", featureSlug: name, legKey: "l", name, channelName: name, managed: true, reactive, fromKey: null, fromLabel: null, fedByLabel: null, toLabel: "x", providerDomain: null,
     });
-    const list = [c("offLow", false, 0.5), c("onReactive", true, 9), c("onProactive", false, 1), c("offNull", false, null), c("offHigh", false, 3)];
+    const list = [c("offLow", false), c("onReactive", true), c("onProactive", false), c("offNull", false), c("offHigh", false)];
     const on = new Set(["onReactive", "onProactive"]);
-    expect(sortCampaigns(list, (x) => on.has(x.featureSlug)).map((x) => x.name)).toEqual(["onProactive", "onReactive", "offHigh", "offLow", "offNull"]);
+    expect(sortCampaigns(list, (x) => on.has(x.featureSlug)).map((x) => x.name)).toEqual(["onProactive", "onReactive", "offLow", "offNull", "offHigh"]);
   });
 });

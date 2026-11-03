@@ -20,10 +20,8 @@ import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign"
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
-import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { realizedLineText, realizedMultipleText } from "@/lib/realized-return-words";
-import { Skeleton } from "@/components/skeleton";
 import { formatStatValue } from "@/lib/format-stat";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 
@@ -86,11 +84,6 @@ function formatTotalCost(cents: number): string | null {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatUsd(n: number | null): string {
-  if (n === null) return "—";
-  return `$${Math.round(n).toLocaleString("en-US")}`;
-}
-
 export default function FeaturePage() {
   const params = useParams();
   const brandId = params.brandId as string;
@@ -113,8 +106,8 @@ function GenericFeaturePage({
   const featureDef = getFeature(featureSlug);
 
   // Revenue features (sales-cold-email today) reorient this page toward gains:
-  // a revenue-over-time hero + CAC/ROI on top, and per-campaign rows show the
-  // revenue generated instead of spend. Non-revenue features keep the cost view.
+  // the spend + realized-return column on top, and per-campaign rows show the
+  // realized return instead of spend. Non-revenue features keep the cost view.
   const revenueEnabled = isRevenueFeature(featureSlug);
 
   const funnelChart = featureDef?.charts?.find((c) => c.type === "funnel-bar");
@@ -240,32 +233,12 @@ function GenericFeaturePage({
         </div>
       </div>
 
-      {/* Revenue hero (revenue features) — leads with $ generated over time + the
-          cost/efficiency column (Total spent / Realized return). Static-shell-first:
+      {/* Revenue hero (revenue features) — the cost/efficiency column
+          (Total spent / Realized return). Static-shell-first:
           the card frames + titles paint immediately; only the values skeleton
           until the stats reveal together. Mirrors the feature Overview hero. */}
       {revenueEnabled && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-            <div className="flex items-baseline justify-between mb-4">
-              <h3 className="font-medium text-gray-800">Revenue generated over time</h3>
-              <div className="text-right">
-                {!heroRevealed ? (
-                  <Skeleton className="h-8 w-28" />
-                ) : (
-                  <p className="text-2xl font-bold text-gray-900 leading-none">
-                    {formatUsd(featureRevenueData?.totalPipelineUsd ?? null)}
-                  </p>
-                )}
-                <p className="text-[11px] text-gray-400 mt-1">expected pipeline</p>
-              </div>
-            </div>
-            {!heroRevealed || !featureRevenueData ? (
-              <Skeleton className="h-[260px] w-full rounded" />
-            ) : (
-              <RevenueChart series={featureRevenueData.timeSeries} />
-            )}
-          </div>
+        <div className="grid grid-cols-1 gap-4 mb-6">
           <RevenueCostSummary
             costBreakdown={brandCostBreakdown}
             costEconomics={featureRevenueData?.costEconomics}
@@ -391,7 +364,7 @@ function CampaignRow({
   registry: StatsRegistry;
   onStop: () => void;
 }) {
-  // Per-campaign expected-pipeline revenue + ROI. Shares the campaign detail
+  // Per-campaign revenue read. Shares the campaign detail
   // page's query key (`["featureRevenue", brandId, featureSlug, "campaign", id]`)
   // so React Query serves one cache entry across both surfaces. Revenue features
   // only — disabled queries never resolve, so the badge stays hidden otherwise.

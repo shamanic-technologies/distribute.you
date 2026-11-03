@@ -89,16 +89,6 @@ function useOfferRevenueQuery(brandId: string, offerId: string | null, campaignI
   return { q, enabled };
 }
 
-/**
- * The selected offer's return pair, the one figure that picks Mature or Flash for the
- * whole dashboard (lib/use-stat-basis.ts). Null outside a brand page (no offer open).
- */
-export function useOfferReturnPairIfAny(): RevenueOverview["costEconomics"]["maturity"] | null {
-  const sel = useSelectedOfferIfAny();
-  const { q } = useOfferRevenueQuery(sel?.brandId ?? "", sel?.offerId ?? null, sel?.campaignIds ?? null);
-  return q.data?.costEconomics.maturity ?? null;
-}
-
 /** The selected offer's outcomes, one row per step (features-service), same gate as `useBrandRevenue`. */
 export function useOfferOutcomes(brandId: string) {
   const featureSlug = useSoleFeatureSlug();

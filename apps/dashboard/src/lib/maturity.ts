@@ -50,20 +50,11 @@ export type StatBasis = "mature" | "flash";
 export type StatBasisChoice = StatBasis | "auto";
 
 /**
- * The `auto` basis (owner 2026-10-08): the whole dashboard reads the half whose RETURN is
- * the higher one, judged on the selected offer's return pair. Mature where it states the
- * higher (or equal) return; Flash where flash is higher. A mature half still Learning has
- * no return to compare, so flash wins only above break-even, the same bar `shownReturn`
- * already uses. No pair yet = mature.
+ * The `auto` basis: mature (ROI-CONSISTENCY-1103 retired the return pair that once picked
+ * the higher half; a basis is no longer judged on a return).
  */
-export function autoStatBasis<T extends { roiMultiple: number | null }>(
-  pair: MaturityPair<T> | null | undefined,
-): StatBasis {
-  const flash = pair?.flash?.roiMultiple ?? null;
-  if (flash == null || !Number.isFinite(flash)) return "mature";
-  const mature = pair?.isMature === false ? null : pair?.mature?.roiMultiple ?? null;
-  if (mature == null || !Number.isFinite(mature)) return flash > 1 ? "flash" : "mature";
-  return flash > mature ? "flash" : "mature";
+export function autoStatBasis(): StatBasis {
+  return "mature";
 }
 
 /** What a surface prints for one ratio: the value on the reader's basis, and whether it is Learning. */
@@ -95,42 +86,6 @@ export function shownFigure<T>(
   if (basis === "flash") return { value: pair.flash == null ? null : pick(pair.flash) ?? null, learning: false };
   if (pair.isMature === false) return { value: null, learning: true, toDate: pair.flash == null ? null : pick(pair.flash) ?? null };
   return { value: pair.mature == null ? null : pick(pair.mature) ?? null, learning: false };
-}
-
-/**
- * The RETURN a surface states (owner 2026-10-03): the one exception to "not mature is
- * Learning". A scope still learning whose to-date return is already above break-even
- * shows that return; at or below 1x it stays `Learning`, since a thin figure under 1x
- * would read as a verdict. The to-date (flash) half is the conservative one: spend whose
- * outcomes have not landed yet pulls it down, never up.
- *
- * Every return on a brand page reads this, so one campaign never shows `1.8×` on one
- * screen and Learning on another. Costs per outcome keep `shownFigure`.
- */
-export function shownReturn<T extends { roiMultiple: number | null }>(
-  pair: MaturityPair<T> | null | undefined,
-  basis: StatBasis,
-): ShownFigure {
-  const shown = shownFigure(pair, (h) => h.roiMultiple, basis);
-  if (!shown.learning) return shown;
-  const toDate = pair?.flash?.roiMultiple ?? null;
-  return toDate != null && Number.isFinite(toDate) && toDate > 1 ? { value: toDate, learning: false } : shown;
-}
-
-/**
- * Which half of the pair `shownReturn` states: the curve drawn under a return must be the
- * one whose last point IS that return (the mature curve under a flash figure read 1.3x
- * beside 1.6x). Null = no figure is shown (Learning, or no pair).
- */
-export function shownReturnHalf<T extends { roiMultiple: number | null }>(
-  pair: MaturityPair<T> | null | undefined,
-  basis: StatBasis,
-): "flash" | "mature" | null {
-  if (!pair) return null;
-  if (basis === "flash") return "flash";
-  if (pair.isMature !== false) return "mature";
-  const toDate = pair.flash?.roiMultiple ?? null;
-  return toDate != null && Number.isFinite(toDate) && toDate > 1 ? "flash" : null;
 }
 
 /** Whether the producer said this scope is not mature. Null ("cannot judge") is not Learning. */

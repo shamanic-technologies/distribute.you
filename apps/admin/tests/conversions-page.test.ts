@@ -119,11 +119,12 @@ describe("revenue surface renders from features-service (single source)", () => 
     expect(fs.existsSync(path.resolve(__dirname, "../src/lib/revenue-sample.ts"))).toBe(false);
   });
 
-  it("null totalPipelineUsd renders the revenue empty state on both pages", () => {
-    expect(overviewPage).toContain("RevenueEmptyState");
-    expect(overviewPage).toContain("totalPipelineUsd === null");
-    expect(page).toContain("RevenueEmptyState");
-    expect(page).toContain("totalPipelineUsd === null");
+  it("neither page gates on the retired expected pipeline (ROI-CONSISTENCY-1103)", () => {
+    for (const src of [overviewPage, page]) {
+      expect(src).not.toContain("RevenueEmptyState");
+      expect(src).not.toContain("PipelineUsd");
+      expect(src).not.toContain("RevenueChart");
+    }
   });
 });
 

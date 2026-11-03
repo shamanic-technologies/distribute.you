@@ -34,14 +34,11 @@ function channel(over: Partial<PublicChannel> & { slug: string; name: string }):
 function entry(
   channelSlug: string,
   outcomes: PublicChannelOutcomeEconomicsEntry["outcomes"],
-  returnPerDollar: number | null = null,
 ): PublicChannelOutcomeEconomicsEntry {
   return {
     channelSlug,
     channelName: channelSlug,
     outcomes,
-    returnPerDollar,
-    returnPathLegKeys: returnPerDollar === null ? null : ["start_to_conversation"],
   };
 }
 
@@ -200,11 +197,10 @@ describe("buildMatrixRows", () => {
   });
 
   it("carries the served price and who lands it, verbatim", () => {
-    const rows = buildMatrixRows(channels, STEPS, [entry("email", [PRICED_REPLY, PRICED_PAID], 0.64)]);
+    const rows = buildMatrixRows(channels, STEPS, [entry("email", [PRICED_REPLY, PRICED_PAID])]);
     const email = rows.find((r) => r.slug === "email")!;
     expect(email.cells[0]).toEqual({ kind: "priced", costPerOutcomeUsd: 263.22, landedByChannel: true });
     expect(email.cells[3]).toEqual({ kind: "priced", costPerOutcomeUsd: 3928.68, landedByChannel: false });
-    expect("bestReturnPerDollar" in email).toBe(false);
     expect(email.reachedOutcomeCount).toBe(2);
   });
 

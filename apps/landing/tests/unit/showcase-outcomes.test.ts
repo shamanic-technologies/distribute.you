@@ -22,7 +22,6 @@ const SERVED: ShowcaseOutcomes = {
       brand: { id: "b1", name: "Doc Dinners", domain: "docdinners.com" },
       measured: true,
       unmeasuredReason: null,
-      returnPerDollar: 2.1,
       outcomes: [
         { key: "contacted", label: "Contacted", legKeys: [], peopleReached: 12999 },
         { key: "conversation", label: "Positive reply", legKeys: ["conversation"], peopleReached: 27 },

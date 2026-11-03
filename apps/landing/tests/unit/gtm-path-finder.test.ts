@@ -81,8 +81,6 @@ const ECONOMICS_BODY = {
   channels: [
     {
       channelSlug: "sales-cold-email-outreach",
-      returnPerDollar: 0.7536,
-      returnPerDollarMaturity: MATURE,
       outcomes: [
         { step: step("conversation", "Positive reply"), costPerOutcomeUsd: 319.278, paths: ROUTES_TO_PAID, maturity: MATURE },
         { step: step("website_visit", "Website visit"), costPerOutcomeUsd: 15.27, paths: ROUTES_TO_PAID, maturity: MATURE },
@@ -90,7 +88,7 @@ const ECONOMICS_BODY = {
       ],
     },
     // Prod 2026-10-31: one reply bought for $2.18, the figure the first ship crowned "best path".
-    { channelSlug: "email-sending", returnPerDollar: 9, returnPerDollarMaturity: NOT_MATURE, outcomes: [{ step: step("conversation", "Positive reply"), costPerOutcomeUsd: 2.18, maturity: NOT_MATURE }] },
+    { channelSlug: "email-sending", outcomes: [{ step: step("conversation", "Positive reply"), costPerOutcomeUsd: 2.18, maturity: NOT_MATURE }] },
     { channelSlug: "linkedin-ads", outcomes: [{ step: step("website_visit", "Website visit"), costPerOutcomeUsd: null }] },
   ],
 };

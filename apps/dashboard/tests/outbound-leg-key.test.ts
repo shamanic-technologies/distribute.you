@@ -107,9 +107,8 @@ describe("offer campaigns, budgets and controls join either spelling", () => {
     it(`campaignKey and the offer's campaigns (${label})`, () => {
       expect(campaignKey(COLD, campaignSide)).toBe(campaignKey(COLD, otherSide));
       const list = campaignsOfOffer(
-        [{ channelSlug: COLD, channelName: "Cold email", legKey: campaignSide, campaignName: "Jubilation", reactive: false, managed: true, operatedBy: "platform", selectedPathCount: 1, roi: null, roiUnavailableReason: null }],
+        [{ channelSlug: COLD, channelName: "Cold email", legKey: campaignSide, campaignName: "Jubilation", reactive: false, managed: true, operatedBy: "platform", selectedPathCount: 1 }],
         [{ legs: [{ legKey: otherSide, fromStep: null, toStep: { label: "Positive reply" } }] }],
-        (r) => r,
       );
       expect(list.map((c) => c.name)).toEqual(["Jubilation"]);
     });

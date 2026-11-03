@@ -5,21 +5,19 @@ import { describe, expect, it } from "vitest";
 const API = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 const PAGE = readFileSync(join(__dirname, "../src/components/v2/workflow-page.tsx"), "utf8");
 
-// The workflow page is opened FOR ONE PIPE (channel x leg). Its Over time band must ask
-// features-service for that leg only, or a reply-led pipe shows a visit-led campaign's value.
-describe("workflow Over time is scoped to the pipe's leg", () => {
-  it("both fleet readers send the leg through one query builder", () => {
-    expect(API).toContain('if (legKey) query.set("leg", legKey);');
-    const readers = API.match(/const query = fleetReturnQuery\(featureSlug, workflowDynastySlug, legKey\);/g) ?? [];
-    expect(readers.length).toBe(2);
+// The workflow page's Over time band (a fleet return + actual cost curve) is retired with the
+// return fields it drew (ROI-CONSISTENCY-1103): no return curve, and no reader left behind.
+describe("workflow page: no Over time return curve", () => {
+  it("the fleet return / actual cost history readers are gone", () => {
+    expect(API).not.toContain("fleetReturnQuery(");
+    expect(API).not.toContain("getFleetWorkflowReturnHistory");
+    expect(API).not.toContain("getFleetWorkflowActualCostHistory");
   });
 
-  it("the page passes the pipe's leg and keys both reads on it", () => {
-    expect(PAGE).toContain("<OverTime featureSlug={spec.featureSlug} legKey={spec.legKey} dynasty={dynasty} />");
-    expect(PAGE).toContain('["fleetWorkflowReturn", featureSlug, dynasty, legKey]');
-    expect(PAGE).toContain("getFleetWorkflowReturnHistory(featureSlug, dynasty, legKey)");
-    expect(PAGE).toContain('["fleetWorkflowActualCost", featureSlug, dynasty, legKey]');
-    expect(PAGE).toContain("getFleetWorkflowActualCostHistory(featureSlug, dynasty, legKey)");
+  it("the page draws no Over time band", () => {
+    expect(PAGE).not.toContain("<OverTime");
+    expect(PAGE).not.toContain('"fleetWorkflowReturn"');
+    expect(PAGE).not.toContain('"fleetWorkflowActualCost"');
   });
 
   it("the heading no longer claims every client on every leg", () => {

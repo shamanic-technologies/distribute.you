@@ -304,7 +304,6 @@ export function ladderRowsForScope(
         costPerOutcomeUsd: row.measured ? shown.costPerOutcomeUsd : row.resolved.costPerOutcomeUsd,
         learning: row.measured ? shown.learning : false,
         basis,
-        roiMultiple: row.resolved.roiMultiple,
         estimatesByGrain: row.estimatesByGrain,
         rank: row.rank ?? null,
         scopeRank: row.scopeRank ?? null,

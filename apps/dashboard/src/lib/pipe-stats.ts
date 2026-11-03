@@ -176,8 +176,6 @@ export const PipeStatsSchema = z
     costPerOutcomeUsd: z.number().nullable(),
     costPerOutcomeUnavailableReason: z.string().nullish(),
     valuePerOutcomeUsd: z.number().nullish(),
-    roi: z.number().nullable(),
-    roiUnavailableReason: z.string().nullish(),
     conversionRates: z.array(PipeStatsRateSchema).optional(),
     // PIPE-TEAM-BASELINE-1012: on a customer team pipe, where its counts come from (the brand's own tools), or why they cannot be read.
     teamSource: z

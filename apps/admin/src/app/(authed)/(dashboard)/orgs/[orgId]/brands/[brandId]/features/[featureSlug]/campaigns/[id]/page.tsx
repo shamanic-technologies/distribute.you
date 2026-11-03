@@ -109,7 +109,7 @@ export default function CampaignOverviewPage() {
     () => getFeatureRevenue(featureSlug, brandId, campaignId),
     { enabled: revenueEnabled, ...pollOptionsSlow },
   );
-  // Reveal the revenue-sourced regions (line chart, CAC/ROI, conversions)
+  // Reveal the revenue-sourced regions (realized return, conversions)
   // together once the fast GET resolves, then latch. A disabled query never
   // resolves → gate its flag so a non-revenue feature doesn't block on it.
   const revenueRevealed = useCoordinatedReveal([!revenueEnabled || revenueData !== undefined]);

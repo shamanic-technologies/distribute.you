@@ -35,15 +35,6 @@ describe("Feature landing defaults to Overview (item 1)", () => {
   });
 });
 
-describe("Revenue empty state reframed to campaign-first (item 2)", () => {
-  const emptyState = read("components/revenue/revenue-empty-state.tsx");
-  it("messages 'no metrics yet, launch a campaign' with explicit button", () => {
-    expect(emptyState).toContain("No metrics yet");
-    expect(emptyState).toContain("Create a campaign");
-    expect(emptyState).not.toContain("Set up sales economics");
-  });
-});
-
 describe("Tables paginate 20 rows/page (item 3)", () => {
   const pager = read("components/table-pagination.tsx");
   const conversions = read("components/revenue/conversions-table.tsx");

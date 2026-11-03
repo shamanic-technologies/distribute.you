@@ -7,7 +7,6 @@ import {
   sendOutcomeDigestEmails,
   type DigestFetch,
 } from "../src/lib/outcome-digest";
-import { NULL_PAIR } from "./fixtures/maturity";
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -98,9 +97,7 @@ describe("daily outcome digest", () => {
   function revenueWithLeads(leads: unknown[], day = previousUtcDay()): unknown {
     return {
       featureSlug: "sales-cold-email-outreach",
-      headline: { totalPipelineUsd: 12500 },
-      costEconomics: { maturity: NULL_PAIR, committedCostUsd: 250, costOfAcquisitionPct: 2, roiMultiple: 50 },
-      timeSeries: [],
+      costEconomics: { committedCostUsd: 250 },
       organizations: ORGS,
       leads,
       events: [],
@@ -377,14 +374,9 @@ describe("daily outcome digest", () => {
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_empty&pricing=net&leads=full") {
         return jsonResponse({
           featureSlug: "sales-cold-email-outreach",
-          headline: { totalPipelineUsd: 0 },
           costEconomics: {
-            maturity: NULL_PAIR,
             committedCostUsd: 0,
-            costOfAcquisitionPct: null,
-            roiMultiple: null,
           },
-          timeSeries: [],
           organizations: [],
           leads: [],
           events: [],
@@ -502,7 +494,6 @@ describe("daily outcome digest", () => {
       {
         brandName: "Acme",
         brandUrl: "https://acme.test",
-        totalPipelineUsd: 12500,
         organizations: [
           {
             orgName: "Lead Co",

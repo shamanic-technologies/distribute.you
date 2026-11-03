@@ -51,21 +51,17 @@ const RevenueEventSchema = z.object({
   contributionUsd: z.number(),
 });
 const CostEconomicsSchema = z.object({
-  // COMMITTED spend (billed + open holds) — features-service's single basis and what
-  // the two ratios below divide by. `.nullish()` for rollout tolerance; the reader
+  // COMMITTED spend (billed + open holds) — features-service's single basis.
+  // `.nullish()` for rollout tolerance; the reader
   // carried the pre-#402 `totalCostUsd` as REQUIRED long after the producer dropped it,
   // so every parse here threw.
   committedCostUsd: z.number().nullish(),
-  costOfAcquisitionPct: z.number().nullable(),
-  roiMultiple: z.number().nullable(),
   // The REALIZED return (ROI-CONSISTENCY-1103). Nullish as served.
   realizedReturn: RealizedReturnSchema.nullish(),
 });
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
-  headline: z.object({ totalPipelineUsd: z.number().nullable() }),
   costEconomics: CostEconomicsSchema,
-  timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   leads: z.array(RevenueLeadSchema),
   events: z.array(RevenueEventSchema),
@@ -83,14 +79,10 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
   const d = parsed.data;
   return {
     featureSlug: d.featureSlug,
-    totalPipelineUsd: d.headline.totalPipelineUsd,
     costEconomics: {
       committedCostUsd: d.costEconomics.committedCostUsd ?? null,
-      costOfAcquisitionPct: d.costEconomics.costOfAcquisitionPct,
-      roiMultiple: d.costEconomics.roiMultiple,
       realizedReturn: d.costEconomics.realizedReturn ?? null,
     },
-    timeSeries: d.timeSeries,
     organizations: d.organizations,
     leads: d.leads,
     events: d.events,

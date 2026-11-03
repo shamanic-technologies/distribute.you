@@ -11,7 +11,6 @@ import {
   buildCampaignWorkflowRows,
   workflowOutcomeCost,
   workflowOutcomeCount,
-  workflowRoi,
   workflowOutcomePairFor,
   collapseWorkflowCatalogue,
   runningDynastyFor,
@@ -27,11 +26,6 @@ import {
 
 // The served maturity pairs (features-service#1196). The row states the MATURE half and is
 // Learning exactly where the producer says `isMature: false`; nothing here counts outcomes.
-const matureEconomics = (roiMultiple: number | null, isMature: boolean | null = true) => ({
-  flash: { roiMultiple, costOfAcquisitionPct: 25, costPerAcquisitionUsd: null },
-  mature: { roiMultiple, costOfAcquisitionPct: 25, costPerAcquisitionUsd: null },
-  isMature,
-});
 const matureOutcomes = (cpprCents: number | null, cpcCents: number | null, isMature: boolean | null = true) => ({
   flash: { cpprCents, cpcCents },
   mature: { cpprCents, cpcCents },
@@ -58,16 +52,12 @@ function grp(over: Partial<WorkflowRevenueGroup> = {}): WorkflowRevenueGroup {
     workflowDynastySlug: "chan-legato",
     workflowDynastyName: "Legato",
     workflowSlugs: ["chan-legato", "chan-legato-v2"],
-    totalPipelineUsd: 100,
     committedCostUsd: 25,
-    roiMultiple: 4,
-    costOfAcquisitionPct: 25,
     recipientsContacted: 383,
     recipientsClicked: 11,
     recipientsRepliesPositive: 12,
     cpprCents: 200,
     cpcCents: 100,
-    economicsMaturity: matureEconomics(4),
     outcomesMaturity: matureOutcomes(200, 100),
     ...over,
   };
@@ -84,14 +74,12 @@ function row(over: Partial<CampaignWorkflowRow> = {}): CampaignWorkflowRow {
     outreach: null,
     websiteClicks: null,
     cpcCents: null,
-    roiMultiple: null,
     outcomePair: "reply",
     learning: false,
     channel: "email",
     audienceType: "cold-outreach",
     contentModel: null,
     contentPromptType: null,
-    economicsMaturity: null,
     outcomesMaturity: null,
     ...over,
   };
@@ -185,7 +173,7 @@ describe("buildCampaignWorkflowRows", () => {
       buildCampaignWorkflowRows({
         catalogue: [cat()],
         // A count far past any bar changes nothing: the verdict is served, never counted.
-        groups: [grp({ recipientsRepliesPositive: 500, economicsMaturity: matureEconomics(4, isMature) })],
+        groups: [grp({ recipientsRepliesPositive: 500, outcomesMaturity: matureOutcomes(200, 100, isMature) })],
         running: { dynastySlug: null, dynastyName: null },
         pair: "reply",
       })[0];
@@ -198,12 +186,11 @@ describe("buildCampaignWorkflowRows", () => {
   it("states the MATURE figures, and nothing where the producer says Learning", () => {
     const [measured] = buildCampaignWorkflowRows({
       catalogue: [cat()],
-      groups: [grp({ economicsMaturity: matureEconomics(3.5), outcomesMaturity: matureOutcomes(4200, 900) })],
+      groups: [grp({ outcomesMaturity: matureOutcomes(4200, 900) })],
       running: { dynastySlug: null, dynastyName: null },
       pair: "reply",
     });
     expect(workflowOutcomeCost(measured, "mature")).toEqual({ value: 4200, learning: false });
-    expect(workflowRoi(measured, "mature")).toEqual({ value: 3.5, learning: false });
     const [thin] = buildCampaignWorkflowRows({
       catalogue: [cat()],
       groups: [grp({ outcomesMaturity: matureOutcomes(4200, 900, false) })],
@@ -513,7 +500,7 @@ describe("the outcome pair is the campaign's own LEG, not its funnel", () => {
 
   it("reads the Learning verdict off the group, whichever pair the row states", () => {
     // The producer judges the group on ITS leg; the page never re-judges it per pair.
-    const groups = [grp({ recipientsRepliesPositive: 0, recipientsClicked: 412, cpcCents: 130, economicsMaturity: matureEconomics(2, true) })];
+    const groups = [grp({ recipientsRepliesPositive: 0, recipientsClicked: 412, cpcCents: 130, outcomesMaturity: matureOutcomes(null, 130, true) })];
     for (const pair of ["visit", "reply"] as const) {
       const r = buildCampaignWorkflowRows({
         catalogue: [cat()],

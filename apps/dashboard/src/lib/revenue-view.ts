@@ -3,7 +3,7 @@
 // Mirrors the features-service `GET /v1/features/{slug}/revenue` contract 1:1 —
 // features-service is the single source that computes expected pipeline revenue
 // (MAX inside each entity, SUM across distinct orgs) from the brand's saved sales
-// economics. The dashboard only renders. `timeSeries`, `events`, and the date
+// economics. The dashboard only renders. `events` and the date
 // fields stay empty/null until email-gateway exposes per-event timestamps.
 //
 // Plain TS interfaces (no `@/lib/api` import) so these types stay safe to import
@@ -11,13 +11,6 @@
 import type { MaturityPair } from "./maturity";
 import type { ExpectedReturn } from "./expected-return";
 import type { RealizedReturn } from "./realized-return";
-
-/** The three ratios of a cost-economics block, as one half of its served maturity pair. */
-export interface EconomicsFigures {
-  roiMultiple: number | null;
-  costOfAcquisitionPct: number | null;
-  costPerAcquisitionUsd: number | null;
-}
 
 /** A grouped read's cost per visit and per positive reply, as one half of its maturity pair. */
 export interface OutcomeFigures {
@@ -78,11 +71,6 @@ export interface StepWalk {
   /** DISTINCT leads contacted — the base the FIRST step converts from. */
   contactedRecipients: number;
   steps: StepWalkRow[];
-}
-
-export interface RevenuePoint {
-  date: string;
-  cumulativePipelineUsd: number;
 }
 
 export interface ConversionTopPerson {
@@ -268,21 +256,6 @@ export interface CostEconomics {
   /** COMMITTED run spend in $, brand (+ optional campaign), feature-scoped — billed
    *  PLUS open holds. Null is "we have no figure", never "it cost nothing". */
   committedCostUsd: number | null;
-  /** (committedCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
-  costOfAcquisitionPct: number | null;
-  /** totalPipelineUsd / committedCostUsd. Null when cost is 0 or pipeline is null. */
-  roiMultiple: number | null;
-  /**
-   * REALIZED dollar cost of winning ONE customer, for the scope this body describes —
-   * served on EVERY response including the default un-lensed brand read, so the brand
-   * Overview's `$ CAC` card reads it directly.
-   *
-   * It is `lifetimeRevenueUsd / roiMultiple` — the same statement as ROI and % CAC in a
-   * third unit, which is why it MATCHES the lensed `costPerConversionUsd` for the same
-   * scope rather than being a second opinion. Null (never 0) when the brand states no
-   * lifetime revenue, or when the pipeline is null/0.
-   */
-  costPerAcquisitionUsd: number | null;
   /**
    * Lens-only: expected outcome COUNT = Σ per-lead probability across the lensed
    * leads. Present only on a `?lens=` response; absent on the un-lensed overview.
@@ -291,12 +264,6 @@ export interface CostEconomics {
   expectedConversions?: number | null;
   /** Lens-only: `committedCostUsd / expectedConversions`; null when expectedConversions is 0. */
   costPerConversionUsd?: number | null;
-  /**
-   * The three ratios above, served TWICE with the producer's verdict (lib/maturity.ts):
-   * `mature` is what every surface states, `isMature: false` is where it reads Learning.
-   * Nothing here is re-judged in the browser. Null when the body carried no pair.
-   */
-  maturity: MaturityPair<EconomicsFigures> | null;
 }
 
 /** One pre-computed cost source (descending) in the spend block. The card renders only
@@ -399,12 +366,6 @@ export interface Spend {
   maturity?: MaturityPair<SpendFigures> | null;
 }
 
-/**
- * One day of the brand's return-on-spend curve. BOTH legs are cumulative since the
- * brand's first spend and both are REALIZED — spend dated by runs' own cost buckets,
- * pipeline by the per-lead event timestamps. Nothing is spread, smoothed or modelled,
- * which is what makes the curve safe to show as a result rather than a forecast.
- */
 /** Delivery and reply of the emails a grain sent. Every rate is served. */
 export interface RevenueSending {
   recipientsSent: number;
@@ -420,50 +381,14 @@ export interface RevenueSending {
   positiveReplyRatePct: number | null;
 }
 
-export interface RoiHistoryPoint {
-  /** UTC calendar day (YYYY-MM-DD). */
-  date: string;
-  cumulativeSpendUsd: number;
-  cumulativePipelineUsd: number;
-  /**
-   * `cumulativePipelineUsd / cumulativeSpendUsd`. Null — never 0 — on a day whose
-   * cumulative spend is still 0: "could not be measured", not "returned nothing".
-   */
-  roiMultiple: number | null;
-}
-
-export interface RoiHistory {
-  /** One point per UTC day that has spend or a dated outcome, ascending. A day with
-   *  neither is ABSENT rather than fabricated, so the series can have gaps. */
-  daily: RoiHistoryPoint[];
-  /** The curve's final cumulative pipeline — the part of `totalPipelineUsd` it describes. */
-  datedPipelineUsd: number;
-  /** Pipeline counted in the headline whose outcome carries no timestamp, so it sits on
-   *  no day. `datedPipelineUsd + undatedPipelineUsd === totalPipelineUsd`. */
-  undatedPipelineUsd: number;
-  /** The same curve with no maturity cut: its last point is the FLASH return. */
-  flash?: Omit<RoiHistory, "flash">;
-}
-
 /** Everything the overview + conversions pages render at a feature, offer or brand grain. */
 export interface RevenueOverview {
   /** The acquisition channel this answer is about, present ONLY on the per-feature read.
    *  Absent at the offer and brand grains, which span several channels. No consumer
    *  reads it. */
   featureSlug?: string;
-  /** Org-deduped expected pipeline. Null when there are no saved economics. */
-  totalPipelineUsd: number | null;
   /** Cost economics from features-service (total spend + derived CAC % + ROI ×). */
   costEconomics: CostEconomics;
-  /**
-   * Return on spend across the brand's whole life — what the brand Overview charts.
-   *
-   * Null when features-service could not build it (it is fail-soft there on purpose: a
-   * curve must never 502 an Overview whose every other number is correct) and on a
-   * lensed read. `daily` can legitimately be empty for a brand with neither spend nor a
-   * dated outcome.
-   */
-  roiHistory?: RoiHistory | null;
   /**
    * The steps walked in order, or null when there is no one path to walk (brand and
    * offer grains, a lensed read). A campaign is the surface that gets a value.
@@ -521,7 +446,6 @@ export interface RevenueOverview {
   repliedPositive?: SignalSeries;
   meetingsBooked?: SignalSeries;
   purchased?: SignalSeries;
-  timeSeries: RevenuePoint[];
   organizations: ConversionOrg[];
   events: ConversionEvent[];
   /**

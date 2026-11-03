@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { renderedResponse } from "@/lib/static-html";
 import { renderNotFoundPage } from "@/lib/pages/not-found";
-import { INDEX_REVALIDATE_SECONDS, RENAMED_INDEX_SLUGS, RETIRED_INDEX_REDIRECT, fetchIndexDetail, fetchIndexList } from "@/lib/fleet-indexes";
+import { INDEX_REVALIDATE_SECONDS, RENAMED_INDEX_SLUGS, RETIRED_INDEX_REDIRECT, RETIRED_INDEX_SLUGS, fetchIndexDetail, fetchIndexList } from "@/lib/fleet-indexes";
 import { renderIndexPage } from "@/lib/pages/indexes";
 
 // Literal (Next reads it statically); equals INDEX_REVALIDATE_SECONDS.
@@ -26,6 +26,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     // A renamed index: permanent redirect, relative Location (request.url is the bind address).
     const renamed = RENAMED_INDEX_SLUGS[slug];
     if (renamed) return new NextResponse(null, { status: 301, headers: { Location: `/indexes/${renamed}` } });
+    // A retired index the service dropped entirely (cold-email-roi): still to the list.
+    if (RETIRED_INDEX_SLUGS.has(slug)) return new NextResponse(null, { status: 301, headers: { Location: RETIRED_INDEX_REDIRECT } });
     return renderedResponse(renderNotFoundPage(), request, { status: 404, canonicalPath: "/404" });
   }
   return renderedResponse(renderIndexPage(slug, detail, list), request, {

@@ -29,7 +29,6 @@ function row(over: {
   costPerClickUsd?: number;
   costPerOutcomeUsd?: number | null;
   costPerPaidClientUsd?: number | null;
-  roiMultiple?: number | null;
   cacPct?: number | null;
 }): WorkflowProjectionRow {
   // Explicit `null` must survive (a cold-start / no-economics cost); only `undefined`
@@ -51,7 +50,6 @@ function row(over: {
       costPerSignupUsd: outcome,
       costPerPaidClientUsd: over.costPerPaidClientUsd ?? 200,
       costPerMeetingBookedUsd: 30,
-      roiMultiple: over.roiMultiple ?? 6,
       cacPct: over.cacPct ?? 8,
     },
   };
@@ -65,7 +63,6 @@ function row(over: {
       costPerOutcomeUsd: outcome,
       costPerPaidClientUsd: over.costPerPaidClientUsd ?? 200,
       costPerMeetingBookedUsd: 30,
-      roiMultiple: over.roiMultiple ?? 6,
       cacPct: over.cacPct ?? 8,
     },
   };

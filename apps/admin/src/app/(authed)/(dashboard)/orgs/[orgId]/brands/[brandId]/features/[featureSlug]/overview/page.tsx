@@ -6,7 +6,6 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { getFeatureRevenue, getBrandCostBreakdown } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
-import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { useFeatureCostSlugs } from "@/lib/use-sourcing-origins";
 
@@ -68,15 +67,6 @@ export default function FeatureOverviewPage() {
   }
 
   const basePath = `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`;
-
-  // Only once revenue resolves do we know the feature has no pipeline yet → full CTA.
-  if (revenueRevealed && data && data.totalPipelineUsd === null) {
-    return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
-        <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">

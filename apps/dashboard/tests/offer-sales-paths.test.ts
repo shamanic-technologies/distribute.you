@@ -9,7 +9,6 @@ import {
   pathStepReach,
   costSourceLabel,
   rateSourceLabel,
-  roiUnavailableLabel,
   salesPathsEmptyReason,
 } from "../src/lib/offer-sales-paths";
 import { globalBudgetUsd, parseBudgetInput, parseBrandSalesBudget } from "../src/lib/brand-sales-budget";
@@ -143,8 +142,6 @@ describe("offer sales paths reader", () => {
   it("names every rate source and roi reason", () => {
     expect(rateSourceLabel("industry_default")).toBe("Industry benchmark");
     expect(rateSourceLabel("crm_measured")).toBe("Measured in your CRM");
-    expect(roiUnavailableLabel(null)).toBeNull();
-    expect(roiUnavailableLabel("no_lifetime_revenue")).toMatch(/lifetime revenue/);
   });
   it("formats a rate", () => {
     expect(formatRatePct(null)).toBe("—");
@@ -217,7 +214,8 @@ describe("Sales path page: expected figures say so (owner 2026-10-05)", () => {
   const read = (rel: string) => readFileSync(join(__dirname, "..", rel), "utf8");
   it("every expected-value column header carries the (i)", () => {
     const paths = read("src/components/v2/offer-sales-paths.tsx");
-    expect(paths).toContain('<ExpectedLabel tip={EXPECTED_ROI_TIP}>{gainHeadline ? "Expected return" : "Expected ROI"}</ExpectedLabel>');
+    // A sales path row states no per-path return (ROI-CONSISTENCY-1103).
+    expect(paths).not.toContain("EXPECTED_ROI_TIP");
     expect(paths.split("<ExpectedLabel tip={EXPECTED_COST_PER_CLIENT_TIP}>Cost per paying client</ExpectedLabel>").length).toBe(3);
     expect(paths).toContain("<InfoTooltip tip={tip}");
     const campaigns = read("src/components/v2/offer-campaigns.tsx");

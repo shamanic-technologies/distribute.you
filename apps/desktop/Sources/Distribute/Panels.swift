@@ -126,7 +126,7 @@ private struct TodayPanel: View {
                 KCard {
                     Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
                         // The only two returns a screen shows (ROI-CONSISTENCY-1103): expected,
-                        // with its realized line. No pipeline tile: the pipeline lives on Deals.
+                        // with its realized line. No pipeline figure anywhere (retired upstream).
                         GridRow {
                             Tile(label: "Return", value: expectedReturnText(d.revenue?.expectedReturn),
                                  note: returnNote(d.revenue), color: K.teal)
@@ -236,7 +236,7 @@ private struct CompaniesPanel: View {
                     }
                 }
             }
-            // The pipeline lives on Deals only, as a forecast (ROI-CONSISTENCY-1103).
+            // No pipeline figure: retired with the other return fields (ROI-CONSISTENCY-1103).
             Text("\(orgs.count.formatted()) companies")
                 .font(K.meta).foregroundStyle(K.fg3).padding(.top, 4)
         }
@@ -319,9 +319,6 @@ private struct DealsPanel: View {
                 ("Contacted", c.contacted + c.engaged), ("Interested", c.sales_interest), ("Close won", c.customer),
                 ("Disqualified", c.disqualified), ("Opt-out", c.opted_out),
             ] + (c.unresolved > 0 ? [("Not placed", c.unresolved)] : [])
-            if let pipe = d.pipelineUsd {
-                Text("\(usd(pipe)) pipeline forecast").font(.system(size: 18, weight: .semibold)).foregroundStyle(K.fg1)
-            }
             KCard {
                 StepBars(columns: cols).padding(14)
             }

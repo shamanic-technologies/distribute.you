@@ -317,6 +317,8 @@ describe("a return index is retired (ROI-CONSISTENCY-1103)", () => {
     expect(lib).toContain('return isRetiredIndex(detail.index) ? "retired" : detail;');
     const route = readFileSync(path.resolve(__dirname, "../../src/app/indexes/[slug]/route.ts"), "utf8");
     expect(route).toContain('if (detail === "retired") return new NextResponse(null, { status: 301, headers: { Location: RETIRED_INDEX_REDIRECT } });');
+    // Once features-service stops serving the slug, its old URL still lands on the list.
+    expect(route).toContain("if (RETIRED_INDEX_SLUGS.has(slug)) return new NextResponse(null, { status: 301, headers: { Location: RETIRED_INDEX_REDIRECT } });");
   });
 });
 
