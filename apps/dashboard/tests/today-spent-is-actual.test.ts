@@ -33,9 +33,10 @@ describe("Today: one window for the whole stat row", () => {
     expect(src).not.toContain('note="all time"');
   });
 
-  it("draws the pipeline curve on the expected basis, never the realized one", () => {
-    expect(src).toContain("w.expectedPipeline.daily.map((d) => d.cumulativePipelineUsd)");
-    expect(src).not.toContain("roiHistory.daily");
+  it("draws no $ pipeline tile or curve: a forecast that lives on Deals only (ROI-CONSISTENCY-1103)", () => {
+    expect(src).not.toContain("expectedPipeline");
+    expect(src).not.toContain("totalPipelineUsd");
+    expect(src).not.toContain("roiHistory");
   });
 });
 

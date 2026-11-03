@@ -179,7 +179,7 @@ export function CompaniesPage() {
     ];
     return Promise.resolve(lines.join("\n"));
   };
-  const pipeline = revenue.data?.totalPipelineUsd ?? null;
+  // "$ pipeline" lives on the Deals board only, as a forecast (ROI-CONSISTENCY-1103).
 
   const open = (i: number) => {
     const href = orgs[i] ? companyHref(orgId, brandId, orgs[i]) : null;
@@ -399,7 +399,7 @@ export function CompaniesPage() {
         }
         left={
           revenue.data
-            ? `${formatCount(orgs.length)} ${orgs.length === 1 ? "company" : "companies"}${pipeline != null ? ` · ${formatUsdAdaptive(pipeline)} expected pipeline` : ""}`
+            ? `${formatCount(orgs.length)} ${orgs.length === 1 ? "company" : "companies"}`
             : " "
         }
       />

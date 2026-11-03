@@ -256,7 +256,8 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
     // signup-then-pay offer stating $500: only the per-offer read fits the offer's own steps.
     expect(suggested).toContain("listOfferSalesFunnels(brandId, offerId)");
     expect(overview).not.toContain("useStaffCatalogueList");
-    expect(suggested).toContain('expected: f.roiBasis === "estimated"');
+    // Every suggested funnel's return is EXPECTED (ROI-CONSISTENCY-1103), labelled so.
+    expect(suggested).toContain("<RoiLabel>Expected ROI</RoiLabel>");
     expect(suggested).not.toContain("across clients");
     // features-service ranks measured > estimated, then ROI: a browser ROI sort would drop that tier.
     expect(suggested).not.toContain(".sort(");
@@ -287,23 +288,27 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
   const section = () => funnel().slice(funnel().indexOf("function CampaignLine("), funnel().indexOf("function UnconvertedRunningCampaigns("));
 
   // FACTORY-USER-DASHBOARD-1102: the GTM Factory Campaigns columns.
-  it("a row reads, in order: face + name + path, Starts from, Target, Expected ROI (i), Measured ROI (i), $ Spent, Status", () => {
+  it("a row reads, in order: face + name + path, Starts from, Target, Expected ROI (i), Realized ROI (i), $ Spent, Status", () => {
     const s = section();
     const at = (t: string) => s.indexOf(t);
-    const order = ["<FunnelFace name={campaign.salesFunnelName}", "<TypeTag row={copy} />", ">Target</div>", "<RoiLabel>Expected ROI</RoiLabel>", "<RoiLabel>Measured ROI</RoiLabel>", ">$ Spent</div>", "<FunnelCampaignStatus campaign={campaign}"].map(at);
+    const order = ["<FunnelFace name={campaign.salesFunnelName}", "<TypeTag row={copy} />", ">Target</div>", "<RoiLabel>Expected ROI</RoiLabel>", "<RoiLabel>Realized ROI</RoiLabel>", ">$ Spent</div>", "<FunnelCampaignStatus campaign={campaign}"].map(at);
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((x, y) => x - y)).toEqual(order);
     expect(s).toContain("stepLabel(catalogue, campaign.target)");
     for (const gone of [">Spent<", ">Volume<", ">Budget<", ">$ Invested</div>"]) expect(s).not.toContain(gone);
   });
 
-  it("every cell reads features-service's served row: running path, type label, roiMultiple, investedUsd; nothing composed", () => {
+  it("every cell reads features-service's served row: running path, type label, expected + realized return, investedUsd; nothing composed", () => {
     const f = funnel();
     // The path the campaign RUNS NOW under the name (P5.1 owner 2026-10-31, replacing the 10-14 sentence), on the fast copy read.
     expect(f).toContain("<FunnelPathLine items={copy.path.items} />");
     expect(f).not.toContain("{copy.shortDescription}</span>");
     expect(src("src/components/v2/funnel-campaigns.tsx")).toContain("{row.typeLabel}");
-    expect(src("src/components/v2/funnel-campaigns.tsx")).toContain("funnelRoiShown(row)");
+    expect(src("src/components/v2/funnel-campaigns.tsx")).toContain("<ExpectedReturnValue expected={row.expectedReturn}");
+    // ROI-CONSISTENCY-1103: the pipeline-based measured return is retired everywhere.
+    expect(f).not.toContain("row.roiMultiple");
+    expect(f).not.toContain("r?.roiMultiple");
+    expect(f).toContain("row.costEconomics?.realizedReturn");
     expect(f).toContain("formatUsdAdaptive(row.investedUsd)");
     expect(f).not.toContain("row.description");
     expect(src("src/lib/api.ts")).toContain("/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?");
@@ -328,7 +333,6 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
 
   it("a missing served field reads — and is logged by name", () => {
     const f = funnel();
-    expect(f).toContain('"[funnel-campaigns] roiMultiple not served"');
     expect(f).toContain('"[funnel-campaigns] investedUsd not served"');
   });
 
@@ -338,15 +342,19 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
   });
 });
 
-describe("ROI cell: a null ROI always says why (owner 2026-10-11)", () => {
-  it("maturing reads Learning; an unpriced pipeline reads Not priced yet; a served ROI reads itself", async () => {
-    const { funnelRoiShown, unpricedWords } = await import("../src/lib/sales-funnel-campaigns");
-    const base = { roiMultiple: null, maturity: null, costEconomics: null, headline: null, moneyUnavailableReason: null };
-    expect(funnelRoiShown({ ...base, maturity: { isMature: false }, costEconomics: { unmeasuredReason: "maturing" } })).toMatchObject({ learning: true });
-    const unpriced = funnelRoiShown({ ...base, headline: { unpricedReason: "no_funnel_wired" } });
-    expect(unpriced).toMatchObject({ learning: false, value: null, unpriced: "no_funnel_wired" });
-    expect(unpricedWords(unpriced.unpriced)).toBe("Not priced yet");
-    expect(funnelRoiShown({ ...base, roiMultiple: 2.5, maturity: { isMature: true } })).toMatchObject({ value: 2.5 });
+describe("ROI cell: the expected return or its served reason (ROI-CONSISTENCY-1103)", () => {
+  it("unpriced reasons still read in words", async () => {
+    const { unpricedWords } = await import("../src/lib/sales-funnel-campaigns");
+    expect(unpricedWords("no_funnel_wired")).toBe("Not priced yet");
+  });
+  it("parses the row's realized return beside its costEconomics", async () => {
+    const { FunnelCampaignRowsSchema } = await import("../src/lib/sales-funnel-campaigns");
+    const parsed = FunnelCampaignRowsSchema.parse({
+      salesFunnelCampaigns: [
+        { id: "a", salesFunnelId: "f", name: "X", status: "ongoing", type: "proactive", typeLabel: "Daily", path: null, investedUsd: 93.56, roiMultiple: 30, costEconomics: { realizedReturn: { closedWonCount: 0, closedWonRevenueUsd: 0, roiMultiple: 0, spentUsd: 93.56 } } },
+      ],
+    });
+    expect(parsed.salesFunnelCampaigns[0].costEconomics?.realizedReturn?.spentUsd).toBe(93.56);
   });
 });
 
@@ -424,7 +432,7 @@ describe("path: a reactive path starts with its trigger tag (owner 2026-10-11)",
 
 describe("a campaign with no graded leg keeps the whole table's money (2026-10-16)", () => {
   it("parses maturity.isMature null (features-service `boolean | null`) and shows the served figures", async () => {
-    const { FunnelCampaignRowsSchema, funnelRoiShown } = await import("../src/lib/sales-funnel-campaigns");
+    const { FunnelCampaignRowsSchema } = await import("../src/lib/sales-funnel-campaigns");
     // Social Videos as served in prod: no leg graded, so the verdict is null; $1.21 spent, ROI 0x.
     const parsed = FunnelCampaignRowsSchema.safeParse({
       salesFunnelCampaigns: [
@@ -435,7 +443,6 @@ describe("a campaign with no graded leg keeps the whole table's money (2026-10-1
     expect(parsed.success).toBe(true);
     const row = parsed.success ? parsed.data.salesFunnelCampaigns[0] : null;
     expect(row?.investedUsd).toBe(1.21);
-    expect(funnelRoiShown({ ...row!, headline: null, moneyUnavailableReason: null })).toMatchObject({ value: 0 });
   });
 });
 

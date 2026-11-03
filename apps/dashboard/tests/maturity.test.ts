@@ -46,12 +46,12 @@ describe("shownReturn — Learning gives way to a to-date return above 1x", () =
     });
   });
 
-  it("every brand-page return reads it", () => {
-    for (const p of ["components/v2/today-page.tsx"]) {
-      const src = read(p);
-      expect(src).toContain("shownReturn(");
-      expect(src).not.toContain("h.roiMultiple");
-    }
+  it("Today states no pipeline-based return: expected + realized only (ROI-CONSISTENCY-1103)", () => {
+    const src = read("components/v2/today-page.tsx");
+    expect(src).not.toContain("shownReturn(");
+    expect(src).not.toContain("h.roiMultiple");
+    expect(src).toContain("const expected = data?.expectedReturn ?? null;");
+    expect(src).toContain("const realized = data?.costEconomics.realizedReturn ?? null;");
   });
 });
 
@@ -171,18 +171,8 @@ describe("the staff Auto / Mature / Flash switch", () => {
     expect(hook).toContain("useStaffMode()");
   });
 
-  it("the campaign's return curve is the half of its ROI tile (1.3x curve under a 1.6x tile)", () => {
-    const chart = read("components/v2/campaign-roi-chart.tsx");
-    expect(chart).toContain("const half = shownReturnHalf(economics, basis);");
-    expect(chart).toContain('half === "flash" ? q.data.flash ?? null : q.data');
-    const page = read("components/v2/campaign-page.tsx");
-    expect(page).toContain("economics={g?.economicsMaturity}");
-    expect(page).toContain("economics={campaign.row.revenue?.economicsMaturity}");
-  });
-
   it("rides the top bar of every v2 page that states a ratio", () => {
     for (const page of [
-      "components/v2/today-page.tsx",
       "components/v2/campaign-page.tsx",
       "components/v2/workflows-page.tsx",
       "components/v2/workflow-page.tsx",
@@ -250,9 +240,9 @@ describe("every surface states the served mature figure", () => {
     expect(read("components/v2/campaign-page.tsx")).toContain("shownFigure(");
   });
 
-  it("Today reads the brand's economics pair and decides Learning from it", () => {
+  it("Today grades no return on a maturity pair: its ROI tile is the served expected return", () => {
     const today = read("components/v2/today-page.tsx");
-    expect(today).toContain("costEconomics.maturity");
+    expect(today).not.toContain("costEconomics.maturity");
     expect(today).not.toContain("scopeIsLearning");
   });
 
@@ -329,13 +319,6 @@ describe("LearningTag", () => {
   it("explains itself through the shared InfoTooltip, never a native title", () => {
     expect(src).toContain("InfoTooltip");
     expect(src).not.toContain("title=");
-  });
-});
-
-describe("a PAUSED campaign says so where it would have said Learning", () => {
-  it("the return chart's tag reads the paused flag", () => {
-    const chart = read("components/revenue/roi-trend-card.tsx");
-    expect(chart).toContain("<LearningTag paused={paused} />");
   });
 });
 

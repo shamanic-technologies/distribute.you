@@ -16,12 +16,10 @@ import { RecordsTabs } from "@/components/v2/records";
 import { pipeCatalog, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
 import { usePipeChannel, useResearchPipeEntry } from "@/lib/research/research-source";
 import {
-  byServedRoiDesc,
   fleetWorkflowRows,
   siblingLineAt,
   lastRunText,
   servedCost,
-  servedRoi,
   shortWorkflowName,
   type ResearchWorkflowRow,
   type WorkflowFigures,
@@ -30,7 +28,7 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/brand-conversion-rates";
 import { useFeatures } from "@/lib/features-context";
 import { LIVE_TH } from "@/components/v2/live-workflow-cells";
-import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { CostValue } from "@/components/v2/roi-label";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { StatusWord, WorkflowStatusCells, useDynastyStatuses, useWorkflowDeprecation } from "@/components/v2/research-status";
 import { expectedReasonWords } from "@/lib/expected-return";
@@ -39,12 +37,13 @@ import { expectedReasonWords } from "@/lib/expected-return";
  * A pipe's workflows as the FLEET ranks them right now, at the pipe's leg: every client we run
  * a workflow for, pooled. Research names no org, brand, offer, campaign or audience (owner rule
  * 2026-09-30), so this reads features-service's fleet ranking and nothing scoped to the viewer.
- * Rows read best ROI first (owner 2026-10-23), the ROI each row prints; nothing divided here.
+ * Rows read in the ranking's served order; nothing divided or re-sorted here. No return: a workflow sits below
+ * a campaign's Target (owner 2026-11-03, ROI-CONSISTENCY-1103).
  *
- * Columns (owner 2026-10-22): mark + name (a link to its page), description, tactics, ROI, cost
+ * Columns (owner 2026-10-22): mark + name (a link to its page), description, tactics, cost
  * per outcome, conversion, spent, last run, status. A click anywhere else on the row opens its drawer.
  * Every figure, the tactics and the last run are the ranking row's own (`figures` on net pricing):
- * the workflow page reads the same `figures`, so the list, the drawer and the page print one ROI. No LLM / Template column: since BEST-TPL-LLM-1022 a workflow fixes neither, each send
+ * the workflow page reads the same `figures`, so the list, the drawer and the page print one figure. No LLM / Template column: since BEST-TPL-LLM-1022 a workflow fixes neither, each send
  * writes with the leg's best template and LLM. No summary banner above the table: the owner does
  * not want to read which workflow writes the next email.
  *
@@ -90,13 +89,13 @@ export function ResearchLiveWorkflows({
   const { rankingQ, rows } = usePipeWorkflowRows(featureSlug, legKey);
   // Each workflow's own status (workflow-service), changed from the row's ⋮ (TEMPLATE-MODEL-STATUS-1019).
   const dynastyStatuses = useDynastyStatuses(featureSlug);
-  // Two tabs on that status (owner 2026-10-22): Active first, then Deprecated, each best ROI first
-  // (owner 2026-10-23). A row moves tab the moment its status is written.
+  // Two tabs on that status (owner 2026-10-22): Active first, then Deprecated, each in the served order.
+  // A row moves tab the moment its status is written.
   const [tab, setTab] = useState<StatusTab>("active");
   const byTab = useMemo(() => {
     const out: Record<StatusTab, ResearchWorkflowRow[]> = { active: [], deprecated: [] };
     for (const r of rows) out[dynastyStatuses.statusOf(r.slug) === "deprecated" ? "deprecated" : "active"].push(r);
-    return { active: byServedRoiDesc(out.active), deprecated: byServedRoiDesc(out.deprecated) };
+    return out;
   }, [rows, dynastyStatuses]);
   const shown = byTab[tab];
   // The Research catalogue's own pages: a workflow Research studied has one.
@@ -131,9 +130,6 @@ export function ResearchLiveWorkflows({
               <th className={`${LIVE_TH} w-36`}>Workflow</th>
               <th className={LIVE_TH}>Description</th>
               <th className={`${LIVE_TH} w-28`}>Tactics</th>
-              <th className={`${LIVE_TH} w-[124px] text-right`}>
-                <RoiLabel />
-              </th>
               <th className={`${LIVE_TH} w-[132px] text-right`}>{`$ ${outcomeUnit}`}</th>
               <th className={`${LIVE_TH} w-[132px] text-right`}>% Conversion</th>
               <th className={`${LIVE_TH} w-24 text-right`}>$ Spent</th>
@@ -187,7 +183,7 @@ export function ResearchLiveWorkflows({
         </table>
       </div>
       <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-        Every client pooled, best ROI first. Each send writes with the pipe&apos;s best template and LLM. Click a row for its detail; its
+        Every client pooled, in the served order. Each send writes with the pipe&apos;s best template and LLM. Click a row for its detail; its
         name opens its page.
       </div>
       {openRow && (
@@ -222,7 +218,7 @@ export function usePipeWorkflowRows(featureSlug: string, legKey: string | null) 
 }
 
 /** The table's column count (empty and loading rows span it). */
-const COLS = 10;
+const COLS = 9;
 
 type StatusTab = "active" | "deprecated";
 const STATUS_TABS: { key: StatusTab; label: string }[] = [
@@ -302,9 +298,6 @@ function WorkflowRow({
       </td>
       <td className="max-w-0 px-3 py-2">
         <TacticTags tactics={r.tactics} reason={r.tacticsUnavailableReason} />
-      </td>
-      <td className="px-3 py-2 text-right tabular-nums">
-        <RoiValue roi={servedRoi(r.figures.roi)} />
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         <CostValue cost={servedCost(r.figures.costPerOutcomeUsd)} />
@@ -411,7 +404,6 @@ function WorkflowDrawer({
         </div>
         <TacticsBlock tactics={tactics} reason={r.tacticsUnavailableReason} />
         <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-[var(--line-subtle)] pt-3 text-[12px]">
-          <Fig k={<RoiLabel />} v={<RoiValue roi={servedRoi(r.figures.roi)} />} />
           <Fig k={`$ ${outcomeUnit}`} v={<CostValue cost={servedCost(r.figures.costPerOutcomeUsd)} />} />
           <Fig k="% Conversion" v={<RateValue f={r.figures.conversionRatePct} />} />
           <Fig k="$ Spent" v={<SpentValue f={r.figures.spentUsd} />} />

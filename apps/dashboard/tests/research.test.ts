@@ -269,7 +269,8 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
     expect(panel).toContain("useTemplateRowOutputs(t, 4)");
     expect(panel).toContain("useTemplateOutputs(version.key, 5)");
     expect(panel).toContain('document.getElementById("v2-portal")');
-    expect(panel).toContain("{roi != null && <Fig k={<RoiLabel />} v={\"show\" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}");
+    // No return per template (ROI-CONSISTENCY-1103).
+    expect(panel).not.toContain("RoiLabel");
     expect(panel).not.toMatch(/transition-all|text-gray-/);
     expect(read("components/v2/research-page.tsx")).toContain('versionKey={view.view === "version" ? view.version : null}');
   });

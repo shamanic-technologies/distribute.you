@@ -20,12 +20,10 @@ import {
   type FactoryShadowMonitoring,
   type FactoryShadowMonitoringCampaign,
 } from "@/lib/factory-shadow";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { stepLabel } from "@/lib/legs";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
-import { RoiLabel } from "@/components/v2/roi-label";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 
 /**
@@ -143,11 +141,11 @@ function ChangePipes({ side }: { side: FactoryChangeSide }) {
 const usd = (v: number | null) => (v == null ? null : formatUsdAdaptive(v));
 
 /** "$3,042 → $3,413": the whole line's served $ per Target, before then after, "expected" when the served basis says so. */
-function BeforeAfter({ running, best, fmt, good }: { running: FactoryChangeSide; best: FactoryChangeSide; fmt: (s: FactoryChangeSide) => string | null; good?: (s: FactoryChangeSide) => boolean }) {
+function BeforeAfter({ running, best, fmt }: { running: FactoryChangeSide; best: FactoryChangeSide; fmt: (s: FactoryChangeSide) => string | null }) {
   const cell = (s: FactoryChangeSide) => {
     const v = fmt(s);
     if (v == null) return <span className="k-fg3 text-[12px]">{unavailableWords(s.unavailableReason) ?? "—"}</span>;
-    return <span className={good?.(s) ? "text-[var(--run)]" : ""}>{v}</span>;
+    return <span>{v}</span>;
   };
   return (
     <span className="inline-flex flex-wrap items-baseline justify-end gap-x-1.5 tabular-nums">
@@ -169,14 +167,10 @@ function ChangeRows({ rows, names, targetLabel }: { rows: FactoryShadowMonitorin
           <tr className="k-line-subtle border-b">
             <th className="k-label w-[220px] px-3 py-2.5 pl-4 text-left font-medium">Campaign</th>
             <th className="k-label px-3 py-2.5 text-left font-medium">Runs now → Would run</th>
-            <th className="k-label w-[190px] px-3 py-2.5 text-right font-medium">
+            {/* No return column: the planner's ROI is its internal ranking, never shown (ROI-CONSISTENCY-1103). */}
+            <th className="k-label w-[190px] px-3 py-2.5 pr-4 text-right font-medium">
               <span className="inline-flex justify-end">
                 <ExpectedLabel tip={COST_TIP}>$ / Target</ExpectedLabel>
-              </span>
-            </th>
-            <th className="k-label w-[150px] px-3 py-2.5 pr-4 text-right font-medium">
-              <span className="inline-flex justify-end">
-                <RoiLabel />
               </span>
             </th>
           </tr>
@@ -202,11 +196,8 @@ function ChangeRows({ rows, names, targetLabel }: { rows: FactoryShadowMonitorin
                     <ChangePipes side={ch.best} />
                   </div>
                 </td>
-                <td className="px-3 py-2.5 text-right">
-                  <BeforeAfter running={ch.running} best={ch.best} fmt={(s) => usd(s.costPerTargetUsd)} />
-                </td>
                 <td className="px-3 py-2.5 pr-4 text-right">
-                  <BeforeAfter running={ch.running} best={ch.best} fmt={(s) => (s.roi == null ? null : formatRoi(s.roi))} good={(s) => roiIsGood(s.roi)} />
+                  <BeforeAfter running={ch.running} best={ch.best} fmt={(s) => usd(s.costPerTargetUsd)} />
                 </td>
               </tr>
             );

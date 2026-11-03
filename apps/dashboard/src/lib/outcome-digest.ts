@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { parseRevenueWithLeads } from "./revenue-parse";
 import { SERVICE_IDENTITY } from "./service-identity";
-import { formatRoi as sharedFormatRoi } from "./format-roi";
 import type { ConversionLead, RevenueOverviewWithLeads } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
@@ -251,24 +250,16 @@ async function collectBrandSends(
     const revenue = await fetchBrandRevenue(input, fetchFn, org.id, brand.id);
     if (revenue.organizations.length === 0) return [];
 
-    // Two gates, and the FIRST one is the point of this email.
-    //
-    // The brand's return has to have gone UP on the day. A digest that arrives
-    // whatever happened is a report; one that arrives only when the return improved
-    // is news, and it is the only thing a brand is judged on at brand level. A flat
-    // or falling day sends nothing — deliberately, so an inbox is not trained to
-    // ignore it.
-    //
-    // The second gate is that something actually landed, which is what the email
-    // then names. Both come from the same `/revenue` payload already fetched.
-    const roi = roiChangeOn(revenue, targetDay);
-    if (!roi || !roiVisiblyRose(roi)) return [];
-
+    // The email is NEWS: it arrives only when the brand's return went up, so an inbox is
+    // not trained to ignore it. Since ROI-CONSISTENCY-1103 (owner 2026-11-03) the only
+    // measured return is the REALIZED one (Paid clients over money spent), and it rises
+    // only when a sale lands; the pipeline-based curve the old gate read is retired. So:
+    // a sale on the day, then the email names everything that landed with it.
     const newOutcomes = newOutcomesOnDay(revenue, targetDay);
-    if (newOutcomes.length === 0) return [];
+    if (!digestIsNews(newOutcomes)) return [];
 
     const summary = toDigestBrandSummary(brand, revenue, targetDay);
-    const metadata = digestMetadataForBrand(summary, roi, newOutcomes);
+    const metadata = digestMetadataForBrand(summary, newOutcomes);
     return recipients.map((user) => ({
       orgId: org.id,
       orgName: org.name ?? org.id,
@@ -366,6 +357,11 @@ export function newOutcomesOnDay(
   });
 }
 
+/** The realized return moved: at least one sale landed on the day. */
+export function digestIsNews(outcomes: { singular: string; count: number }[]): boolean {
+  return outcomes.some((o) => o.singular === "sale" && o.count > 0);
+}
+
 /** "3 positive replies and 1 signup" — the day's new outcomes, in plain words. */
 export function describeNewOutcomes(
   outcomes: { singular: string; plural: string; count: number }[],
@@ -374,51 +370,6 @@ export function describeNewOutcomes(
   if (parts.length === 0) return "";
   if (parts.length === 1) return parts[0];
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-}
-
-/**
- * The brand's return on `day` and on the last day before it that could be measured.
- *
- * BOTH numbers are served — features-service computes the cumulative return per day
- * and this reads two of its points. Nothing is derived here, which matters because a
- * return the browser computed would be a second opinion on a figure the dashboard
- * already shows.
- *
- * Null when the comparison cannot honestly be made: no history at all, no point ON
- * the day (nothing moved, so the return did not change), or no earlier measurable
- * point to compare against. A day whose cumulative spend is still zero carries a null
- * return and is skipped rather than read as zero.
- */
-export function roiChangeOn(
-  revenue: RevenueOverviewWithLeads,
-  day: string,
-): { today: number; previous: number } | null {
-  const daily = revenue.roiHistory?.daily ?? [];
-  const today = daily.find((d) => d.date === day && d.roiMultiple != null);
-  if (!today?.roiMultiple) return null;
-  const earlier = daily.filter((d) => d.date < day && d.roiMultiple != null);
-  const previous = earlier[earlier.length - 1];
-  if (!previous?.roiMultiple) return null;
-  return { today: today.roiMultiple, previous: previous.roiMultiple };
-}
-
-/**
- * Whether the return went up BY AN AMOUNT THE EMAIL CAN SHOW. The email prints both
- * figures through `formatRoi` (one decimal under 10x), so a rise from 1.19x to 1.25x
- * reads "1.2x, up from 1.2x" (Doc Dinners, 2026-10-31). Compare the printed figures,
- * not the raw multiples: a rise the reader cannot see is not news.
- */
-export function roiVisiblyRose(roi: { today: number; previous: number }): boolean {
-  return roi.today > roi.previous && formatRoi(roi.today) !== formatRoi(roi.previous);
-}
-
-/**
- * Return per dollar, through the ONE fleet-wide ROI rule so the figure this email states
- * is byte-equal with what the reader sees on the Overview when they click through.
- * Re-exported because the digest renders server-side and its template tokens are strings.
- */
-export function formatRoi(multiple: number): string {
-  return sharedFormatRoi(multiple);
 }
 
 export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string {
@@ -515,14 +466,11 @@ function renderOutcomeDigestText(summaries: DigestBrandSummary[]): string {
 
 function digestMetadataForBrand(
   summary: DigestBrandSummary,
-  roi: { today: number; previous: number },
   newOutcomes: { singular: string; plural: string; count: number }[],
 ): Record<string, string> {
   return {
     brandName: summary.brandName,
     brandUrl: summary.brandUrl ?? "",
-    roiToday: formatRoi(roi.today),
-    roiPrevious: formatRoi(roi.previous),
     newOutcomes: describeNewOutcomes(newOutcomes),
     totalLeads: String(summary.leads.length),
     totalOutcomeOrganizations: String(summary.organizations.length),

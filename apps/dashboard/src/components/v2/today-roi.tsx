@@ -79,7 +79,7 @@ export function EarnedStrip({ pipeline, answered }: { pipeline: OfferPipeline | 
       {cell(
         "Hot leads",
         hot ? formatCount(hot.totalCount) : dash,
-        hot ? `${formatUsdAdaptive(hot.totalValueUsd)} expected` : "No value set for a client yet",
+        hot ? "Likely to buy" : "No value set for a client yet",
       )}
       {cell(
         "Lost leads",
@@ -136,10 +136,9 @@ export function OfferOutcomesTable({
   const ladder = pipeline
     ? [...pipeline.ladder].reverse().filter((s) => s.recipientsReached != null && (s.recipientsReached > 0 || s.valuePerOutcomeUsd != null))
     : null;
-  const cols = 7;
-  // THE PIPELINE SLICED (owner 2026-10-08: "il faut les exclure, pour que la somme des
-  // lignes fasse le total pipeline"): every person on ONE row, the furthest step we
-  // brought them to; the rows and the contacted row add up to the served total.
+  const cols = 6;
+  // Every person on ONE row, the furthest step we brought them to (owner 2026-10-08). No $
+  // pipeline column or total: "$ pipeline" is a forecast that lives on Deals only (owner 2026-11-03).
   const ex = pipeline?.exclusiveLadder ?? null;
   const exRows = ex
     ? [...ex.rows].reverse().filter((r) => (r.pricedPeople ?? 0) > 0 || (r.people?.notOurs.count ?? 0) > 0)
@@ -159,10 +158,9 @@ export function OfferOutcomesTable({
                 <th className="k-label whitespace-nowrap px-2 py-2.5 text-right font-normal sm:px-3">
                   <ExpectedLabel tip={CONVERSION_TIP}>% Conversion</ExpectedLabel>
                 </th>
-                <th className="k-label whitespace-nowrap px-2 py-2.5 sm:px-3 text-right font-normal">
+                <th className="k-label whitespace-nowrap px-2 py-2.5 sm:px-3 pr-4 text-right font-normal">
                   <ExpectedLabel tip={WORTH_EACH_TIP}>Worth each</ExpectedLabel>
                 </th>
-                <th className="k-label px-2 py-2.5 sm:px-3 pr-4 text-right font-normal">Pipeline</th>
               </tr>
             </thead>
             <tbody>
@@ -189,7 +187,6 @@ export function OfferOutcomesTable({
                     label="People contacted"
                     count={ex.contacted.count}
                     eachUsd={ex.contacted.valuePerPersonUsd}
-                    totalUsd={ex.contacted.pipelineUsd}
                     conversionPct={ex.contacted.conversionFromRowAbove?.ratePct ?? null}
                     expectedConversion={ex.contacted.expectedConversionFromRowAbove}
                     onOpen={onOpenContacted}
@@ -201,9 +198,6 @@ export function OfferOutcomesTable({
                     <td className="hidden sm:table-cell" />
                     <td />
                     <td />
-                    <td className="px-2 py-2.5 pr-4 text-right font-semibold tabular-nums sm:px-3">
-                      {ex.total.pipelineUsd != null ? formatUsdAdaptive(ex.total.pipelineUsd) : dash}
-                    </td>
                   </tr>
                 </>
               ) : ladder ? (
@@ -215,7 +209,6 @@ export function OfferOutcomesTable({
                     label="People contacted"
                     count={pipeline?.peopleContacted ?? null}
                     eachUsd={contacted?.perLeadUsd ?? null}
-                    totalUsd={contacted?.totalUsd ?? null}
                   />
                 </>
               ) : (
@@ -229,11 +222,6 @@ export function OfferOutcomesTable({
           </table>
         </div>
         <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
-          {ex && ex.total.gapUsd != null && Math.abs(ex.total.gapUsd) >= 0.5 && ex.total.headlinePipelineUsd != null ? (
-            <span className="block">
-              The Pipeline figure at the top reads {formatUsdAdaptive(ex.total.headlinePipelineUsd)}: {GAP_WORDS[ex.total.gapReason ?? ""] ?? "it counts a slightly different set of people"}.
-            </span>
-          ) : null}
           Each person is on one row only. Each value comes from your rate at each step and what one client is worth.{" "}
           {offerId ? (
             <Link href={v2OfferHref(orgId, brandId, offerId)} className="whitespace-nowrap text-[var(--accent)] hover:underline">
@@ -272,17 +260,10 @@ function LadderLine({ s, onOpen }: { s: OfferLadderStep; onOpen: () => void }) {
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">
         {s.pricedConversionFromPrevious?.ratePct != null ? pct(s.pricedConversionFromPrevious.ratePct) : dash}
       </td>
-      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.valuePerOutcomeUsd != null ? formatUsdAdaptive(s.valuePerOutcomeUsd) : dash}</td>
-      <td className="px-2 py-2 pr-4 text-right font-medium tabular-nums sm:px-3">{s.pricedValueUsd != null ? formatUsdAdaptive(s.pricedValueUsd) : dash}</td>
+      <td className="px-2 py-2 pr-4 text-right tabular-nums sm:px-3">{s.valuePerOutcomeUsd != null ? formatUsdAdaptive(s.valuePerOutcomeUsd) : dash}</td>
     </tr>
   );
 }
-
-const GAP_WORDS: Record<string, string> = {
-  population_differs: "it counts a slightly different set of people",
-  headline_unreadable: "we could not check it against this total",
-  unpriced: "this offer has no value per client yet",
-};
 
 /** One slice of the pipeline: the people whose furthest step we brought them to is this one. */
 function SliceLine({ r, onOpen }: { r: ExclusiveRow; onOpen: () => void }) {
@@ -298,8 +279,7 @@ function SliceLine({ r, onOpen }: { r: ExclusiveRow; onOpen: () => void }) {
       {/* Of the row's people, those who went cold or were ruled out (features-service, per row). */}
       <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{r.people ? formatCount(r.people.lost.count) : dash}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3"><ConversionCell c={conversion} /></td>
-      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.valuePerOutcomeUsd != null ? formatUsdAdaptive(r.valuePerOutcomeUsd) : dash}</td>
-      <td className="px-2 py-2 pr-4 text-right font-medium tabular-nums sm:px-3">{r.pipelineUsd != null ? formatUsdAdaptive(r.pipelineUsd) : dash}</td>
+      <td className="px-2 py-2 pr-4 text-right tabular-nums sm:px-3">{r.valuePerOutcomeUsd != null ? formatUsdAdaptive(r.valuePerOutcomeUsd) : dash}</td>
     </tr>
   );
 }
@@ -308,7 +288,6 @@ function ContactedLine({
   label,
   count,
   eachUsd,
-  totalUsd,
   conversionPct = null,
   expectedConversion = null,
   onOpen,
@@ -316,7 +295,6 @@ function ContactedLine({
   label: string;
   count: number | null;
   eachUsd: number | null;
-  totalUsd: number | null;
   conversionPct?: number | null;
   /** The served expected % Conversion, read where the measured one is null. */
   expectedConversion?: ExpectedConversion | null;
@@ -329,8 +307,7 @@ function ContactedLine({
       <td className="px-2 py-2 text-right sm:px-3">{dash}</td>
       <td className="hidden px-2 py-2 text-right sm:table-cell sm:px-3">{dash}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3"><ConversionCell c={conversionShown(conversionPct, expectedConversion)} /></td>
-      <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{eachUsd != null ? formatUsdAdaptive(eachUsd) : dash}</td>
-      <td className="px-2 py-2 sm:px-3 pr-4 text-right font-medium tabular-nums">{totalUsd != null ? formatUsdAdaptive(totalUsd) : dash}</td>
+      <td className="px-2 py-2 sm:px-3 pr-4 text-right tabular-nums">{eachUsd != null ? formatUsdAdaptive(eachUsd) : dash}</td>
     </tr>
   );
 }
@@ -392,7 +369,7 @@ export function HotLeads({
   const hot = pipeline?.hotLeads ?? null;
   return (
     <section>
-      <SectionTitle count={hot ? hot.totalCount : null} right={hot ? <span>{formatUsdAdaptive(hot.totalValueUsd)} expected</span> : null}>
+      <SectionTitle count={hot ? hot.totalCount : null}>
         Hot leads
       </SectionTitle>
       <div className="k-card overflow-hidden">

@@ -47,11 +47,8 @@ import {
   type FunnelCampaignCopy,
   type FunnelPathItem,
   orderPipesByFunnel,
-  funnelRoiShown,
   funnelRowSettled,
-  unpricedWords,
 } from "@/lib/sales-funnel-campaigns";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { paymentHoldKind } from "@/lib/payment-declined";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
@@ -70,8 +67,8 @@ import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts } from 
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { EmptyNote, Figure, HoverScroll, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
-import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
-import { roiToShow } from "@/lib/expected-return";
+import { RoiLabel } from "@/components/v2/roi-label";
+import { ExpectedReturnValue, RealizedReturnLine } from "@/components/v2/return-figures";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview } from "@/lib/v2/campaign-layout-preview";
 import { FunnelCampaignPageNext } from "@/components/v2/campaign-page-next";
@@ -485,17 +482,17 @@ export function TypeTag({ row }: { row: FunnelCampaignCopy }) {
 }
 
 /**
- * A funnel campaign's ROI: features-service's measured return under its maturity verdict, else
- * its served EXPECTED return with "expected" beside it (owner 2026-10-11: never blank), else the
- * served reason in words.
+ * A funnel campaign's ROI (owner 2026-11-03, ROI-CONSISTENCY-1103): its served EXPECTED return
+ * (what its Target is worth over what one costs from Start), "Expected" and its basis beside it,
+ * else the producer's reason. The pipeline-based measured return is retired.
  */
-export function FunnelRoi({ row }: { row: FunnelCampaignRow }) {
-  const shown = funnelRoiShown(row);
-  const roi = roiToShow(shown, row.expectedReturn);
-  if (roi.value == null && roi.reason == null && shown.unpriced) {
-    return <span className="k-fg3 text-[12px] font-normal">{unpricedWords(shown.unpriced)}</span>;
-  }
-  return <RoiValue roi={roi} learning={shown.learning} />;
+export function FunnelRoi({ row, compact = false }: { row: FunnelCampaignRow; compact?: boolean }) {
+  return <ExpectedReturnValue expected={row.expectedReturn} compact={compact} />;
+}
+
+/** A funnel campaign's REALIZED line (Paid clients, money spent), when the row serves it. */
+export function FunnelRealized({ row, className = "" }: { row: FunnelCampaignRow; className?: string }) {
+  return <RealizedReturnLine realized={row.costEconomics?.realizedReturn} className={className} />;
 }
 
 /**
@@ -626,7 +623,6 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   const copyRow = copyQ.data?.find((r) => r.id === campaign.id) ?? null;
   // The row's copy (Type, the path it runs now): the full row, else the fast copy read.
   const copyOf = row ?? copyRow;
-  const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
   // The part that emails people is where its people live (Inbox, Sent, Targeting read its scope).
   // The pipes in the order the funnel runs them (sourcing, then cold email, then closing).
   const units = orderPipesByFunnel(campaign.units, (u) => legFor(catalogue, u.legKey));
@@ -734,7 +730,10 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
                   {!rowsSettled ? (
                     <Shimmer className="h-7 w-16" />
                   ) : (
-                    <Figure value={row ? <FunnelRoi row={row} /> : DASH} />
+                    <>
+                      <Figure value={row ? <FunnelRoi row={row} /> : DASH} />
+                      {row && <FunnelRealized row={row} className="mt-1" />}
+                    </>
                   )}
                 </div>
               </div>

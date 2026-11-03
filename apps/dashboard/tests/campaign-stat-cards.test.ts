@@ -25,13 +25,12 @@ describe("campaign page stat cards", () => {
 
   it("reads the served return with its (i), never a recomputation", () => {
     const tile = page.slice(page.indexOf("function RoiTile("), page.indexOf("function CampaignOverview("));
-    expect(tile).toContain("shownReturn(campaign.row.revenue?.economicsMaturity, basis)");
-    // Never blank (owner 2026-10-11): Learning reads the served expected return.
-    expect(tile).toContain("roiToShow(roi, campaign.row.revenue?.expectedReturn)");
-    // Every ROI label carries the expected (i) (owner 2026-10-11).
+    // ROI-CONSISTENCY-1103: the served EXPECTED return, then the REALIZED line; never the pipeline ROI.
+    expect(tile).toContain("<ExpectedReturnValue expected={g?.expectedReturn} compact />");
+    expect(tile).toContain("<RealizedReturnLine realized={g?.realizedReturn}");
+    expect(tile).not.toContain("economicsMaturity");
+    // Every ROI label carries the (i) (owner 2026-10-11).
     expect(tile).toContain("<StatTile label={<RoiLabel />}>");
-    // Green above break-even like every other ROI (owner 2026-10-06), in the shared RoiValue.
-    expect(tile).toContain("<RoiValue ");
   });
 
   it("the answering campaign opens on the same ROI tile (owner 2026-10-11: a ROI everywhere)", () => {

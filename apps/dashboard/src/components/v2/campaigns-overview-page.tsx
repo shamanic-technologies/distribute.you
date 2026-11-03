@@ -12,10 +12,7 @@ import {
   compareFunnelCampaigns,
   funnelOnLabel,
   funnelFunded,
-  funnelRoiShown,
   funnelRowSettled,
-  roiMissingReason,
-  unpricedWords,
   funnelSortKey,
   funnelTypeOf,
   isOngoingFunnelCampaign,
@@ -27,6 +24,7 @@ import {
 } from "@/lib/sales-funnel-campaigns";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { paidClientsWords } from "@/lib/realized-return";
 import { expectedReasonWords } from "@/lib/expected-return";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { stepLabel } from "@/lib/legs";
@@ -192,9 +190,9 @@ function Suggested({ brandId, offerId, campaigns }: { brandId: string; offerId: 
               <MarkLines mark={(px) => <FunnelFace name={f.name} size={px} />}>
                 <span className="block truncate text-[14px] font-medium">{f.name}</span>
                 <span className="k-fg3 inline-flex items-center gap-1 text-[12px]">
-                  <RoiLabel>ROI</RoiLabel>
+                  <RoiLabel>Expected ROI</RoiLabel>
                   <span className="k-fg2 tabular-nums">
-                    <RoiValue roi={{ value: f.roi, expected: f.roiBasis === "estimated", reason: null }} learning />
+                    <RoiValue roi={{ value: f.roi, expected: false, reason: null }} learning />
                   </span>
                 </span>
               </MarkLines>
@@ -219,7 +217,7 @@ function Suggested({ brandId, offerId, campaigns }: { brandId: string; offerId: 
 type TypeFilter = "all" | "proactive" | "reactive";
 type SortKey = "default" | "roi" | "invested";
 const TYPE_LABEL: Record<TypeFilter, string> = { all: "Every type", proactive: "Daily", reactive: "Triggered" };
-const SORT_LABEL: Record<SortKey, string> = { default: "Default", roi: "ROI", invested: "$ Invested" };
+const SORT_LABEL: Record<SortKey, string> = { default: "Default", roi: "Expected ROI", invested: "$ Invested" };
 
 function CampaignList({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
   const q = useFunnelCampaigns(brandId, offerId);
@@ -270,7 +268,7 @@ function CampaignList({ orgId, brandId, offerId }: { orgId: string; brandId: str
     if (sort === "default") return kept;
     const value = (c: SalesFunnelCampaign) => {
       const r = rowById.get(c.id);
-      return (sort === "roi" ? r?.roiMultiple : r?.investedUsd) ?? -Infinity;
+      return (sort === "roi" ? r?.expectedReturn?.roiMultiple : r?.investedUsd) ?? -Infinity;
     };
     return [...kept].sort((a, b) => value(b) - value(a));
   }, [base, search, type, sort, rowById, copyById]);
@@ -402,7 +400,6 @@ export function CampaignLine({
     if (!rowSettled) return;
     if (rowsError) console.error("[funnel-campaigns] money read failed", { id: campaign.id, error: rowsError });
     else if (!row) console.error("[funnel-campaigns] features-service served no row for this campaign", { id: campaign.id });
-    else if (row.roiMultiple === null && !funnelRoiShown(row).learning && !funnelRoiShown(row).unpriced) console.error("[funnel-campaigns] roiMultiple not served", { id: row.id, reason: roiMissingReason(row) });
     if (row && row.investedUsd === null) console.error("[funnel-campaigns] investedUsd not served", { id: row.id });
   }, [row, rowSettled, rowsError, campaign.id]);
   useEffect(() => {
@@ -458,9 +455,9 @@ export function CampaignLine({
       </div>
       <div className="hidden text-right md:block">
         <div className="k-label">
-          <RoiLabel>Measured ROI</RoiLabel>
+          <RoiLabel>Realized ROI</RoiLabel>
         </div>
-        <div className="mt-0.5 text-[13px] font-medium tabular-nums">{!rowSettled ? wait : row ? <MeasuredRoi row={row} /> : DASH}</div>
+        <div className="mt-0.5 text-[13px] font-medium tabular-nums">{!rowSettled ? wait : row ? <RealizedRoi row={row} /> : DASH}</div>
       </div>
       <div className="hidden text-right md:block">
         <div className="k-label">$ Spent</div>
@@ -489,12 +486,20 @@ function ExpectedRoi({ row }: { row: FunnelCampaignRow }) {
   return <span className="k-fg3 text-[12px]">{expectedReasonWords(e?.unavailableReason ?? null)}</span>;
 }
 
-/** The return MEASURED on the campaign's own results, under features-service's maturity verdict: "Not mature yet" until then. */
-function MeasuredRoi({ row }: { row: FunnelCampaignRow }) {
-  const shown = funnelRoiShown(row);
-  if (shown.learning) return <span className="k-fg3 text-[12px] font-normal">Not mature yet</span>;
-  if (shown.value == null) return <span className="k-fg3 text-[12px] font-normal">{unpricedWords(shown.unpriced)}</span>;
-  return <span className={roiIsGood(shown.value) ? "text-[var(--run)]" : ""}>{formatRoi(shown.value)}</span>;
+/**
+ * The REALIZED return (owner 2026-11-03, ROI-CONSISTENCY-1103): revenue of the Paid clients our
+ * outreach caused over money actually spent, as features-service serves it, with the client count
+ * under it. The pipeline-based measured return is retired.
+ */
+function RealizedRoi({ row }: { row: FunnelCampaignRow }) {
+  const r = row.costEconomics?.realizedReturn ?? null;
+  if (!r) return DASH;
+  return (
+    <span className="inline-flex flex-col items-end">
+      <span className={r.closedWonCount > 0 && roiIsGood(r.roiMultiple) ? "text-[var(--run)]" : ""}>{formatRoi(r.roiMultiple)}</span>
+      <span className="k-fg3 text-[11px] font-normal">{paidClientsWords(r.closedWonCount)}</span>
+    </span>
+  );
 }
 
 /**

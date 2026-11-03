@@ -112,9 +112,10 @@ describe("Campaign rows (useCampaignRows)", () => {
       "Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status))",
     );
     expect(body).toContain("if (byStatus !== 0) return byStatus;");
-    // The MATURE return, the half of the served pair the row states (features-service#1196).
-    expect(body).toContain("(b.revenue?.economicsMaturity?.mature?.roiMultiple ?? -1)");
-    expect(body).toContain("(a.revenue?.economicsMaturity?.mature?.roiMultiple ?? -1)");
+    // The served EXPECTED return (ROI-CONSISTENCY-1103); the pipeline-based return is retired.
+    expect(body).toContain("(b.revenue?.expectedReturn?.roiMultiple ?? -1)");
+    expect(body).toContain("(a.revenue?.expectedReturn?.roiMultiple ?? -1)");
+    expect(body).not.toContain("economicsMaturity");
     expect(body).toContain("if (byRoi !== 0) return byRoi;");
     expect(body).toContain("b.campaign.updatedAt.localeCompare(a.campaign.updatedAt)");
     // Status is compared before ROI, and ROI before the date.

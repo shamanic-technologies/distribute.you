@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 import { ExpectedReturnSchema } from "./expected-return";
+import { RealizedReturnSchema } from "./realized-return";
 import { PlanCheckSchema } from "./plan-following";
 
 export const SalesFunnelUnitSchema = z
@@ -399,7 +400,8 @@ export const FunnelCampaignRowSchema = z
     investedUsd: z.coerce.number().nullable(),
     roiMultiple: z.coerce.number().nullable(),
     moneyUnavailableReason: z.string().nullish(),
-    costEconomics: z.object({ unmeasuredReason: z.string().nullish() }).passthrough().nullable(),
+    // `realizedReturn` (ROI-CONSISTENCY-1103): Paid clients over money actually spent, when the row serves it.
+    costEconomics: z.object({ unmeasuredReason: z.string().nullish(), realizedReturn: RealizedReturnSchema.nullish() }).passthrough().nullable(),
     // The producer's maturity verdict on the campaign's return (read, never re-graded). Null when the
     // campaign has no graded leg (features-service `isMature: boolean | null`): a strict boolean
     // rejected the WHOLE table, so every row read "—" (2026-10-16).
@@ -457,28 +459,6 @@ export function funnelRowSettled(
   if (hasRow) return true;
   if (!rows.isFetchedAfterMount) return false;
   return rows.isError || rows.dataUpdatedAt >= Date.parse(campaignCreatedAt);
-}
-
-/** Why a row's ROI is missing, as served (never guessed): the field name and the producer's reason. */
-export function roiMissingReason(row: Pick<FunnelCampaignRow, "moneyUnavailableReason" | "costEconomics">): string | null {
-  return row.moneyUnavailableReason ?? row.costEconomics?.unmeasuredReason ?? null;
-}
-
-/**
- * The ROI cell's value: features-service's `roiMultiple` under its own maturity verdict, the way every
- * v2 return reads (`shownReturn`): not mature and not above break-even yet = "Learning".
- */
-export function funnelRoiShown(
-  row: Pick<FunnelCampaignRow, "roiMultiple" | "maturity" | "costEconomics" | "headline" | "moneyUnavailableReason">,
-): { learning: boolean; value: number | null; unpriced: string | null; toDate?: number | null } {
-  const roi = row.roiMultiple;
-  const maturing = row.maturity?.isMature === false || row.costEconomics?.unmeasuredReason === "maturing";
-  // Still Learning: the return measured so far rides beside the verdict, shown greyed (owner 2026-10-19).
-  if (maturing && !(roi !== null && roi > 1)) return { learning: true, value: null, unpriced: null, toDate: roi };
-  if (roi !== null) return { learning: false, value: roi, unpriced: null };
-  // A null ROI always carries its served reason (owner 2026-10-11: never a bare dash).
-  const reason = row.headline?.unpricedReason ?? row.moneyUnavailableReason ?? row.costEconomics?.unmeasuredReason ?? null;
-  return { learning: false, value: null, unpriced: reason };
 }
 
 /** A served reason for a missing ROI, in plain words. A reason we have no words for is logged. */

@@ -224,11 +224,11 @@ describe("staff only", () => {
     expect(SENSITIVE_QUERY_ROOTS.has("staffCatalogueList")).toBe(true);
     expect(SENSITIVE_QUERY_ROOTS.has("staffCatalogueObject")).toBe(true);
   });
-  it("figures are rendered as served: no arithmetic on cost or ROI in the pages", () => {
+  it("figures are rendered as served: no arithmetic on cost, and no return on a catalogue object (ROI-CONSISTENCY-1103)", () => {
     const pages = read("src/components/v2/staff-catalogue-pages.tsx");
     expect(pages).not.toMatch(/costUsd\s*[/*+-]/);
-    expect(pages).not.toMatch(/roi\s*[/*+-]\s*\d/);
-    expect(pages).toContain("roiIsGood(v)");
+    expect(pages).not.toContain(">ROI<");
+    expect(pages).not.toContain("formatRoi");
   });
 });
 

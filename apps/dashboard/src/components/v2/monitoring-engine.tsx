@@ -27,7 +27,7 @@ import {
  * Engine pick is red ("No Engine pick", its campaigns named with the served reason), a rolled-back unit says when it
  * re-tries. GTM Factory v10's
  * "one Engine per outcome", SHADOW: at each place of each live campaign (the outcome a leg makes), today's pick (the pipe
- * the campaign runs and its best-ROI workflow) beside the Engine's (Thompson sampling on value per dollar over every
+ * the campaign runs and its best workflow) beside the Engine's (Thompson sampling on value per dollar over every
  * workflow of every pipe making that outcome). Then the daily agreement and the 30-day replay regret. Nothing runs from
  * it. Red = the served `engine.verdict` only (a campaign's Engine or the replay failed); no email. Served figures only.
  */

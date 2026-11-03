@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
-import { RoiLabel } from "@/components/v2/roi-label";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { RecordsTabs } from "@/components/v2/records";
 import type { AbsorbedCosts, AbsorbedCustomer, CustomerHealth, CustomerHealthBrand, CustomerHealthOrg } from "@/lib/monitoring/monitoring";
 import { Dash, PeriodBars, TD, TDR, TH, THR, dayLabel, dollarsExact, monthLabel, n } from "@/components/v2/monitoring-charts";
@@ -15,10 +13,10 @@ import { Dash, PeriodBars, TD, TDR, TH, THR, dayLabel, dollarsExact, monthLabel,
  * detail. The verdict (current / churned / never paid) and every figure are billing-service's
  * (its staff absorbed-costs read); this file picks the tab, formats and draws, it never adds,
  * averages or re-grades a figure. Never-paid signups are not customers and stay off the page.
- * The health columns (badge, running $/day, balance, ROI, audience, last visit) and the panel's
+ * The health columns (badge, running $/day, balance, audience, last visit) and the panel's
  * per-brand detail are features-service's customer-health board (served from its last build),
  * joined on the org id: a display lookup, never a figure made here. A customer on several brands
- * reads its per-brand ROI and audience in the panel, never a blend.
+ * reads its per-brand spend and audience in the panel, never a blend.
  */
 
 type Tab = "current" | "churned";
@@ -56,10 +54,6 @@ const noRowsWord = (r: string | null | undefined) => (r ? (NO_ROWS_WORD[r] ?? r.
 
 /** features-service's account status token, capitalised for reading ("out_of_credit" -> "Out of credit"). */
 const statusWord = (s: string) => (s.charAt(0).toUpperCase() + s.slice(1)).replace(/_/g, " ");
-
-function RoiValue({ v }: { v: number | null }) {
-  return <span style={roiIsGood(v) ? { color: "var(--run)" } : undefined}>{formatRoi(v)}</span>;
-}
 
 /** A cell fed by the health board: shimmer until it answers, a word when it cannot. */
 function HealthCell({ health, org, children }: { health: HealthState; org: CustomerHealthOrg | null; children: (o: CustomerHealthOrg) => React.ReactNode }) {
@@ -155,16 +149,13 @@ export function AccountsView({ data, health }: { data: AbsorbedCosts; health: He
           <EmptyNote>{tab === "current" ? "No active customer." : "No churned customer."}</EmptyNote>
         ) : (
           <div className="k-scroll overflow-x-auto">
-            <table className="w-full text-[13px] md:min-w-[860px]">
+            <table className="w-full text-[13px] md:min-w-[780px]">
               <thead className="border-b border-[var(--line-subtle)]">
                 <tr>
                   <th className={TH}>Customer</th>
                   <th className={TH}>Health</th>
                   <th className={THR}>$ / day</th>
                   <th className={THR}>Balance</th>
-                  <th className={THR}>
-                    <RoiLabel />
-                  </th>
                   <th className={`${THR} hidden lg:table-cell`}>Audience left</th>
                   <th className={`${TH} hidden md:table-cell`}>Last visit</th>
                   <th className={THR}>Paid to date</th>
@@ -211,11 +202,6 @@ export function AccountsView({ data, health }: { data: AbsorbedCosts; health: He
                               {o.autoTopupEnabled && <span className="k-chip text-[11px]">Auto</span>}
                             </span>
                           )}
-                        </HealthCell>
-                      </td>
-                      <td className={TDR}>
-                        <HealthCell health={health} org={org}>
-                          {() => (one ? <RoiValue v={one.currentEconomics?.roiMultiple ?? null} /> : brands.length > 1 ? <span className="k-fg3 text-[12px]">{brands.length} brands</span> : <Dash />)}
                         </HealthCell>
                       </td>
                       <td className={`${TDR} hidden lg:table-cell`}>
@@ -454,8 +440,7 @@ function BrandHealth({ b }: { b: CustomerHealthBrand }) {
       </div>
       <Facts
         rows={[
-          [<RoiLabel key="roi" />, <RoiValue key="v" v={e?.roiMultiple ?? null} />],
-          ["Cost per client", e?.currentCacUsd == null ? null : `${dollarsExact(e.currentCacUsd)}${b.breakevenCacUsd != null ? ` · break-even ${dollarsExact(b.breakevenCacUsd)}` : ""}`],
+          // No pipeline-based ROI or cost per client (ROI-CONSISTENCY-1103): spend and audience only.
           // The brand's whole history (a brand moved between orgs keeps it); the org's own campaign spend is billing's, above.
           ["Spent on this brand", e?.committedSpendUsd == null ? null : dollarsExact(e.committedSpendUsd)],
           [

@@ -12,10 +12,7 @@ import { friendlyDate, friendlyTime } from "@/lib/friendly-datetime";
 import { utcDay } from "@/lib/v2/series";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { v2CampaignHref, v2Href } from "@/lib/v2/routes";
-import { shownReturn, shownReturnHalf } from "@/lib/maturity";
-import { useStatBasis } from "@/lib/use-stat-basis";
 import { useClientClock } from "@/lib/use-client-clock";
-import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import {
@@ -58,7 +55,6 @@ import {
 } from "@/components/v2/data";
 import { EarnedStrip, HotLeads, LostLeads, OfferOutcomesTable } from "@/components/v2/today-roi";
 import { TodayPanel, type TodayPanelTarget } from "@/components/v2/today-roi-panel";
-import { RoiHistoryCard } from "@/components/v2/campaign-roi-chart";
 import { OfferSpendChartsSection } from "@/components/v2/spend-charts";
 import {
   CompanyMark,
@@ -70,7 +66,9 @@ import {
   personHref,
 } from "@/components/v2/people-bits";
 import { RoiLabel } from "@/components/v2/roi-label";
-import { expectedReasonWords, roiToShow } from "@/lib/expected-return";
+import { expectedReasonWords } from "@/lib/expected-return";
+import { expectedBasisWord } from "@/lib/realized-return";
+import { RealizedReturnLine } from "@/components/v2/return-figures";
 import { formatRatePct } from "@/lib/pipe-stats";
 
 /** Bars for a short window, a line for a long one (30 bars do not fit a tile). */
@@ -95,6 +93,7 @@ function cumulative(daily: { date: string; cumulativeCount?: number }[]): number
 const pct = formatRatePct;
 /** One column per stat tile on a wide screen, so the row always spans the full width. */
 const STAT_GRID_COLS = {
+  3: "md:grid-cols-3",
   4: "md:grid-cols-4",
   5: "md:grid-cols-3 xl:grid-cols-5",
   6: "md:grid-cols-3 xl:grid-cols-6",
@@ -150,18 +149,17 @@ export function TodayPage() {
   const showReplies = works("positive_reply");
   const showVisits = works("website_visit");
   const showMeetings = works("meeting_booked");
-  // Return, Pipeline, Delivered and Spent always; the two step tiles only when worked.
-  const statTiles = (4 + (showReplies ? 1 : 0) + (showVisits ? 1 : 0)) as 4 | 5 | 6;
+  // Return, Delivered and Spent always; the two step tiles only when worked. No Pipeline tile:
+  // "$ pipeline" is a forecast that lives on the Deals board only (owner 2026-11-03).
+  const statTiles = (3 + (showReplies ? 1 : 0) + (showVisits ? 1 : 0)) as 3 | 4 | 5;
 
   const emails = w?.emails ?? null;
   const winSpend = w?.spend ?? null;
-  const { basis } = useStatBasis();
-  // The brand's return is the MATURE half of the served pair, and it reads Learning
-  // exactly where the producer says the brand is not mature (lib/maturity.ts).
-  const shownRoi = shownReturn(data?.costEconomics.maturity, basis);
-  const learning = shownRoi.learning;
-  const roiHalf = shownReturnHalf(data?.costEconomics.maturity, basis);
-  const roiCurve = !data?.roiHistory ? null : roiHalf === "flash" ? data.roiHistory.flash ?? null : data.roiHistory;
+  // The only two returns a screen shows (owner 2026-11-03, ROI-CONSISTENCY-1103): the
+  // EXPECTED return (the offer's Target value over the cost to make one from Start) and the
+  // REALIZED one (Paid clients our outreach caused over money actually spent). Both served.
+  const expected = data?.expectedReturn ?? null;
+  const realized = data?.costEconomics.realizedReturn ?? null;
 
   // Needs your call: people who REPLIED with interest and whom nobody has closed or
   // disqualified yet. `total` is lead-service's count of that set.
@@ -207,10 +205,7 @@ export function TodayPage() {
   const first = user?.firstName ?? null;
   const dateLine = clock?.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const timeLine = clock?.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  // Measured when the producer states it; still Learning, the return measured so far greyed with the
-  // served expected one beside it (owner 2026-10-19); nothing measured, the expected one (never blank).
-  const roiShown = roiToShow(shownRoi, data?.expectedReturn);
-  const roi = roiShown.value;
+  const roi = expected?.roiMultiple ?? null;
   const gaugeMax = Math.max(3, Math.ceil((roi ?? 0) + 0.5));
 
   return (
@@ -218,7 +213,6 @@ export function TodayPage() {
       <TopBar
         crumbs={[{ label: "Today" }]}
         // No campaign on/off switch here: cancelling lives in Billing (owner 2026-10-05).
-        actions={<StatBasisSwitch />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <OfferPlanBanner brandId={brandId} offerId={selectedOfferId} />
@@ -273,22 +267,16 @@ export function TodayPage() {
                   <div className="flex flex-col items-center">
                     <div className="relative w-full max-w-[124px]">
                       <TickGauge value={roi} max={gaugeMax} marker={1} />
-                      <span className={`absolute inset-x-0 bottom-0 text-center font-medium tabular-nums ${roi == null ? "text-[14px]" : "text-[18px]"} ${roiShown.learning ? "k-fg3" : ""}`}>
-                        {roi == null ? (learning && roiShown.reason == null ? "Learning" : expectedReasonWords(roiShown.reason)) : formatRoi(roi)}
+                      <span className={`absolute inset-x-0 bottom-0 text-center font-medium tabular-nums ${roi == null ? "k-fg3 text-[14px]" : "text-[18px]"}`}>
+                        {roi == null ? expectedReasonWords(expected?.unavailableReason ?? null) : formatRoi(roi)}
                       </span>
                     </div>
                     <p className="k-fg3 mt-1 truncate text-[11px]">
-                      {roiShown.expected ? "Expected · " : ""}
-                      {roiShown.learning ? (roiShown.expectedValue != null ? `Expected ${formatRoi(roiShown.expectedValue)} · ` : "Learning · ") : ""}
-                      {data?.totalPipelineUsd != null ? formatUsdAdaptive(data.totalPipelineUsd) : "—"} pipeline
+                      Expected{roi != null ? ` (${expectedBasisWord(expected?.basis)})` : ""}
                     </p>
+                    <RealizedReturnLine realized={realized} className="max-w-full" />
                   </div>
                 )}
-              </StatTile>
-              {/* Expected pipeline, the headline's own basis: the curve ends at the figure. */}
-              <StatTile label="Pipeline" note={brand?.name ? "expected" : undefined}>
-                {rev.pending ? <Shimmer className="h-7 w-20" /> : <Figure value={data?.totalPipelineUsd != null ? formatUsdAdaptive(data.totalPipelineUsd) : "—"} />}
-                <Trend className="mt-auto pt-2" line values={w?.expectedPipeline ? w.expectedPipeline.daily.map((d) => d.cumulativePipelineUsd) : null} />
               </StatTile>
               {showReplies && (
                 <StatTile label="Positive replies" href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}>
@@ -324,7 +312,7 @@ export function TodayPage() {
             <div className="mt-8">
               <EarnedStrip pipeline={pipeline} answered={outcomesAnswered} />
             </div>
-            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <div className="mt-6">
               <OfferOutcomesTable
                 orgId={orgId}
                 brandId={brandId}
@@ -336,16 +324,6 @@ export function TodayPage() {
                 failed={outcomesQ.data === undefined && outcomesQ.isFetchedAfterMount && outcomesQ.isError}
                 onOpenStep={(stepKey) => setPanel({ kind: "step", stepKey })}
                 onOpenContacted={() => setPanel({ kind: "contacted" })}
-              />
-              <RoiHistoryCard
-                // The curve whose last point IS the return the Return tile states.
-                history={roiCurve}
-                answered={data !== undefined}
-                failed={data === undefined && rev.isError}
-                right="Since you started"
-                sub="What the people we reached are worth, divided by what it cost, to date."
-                failedCopy="Could not read your return. Retrying."
-                emptyCopy="No return to show yet: nothing has been spent."
               />
             </div>
             {/* Why each day costs what it costs, and where the cost is heading (owner 2026-10-19). */}

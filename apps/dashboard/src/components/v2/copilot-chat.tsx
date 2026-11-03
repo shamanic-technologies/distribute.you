@@ -39,15 +39,15 @@ import {
 import { v2Href } from "@/lib/v2/routes";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
-import { shownReturn } from "@/lib/maturity";
-import { useStatBasis } from "@/lib/use-stat-basis";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { useBrandInfo, useBrandRevenue, useBrandRevenueWindow, useNeedsYourCall } from "@/components/v2/data";
 import { Figure, Shimmer } from "@/components/v2/ui";
 import { AddCreditsButton, ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { RoiLabel } from "@/components/v2/roi-label";
-import { expectedReasonWords, roiToShow } from "@/lib/expected-return";
+import { expectedReasonWords } from "@/lib/expected-return";
+import { expectedBasisWord } from "@/lib/realized-return";
+import { realizedReturnWords } from "@/components/v2/return-figures";
 import { clickedControlLabel, pushRecentAction, type RecentAction } from "@/lib/recent-actions";
 import { nudgeDelayMs, sessionIdFromUIStream } from "@/lib/copilot-nudge";
 
@@ -83,14 +83,12 @@ function useAccountFigures(brandId: string) {
   const rev = useBrandRevenue(brandId);
   const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
   const callQ = useNeedsYourCall(brandId, 5);
-  const { basis } = useStatBasis();
-  const roi = shownReturn(rev.data?.costEconomics.maturity, basis);
   const w = win.data ?? null;
   const figures = {
     brandName,
-    // Measured when stated, else the served expected return (owner 2026-10-11: never blank).
-    returnShown: roiToShow(roi, rev.data?.expectedReturn),
-    returnIsLearning: roi.learning,
+    // The only two returns a screen shows (ROI-CONSISTENCY-1103): expected, then realized.
+    expectedReturn: rev.data?.expectedReturn ?? null,
+    realizedReturn: rev.data?.costEconomics.realizedReturn ?? null,
     positiveReplies: w?.recipientsRepliesPositive.total ?? null,
     needYourCall: callQ.data?.total ?? null,
     emailsSent: w?.emails?.sent ?? null,
@@ -121,22 +119,18 @@ function AccountCard({
     {
       label: "ROI",
       pending: revPending,
-      good: !figures.returnShown.learning && roiIsGood(figures.returnShown.value),
-      muted: figures.returnShown.learning,
+      good: expectedBasisWord(figures.expectedReturn?.basis) === "measured" && roiIsGood(figures.expectedReturn?.roiMultiple),
+      muted: figures.expectedReturn?.roiMultiple == null,
       value:
-        figures.returnShown.value != null
-          ? formatRoi(figures.returnShown.value)
-          : figures.returnIsLearning && figures.returnShown.reason == null
-            ? "Learning"
-            : expectedReasonWords(figures.returnShown.reason),
-      // Still Learning: the return measured so far, with the served expected one beside it (owner 2026-10-19).
-      sub: figures.returnShown.learning
-        ? figures.returnShown.expectedValue != null
-          ? `Expected ${formatRoi(figures.returnShown.expectedValue)}`
-          : "Learning"
-        : figures.returnShown.expected
-          ? "Expected"
-          : undefined,
+        figures.expectedReturn?.roiMultiple != null
+          ? formatRoi(figures.expectedReturn.roiMultiple)
+          : expectedReasonWords(figures.expectedReturn?.unavailableReason ?? null),
+      sub: [
+        figures.expectedReturn?.roiMultiple != null ? `Expected (${expectedBasisWord(figures.expectedReturn.basis)})` : null,
+        realizedReturnWords(figures.realizedReturn),
+      ]
+        .filter(Boolean)
+        .join(" · ") || undefined,
     },
     {
       label: "Positive replies",

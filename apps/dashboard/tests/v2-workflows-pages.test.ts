@@ -153,18 +153,17 @@ describe("v2 workflows: one reading per figure, and runs that say who they wrote
     expect(list).not.toContain("getOfferRevenueByWorkflow(");
   });
 
-  it("states measured and projected in ONE cell, each named, never as a bare 'Est. return'", () => {
+  it("states measured and projected cost in ONE cell, each named, and no return (ROI-CONSISTENCY-1103)", () => {
     expect(page).not.toContain('label="Est. return"');
-    const strip = page.slice(page.indexOf('label="Return, this campaign"'), page.indexOf("<p className=\"k-fg3 mt-2 text-[12px]\">"));
-    // measured: the MATURE half of the served pair, Learning where the producer says so
-    expect(strip).toContain('formatRoi(roi.value, "—")');
-    expect(strip).toContain("formatRoi(ranked.ladder?.roiMultiple");
+    expect(page).not.toContain('label="Return, this campaign"');
+    expect(page).not.toContain("formatRoi");
+    const strip = page.slice(page.indexOf("<DualKpi"), page.indexOf("<p className=\"k-fg3 mt-2 text-[12px]\">"));
     expect(strip).toContain("fmtUsd(ranked.estCostPerOutcomeUsd)");
     expect(strip).toContain("ranked.estLearning ?");
     const dual = page.slice(page.indexOf("function DualKpi("), page.indexOf("function Row("));
     expect(dual).toContain(">measured<");
     expect(dual).toContain(">projected<");
-    expect(page).toContain('title="Return on spend"');
+    expect(page).not.toContain('title="Return on spend"');
   });
 
   it("names each run's lead on the drawer's own key, and a run that wrote nothing does not open", () => {

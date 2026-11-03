@@ -4,13 +4,11 @@ import { modelsByTab } from "../src/lib/research/content-status";
 import { join } from "node:path";
 import {
   fleetWorkflowRows,
-  byServedRoiDesc,
   siblingLineAt,
   campaignWorkflowRows,
   shortWorkflowName,
   placeWords,
   tagsThatFit,
-  servedRoi,
   servedCost,
   lastRunText,
   type FleetRankingRow,
@@ -110,12 +108,6 @@ const half = (spent: number, contacted: number, outcomes: number) => ({
 });
 
 describe("the served figures, as a Research row prints them", () => {
-  it("a measured ROI prints as measured, the pipe's expected one marked expected, none = the producer's reason", () => {
-    expect(servedRoi(measured(4.27))).toEqual({ value: 4.27, expected: false, reason: null });
-    expect(servedRoi({ value: 3.48, basis: "expected", expectedValue: 3.48, unavailableReason: null })).toEqual({ value: 3.48, expected: true, reason: null });
-    expect(servedRoi({ value: null, basis: null, expectedValue: null, unavailableReason: "no_return_on_pipe" })).toEqual({ value: null, expected: false, reason: "no_return_on_pipe" });
-  });
-
   it("a cost per outcome in cents, expected when the producer says so, never Learning", () => {
     expect(servedCost(measured(161.59))).toMatchObject({ cents: 16159, expected: false, learning: false });
     expect(servedCost({ value: 186.36, basis: "expected", expectedValue: 186.36, unavailableReason: null })).toMatchObject({ cents: 18636, expected: true });
@@ -150,10 +142,9 @@ describe("campaignWorkflowRows", () => {
         ladder("b", { rank: 2, maturity: { isMature: false }, estimatesByGrain: { campaign: { isMature: false, flash: half(6, 10, 0), mature: null } } }),
         ladder("c", { rank: 3, maturity: { isMature: true }, estimatesByGrain: { crossOrg: { isMature: true, flash: half(1, 1, 1), mature: half(1, 1, 1) } } }),
       ],
-      roiBySlug: new Map([["a", 3]]),
       recommendedSlug: null,
     });
-    expect(mature).toMatchObject({ slug: "a", mature: true, costPerOutcomeUsd: 10, outcomes: 2, spentUsd: 20, roiMultiple: 3, ran: true });
+    expect(mature).toMatchObject({ slug: "a", mature: true, costPerOutcomeUsd: 10, outcomes: 2, spentUsd: 20, ran: true });
     // Zero outcomes states no price, never the spend as a floor.
     expect(learning).toMatchObject({ slug: "b", mature: false, costPerOutcomeUsd: null, outcomes: 0, spentUsd: 6 });
     // Never run by this campaign: no figures, but the workflow's own verdict is still stated.
@@ -172,7 +163,6 @@ describe("campaignWorkflowRows", () => {
         ladder("raven", { rank: 3, maturity: { isMature: false } }),
         ladder("nobelium", { rank: 4, maturity: { isMature: true } }),
       ],
-      roiBySlug: new Map(),
       recommendedSlug: "azalea",
     });
     expect(out.map((r) => r.slug)).toEqual(["torrent", "concerto", "raven", "nobelium", "azalea"]);
@@ -188,7 +178,6 @@ describe("campaignWorkflowRows", () => {
         ladder("x", { rank: 2, maturity: { isMature: false } }),
         ladder("y", { rank: 3, maturity: { isMature: true } }),
       ],
-      roiBySlug: new Map(),
       recommendedSlug: "dep",
     });
     expect(out.find((r) => r.first)?.slug).toBe("x");
@@ -198,7 +187,6 @@ describe("campaignWorkflowRows", () => {
   it("drops audience rows; no recommendation = no money row", () => {
     const out = campaignWorkflowRows({
       ladderRows: [ladder("a", { rank: 1, maturity: { isMature: false } }), ladder("a", { rank: 1, audienceId: "aud-1" })],
-      roiBySlug: new Map(),
       recommendedSlug: null,
     });
     expect(out.map((r) => r.slug)).toEqual(["a"]);
@@ -210,7 +198,6 @@ describe("campaignWorkflowRows", () => {
   it("keeps an unassigned row the caller passes", () => {
     const out = campaignWorkflowRows({
       ladderRows: [ladder("rhodium", { rank: 1, legAssignment: { state: "unassigned", selectable: false } })],
-      roiBySlug: new Map(),
       recommendedSlug: null,
     });
     expect(out).toHaveLength(1);
@@ -284,7 +271,7 @@ describe("the brand Workflows page states the campaign's own live figures", () =
     expect(page).toContain("<LiveWorkflowHeads />");
     // Rows keep the producer's rank order: no Offer / Brand / Global re-sort.
     expect(page).not.toContain("asc(cost(a.offer)");
-    expect(page).toContain("colSpan={13}");
+    expect(page).toContain("colSpan={12}");
   });
 });
 
@@ -314,15 +301,11 @@ describe("siblingLineAt", () => {
   });
 });
 
-describe("byServedRoiDesc", () => {
-  const row = (slug: string, roi: number | null) => ({ slug, figures: { roi: roi == null ? { value: null, basis: null, expectedValue: null, unavailableReason: "x" } : measured(roi) } as never });
-  it("puts the highest printed ROI first, a row with none last, ties in the producer's order", () => {
-    const out = byServedRoiDesc([row("a", 0.6), row("b", null), row("c", 8.3), row("d", 3.5), row("e", 3.5), row("f", null)]);
-    expect(out.map((r) => r.slug)).toEqual(["c", "d", "e", "a", "b", "f"]);
-  });
-  it("Research sorts each tab with it, and the title counts the live rows", () => {
+describe("Research live workflows: the served order, no return (ROI-CONSISTENCY-1103)", () => {
+  it("each tab keeps the ranking's served order, and the title counts the live rows", () => {
     const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
-    expect(live).toContain("active: byServedRoiDesc(out.active), deprecated: byServedRoiDesc(out.deprecated)");
+    expect(live).not.toContain("byServedRoiDesc");
+    expect(live).toContain("return out;");
     const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
     // Every count is the ACTIVE count, deprecated never counted (owner 2026-10-23), for all three kinds.
     expect(catalog).toContain("count={countOf(kind)}");
@@ -370,12 +353,13 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
   const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
   const thead = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
 
-  it("mark, name, description, tactics, ROI, $/outcome, % conversion, $ spent, last run, status: in that order", () => {
-    const order = ["w-36`}>Workflow</th>", ">Description</th>", "w-28`}>Tactics</th>", "<RoiLabel />", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-24`}>Last run</th>", "w-28`}>Status</th>"];
+  it("mark, name, description, tactics, $/outcome, % conversion, $ spent, last run, status: in that order, no ROI", () => {
+    expect(thead).not.toContain("RoiLabel");
+    const order = ["w-36`}>Workflow</th>", ">Description</th>", "w-28`}>Tactics</th>", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-24`}>Last run</th>", "w-28`}>Status</th>"];
     const at = order.map((h) => thead.indexOf(h));
     for (const i of at) expect(i).toBeGreaterThan(-1);
     expect([...at].sort((x, y) => x - y)).toEqual(at);
-    expect(src).toContain("const COLS = 10;");
+    expect(src).toContain("const COLS = 9;");
   });
 
   it("last run is the ranking row's own, as a short relative time", () => {
@@ -395,11 +379,10 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
     expect(status).toContain('qc.refetchQueries({ queryKey: ["workflowDynastySummaries"] })');
   });
 
-  it("every figure is the ranking row's served `figures`, list and drawer alike: one ROI everywhere", () => {
-    // The legacy multiple read a measured 29x on a workflow with 0 outcomes; `figures.roi` is the one the page shows too.
+  it("every figure is the ranking row's served `figures`, list and drawer alike, never a return", () => {
     expect(src).not.toContain("roiMultiple");
     expect(src).not.toContain("roiDetail");
-    expect(src.match(/<RoiValue roi=\{servedRoi\(r\.figures\.roi\)\} \/>/g)).toHaveLength(2);
+    expect(src).not.toContain("RoiValue");
     expect(src.match(/servedCost\(r\.figures\.costPerOutcomeUsd\)/g)).toHaveLength(2);
     expect(src.match(/<RateValue f=\{r\.figures\.conversionRatePct\} \/>/g)).toHaveLength(2);
     expect(src.match(/<SpentValue f=\{r\.figures\.spentUsd\} \/>/g)).toHaveLength(2);
@@ -504,7 +487,7 @@ describe("Research Templates: the same Tactics as Workflows (TPL-TACTICS-1023)",
   it("the list carries a Tactics column right after the name, the served tactics with their reason", () => {
     const at = catalog.indexOf("<th className={`${TH} w-48`}>Tactics</th>");
     expect(at).toBeGreaterThan(-1);
-    expect(at).toBeLessThan(catalog.indexOf("<RoiLabel />", at));
+    expect(catalog).not.toContain("<RoiLabel />");
     expect(catalog).toContain("<TacticTags tactics={(r as ResearchTemplate).tactics ?? null} reason={(r as ResearchTemplate).tacticsUnavailableReason ?? null} />");
   });
 

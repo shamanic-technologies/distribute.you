@@ -206,30 +206,19 @@ export function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
 
 export interface FleetProof {
   hotLeads: HotLeadStats | null;
-  /** The fleet's median return on spend, over brands past the producer's floor. */
-  medianReturnPerDollar: number | null;
 }
 
 /**
- * What the strip under the card says on each screen. The welcome keeps the
- * founders; each question after it gets one fleet figure, the way the homepage
- * hero states its three. A figure we do not hold falls back to the founders
- * line, never to a blank.
+ * What the strip under the card says on each screen: one fleet COUNT. No fleet return is ever
+ * stated (ROI-CONSISTENCY-1103: the median client ROI is retired from every screen).
  */
-export function reassuranceFor(
-  screen: "outcome" | "returns",
-  proof: FleetProof | null,
-  formatReturn: (x: number) => string,
-): { figure: string; label: string } | null {
+export function reassuranceFor(screen: "outcome", proof: FleetProof | null): { figure: string; label: string } | null {
   if (!proof) return null;
   if (screen === "outcome" && proof.hotLeads) {
     return {
       figure: proof.hotLeads.hotLeads.toLocaleString("en-US"),
       label: `engaged leads for ${proof.hotLeads.companies} companies`,
     };
-  }
-  if (screen === "returns" && proof.medianReturnPerDollar != null) {
-    return { figure: formatReturn(proof.medianReturnPerDollar), label: "median ROI reported" };
   }
   return null;
 }

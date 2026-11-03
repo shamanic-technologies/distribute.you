@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
-import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { TacticTags, TacticsBlock } from "@/components/v2/tactic-tags";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
@@ -71,7 +70,6 @@ import {
   type ResearchTemplate,
   type ResearchTemplateVersion,
   type ResearchWorkflow,
-  researchRoiOf,
   outcomeUnitOf,
   pipeCatalog,
 } from "@/lib/research/research";
@@ -439,7 +437,7 @@ function CatalogList({
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {live ? (
-                <>Every workflow on this pipe, all clients pooled, best ROI first.</>
+                <>Every workflow on this pipe, all clients pooled, in the order the pipe picks them.</>
               ) : (
                 <>
                   Every {words.one} that wrote this pipe&apos;s {posts ? "posts" : "emails"}, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
@@ -499,11 +497,9 @@ function CatalogList({
                         )}
                         {kind === "templates" && (
                           <>
-                            {/* Owner 2026-10-23: Template, Tactics (where Workflows has it), ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status. */}
+                            {/* Owner 2026-10-23: Template, Tactics, % Conversion, $ / outcome, # outcomes, $ Spent, Status. No return below a
+                                campaign's Target (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
                             <th className={`${TH} w-48`}>Tactics</th>
-                            <th className={`${TH} w-24 text-right`}>
-                              <RoiLabel />
-                            </th>
                             {posts ? (
                               <PostHeads />
                             ) : (
@@ -519,10 +515,8 @@ function CatalogList({
                         )}
                         {kind === "models" ? (
                           <>
-                            {/* Owner 2026-10-23: Model, ROI, $ / outcome, % Conversion, # outcomes, $ Spent, Status; 10-24: $ / run left of $ Spent. */}
-                            <th className={`${TH} w-24 text-right`}>
-                              <RoiLabel />
-                            </th>
+                            {/* Owner 2026-10-23: Model, $ / outcome, % Conversion, # outcomes, $ Spent, Status; 10-24: $ / run left of $ Spent.
+                                No return per model (ROI-CONSISTENCY-1103). */}
                             {posts ? (
                               <PostHeads />
                             ) : (
@@ -658,9 +652,6 @@ function CatalogList({
                                   <td className="max-w-0 px-3 py-2">
                                     <TacticTags tactics={(r as ResearchTemplate).tactics ?? null} reason={(r as ResearchTemplate).tacticsUnavailableReason ?? null} />
                                   </td>
-                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                    <TemplateRoi t={r as ResearchTemplate} />
-                                  </td>
                                   {posts ? (
                                     <PostCells p={(r as ResearchTemplate).postFigures} />
                                   ) : (
@@ -682,9 +673,6 @@ function CatalogList({
                               )}
                               {kind === "models" ? (
                                 <>
-                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                    <RowRoi f={r} />
-                                  </td>
                                   {posts ? (
                                     <PostCells p={(r as ResearchModel).postFigures} />
                                   ) : (
@@ -835,29 +823,15 @@ function Header({
 
 function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
   const o = useOutcome(pipe);
-  // ROI only once features-service serves it on the row: no tile otherwise.
-  const roi = researchRoiOf(f);
+  // No return tile: a workflow, template or LLM sits below a campaign's Target (ROI-CONSISTENCY-1103).
   return (
-    <div className={`k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:divide-x ${roi != null ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
-      {roi != null && <Kpi label={<RoiLabel />} value={"show" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}
+    <div className="k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-4 md:divide-x">
       <Kpi label={`Cost / ${o.noun.toLowerCase()}`} value={<Dash v={f.cost} />} />
       <Kpi label="Rate" value={<Dash v={f.rate} />} />
       <Kpi label={o.plural} value={f.outcomes} />
       <Kpi label="Emails" value={f.emails} />
     </div>
   );
-}
-
-/** A template row's served return, as its page's ROI tile prints it; `—` when none is served. */
-function TemplateRoi({ t }: { t: ResearchTemplate }) {
-  return <RowRoi f={t} />;
-}
-
-/** A catalogue row's served return (template, model), as its page's ROI tile prints it; `—` when none is served. */
-function RowRoi({ f }: { f: ResearchFigures }) {
-  const roi = researchRoiOf(f);
-  if (roi == null) return <Dash v={null} />;
-  return "show" in roi ? <RoiValue roi={roi.show} /> : <>{roi.text}</>;
 }
 
 function Charts({ f, topic }: { f: ResearchFigures; topic: "workflow" | "template" | "llm" }) {

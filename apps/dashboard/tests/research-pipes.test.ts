@@ -124,7 +124,7 @@ describe("a pipe is one leg x one channel, and every pipe is the one the file se
     const page = read("apps/dashboard/src/components/v2/research-page.tsx");
     expect(page).not.toContain("Sales path</span>");
     expect(page).not.toContain("All legs</span>");
-    expect(page).toContain("every pipe buys one outcome");
+    expect(page).toContain("Every pipe buys one outcome");
   });
 });
 

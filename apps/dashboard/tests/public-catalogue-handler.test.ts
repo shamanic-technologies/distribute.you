@@ -25,9 +25,7 @@ describe("GET /api/public/catalogue", () => {
     globalThis.fetch = vi.fn(async (input: any) =>
       String(input).includes("/channels")
         ? json({ channels: [{ slug: "sales-cold-email-outreach" }] })
-        : String(input).includes("return-on-spend")
-          ? json({ measured: true, medianReturnPerDollar: 5.2 })
-          : json({}),
+        : json({}),
     ) as any;
 
     const { GET } = await import("../src/app/api/public/catalogue/route");
@@ -37,7 +35,9 @@ describe("GET /api/public/catalogue", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.channels.channels).toHaveLength(1);
-    expect(body.proof.medianReturnPerDollar).toBe(5.2);
+    // The public ROI index is retired (ROI-CONSISTENCY-1103): no fleet median return is read or served.
+    expect(body.proof).not.toHaveProperty("medianReturnPerDollar");
+    expect((globalThis.fetch as any).mock.calls.some((c: any[]) => String(c[0]).includes("return-on-spend"))).toBe(false);
   });
 
   it("502s when the channels read fails, rather than serving an empty list", async () => {
@@ -58,7 +58,6 @@ describe("GET /api/public/catalogue", () => {
     expect(res.status).toBe(200);
     const proof = (await res.json()).proof;
     expect(proof.hotLeads).toBeNull();
-    expect(proof.medianReturnPerDollar).toBeNull();
     expect(proof.showcase).toEqual([]);
   });
 
@@ -114,7 +113,8 @@ describe("GET /api/public/catalogue -- the founder count", () => {
     await GET();
 
     expect(urls(spy).some((u) => u.endsWith("/v1/public/channels"))).toBe(true);
-    expect(urls(spy).some((u) => u.includes("/v1/public/features/return-on-spend"))).toBe(true);
+    // The public ROI index is retired (ROI-CONSISTENCY-1103): the fleet return is no longer read.
+    expect(urls(spy).some((u) => u.includes("return-on-spend"))).toBe(false);
   });
 
   it("serves founders null, not a fabricated count, when that read fails", async () => {

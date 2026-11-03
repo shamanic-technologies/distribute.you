@@ -8,7 +8,6 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 describe("outcome + return-on-spend charts and the pipeline-activity reader", () => {
   const api = read("lib/api.ts");
   const outcome = read("components/revenue/outcome-trend-card.tsx");
-  const roiTrend = read("components/revenue/roi-trend-card.tsx");
   const revenueView = read("lib/revenue-view.ts");
   const revenueParse = read("lib/revenue-parse.ts");
 
@@ -18,7 +17,7 @@ describe("outcome + return-on-spend charts and the pipeline-activity reader", ()
   // floor it asks for in that same message is the fix, and it is the wrapper's own
   // `min-h-[180px]`, so the settled layout is unchanged.
   it("floors the two percentage-height charts so recharts can measure them", () => {
-    for (const src of [outcome, roiTrend]) {
+    for (const src of [outcome]) {
       expect(src).toContain('<ResponsiveContainer width="100%" height="100%" minHeight={180}>');
     }
   });

@@ -7,7 +7,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getModelDynastyOutputs, getTemplateDynastyOutputs, getTemplateOutputs, getWorkflowDynastyOutputs, type ContentPipe, type TemplateOutput, type WorkflowRunOutput } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { Arrow, instantText } from "@/components/v2/research-bits";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { TacticsBlock } from "@/components/v2/tactic-tags";
@@ -21,7 +20,6 @@ import {
   type ResearchPipe,
   type ResearchRef,
   type ResearchTemplate,
-  researchRoiOf,
 } from "@/lib/research/research";
 
 /** The outcome words a panel labels its figures with ("Positive reply", "Positive replies"). */
@@ -89,14 +87,12 @@ export function OutputsList({ read, expanded = false, empty = "Nothing written w
 
 /**
  * The figures a template or a version is listed with: cost per outcome, conversion, outcomes (and
- * emails and invested where asked). ROI only once features-service serves it on the row: no tile
- * otherwise, never a placeholder.
+ * emails and invested where asked). Never a return: a template sits below a campaign's Target
+ * (owner 2026-11-03, ROI-CONSISTENCY-1103).
  */
 export function TemplateFigures({ f, outcome, more = false }: { f: ResearchFigures; outcome: OutcomeWords; more?: boolean }) {
-  const roi = researchRoiOf(f);
   return (
     <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[12px]">
-      {roi != null && <Fig k={<RoiLabel />} v={"show" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}
       <Fig k={`Cost per ${outcome.noun.toLowerCase()}`} v={f.cost} />
       <Fig k="Conversion" v={f.rate} />
       <Fig k={outcome.plural} v={f.outcomes} />

@@ -424,9 +424,9 @@ describe("the panel opens from a row and from the URL", () => {
     // An empty chart reads as a zero, which is the one thing an absent figure must
     // never say.
     expect(PANEL).toContain("hasOutcomeSeries");
-    expect(PANEL).toContain("hasRoiHistory");
     expect(PANEL).toContain("{hasOutcomeSeries && (");
-    expect(PANEL).toContain("{hasRoiHistory && !inline && (");
+    // No return curve per workflow (ROI-CONSISTENCY-1103).
+    expect(PANEL).not.toContain("RoiTrendCard");
   });
 
   it("marks the grain the NUMBERS came from, not the provenance LABEL", () => {

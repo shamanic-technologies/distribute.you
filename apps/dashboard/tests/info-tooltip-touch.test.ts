@@ -61,18 +61,7 @@ describe("InfoTooltip — usable with a thumb", () => {
   it("leaves no native-title info tip behind on the surfaces it replaced", () => {
     // Each of these shipped an InformationCircleIcon + `title=` + `cursor-help`,
     // i.e. an (i) that showed nothing at all on a touch device.
-    const migrated = [
-      "src/components/strategy/best-model-card.tsx",
-    ];
-    for (const rel of migrated) {
-      const body = fs.readFileSync(path.join(root, rel), "utf-8");
-      expect(body, `${rel} should import the shared primitive`).toContain(
-        'from "@/components/visibility/metric-info"',
-      );
-      // `cursor-help` was the tell of a hand-rolled native-title tip; the primitive
-      // owns that class now, so no call site should still carry it.
-      expect(body, `${rel} still hand-rolls a native-title tip`).not.toContain("cursor-help");
-    }
+    // best-model-card.tsx was the migrated surface; it is deleted (ROI-CONSISTENCY-1103).
     // The card that replaced the per-funnel one carries no (i) of its own, and
     // must not grow a hand-rolled one either.
     const campaigns = fs.readFileSync(

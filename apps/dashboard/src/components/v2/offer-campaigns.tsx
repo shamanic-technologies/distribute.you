@@ -8,9 +8,8 @@ import {
   getBrand,
   setCampaignStatus,
 } from "@/lib/api";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { shownReturn, type StatBasis } from "@/lib/maturity";
+import type { StatBasis } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -24,14 +23,11 @@ import { createCampaignForPair, startReactiveCampaign } from "@/lib/start-pair";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
-import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
-import { ChannelChip, ExpectedLabel } from "@/components/v2/offer-sales-paths";
+import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { featureLegId } from "@/lib/outbound-leg-key";
 import { EmptyNote, HoverScroll, MarkLines, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { ProviderLogo } from "@/components/provider-logo";
-import { roiToShow } from "@/lib/expected-return";
-import { ROI_TIP, RoiValue } from "@/components/v2/roi-label";
 
 /**
  * The offer's CAMPAIGNS (owner 2026-10-05): every channel x leg its sales paths use, with
@@ -88,13 +84,10 @@ export function OfferCampaigns({
     return m;
   }, [records, offerId]);
   const running = (c: OfferCampaign) => campaignByKey.get(campaignKey(c.featureSlug, c.legKey))?.running ?? false;
-  const measuredRoi = (c: OfferCampaign) => {
-    const m = campaignByKey.get(campaignKey(c.featureSlug, c.legKey));
-    return m ? shownReturn(m.row.revenue?.economicsMaturity, basis).value : null;
-  };
+  // No per-pipe return is shown (ROI-CONSISTENCY-1103): the order is on, then proactive first.
   const sorted = useMemo(
-    () => sortCampaigns(campaigns, running, results ? measuredRoi : undefined),
-    [campaigns, campaignByKey, results, basis], // eslint-disable-line react-hooks/exhaustive-deps
+    () => sortCampaigns(campaigns, running, () => null),
+    [campaigns, campaignByKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
   // A campaign the offer ran that features-service no longer lists (its channel or leg
   // left the offer): still one of the offer's campaigns, read only, opening its page.
@@ -128,17 +121,13 @@ export function OfferCampaigns({
       ) : (
         <div className="k-card overflow-hidden">
           <div className="k-scroll overflow-x-auto">
-            <table className={`w-full text-[13px] ${results ? "min-w-[1180px]" : "min-w-[880px]"}`}>
+            <table className={`w-full text-[13px] ${results ? "min-w-[940px]" : "min-w-[780px]"}`}>
               <thead>
                 {results ? (
                   <tr className="k-line-subtle border-b">
                     <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
                     <th className="k-label px-3 py-2.5 text-left font-normal">Type</th>
-                    <th className="k-label px-3 py-2.5 text-right font-normal">
-                      <ExpectedLabel tip={ROI_TIP}>ROI</ExpectedLabel>
-                    </th>
                     <th className="k-label px-3 py-2.5 text-right font-normal"># Outcomes</th>
-                    <th className="k-label px-3 py-2.5 text-right font-normal">$ Value</th>
                     <th className="k-label px-3 py-2.5 text-right font-normal">$ / Outcome</th>
                     <th className="k-label px-3 py-2.5 text-right font-normal">$ Invested</th>
                     <th className="k-label w-[130px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
@@ -148,9 +137,6 @@ export function OfferCampaigns({
                     <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
                     <th className="k-label px-3 py-2.5 text-left font-normal">Works</th>
                     <th className="k-label px-3 py-2.5 text-left font-normal">Type</th>
-                    <th className="k-label px-3 py-2.5 text-right font-normal">
-                      <ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>
-                    </th>
                     <th className="k-label w-[150px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
                   </tr>
                 )}
@@ -313,18 +299,7 @@ function CampaignRow({
       <td className="px-3 py-2">
         <CampaignModeChip catalogue={catalogue} featureSlug={campaign.featureSlug} legKey={campaign.legKey} reactive={campaign.reactive} />
       </td>
-      {results ? (
-        <CampaignResultCells record={record} basis={basis} />
-      ) : (
-        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(campaign.roi) ? "text-[var(--run)]" : ""}`}>
-          {campaign.roi == null && campaign.roiUnavailable ? (
-            // The served reason in words, readable on touch (a title= is not).
-            <span className="k-fg3 text-[12px] font-normal">{campaign.roiUnavailable}</span>
-          ) : (
-            formatRoi(campaign.roi)
-          )}
-        </td>
-      )}
+      {results && <CampaignResultCells record={record} basis={basis} />}
       <td className="px-3 py-2 pr-4 text-right" onClick={stop}>
         <CampaignStatus
           brandId={brandId}
@@ -343,22 +318,17 @@ function CampaignRow({
 const DASH = <span className="k-fg4">—</span>;
 
 /**
- * A campaign's own results, as its campaign page states them (owner 2026-10-08): ROI,
- * outcomes, value, cost per outcome, money in. Every figure is a served field of the
+ * A campaign's own results (owner 2026-10-08): outcomes, cost per outcome, money in. No
+ * return and no pipeline value below a Target (ROI-CONSISTENCY-1103). Every figure is a served field of the
  * campaign's features-service row (the campaigns read); nothing is computed here. A
  * campaign that never ran has none of them yet.
  */
 export function CampaignResultCells({ record, basis }: { record: V2Campaign | null; basis: StatBasis }) {
   const g = record?.row.revenue;
-  // Learning unless mature, or already above 1x to date (lib/maturity.ts shownReturn): the campaign page's ROI tile.
-  const roi = shownReturn(g?.economicsMaturity, basis);
   const outcome = record ? outcomeCount(record) : null;
   const cost = record ? costPerResult(record, basis) : null;
   return (
     <>
-      <td className="px-3 py-2 text-right font-semibold tabular-nums">
-        {!record ? DASH : <RoiValue roi={roiToShow(roi, g?.expectedReturn)} learning={roi.learning} />}
-      </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {outcome ? (
           <>
@@ -368,7 +338,6 @@ export function CampaignResultCells({ record, basis }: { record: V2Campaign | nu
           DASH
         )}
       </td>
-      <td className="px-3 py-2 text-right tabular-nums">{g?.totalPipelineUsd != null ? formatUsdAdaptive(g.totalPipelineUsd) : DASH}</td>
       <td className="px-3 py-2 text-right tabular-nums">
         {cost ? cost.unit ? cost.value : <span className="k-chip">{cost.value}</span> : DASH}
       </td>

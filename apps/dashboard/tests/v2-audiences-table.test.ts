@@ -57,9 +57,9 @@ const stats = (
   }) as unknown as FeatureAudienceStatsRow;
 
 describe("audience table model", () => {
-  it("offer grain states money, never a leg's step pair", () => {
+  it("offer grain states money spent, never a per-audience return (ROI-CONSISTENCY-1103)", () => {
     const cols = audienceColumns({ ...OFF, brandLevelMoney: true }).map((c) => c.col);
-    expect(cols).toEqual(["roi", "cacPct", "cacUsd", "invested", "outreach", "remaining", "size"]);
+    expect(cols).toEqual(["invested", "outreach", "remaining", "size"]);
   });
 
   it("campaign grain states its leg's pair, then $ Invested left of Outreach", () => {
@@ -73,12 +73,6 @@ describe("audience table model", () => {
     expect(audienceFigure("cppr", stats(3, 700, true), "mature")).toEqual({ value: 700, learning: false });
     expect(audienceFigure("cppr", undefined, "mature")).toEqual({ value: null, learning: false });
     expect(audienceFigure("outreach", stats(0, null), "mature")).toEqual({ value: null, learning: false });
-  });
-
-  it("states the MATURE money off the projection pair, never the legacy projection", () => {
-    expect(audienceFigure("roi", stats(3, 700), "mature").value).toBe(2.5);
-    expect(audienceFigure("cacPct", stats(3, 700), "mature").value).toBe(40);
-    expect(audienceFigure("cacUsd", stats(3, 700), "flash").value).toBe(300);
   });
 
   it("learning rows sink below measured ones, ordered by the count they divide by", () => {
@@ -181,13 +175,12 @@ describe("v2 audience table surface", () => {
     }
   });
 
-  it("carries no v1 class family and no per-header tooltip but the ROI one", () => {
+  it("carries no v1 class family and no per-header tooltip (no ROI column left)", () => {
     for (const src of [table, hook]) {
       expect(src).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl|bg-white/);
     }
-    // The only (i) is the ROI column's expected one (owner 2026-10-11).
-    expect(table.match(/<InfoTooltip /g)?.length).toBe(1);
-    expect(table).toContain('{col === "roi" && <InfoTooltip tip={ROI_TIP} placement="bottom" />}');
+    expect(table).not.toContain("<InfoTooltip ");
+    expect(table).not.toContain('"roi"');
     expect(hook).not.toContain("InfoTooltip");
   });
 

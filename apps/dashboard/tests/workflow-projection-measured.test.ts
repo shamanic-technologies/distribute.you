@@ -157,10 +157,6 @@ describe("the filter runs at the ONE reader boundary", () => {
     };
     walk(dir);
     expect(hits.map((h) => path.relative(dir, h)).sort()).toEqual([
-      // A THIRD producer's field under the same name (see `lib/start-proof.ts`
-      // below): the pre-signup catalogue route branches on `return-on-spend`'s
-      // `measured` for the fleet median. Not a projection row.
-      "app/api/public/catalogue/route.ts",
       // The SECOND reader of the same endpoint, and the one surface that legitimately
       // needs the unmeasured rows: the campaign Workflows table ranks on the producer's
       // own ladder, and "this exists and you have not tried it" is an answer a customer

@@ -32,7 +32,6 @@ import { CompanyMark } from "@/components/v2/people-bits";
 import { useCampaigns } from "@/components/v2/use-campaigns";
 import { pipeParam, useBrandCampaignSpecs, useCampaignWorkflowRanking, type CampaignSpec } from "@/components/v2/workflows-data";
 import { formatCentsAsUsdAdaptive, formatUsdAdaptive } from "@/lib/format-number";
-import { formatRoi } from "@/lib/format-roi";
 import { friendlyDateTime } from "@/lib/friendly-datetime";
 import {
   audienceRowsFor,
@@ -42,7 +41,7 @@ import {
   type WorkflowGrainBlock,
   type WorkflowLadderRowShape,
 } from "@/lib/workflow-grains";
-import { workflowOutcomeCost, workflowOutcomeCount, workflowRoi } from "@/lib/campaign-workflow-rows";
+import { workflowOutcomeCost, workflowOutcomeCount } from "@/lib/campaign-workflow-rows";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
@@ -154,7 +153,6 @@ export function V2WorkflowPage() {
     // What THIS campaign measured, as the MATURE half of the served pair (Learning where
     // the producer says so); the projected half beside it is the served ranking.
     const cost = workflowOutcomeCost(row, basis);
-    const roi = workflowRoi(row, basis);
     body = (
       <>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
@@ -196,12 +194,8 @@ export function V2WorkflowPage() {
         {/* Keel's Commit / Best case: what this campaign MEASURED leads, what the
             ranking PROJECTS sits under it, each named, so the two are never read as
             one figure. Both are served (grouped revenue and the ranking ladder). */}
-        <div className="k-card mt-5 grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-3 md:divide-x md:divide-y-0">
-          <DualKpi
-            label="Return, this campaign"
-            measured={roi.learning ? <span className="k-chip">Learning</span> : formatRoi(roi.value, "—")}
-            projected={ranked.estLearning ? <span className="k-chip">Learning</span> : formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
-          />
+        {/* No return: a workflow sits below the campaign's Target (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
+        <div className="k-card mt-5 grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-2 md:divide-x md:divide-y-0">
           <DualKpi
             label={`Cost / ${noun.toLowerCase()}`}
             measured={cost.learning ? <span className="k-chip">Learning</span> : cost.value == null ? "—" : formatCentsAsUsdAdaptive(cost.value)}
@@ -528,15 +522,12 @@ function AudiencesCard({
   );
 }
 
-// ─── Cost, value and return over time ──────────────────────────────────────
+// ─── Cost over time ────────────────────────────────────────────────────────
 
 /**
- * Three curves over time for this workflow across ALL client orgs (the fleet), on THIS
- * pipe's leg only: cumulative cost, cumulative pipeline value, and their ratio, each as
- * features-service states it. The leg narrows both spend and value to the campaigns that
- * perform it, so a reply-led pipe never shows a visit-led campaign's value (prod
- * 2026-09-27: $1,080 of maelstrom's $1,089 came from a start_to_website_visit campaign
- * while the page was open on start_to_conversation).
+ * The cumulative cost of this workflow across ALL client orgs (the fleet), on THIS pipe's leg
+ * only, as features-service states it. Its pipeline value and a return on spend are not drawn:
+ * a workflow sits below a campaign's Target (owner 2026-11-03, ROI-CONSISTENCY-1103).
  * The fleet is the grain where a workflow has a history (on one brand it is 0 to 2 days),
  * and it is the grain the table's Global column speaks. No org is named. Nothing is
  * divided here; a day the producer states no figure for is left out of that chart.
@@ -544,7 +535,7 @@ function AudiencesCard({
  * USER COST (default, everyone on the beta list) is what clients were billed, net.
  * ACTUAL COST (STAFF only) is the same curve costed at what the vendors charged us before
  * our markup. It reveals our margin, so the switch is offered to the staff list alone and
- * the gateway refuses anyone else. The value curve is the same on both bases.
+ * the gateway refuses anyone else.
  */
 function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKey: string; dynasty: string }) {
   // The basis is the page's (the switch in the top bar), shared with every cost page.
@@ -571,11 +562,8 @@ function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKe
     t: Date.parse(`${d.date}T00:00:00Z`),
     date: d.date,
     spend: d.cumulativeSpendUsd,
-    value: d.cumulativePipelineUsd,
-    roi: d.roiMultiple,
   }));
   const spendPoints = points.filter((p) => p.spend != null);
-  const roiPoints = points.filter((p) => p.roi != null);
   const unpriced = actual ? actualQ.data?.unpricedBilledCostUsd ?? 0 : 0;
   const unpricedFrom = actual ? actualQ.data?.unpricedFromDate ?? null : null;
   const unreadable = actual
@@ -593,10 +581,12 @@ function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKe
       {unpriced > 0 && (
         <p className="k-fg3 mb-2 text-[12px]">
           {formatUsdAdaptive(unpriced)} of billed spend
-          {unpricedFrom ? ` from ${unpricedFrom}` : ""} has no known vendor cost, so the actual cost and return stop there.
+          {unpricedFrom ? ` from ${unpricedFrom}` : ""} has no known vendor cost, so the actual cost stops there.
         </p>
       )}
-      <div className="grid gap-3 md:grid-cols-3">
+      {/* Cost only: its pipeline value and a return on spend are retired below a campaign's Target
+          (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
+      <div className="grid gap-3">
         <ChartCard
           title="Cost to run it"
           note={actual ? "What the vendors charged us, before our margin, to date." : "What all clients were billed for it, to date."}
@@ -605,24 +595,6 @@ function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKe
           data={spendPoints}
           dataKey="spend"
           format={formatUsdAdaptive}
-        />
-        <ChartCard
-          title="Value generated"
-          note="The pipeline value its outcomes are worth, to date."
-          pending={pending}
-          failed={failed}
-          data={points}
-          dataKey="value"
-          format={formatUsdAdaptive}
-        />
-        <ChartCard
-          title="Return on spend"
-          note={actual ? "Value divided by what it actually cost us." : "Value divided by what was billed."}
-          pending={pending}
-          failed={failed}
-          data={roiPoints}
-          dataKey="roi"
-          format={(v) => formatRoi(v, "—")}
         />
       </div>
     </section>
@@ -642,8 +614,8 @@ function ChartCard({
   note: string;
   pending: boolean;
   failed: boolean;
-  data: { t: number; date: string; spend: number | null; value: number; roi: number | null }[];
-  dataKey: "spend" | "value" | "roi";
+  data: { t: number; date: string; spend: number | null }[];
+  dataKey: "spend";
   format: (v: number) => string;
 }) {
   const last = data.length ? data[data.length - 1][dataKey] : null;

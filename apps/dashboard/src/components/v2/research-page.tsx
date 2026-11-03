@@ -729,8 +729,8 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
               </p>
             )}
             <p className="k-fg2 mt-2 text-[12px] leading-5">
-              ROI is read as the cost per outcome: every pipe buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
-              emails that carried a link.
+              Every pipe buys one outcome, so a pipe is read on its cost per outcome, never a return: the cheaper outcome is the better pipe. A website
+              visit is priced on the emails that carried a link.
             </p>
             {emailLeg && (
               <p className="k-fg2 mt-2 text-[12px] leading-5">

@@ -645,9 +645,10 @@ describe("monitoring: absorbed costs (owner 2026-10-13)", () => {
     expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffCustomerHealth"');
     expect(read("components/v2/monitoring-page.tsx")).toContain('useAuthQuery(["staffCustomerHealth"], getStaffCustomerHealth');
     const view = read("components/v2/monitoring-accounts.tsx");
-    // A multi-brand customer never reads a blended ROI: the panel lists each brand.
+    // A multi-brand customer never reads a blended figure: the panel lists each brand.
     expect(view).toContain("brands.length === 1 ? brands[0] : null");
-    expect(view).toContain("<RoiLabel />");
+    // No pipeline-based ROI on the staff Accounts board (ROI-CONSISTENCY-1103).
+    expect(view).not.toContain("roiMultiple");
   });
 
   it("an org with no brand row yet (no badge, no budget) parses: one such org never blanks the whole Accounts page", () => {

@@ -23,7 +23,7 @@
  * only) so it carries real unit tests.
  */
 
-import type { CostToShow, RoiToShow } from "./expected-return";
+import type { CostToShow } from "./expected-return";
 
 /**
  * A workflow's distinctive name: its channel's name dropped from the front ("Sales Cold Email
@@ -48,7 +48,6 @@ export interface LiveWorkflowRow {
   color?: string | null;
   rank: number | null;
   costPerOutcomeUsd: number | null;
-  roiMultiple: number | null;
   conversionRatePct: number | null;
   outcomes: number | null;
   spentUsd: number | null;
@@ -146,7 +145,6 @@ export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): ResearchWor
       color: r.color ?? null,
       rank: r.rank,
       costPerOutcomeUsd: r.costPerOutcomeUsd,
-      roiMultiple: r.roiMultiple,
       conversionRatePct: r.conversionRatePct,
       outcomes: r.outcomes,
       spentUsd: r.spentUsd,
@@ -176,26 +174,7 @@ export function siblingLineAt(s: { siblingLine: string | null; siblingLines: rea
   return s.siblingLines.find((l) => l.legKey === legKey)?.line ?? s.siblingLine;
 }
 
-/**
- * Research's table order (owner 2026-10-23: « mets par ROI desc »): the ROI each row PRINTS (served
- * `figures.roi.value`, measured or expected), highest first; a row with none last; ties keep the
- * producer's order. Sorts served values, computes nothing.
- */
-export function byServedRoiDesc<T extends { figures: WorkflowFigures }>(rows: readonly T[]): T[] {
-  return [...rows].sort((a, b) => {
-    const x = a.figures.roi.value;
-    const y = b.figures.roi.value;
-    if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
-    return y - x;
-  });
-}
-
-/** The ROI a Research row prints: the served figure, marked expected when it is the pipe's, never computed here. */
-export function servedRoi(f: ServedFigure): RoiToShow {
-  return { value: f.value, expected: f.value != null && f.basis === "expected", reason: f.value == null ? f.unavailableReason : null };
-}
-
-/** The cost per outcome a Research row prints, in cents, read like `servedRoi`. */
+/** The cost per outcome a Research row prints, in cents: the served figure, marked expected when it is the pipe's. */
 export function servedCost(f: ServedFigure): CostToShow {
   return { cents: f.value == null ? null : Math.round(f.value * 100), expected: f.value != null && f.basis === "expected", learning: false, expectedCents: null };
 }
@@ -250,12 +229,10 @@ interface HalfFigures {
  * The brand's Workflows page, one campaign: every ladder row the caller passes, in the producer's
  * rank for this campaign.
  *
- * `roiBySlug` is the campaign's realized return per workflow (its own grouped revenue read).
  * `recommendedSlug` is the producer's pick for the campaign: the row the money goes to.
  */
 export function campaignWorkflowRows(input: {
   ladderRows: readonly CampaignLadderRow[];
-  roiBySlug: ReadonlyMap<string, number | null>;
   recommendedSlug: string | null;
 }): LiveWorkflowRow[] {
   const out: LiveWorkflowRow[] = [];
@@ -273,7 +250,6 @@ export function campaignWorkflowRows(input: {
       name: r.workflow.workflowDynastyName ?? null,
       rank: r.rank ?? null,
       costPerOutcomeUsd: half?.costPerOutcomeUsd ?? null,
-      roiMultiple: input.roiBySlug.get(slug) ?? null,
       conversionRatePct: half?.conversionRatePct ?? null,
       outcomes: half ? half.outcomes : null,
       spentUsd: half?.spentUsd ?? null,
