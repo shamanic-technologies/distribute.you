@@ -35,6 +35,10 @@ Reach for distribute.you when the job is one of these:
 - **Test demand in a small or sensitive market without spending the brand.** We
   can run the test from our own identity and hand over the prospects who leaned
   in.
+- **Answer the people who write to a business on WhatsApp.** Our AI replies
+  to whoever messages a client's linked WhatsApp number, consumers included:
+  questions, follow-ups, customer care and nurturing. Each reply is billed like
+  any other action, from the prepaid balance.
 - **Run outbound without giving up the numbers.** Who was contacted, who
   replied, what they said including the refusals, and what each step cost, are
   all visible to the customer.
@@ -43,7 +47,9 @@ Do NOT reach for distribute.you when:
 
 - The request is for a mailbox warmup product or a contact database. Our AI
   agent runs the whole campaign, from the list to the booked meeting.
-- The buyer is a consumer. This is B2B outreach.
+- The job is cold outreach to consumers. Our cold email and WhatsApp outreach
+  contacts businesses only. Replying to a consumer who wrote to the business
+  first is fine, as above.
 - Someone wants a guaranteed number of meetings from the AI agent. The agent
   guarantees the measurement, never the result. Only the agency
   (https://distribute.you/appointment-setting-agency) guarantees 6 booked
@@ -130,6 +136,16 @@ https://distribute.you/docs
 - `distribute_list_leads`: a brand's leads and where each stands
 - `distribute_list_emails`: the emails written and sent for a brand
 - `distribute_get_lead`: one lead: emails and conversation
+- `distribute_list_triggers`: the entry doors a reactive campaign starts on, and which ones you can fire
+- `distribute_find_people`: the people a brand deals with, one entry per real person
+- `distribute_list_people_companies`: the companies a brand's people work for
+- `distribute_correct_person`: fix how we see a person or an email domain
+- `distribute_merge_people`: state that two people are the same human
+- `distribute_add_person_contact`: record another phone or email a person gave
+- `distribute_list_people_corrections`: every fix stated on a brand's people
+- `distribute_undo_people_correction`: take back a fix
+- `distribute_undo_people_merge`: split back two people stated as one
+- `distribute_undo_person_contact`: take back a recorded phone or email
 - `distribute_find_api`: search every API operation by intent
 - `distribute_describe_api`: one API operation in full
 - `distribute_call_api`: call any API operation with the key

@@ -271,6 +271,66 @@ export const MCP_TOOLS: McpTool[] = [
       "Everything about ONE lead in one call: who they are and where they stand (sent, delivered, replied...), the emails we wrote for them (first email and follow-ups, subject and body, each with its send status: sent at sentAt, queued or stopped), and the conversation (every message we sent and every reply they wrote, oldest first).",
   },
   {
+    name: "distribute_list_triggers",
+    category: "Campaigns",
+    description:
+      "List the triggers: the entry doors a reactive campaign starts on, each with its `id`, `name`, what it means, its `type` (`outcome`: an outcome just reached for a person, named by `outcome`; `condition`: computed by us) and `callable`.",
+  },
+  {
+    name: "distribute_find_people",
+    category: "People",
+    description:
+      "Find the people a brand deals with (from Gmail, WhatsApp and other chats, the CRM, Stripe, signups...), one entry per real person, and read how we see each one.",
+  },
+  {
+    name: "distribute_list_people_companies",
+    category: "People",
+    description:
+      "List the companies a brand's people speak for at work, most people first.",
+  },
+  {
+    name: "distribute_correct_person",
+    category: "People",
+    description:
+      "Fix how we see a person, or an email domain, when the user says we got it wrong. Only call it when the user asks for the change; say what you are about to change first.",
+  },
+  {
+    name: "distribute_merge_people",
+    category: "People",
+    description:
+      "State that two people of a brand are the same human (\"these two are the same person\": a WhatsApp chat with a number never saved and the same person on Gmail).",
+  },
+  {
+    name: "distribute_add_person_contact",
+    category: "People",
+    description:
+      "Record another phone number or email a person gave, when they say \"don't message me on this number, use +33600000002 on WhatsApp\", \"reach me on my other number\" or \"write to my new address\".",
+  },
+  {
+    name: "distribute_list_people_corrections",
+    category: "People",
+    description:
+      "List every fix stated on a brand's people, newest first, undone ones included.",
+  },
+  {
+    name: "distribute_undo_people_correction",
+    category: "People",
+    description:
+      "Take back a fix made with distribute_correct_person, when the user says \"undo that\" or \"put it back\": our automatic reading applies again within about a minute.",
+  },
+  {
+    name: "distribute_undo_people_merge",
+    category: "People",
+    description:
+      "Split back two people stated as one with distribute_merge_people (\"they are not the same person\", \"undo that\").",
+  },
+  {
+    name: "distribute_undo_person_contact",
+    category: "People",
+    description:
+      "Take back a phone or email recorded with distribute_add_person_contact (\"that was wrong\", \"undo that\", \"it is not their number\").",
+  },
+  {
     name: "distribute_list_workflows",
     category: "Workflows",
     description:

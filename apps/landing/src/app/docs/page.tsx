@@ -32,7 +32,8 @@ ${agentQuickstartMarkdown()}
 ## What is distribute.you?
 Revenue made easy. Cold email outreach run for you, reachable from one API.
 distribute.you finds the leads, writes and sends the email, qualifies the replies
-and passes the interested ones to you.
+and passes the interested ones to you. Our AI also answers on WhatsApp whoever
+writes to your business, consumers included.
 
 ## What it does
 ${channelList}
@@ -82,9 +83,14 @@ export default function DocsHome() {
       <div className="prose">
         <h2>What is distribute.you?</h2>
         <p>
-          distribute.you is an AI-powered cold email platform. One account, one API. Give it
+          distribute.you runs cold email outreach for you with AI. One account, one API. Give it
           your website and the offer you sell; it handles sending infrastructure,
           deliverability, reply qualification, and what each result cost you.
+        </p>
+        <p>
+          Our AI also answers on WhatsApp whoever writes to your business, consumers
+          included: questions, follow-ups and customer care. Cold outreach goes to
+          businesses only.
         </p>
         <p>What we do:</p>
         <ul>
