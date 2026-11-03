@@ -19,8 +19,6 @@ const stats = (kind: "fleet" | "brand" | "offer", history: PipeStats["history"])
       costPerOutcomeUsd: 2,
       costPerOutcomeUnavailableReason: null,
       valuePerOutcomeUsd: 50,
-      roi: 25,
-      roiUnavailableReason: null,
       history,
     },
   }).stats;
@@ -41,7 +39,7 @@ describe("pipe stats reader", () => {
   });
 
   it("merges scopes by day and leaves a missing point absent, never 0", () => {
-    const p = (date: string, cpo: number | null) => ({ date, spendUsd: 1, volumes: { outcomes: 1 }, costPerOutcomeUsd: cpo, roi: null });
+    const p = (date: string, cpo: number | null) => ({ date, spendUsd: 1, volumes: { outcomes: 1 }, costPerOutcomeUsd: cpo });
     const rows = mergeHistories(
       { fleet: stats("fleet", [p("2026-09-02", 3), p("2026-09-01", 4)]), brand: stats("brand", [p("2026-09-02", 5), p("2026-09-03", null)]) },
       (x) => x.costPerOutcomeUsd,
@@ -66,11 +64,10 @@ describe("pipe conversion rates", () => {
         volumes: [],
         spendUsd: 1,
         costPerOutcomeUsd: null,
-        roi: null,
         conversionRates: [
           { key: "handed_to_actedOn", fromKey: "handed", toKey: "actedOn", label: "Positive reply received → Acted on", numerator: 10, denominator: 16, ratePct: 62.5, unavailableReason: null },
         ],
-        history: [{ date: "2026-10-12", spendUsd: 1, volumes: {}, costPerOutcomeUsd: null, roi: null, conversionRates: { handed_to_actedOn: 62.5 } }],
+        history: [{ date: "2026-10-12", spendUsd: 1, volumes: {}, costPerOutcomeUsd: null, conversionRates: { handed_to_actedOn: 62.5 } }],
       },
     }).stats;
     expect(s.conversionRates?.[0].ratePct).toBe(62.5);
@@ -98,7 +95,6 @@ describe("same step, other pipes", () => {
         ],
         spendUsd: 0,
         costPerOutcomeUsd: null,
-        roi: null,
         conversionRates: [{ key: "reachedFrom_to_outcomes", fromKey: "reachedFrom", toKey: "outcomes", label: "x", numerator: null, denominator: null, ratePct: null, unavailableReason: "volume_not_measured" }],
         teamSource: { available: false, unavailableReason: "from_step_not_recorded", fromSources: [], toSources: [] },
         history: [],
@@ -166,7 +162,6 @@ describe("pipe periods (PIPE-PERIODS-1012)", () => {
         volumes: [],
         spendUsd: null,
         costPerOutcomeUsd: null,
-        roi: null,
         history: [],
         periods: p,
         teamImpact: impact,

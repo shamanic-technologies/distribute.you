@@ -160,7 +160,6 @@ const PipeStatsPointSchema = z
     spendUsd: z.number().nullable(),
     volumes: z.record(z.string(), z.number().nullable()),
     costPerOutcomeUsd: z.number().nullable(),
-    roi: z.number().nullable(),
     // PIPE-RATES-1012: the same rates as they stood that day, cumulative, percent.
     conversionRates: z.record(z.string(), z.number().nullable()).optional(),
   })
