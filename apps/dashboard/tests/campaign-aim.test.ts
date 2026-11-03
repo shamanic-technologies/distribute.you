@@ -73,6 +73,19 @@ describe("the client campaign page", () => {
   });
 });
 
+describe("an outcome named as a label wears its icon (owner 2026-11-03: « alway put the icone of the outcome you name »)", () => {
+  it("the Goal card draws the Target's StepMark and no « What it orders » caption", () => {
+    const aim = read("components/v2/campaign-aim.tsx");
+    expect(aim).toContain("<StepMark stepKey={campaign.target}");
+    expect(aim).not.toContain("What it orders");
+  });
+  it("the Campaigns list row, Milestones, Plan, Strategy and Scripts headings draw it too", () => {
+    expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<StepMark stepKey={campaign.target}");
+    const factory = read("components/v2/factory-campaign.tsx");
+    for (const key of ["r.step", "node.outcome", "p.outcome", "stepKey"]) expect(factory).toContain(`<StepMark stepKey={${key}}`);
+  });
+});
+
 describe("a campaign whose outcome has no value of its own (features-service outcome_unvalued)", () => {
   it("prints a dash, never a negative ROI", () => {
     expect(unpricedWords("outcome_unvalued")).toBe("—");
