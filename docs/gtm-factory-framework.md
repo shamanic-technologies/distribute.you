@@ -59,12 +59,12 @@ flowchart LR
 
 **The ICP is an outcome like any other.** An ICP is a plain sentence, written by the client or by an AI. Several ICPs compete as Units of the brand. A judge reads who fits a sentence: an AI in production, the hidden truth in the simulator.
 
-**The market is Start.** A market has a finite size. A script that sources leads draws people its source covers; when its reserve empties, its conversion rate falls and budget moves elsewhere by itself.
+**The market is Start.** A market has a finite size. A script that sources leads draws people its source covers; when its reserve empties, its yield falls and budget moves elsewhere by itself.
 
 ## 3. The six decisions
 
 1. **One Engine per outcome.** An Engine makes one outcome; competing scripts in dynasties perform it. A script makes one outcome and may consume any outcomes. The only pick left is the script, inside the Engine of an outcome: the best value per dollar among the scripts the strategy keeps.
-2. **No written manifest.** A script is code: it calls its Providers at run time. The outcomes it needs (its **materials**, for the Plan, costs and return) are read from its code: each `ctx.get("...")` names one, always a literal, and a test enforces it. Then the ledger measures what each run consumed, and an unexpected call joins the list. No judge is needed.
+2. **No written manifest.** A script is code: it calls its Providers at run time. The outcomes it needs (its **materials**, for the Plan, costs and return) are read from its code: each `ctx.get("...")` names one, always a literal, and a test enforces it. They form its **bill of materials (BOM)**: the inputs a script consumes and the quantity of each per Unit produced, loss included. Then the ledger measures what each run consumed, and an unexpected call joins the list. No judge is needed.
 3. **Provider and Engine.** A Provider offers one function, `get()`, with no argument: it returns the most recent Unit of its outcome this caller has not received yet, for the caller's context (the run's subject, its company, its brand, or the run itself), from the stock, else by ordering one from the Engine. "Already received" is the ledger's record of consumption. One exception: when the brand holds several competing versions of an input (ICPs, templates), the Provider puts them against each other and the Rating picks one per run. That is how a new version proves itself against the old ones. An Engine offers `pull()` and `push(unit)`, and always makes a new piece. `pull()` makes one piece for a context, down from the Target. `push(unit)` makes the next outcome from a Unit that landed, up toward the Target.
 4. **Freshness is the script's job.** A script unhappy with what it got calls `get()` again, and a new piece is made, as long as the run's budget lasts.
 5. **The names.** Engine, Provider, Plan, Track.
@@ -158,7 +158,7 @@ A **strategy** is a set of conditions on tactics: equals, in a list, within a ra
 
 ## 7. The ledger is the common stock
 
-Every Unit, from whoever performed it, lands in one stock. Several scripts feed one outcome: an interested lead found by our reply judge and one who signed up on the website sit side by side, and the booking script serves itself from both. A campaign never takes, for a subject it holds, the work in progress of another campaign.
+Every Unit, from whoever performed it, lands in one stock. Several scripts feed one outcome: an interested lead found by our reply judge and one who signed up on the website sit side by side, and the booking script serves itself from both. A campaign never takes, for a subject it holds, the work in progress (WIP, section 12) of another campaign.
 
 **Reuse.** A Unit never wears out: information is copied, not consumed, like a mould rather than raw material. Several campaigns may consume the same Unit; the books show it as a reuse gain (section 10).
 
@@ -174,9 +174,9 @@ The **Supplier rating** is an Engine like any other. At each tick it reads the l
 
 The rule is one for every pick: **Thompson sampling on value per dollar**.
 
-1. Each candidate carries a belief about its conversion rate, the share of its decisions that reach the next milestone, and a belief about its measured cost from the decision to that milestone.
-2. Draw one conversion rate and one cost from each belief.
-3. Score each candidate: conversion rate x value / cost.
+1. Each candidate carries a belief about its yield (section 10) from its decisions to the next milestone, and a belief about its measured cost from the decision to that milestone.
+2. Draw one yield and one cost from each belief.
+3. Score each candidate: yield x value / cost.
 4. Pick the highest.
 
 A candidate with little data has wide beliefs: sometimes it draws high and gets tried. Exploration comes by construction.
@@ -187,13 +187,13 @@ Every Unit carries its **traceability**: the picks that led to it, its own inclu
 
 ### A branch is rated with its own picks at their best
 
-A candidate's measured conversion rate mixes every pick still being learned under it. A cold email branch tried while its email finder, writer and template are still explored looks worse than it is. So the Rating multiplies a candidate's value by its **uplift**: over each candidate place under it, the best candidate's value per dollar over the value per dollar of the mix picked there this last week. The Plan reads the tree the same way.
+A candidate's measured yield mixes every pick still being learned under it. A cold email branch tried while its email finder, writer and template are still explored looks worse than it is. So the Rating multiplies a candidate's value by its **uplift**: over each candidate place under it, the best candidate's value per dollar over the value per dollar of the mix picked there this last week. The Plan reads the tree the same way.
 
 ### Pooling, delays, time
 
 A belief is pooled across levels (the candidate everywhere it is offered, this candidate place across clients, clients sharing tactics, the client), each pulled toward the one above with a strength fitted from the data. Local data wins as it grows.
 
-Worked example, with a fleet conversion rate of 2% counted as 200 trials of prior experience, for a client whose true conversion rate is 3%:
+Worked example, with a fleet yield of 2% counted as 200 trials of prior experience, for a client whose true yield is 3%:
 
 | Client data | Estimate |
 |---|---|
@@ -212,7 +212,7 @@ The simulator knows the hidden truth, so it can grade the Rating. **Regret** is,
 
 ## 9. Splits and proposals
 
-The split mechanism looks for a tactic that separates successes from failures: a yes or no tactic splits true against false, a list tactic groups its values by conversion rate, a number tactic is cut at the deciles of its values. A split is a conclusion only when the exact test on raw counts passes, corrected for the number of splits tried, and the like for like test inside the same client and month passes in the same direction.
+The split mechanism looks for a tactic that separates successes from failures: a yes or no tactic splits true against false, a list tactic groups its values by yield, a number tactic is cut at the deciles of its values. A split is a conclusion only when the exact test on raw counts passes, corrected for the number of splits tried, and the like for like test inside the same client and month passes in the same direction.
 
 A split on **leads** proposes a finer ICP: an AI script writes a new Unit, a fork of the ICP it refines, that starts from its parent's belief and competes. A split on **scripts** proposes a strategy.
 
@@ -220,7 +220,7 @@ A split on **leads** proposes a finer ICP: an AI script writes a new Unit, a for
 
 Every decision rests on two numbers that flow in opposite directions, milestone by milestone of the campaign's Plan.
 
-**Cost flows forward from Start.** One Unit of a milestone costs what it took to make the previous one, plus its own cost per attempt `c`, divided by its **conversion rate** `y`, the share of attempts that reach it (`yieldRate` in the code):
+**Cost flows forward from Start.** One Unit of a milestone costs what it took to make the previous one, plus its own cost per attempt `c`, divided by its **yield** `y`. Yield: the Units a script produced ÷ its runs (the conversion rate); `yieldRate` in the code:
 
 `C(start) = 0` and `C(to) = (C(from) + c) / y`
 
@@ -228,13 +228,13 @@ Every decision rests on two numbers that flow in opposite directions, milestone 
 
 `V(target) = value` and `V(s) = max(0, y x V(next) - c)`
 
-The cost of one Target Unit is `T = c1 / (y1 y2 ... yn) + c2 / (y2 ... yn) + ... + cn / yn`, and its value per dollar is `value / T`.
+The cost of one Target Unit is `T = c1 / (y1 y2 ... yn) + c2 / (y2 ... yn) + ... + cn / yn`, and its value per dollar is `value / T`. The product of the yields from Start to the Target is the **rolled yield**; cost from Start is cost ÷ rolled yield.
 
 ### Worked example
 
 A client sells a service with a lifetime revenue of **$2,100**, through three milestones:
 
-| From, to | Cost per attempt | Conversion rate |
+| From, to | Cost per attempt | Yield |
 |---|---|---|
 | Start to Lead interested | $1 | 2% |
 | Lead interested to Meeting booked | $2 | 40% |
@@ -242,7 +242,7 @@ A client sells a service with a lifetime revenue of **$2,100**, through three mi
 
 Cost forward, which a campaign page shows as each milestone's **cost from Start**: one interested lead costs $1 / 0.02 = **$50**. One meeting costs ($50 + $2) / 0.4 = **$130**. One paid client costs ($130 + $10) / 0.2 = **$700**. The **cost of this outcome** alone leaves out the milestones before it: $2 / 0.4 = $5 per meeting.
 
-Read per paid client, the **attempts per Paid client** are 5 on meetings, 12.5 on interested leads and 625 from the market. Value per dollar: $2,100 / $700 = **3.0**.
+Read per paid client, the **attempts per Paid client** are 5 on meetings, 12.5 on interested leads and 625 from the market (1 ÷ a rolled yield of 2% x 40% x 20% = 0.16%). Value per dollar: $2,100 / $700 = **3.0**.
 
 Value backward: a meeting is worth 0.2 x $2,100 - $10 = **$410**. An interested lead is worth 0.4 x $410 - $2 = **$162**. One attempt is worth 0.02 x $162 - $1 = **$2.24** net.
 
@@ -258,11 +258,13 @@ Whoever attests an outcome is a script: a reply judge, a CRM import, a website t
 
 ## 12. Decide versus report
 
-**To decide**, the Rating reads each candidate's own measured cost and conversion rate, from the decision to the next milestone. **To report**, the ledger prices every outcome by every path: its own production, plus its materials at their own unit cost. Expected and measured returns share one formula and one basis: the Units of its Target the campaign made from its own inputs since its start, never Units it took from the stock. A return (value per dollar) exists only at a campaign's Target; below the Target, an outcome reports its cost per Unit, its cost from Start and its conversion rate, never a return.
+**To decide**, the Rating reads each candidate's own measured cost and yield, from the decision to the next milestone. **To report**, the ledger prices every outcome by every path: its own production, plus its materials at their own unit cost. Expected and measured returns share one formula and one basis: the Units of its Target the campaign made from its own inputs since its start, never Units it took from the stock. A return (value per dollar) exists only at a campaign's Target; below the Target, an outcome reports its cost per Unit, its cost from Start and its yield, never a return.
 
 A Unit keeps the price paid to produce it, its **standard cost**, and every consumption pays that price. When a Unit is consumed again, the books show a **reuse gain**. Everything reconciles to the cent:
 
 `standard cost charged - reuse gain + spend of runs producing none = total run spend`
+
+**Work in progress (WIP)** is the Units on their way to the Target, valued at cost (IAS 2), never at sale value; a pipeline in dollars is a forecast, not WIP. A **variance** is actual cost against standard cost, split into a **mix variance** (inputs used in other proportions) and a **yield variance** (fewer Units out than the inputs justified).
 
 Worked example, in cents. A sourcing run spends 1,000 and finds 3 leads (334, 333 and 333 each). An email run spends 600, consumes the 3 leads and produces 1 interested lead. A second email run spends 300, consumes the first lead again and produces nothing. A setup run spends 500 (support). A run on a lead already interested spends 200 (abnormal loss). Total spend: 2,600.
 
@@ -272,6 +274,6 @@ The email Engine's own cost for decisions: $9 over 4 Units consumed is **$2.25**
 
 ## 13. The simulator
 
-The framework ships with one fictional world as data ([`seed/fictional-world.json`](../seed/fictional-world.json)): Northwind Analytics, a client starting from scratch tonight, with cold email, LinkedIn and ads, vendor list prices and rates from public benchmarks; its market of fictional people and companies; the catalogue; and the hidden truth (conversion rates, costs, delays, the effect of every script, template and lead tactic). The world ticks 24 times a day. At each tick every campaign recomputes its Plan, pulls or pushes, runs land their Units after their delay, the ledger fills and the Supplier rating learns. One seed gives one history, byte for byte.
+The framework ships with one fictional world as data ([`seed/fictional-world.json`](../seed/fictional-world.json)): Northwind Analytics, a client starting from scratch tonight, with cold email, LinkedIn and ads, vendor list prices and rates from public benchmarks; its market of fictional people and companies; the catalogue; and the hidden truth (yields, costs, delays, the effect of every script, template and lead tactic). The world ticks 24 times a day. At each tick every campaign recomputes its Plan, pulls or pushes, runs land their Units after their delay, the ledger fills and the Supplier rating learns. One seed gives one history, byte for byte.
 
 The dashboard runs it: [`apps/dashboard`](../apps/dashboard), live at https://distribute-you.github.io/gtm-factory/. Built with its api data source, the same dashboard reads a running GTM Factory through its API ([`docs/api.md`](api.md)).
