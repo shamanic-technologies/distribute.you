@@ -1,7 +1,7 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { V2ReferralPage } from "@/components/v2/setup-pages";
-
-export default function Page() {
-  return <V2ReferralPage />;
+/** Legacy URL (/referral): the referral program ended (owner 2026-11-03), old links land on Billing. */
+export default async function Page({ params }: { params: Promise<{ orgId: string; brandId: string }> }) {
+  const { orgId, brandId } = await params;
+  redirect(`/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/billing`);
 }
