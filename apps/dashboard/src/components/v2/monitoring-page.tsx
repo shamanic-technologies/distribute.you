@@ -11,7 +11,7 @@ import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { EmailsCharts, SentPerDayChart } from "@/components/v2/monitoring-emails";
-import { AccountsPage, DomainsPage, InboxProvidersPage, LatestEmails, MailboxesPage, SendingHealthTiles, shortDay, useSendingVerdict } from "@/components/v2/monitoring-sending";
+import { AccountsPage, DomainsPage, InboxProvidersPage, LatestEmails, MailboxesPage, OptOutTile, SendingHealthTiles, shortDay, useSendingVerdict } from "@/components/v2/monitoring-sending";
 import { CapacityPlanChart, EntityPage, PlacementTestPage, PlacementTestsPage, QueuedPage, WarmupPage, entityTitle } from "@/components/v2/monitoring-drilldown";
 import { HubChip, HubChips, HubSectionBlock, useOpenSections } from "@/components/v2/hub-section";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
@@ -490,6 +490,8 @@ function Hub({ base }: { base: string }) {
       </div>
       {/* A line down blocks every WhatsApp greeting (owner 2026-10-23): red here IS the alert, outside any collapsed row. */}
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Which opt-out header prospect emails carry, default or measured winner (UNSUB-3WAY-1103): red only when unreadable. */}
+        <OptOutTile href={href("emails/inbox-providers")} />
         <WhatsappLinesTile href={href("whatsapp/lines")} />
         {/* A reply Sophie wrote on WhatsApp that never left, today or the 2 days before (SOPHIE-WA-DELIVERY-CHART-1029): red here IS the alert, never an email. */}
         <SophieRepliesTile href={href("whatsapp/sophie")} />

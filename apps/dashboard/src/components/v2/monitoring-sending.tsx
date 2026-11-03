@@ -11,10 +11,11 @@ import {
   getStaffOpsMailboxes,
   getStaffOpsMessages,
   getStaffPlacementAlerts,
+  getStaffSeedOptOut,
   getStaffSeedPlacementDaily,
   getStaffSenderHealth,
 } from "@/lib/api";
-import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
+import { EmptyNote, Figure, Meter, SectionTitle, ShareBar, Shimmer, StatTile, StateDot } from "@/components/v2/ui";
 import {
   ALERT_PROVIDERS,
   INBOX_PROVIDERS,
@@ -32,6 +33,8 @@ import {
   MAILBOX_TABS,
   mailboxStatus,
   mailboxTab,
+  optOutName,
+  optOutView,
   type AddressTabKey,
   type MailboxTabKey,
   type InboxProvider,
@@ -53,6 +56,10 @@ export const HEALTH_DAYS = 30;
 
 export function useSeedPlacement() {
   return useAuthQuery(["staffSeedPlacementDaily", HEALTH_DAYS], () => getStaffSeedPlacementDaily(HEALTH_DAYS), pollOptions);
+}
+/** The opt-out header test (UNSUB-3WAY-1103): inbox % per option and the one prospect mail carries. */
+export function useSeedOptOut() {
+  return useAuthQuery(["staffSeedOptOut"], getStaffSeedOptOut, pollOptions);
 }
 export function useSenderHealth() {
   return useAuthQuery(["staffSenderHealth", HEALTH_DAYS], () => getStaffSenderHealth(HEALTH_DAYS), pollOptions);
@@ -436,6 +443,11 @@ export function InboxProvidersPage() {
         </div>
       </section>
       <section>
+        <SectionTitle>Opt-out header test</SectionTitle>
+        <p className="k-fg3 -mt-1 mb-3 text-[12px]">Each seed carries one of three opt-out headers. Prospect emails switch by themselves to the one that lands best.</p>
+        <OptOutChart />
+      </section>
+      <section>
         <SectionTitle>Mailboxes cut from prospects</SectionTitle>
         {health.isError ? (
           <Failed what="the mailboxes cut" />
@@ -466,6 +478,110 @@ export function InboxProvidersPage() {
         )}
       </section>
     </div>
+  );
+}
+
+// ─── Opt-out header test (UNSUB-3WAY-1103) ─────────────────────────────────
+
+/**
+ * The three opt-out headers side by side, inbox % at Google (and Microsoft 365 once it has seeds),
+ * and which one prospect emails carry now: the default while each option waits for its sample, or
+ * the measured winner. Every figure and the decision are instantly-service's; red only when the read
+ * fails (no seed yet is a normal "not yet").
+ */
+export function OptOutChart() {
+  const q = useSeedOptOut();
+  if (q.isError && !q.data) {
+    return (
+      <div className="k-card p-4">
+        <p className="text-[13px] font-medium" style={{ color: RED }}>Could not read the opt-out test from production.</p>
+      </div>
+    );
+  }
+  if (!q.data) return <Loading />;
+  const data = q.data;
+  const view = optOutView(data);
+  const min = data.minFoundSeedsPerVariant;
+  return (
+    <div className="k-card p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[13px] font-medium">Which opt-out lands in the inbox</p>
+        <span className="k-fg3 text-[12px]">Since the test began</span>
+      </div>
+      <p className="mt-1 text-[22px] font-medium leading-7 tracking-[-0.02em]">Prospect emails carry: {optOutName(view.current)}</p>
+      <p className="k-fg3 mt-0.5 text-[12px]">
+        {view.measured
+          ? "Measured winner: the best inbox rate once every option had its seeds."
+          : view.anySeed
+            ? `Default until each option has ${n(min)} seeds found at Google.`
+            : `Waiting for the first test. Default until each option has ${n(min)} seeds found at Google.`}
+      </p>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {view.options.map((o) => {
+          const winner = view.measured && o.current;
+          const tone = winner ? OK : "var(--data-sky)";
+          return (
+            <div key={o.variant} className="k-inset rounded-[8px] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-[13px] font-medium">{o.name}</p>
+                {o.current && <StateDot running label={winner ? "Winner" : "In use"} />}
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums" style={{ color: winner ? OK : undefined }}>
+                  {o.google.inboxPct == null ? <Dash /> : pct(o.google.inboxPct)}
+                </span>
+                <span className="k-fg3 text-[12px]">inbox at Google</span>
+              </div>
+              {o.google.seeds > 0 && <ShareBar value={o.google.inboxPct} max={100} color={tone} className="mt-2 w-full" />}
+              <p className="k-fg3 mt-2 text-[12px] tabular-nums">
+                {o.google.seeds === 0 ? "No seed yet" : `${n(o.google.inbox)} inbox · ${n(o.google.spam)} spam of ${n(o.google.seeds)} seeds`}
+              </p>
+              {!view.measured && (
+                <div className="mt-2">
+                  <Meter value={o.google.found} max={min} />
+                  <p className="k-fg3 mt-1 text-[11px] tabular-nums">
+                    {n(o.google.found)} of {n(min)} found at Google
+                  </p>
+                </div>
+              )}
+              {o.microsoft.seeds > 0 && (
+                <p className="k-fg3 mt-2 text-[12px] tabular-nums">
+                  Microsoft 365 {o.microsoft.inboxPct == null ? "—" : pct(o.microsoft.inboxPct)} · {n(o.microsoft.found)} found
+                </p>
+              )}
+              {/* The served score differs from the Google % only once Microsoft 365 joins it. */}
+              {view.measured && data.decision.scoredProviders.length > 1 && o.score != null && (
+                <p className="k-fg3 mt-1 text-[12px] tabular-nums">Score {pct(o.score)} (Google and Microsoft 365)</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Hub tile: which opt-out prospect emails carry now, and whether it is measured. Red only when unreadable. */
+export function OptOutTile({ href }: { href: string }) {
+  const q = useSeedOptOut();
+  const view = q.data ? optOutView(q.data) : undefined;
+  return (
+    <StatTile label="Opt-out on prospect emails" note={view ? (view.measured ? "measured" : "default") : undefined} href={href}>
+      <Figure
+        value={
+          q.isError && !q.data ? (
+            <span className="text-[13px]" style={{ color: RED }}>not readable</span>
+          ) : view === undefined ? (
+            <Shimmer className="h-6 w-16" />
+          ) : (
+            <span className="text-[18px]">{optOutName(view.current)}</span>
+          )
+        }
+      />
+      <p className="k-fg3 mt-1 truncate text-[11px]">
+        {view === undefined ? " " : view.measured ? "Best inbox rate of the three" : view.anySeed ? "Testing the three options on seeds" : "Waiting for the first test"}
+      </p>
+    </StatTile>
   );
 }
 

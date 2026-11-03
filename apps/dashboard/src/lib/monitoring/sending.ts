@@ -73,6 +73,82 @@ export function underBar(inboxPct: number | null, bar: number): boolean {
   return inboxPct !== null && inboxPct < bar;
 }
 
+// ─── Opt-out header test (UNSUB-3WAY-1103) ─────────────────────────────────
+
+// Seeds carry one of three opt-out headers; instantly-service compares their inbox % and switches
+// prospect mail to the best once each has its sample. Every figure and the decision are served.
+const OptOutCountsSchema = z.object({
+  seeds: z.number(),
+  inbox: z.number(),
+  spam: z.number(),
+  found: z.number(),
+  inboxPct: z.number().nullable(),
+});
+export type OptOutCounts = z.infer<typeof OptOutCountsSchema>;
+const OptOutVariantCountsSchema = z.object({
+  // A string, not an enum: a fourth option served later is shown under its raw key, never a 400.
+  variant: z.string(),
+  google: OptOutCountsSchema,
+  microsoft: OptOutCountsSchema,
+  microsoftConsumer: OptOutCountsSchema,
+});
+export type OptOutVariantCounts = z.infer<typeof OptOutVariantCountsSchema>;
+export const OptOutComparisonSchema = z.object({
+  asOf: z.string(),
+  minFoundSeedsPerVariant: z.number(),
+  defaultVariant: z.string(),
+  decision: z.object({
+    variant: z.string(),
+    reason: z.enum(["sample_not_reached", "measured"]),
+    scoredProviders: z.array(z.string()),
+    scores: z.record(z.string(), z.number().nullable()),
+  }),
+  variants: z.array(OptOutVariantCountsSchema),
+  days: z.array(z.object({ day: z.string(), variants: z.array(OptOutVariantCountsSchema) })),
+});
+export type OptOutComparison = z.infer<typeof OptOutComparisonSchema>;
+
+/** The three options in plain words, in the order the chart shows them. */
+export const OPT_OUT_OPTIONS: Array<{ key: string; name: string; what: string }> = [
+  { key: "tracker_link", name: "Tracker link", what: "One-click link on our tracker domain" },
+  { key: "mailbox_only", name: "Your mailbox only", what: "Unsubscribe by email to the sending mailbox" },
+  { key: "none", name: "No unsubscribe header", what: "Nothing in the header" },
+];
+
+/** An option's plain name; an unknown served key shows as is (logged, never hidden). */
+export function optOutName(key: string): string {
+  const o = OPT_OUT_OPTIONS.find((x) => x.key === key);
+  if (!o) console.error("[dashboard] opt-out test: unknown option served", key);
+  return o?.name ?? key;
+}
+
+/**
+ * The served options in the chart's order (unknown ones after), and what prospect mail carries
+ * now: `measured` = the served winner, else the default kept until every option has its sample.
+ * Lookup only: no rate, no score and no decision is computed here.
+ */
+export function optOutView(data: OptOutComparison): {
+  options: Array<OptOutVariantCounts & { name: string; current: boolean; score: number | null }>;
+  current: string;
+  measured: boolean;
+  anySeed: boolean;
+} {
+  const known = OPT_OUT_OPTIONS.map((o) => data.variants.find((v) => v.variant === o.key)).filter((v): v is OptOutVariantCounts => !!v);
+  const rest = data.variants.filter((v) => !OPT_OUT_OPTIONS.some((o) => o.key === v.variant));
+  const options = [...known, ...rest].map((v) => ({
+    ...v,
+    name: optOutName(v.variant),
+    current: v.variant === data.decision.variant,
+    score: data.decision.scores[v.variant] ?? null,
+  }));
+  return {
+    options,
+    current: data.decision.variant,
+    measured: data.decision.reason === "measured",
+    anySeed: data.variants.some((v) => v.google.seeds > 0 || v.microsoft.seeds > 0 || v.microsoftConsumer.seeds > 0),
+  };
+}
+
 // ─── Sender health (mailboxes kept out of prospect mail) ───────────────────
 
 const SenderHealthDaySchema = z.object({

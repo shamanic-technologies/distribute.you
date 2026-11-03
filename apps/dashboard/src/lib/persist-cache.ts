@@ -169,6 +169,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffPlacementTests",
   "staffPlacementTest",
   "staffPlacementAlerts",
+  "staffSeedOptOut",
   "staffOpsMessagesScoped",
   "staffMessageBody",
   "staffEmailSendPrice",
