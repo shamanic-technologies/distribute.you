@@ -12,7 +12,7 @@ import { expectedReasonWords, type CostToShow, type RoiToShow } from "@/lib/expe
  * column header, a stat tile and a pipe block say the same thing.
  */
 export const ROI_TIP =
-  "Expected return on each $1 spent. Worked out from each step's rate and what one client is worth, until enough results are measured.";
+  "Expected: what one client is worth, divided by what it costs to win one from the start. Realized: what the paid clients we brought you are worth, divided by the money actually spent.";
 
 /** "ROI" (or the given label) followed by the expected (i). */
 export function RoiLabel({ children = "ROI", placement = "bottom" }: { children?: ReactNode; placement?: "top" | "bottom" }) {

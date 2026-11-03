@@ -10,6 +10,7 @@
 // from components reused in the public-report bundle.
 import type { MaturityPair } from "./maturity";
 import type { ExpectedReturn } from "./expected-return";
+import type { RealizedReturn } from "./realized-return";
 
 /** The three ratios of a cost-economics block, as one half of its served maturity pair. */
 export interface EconomicsFigures {
@@ -258,6 +259,12 @@ export interface ConversionEvent {
  * a committed label is the contradiction this replaced.
  */
 export interface CostEconomics {
+  /**
+   * The REALIZED return (ROI-CONSISTENCY-1103): Paid clients our outreach caused over money
+   * actually spent, whole history. With the served `expectedReturn`, the only return a screen
+   * shows. Null when the producer read no closed-deal source on this body.
+   */
+  realizedReturn: RealizedReturn | null;
   /** COMMITTED run spend in $, brand (+ optional campaign), feature-scoped — billed
    *  PLUS open holds. Null is "we have no figure", never "it cost nothing". */
   committedCostUsd: number | null;

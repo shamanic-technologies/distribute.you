@@ -169,6 +169,7 @@ import {
   type CrmPairings,
 } from "./crm-pairings";
 import { ExpectedConversionSchema, ExpectedReturnSchema, type ExpectedReturn } from "./expected-return";
+import { RealizedReturnSchema, type RealizedReturn } from "./realized-return";
 import {
   OfferDocumentsResponseSchema,
   OfferDocumentWriteResponseSchema,
@@ -6948,6 +6949,8 @@ const CampaignRevenueCostEconomicsSchema = z.object({
   // (lib/maturity.ts). Every row states `mature`, and Learning where `isMature` is false.
   // Optional as served (see EconomicsMaturitySchema); absent -> `—`.
   maturity: EconomicsMaturitySchema.nullish(),
+  // The campaign's REALIZED return (ROI-CONSISTENCY-1103). Nullish as served.
+  realizedReturn: RealizedReturnSchema.nullish(),
 });
 /** A group's cost per outcome, served twice with the group's own maturity verdict. */
 const OutcomesMaturitySchema = maturityPairSchema(
@@ -7039,6 +7042,8 @@ export interface CampaignRevenueGroup {
   positiveReplyRatePct?: number | null;
   /** The campaign's EXPECTED return, never empty (features-service); null on an older body. */
   expectedReturn?: ExpectedReturn | null;
+  /** The campaign's REALIZED return (Paid clients over money spent); null when not served. */
+  realizedReturn: RealizedReturn | null;
   /** ROI, % CAC and $ CAC served twice with this campaign's maturity verdict. */
   economicsMaturity: MaturityPair<EconomicsFigures> | null;
   /** Cost per visit and per positive reply, served twice. Null when the producer served no
@@ -7081,6 +7086,7 @@ export async function getFeatureRevenueByCampaign(
     replyRatePct: g.outcomes?.sending?.replyRatePct,
     positiveReplyRatePct: g.outcomes?.sending?.positiveReplyRatePct,
     expectedReturn: g.expectedReturn ?? null,
+    realizedReturn: g.costEconomics.realizedReturn ?? null,
     economicsMaturity: g.costEconomics.maturity ?? null,
     outcomesMaturity: g.outcomes?.maturity ?? null,
   }));
