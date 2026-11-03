@@ -178,7 +178,9 @@ describe("channel pages", () => {
   });
   it("people steps are vertical bars in a 2/3 card, the tabs' summaries at 1/3 (owner 2026-10-04)", () => {
     expect(page).toContain("lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]");
-    for (const tab of ["inbox", "sent", "targeting", "settings"]) expect(page).toContain(`href={tabHref("${tab}")}`);
+    for (const tab of ["inbox", "sent", "targeting"]) expect(page).toContain(`href={tabHref("${tab}")}`);
+    // The give lists live on the offer page (owner 2026-11-03): their summary links there.
+    expect(page).toContain('label="Offer"\n          href={offerHref}');
     expect(page).toContain("See more");
     expect(page).toContain("height: barHeight(");
     expect(page).not.toContain("StepRow");

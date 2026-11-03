@@ -207,7 +207,7 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
         <V2AudiencesTable campaignId={id} offerId={offerId} />
       ) : tab === "settings" ? (
         <div className="space-y-8">
-          {/* The channel page's settings (give lists, rates per step). Its money is its campaign's
+          {/* The channel page's settings (rates per step; the give lists live on the offer page). Its money is its campaign's
               caps, stated on that campaign's page (owner 2026-10-10): a part has no budget of its own. */}
           {c?.featureSlug && isColdEmailChannel(c.featureSlug) && (
             <ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={c.featureSlug} />

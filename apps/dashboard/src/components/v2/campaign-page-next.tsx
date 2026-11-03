@@ -53,7 +53,7 @@ import { LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
 import { useCampaigns } from "@/components/v2/use-campaigns";
 import { useNeedsYourCall } from "@/components/v2/data";
 import { useCampaignWindow } from "@/components/v2/offer-channel-page";
-import { giveListsFrom } from "@/components/v2/offer-channels-page";
+import { giveListsFrom } from "@/components/v2/offer-give-lists";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";

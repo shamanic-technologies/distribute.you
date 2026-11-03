@@ -15,7 +15,8 @@ import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2Href, v2OfferChannelHref, v2OfferHref, type V2ChannelTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { useBrandRevenueWindow, useBucketCounts } from "@/components/v2/data";
-import { ColdEmailChannelSettings, giveListsFrom } from "@/components/v2/offer-channels-page";
+import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
+import { giveListsFrom } from "@/components/v2/offer-give-lists";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
@@ -80,6 +81,7 @@ export function V2OfferChannelPage() {
           offerId={offerId}
           channelSlug={channelSlug}
           tabHref={(t) => v2OfferChannelHref(orgId, brandId, offerId, channelSlug, t)}
+          offerHref={v2OfferHref(orgId, brandId, offerId)}
         />
       ) : tab === "inbox" ? (
         <div className="k-card overflow-hidden">
@@ -116,11 +118,13 @@ export function ColdEmailOverview({
   offerId,
   channelSlug,
   tabHref,
+  offerHref,
 }: {
   brandId: string;
   offerId: string;
   channelSlug: string;
   tabHref: (tab: V2ChannelTab) => string;
+  offerHref: string;
 }) {
   const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
   const emails = win.data?.emails ?? null;
@@ -195,6 +199,7 @@ export function ColdEmailOverview({
           replies={counts?.positive_reply ?? null}
           countsSettled={countsSettled}
           tabHref={tabHref}
+          offerHref={offerHref}
         />
       </div>
     </div>
@@ -272,8 +277,8 @@ export function LegSteps({
 }
 
 /**
- * One short card per other tab (Inbox, Sent, Targeting, Settings): its served headline and
- * a link to the tab. The reads are the tabs' own query keys, so opening a tab paints at once.
+ * One short card per other tab (Inbox, Sent, Targeting) and the offer's give lists (which
+ * live on the offer page): its served headline and a link there. The reads are the tabs' own query keys, so opening a tab paints at once.
  */
 function TabSummaries({
   brandId,
@@ -283,6 +288,7 @@ function TabSummaries({
   replies,
   countsSettled,
   tabHref,
+  offerHref,
 }: {
   brandId: string;
   offerId: string;
@@ -291,6 +297,7 @@ function TabSummaries({
   replies: number | null;
   countsSettled: boolean;
   tabHref: (tab: V2ChannelTab) => string;
+  offerHref: string;
 }) {
   const audiences = useAudienceTable({ offerId });
   const fields = useAuthQuery(["offerUserFields", brandId, offerId], () => getOfferUserFields(brandId, offerId), {
@@ -314,8 +321,8 @@ function TabSummaries({
           unit={audiences.activeTabRows === 1 ? "audience" : "audiences"}
         />
         <SummaryCard
-          label="Settings"
-          href={tabHref("settings")}
+          label="Offer"
+          href={offerHref}
           loading={!fieldsSettled}
           value={give ? give.giveForFree.length : null}
           unit="we give free"
