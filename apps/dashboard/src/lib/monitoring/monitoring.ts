@@ -677,7 +677,8 @@ export const CustomerHealthSchema = z.object({
       health: z.object({ badge: z.enum(["green", "yellow", "red"]) }),
       breakevenCacUsd: z.number().nullable(),
       // A channel with no audience or no priced economics (every GTM channel is on the board) may serve these null.
-      currentEconomics: z.object({ committedSpendUsd: z.number().nullable(), currentCacUsd: z.number().nullable() }).nullable(),
+      // The board's "current CAC" (LTR x spend / pipeline) is a pipeline forecast: never read (ROI-CONSISTENCY-1103).
+      currentEconomics: z.object({ committedSpendUsd: z.number().nullable() }).nullable(),
       audiences: z.object({ count: z.number().nullable(), totalSize: z.number().nullable(), totalRemaining: z.number().nullable(), pctUsed: z.number().nullable() }).nullable(),
       bestAudience: z.object({ name: z.string(), remaining: z.number().nullable(), cacUsd: z.number().nullable() }).nullable(),
       bestWorkflow: z.object({ name: z.string().nullable(), workflowDynastySlug: z.string(), cacUsd: z.number() }).nullable(),

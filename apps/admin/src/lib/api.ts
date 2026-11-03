@@ -5050,11 +5050,11 @@ export interface CustomerEconomics {
 }
 
 export interface CustomerCurrentEconomics {
-  /** COMMITTED spend (billed + open holds) — the single basis, and the number
-   *  `currentCacUsd` below divides by. The billed-only
-   *  sibling the producer still serves is deliberately not read here. */
+  /** COMMITTED spend (billed + open holds), the single basis. The billed-only
+   *  sibling the producer still serves is deliberately not read here. The board's
+   *  "current CAC" (LTR x spend / pipeline) is a pipeline forecast, never read
+   *  (ROI-CONSISTENCY-1103). */
   committedSpendUsd: number | null;
-  currentCacUsd: number | null;
 }
 
 // Pool figures are human-service's own (Σ sizeCount / Σ availableToContactCount over the
