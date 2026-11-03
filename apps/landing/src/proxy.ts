@@ -4,6 +4,8 @@ import { ARCHIVE_ROUTE_PREFIX, archiveSlugForHost } from "@/lib/archive-catalogu
 import { basicAuthOk } from "@/lib/clone-auth";
 import { previewArticleSlugFor } from "@/lib/blog/preview";
 import { CLONE_ROUTE_PREFIX, cloneSlugForHost } from "@/lib/clone-catalogue";
+import { negotiateContentType } from "@/lib/content-negotiation";
+import { DOCS_MARKDOWN_PREFIX, docsMarkdownPath, isDocsPagePath } from "@/lib/docs/docs-markdown";
 
 /**
  * Host routing for the `lab-*` pages, and NOTHING else.
@@ -84,17 +86,30 @@ function serveLab(request: NextRequest, internalPrefix: string, realm: string) {
 /**
  * Every request that is NOT for a lab host, which is all of distribute.you.
  *
- * The one thing it does is close the internal routes: a segment the rewrite targets has
+ * Its main job is to close the internal routes: a segment the rewrite targets has
  * to be routable, so it is also addressable, and reaching one directly would serve a
  * competitor's copy — or a retired claim of ours — with no password in front of it.
  */
 function offLabHost(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname.startsWith(CLONE_ROUTE_PREFIX) || pathname.startsWith(ARCHIVE_ROUTE_PREFIX)) {
+  if (
+    pathname.startsWith(CLONE_ROUTE_PREFIX) ||
+    pathname.startsWith(ARCHIVE_ROUTE_PREFIX) ||
+    pathname.startsWith(DOCS_MARKDOWN_PREFIX)
+  ) {
     return new NextResponse("Not found.", {
       status: 404,
       headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
     });
+  }
+
+  // The /docs pages are React pages, outside `staticResponse()`: an agent asking one
+  // for `text/markdown` is rewritten to the route that converts it (llms.txt promises
+  // markdown on every page). Browsers fall through untouched.
+  if (isDocsPagePath(pathname) && negotiateContentType(request.headers.get("accept")) === "markdown") {
+    const url = request.nextUrl.clone();
+    url.pathname = docsMarkdownPath(pathname);
+    return NextResponse.rewrite(url);
   }
 
   // A blog article under review sits in the DB so the real page renders it, and behind

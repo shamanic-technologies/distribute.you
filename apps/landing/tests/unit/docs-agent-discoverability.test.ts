@@ -363,17 +363,24 @@ describe("the MCP tool catalogue is the one the server exposes", () => {
   it("names the prefixed tools the server lists, and the count is read rather than written", () => {
     expect(MCP_TOOL_COUNT).toBe(MCP_TOOLS.length);
     expect(MCP_TOOLS.map((t) => t.name).sort()).toEqual([
+      "distribute_add_person_contact",
       "distribute_call_api",
       "distribute_campaign_stats",
+      "distribute_correct_person",
       "distribute_describe_api",
       "distribute_find_api",
+      "distribute_find_people",
       "distribute_get_lead",
       "distribute_list_brands",
       "distribute_list_campaigns",
       "distribute_list_emails",
       "distribute_list_leads",
+      "distribute_list_people_companies",
+      "distribute_list_people_corrections",
       "distribute_list_skills",
+      "distribute_list_triggers",
       "distribute_list_workflows",
+      "distribute_merge_people",
       "distribute_prepaid_status",
       "distribute_prepay",
       "distribute_read_skill",
@@ -381,6 +388,9 @@ describe("the MCP tool catalogue is the one the server exposes", () => {
       "distribute_signup_start",
       "distribute_status",
       "distribute_suggest_icp",
+      "distribute_undo_people_correction",
+      "distribute_undo_people_merge",
+      "distribute_undo_person_contact",
     ]);
   });
 

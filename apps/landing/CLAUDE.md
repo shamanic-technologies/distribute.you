@@ -162,5 +162,6 @@ AI scrapers parse raw HTML only (a Suspense fallback = indexed skeleton). Applie
 `staticResponse()` is the single choke point for all 22 static routes. Browsers/no-`Accept` get unchanged bytes; `text/markdown` gets the page converted (`src/lib/html-to-markdown.ts`, no dependency, drops `script/style/svg/nav/header/footer`, alias-free + unit-tested); neither acceptable -> **406**. Only `text/html` maps to the HTML variant (`text/html;q=0` is a refusal).
 - **`Vary: Accept` is declared in `next.config.ts` `headers()`**, not the handler (Next overwrites handler `Vary`); it adds a second `Vary` line, valid per RFC 9110. Verify off a real `next start`.
 - **Markdown variant is `cache-control: no-store`** (Cloudflare honours `Vary` only for `Accept-Encoding`); HTML keeps `s-maxage=86400`.
+- **`/docs` (React)**: `proxy.ts` rewrites markdown asks to `/docs-markdown/*` (self-fetch + convert).
 - **404 is a catch-all route handler** (`src/app/[...notFound]/route.ts` -> `404.html`), since `not-found.tsx` cannot read `Accept` without making the root dynamic.
 - Lockstep surfaces: `public/llms.txt` (what we are, when to use/not, developer URLs), `src/app/.well-known/mcp.json/route.ts` (de-facto convention), `/about` + `/contact` trust pages. Guards: `tests/unit/agent-readiness.test.ts`.
