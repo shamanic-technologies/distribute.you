@@ -204,7 +204,7 @@ describe("buildMatrixRows", () => {
     const email = rows.find((r) => r.slug === "email")!;
     expect(email.cells[0]).toEqual({ kind: "priced", costPerOutcomeUsd: 263.22, landedByChannel: true });
     expect(email.cells[3]).toEqual({ kind: "priced", costPerOutcomeUsd: 3928.68, landedByChannel: false });
-    expect(email.bestReturnPerDollar).toBe(0.64);
+    expect("bestReturnPerDollar" in email).toBe(false);
     expect(email.reachedOutcomeCount).toBe(2);
   });
 
@@ -222,7 +222,6 @@ describe("buildMatrixRows", () => {
     const email = rows.find((r) => r.slug === "email")!;
     expect(email.cells.every((c) => c.kind === "unknown")).toBe(true);
     expect(email.reachedOutcomeCount).toBeNull();
-    expect(email.bestReturnPerDollar).toBeNull();
   });
 
   it("orders rows by the catalogue's own display order", () => {

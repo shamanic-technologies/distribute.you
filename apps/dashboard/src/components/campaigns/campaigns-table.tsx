@@ -46,7 +46,7 @@ export interface CampaignRow {
   campaign: Campaign;
   revenue: CampaignRevenueGroup | null;
   /**
-   * Whether this row's ratios (ROI, % CAC) are still LEARNING: the producer's own verdict
+   * Whether this row's cost ratios are still LEARNING: the producer's own verdict
    * on this campaign's mature cohort (`costEconomics.maturity.isMature: false`,
    * lib/maturity.ts). Nothing here counts outcomes against a bar: the duration and the
    * count are the producer's, per leg, and a second judge is how one campaign came to
@@ -228,16 +228,12 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupsQ.data, ...channelGroupData]);
 
-  // Ordered STATUS, then ROI DESC, then last-updated DESC.
+  // Ordered STATUS, then EXPECTED return DESC, then last-updated DESC.
   //
-  // Status leads because it is the first thing a reader asks of a list that now holds
-  // both: what is running goes above what is not, so a paused campaign never sits
-  // between two live ones on the strength of a return it is no longer earning.
-  // Within a status it is the ROI column the table leads with, because a table that
-  // displays one order and sorts by another reads as unordered. A campaign with no
-  // ROI yet has nothing to rank on, so it sits last of its group rather than at zero
-  // — and last-updated breaks that tie, so the campaigns with no figures are ordered
-  // by the only thing left that distinguishes them.
+  // Status leads: what is running goes above what is not. Within a status the order is the
+  // campaign's served EXPECTED return, the return its ROI cell states (ROI-CONSISTENCY-1103:
+  // the pipeline-based measured return is retired). A campaign with no expected return sits
+  // last of its group, and last-updated breaks that tie.
   const rows = useMemo<CampaignRow[]>(() => {
     const joined = listedCampaigns.map((c) => {
       const revenue = groupsById.get(c.id) ?? null;
@@ -252,15 +248,8 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       const byStatus =
         Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status));
       if (byStatus !== 0) return byStatus;
-      // A row that is not stating its return has no rank under it — ordering the table
-      // by a number it is deliberately not showing reads as unordered. Learning rows sit
-      // below the measured ones of their status and fall through to last-updated.
-      const byLearning = Number(a.learning) - Number(b.learning);
-      if (byLearning !== 0) return byLearning;
-      const byRoi = a.learning
-        ? 0
-        : (b.revenue?.economicsMaturity?.mature?.roiMultiple ?? -1) -
-          (a.revenue?.economicsMaturity?.mature?.roiMultiple ?? -1);
+      const byRoi =
+        (b.revenue?.expectedReturn?.roiMultiple ?? -1) - (a.revenue?.expectedReturn?.roiMultiple ?? -1);
       if (byRoi !== 0) return byRoi;
       return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
     });

@@ -50,9 +50,7 @@ describe("formatRoi", () => {
 describe("every ROI surface reads the one helper", () => {
   // A second copy of the rule is exactly what shipped `12×` under `11.7×` before.
   const SURFACES = [
-    "components/revenue/roi-trend-card.tsx",
-    "components/strategy/best-model-card.tsx",
-    "lib/outcome-digest.ts",
+    "components/v2/return-figures.tsx",
   ];
 
   for (const rel of SURFACES) {
@@ -104,7 +102,7 @@ describe("roiIsGood", () => {
 
 describe("every surface that colours an ROI reads the one rule", () => {
   const GREEN_SURFACES = [
-    "components/revenue/roi-trend-card.tsx",
+    "components/v2/return-figures.tsx",
   ];
 
   for (const rel of GREEN_SURFACES) {

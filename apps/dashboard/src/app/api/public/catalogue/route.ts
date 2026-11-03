@@ -79,10 +79,6 @@ async function readGatewayPublic(path: string): Promise<Response> {
 /** The one channel this flow sells, and the feature every fleet figure is read for. */
 const CHANNEL_SLUG = "sales-cold-email-outreach";
 
-/** The floor the producer takes the fleet median over. Stated, never defaulted:
- *  it selects the POPULATION. Matches what the homepage asks for. */
-const MIN_SPEND_USD = 100;
-
 /**
  * A read whose absence is a weaker screen, never a broken one: logged loud,
  * degraded to null, and NEVER filled with a figure of our own.
@@ -103,34 +99,27 @@ async function readSoft<T>(label: string, path: string): Promise<T | null> {
 
 export interface StartProofPayload {
   hotLeads: { hotLeads: number; companies: number; medianCostUsd: number } | null;
-  medianReturnPerDollar: number | null;
   /** The named clients, exactly as features-service publishes them. */
   showcase: ShowcaseBrand[];
 }
 
 /**
  * The fleet's proof: hot leads (the SAME derivation as the homepage hero, over
- * the per-brand ranked read), the fleet's median return, and the named clients.
+ * the per-brand ranked read) and the named clients. No fleet median return: the
+ * public ROI index is retired (owner 2026-11-03, ROI-CONSISTENCY-1103).
  */
 async function readProof(): Promise<StartProofPayload> {
-  const [ranked, fleetReturn, showcase] = await Promise.all([
+  const [ranked, showcase] = await Promise.all([
     readSoft<{ results?: { stats: Record<string, number | null> }[] }>(
       "ranked brands",
       `features/ranked?featureSlug=${CHANNEL_SLUG}&objective=emailsSent&groupBy=brand&limit=200`,
-    ),
-    readSoft<{ measured?: boolean; medianReturnPerDollar?: number | null }>(
-      "return-on-spend",
-      `features/return-on-spend?featureSlug=${CHANNEL_SLUG}&minSpendUsd=${MIN_SPEND_USD}`,
     ),
     // Per OUTCOME: every step each named client reached, merged across what it ran.
     readSoft<{ brands?: ShowcaseBrand[] }>("showcase", "features/showcase-outcomes"),
   ]);
 
-  const median = fleetReturn?.measured ? fleetReturn.medianReturnPerDollar : null;
   return {
     hotLeads: ranked ? hotLeadStats(ranked.results ?? []) : null,
-    medianReturnPerDollar:
-      typeof median === "number" && Number.isFinite(median) && median > 0 ? median : null,
     showcase: Array.isArray(showcase?.brands) ? showcase.brands : [],
   };
 }

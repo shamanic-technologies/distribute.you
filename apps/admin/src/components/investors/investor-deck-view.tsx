@@ -161,18 +161,6 @@ export function InvestorDeckView({ timeline }: { timeline: DailyFunnelPoint[] })
   const mrr = revenueQuery.data?.committedMrr.currentMrrUsd ?? null;
   const arr = revenueQuery.data?.committedMrr.currentArrUsd ?? null;
 
-  // A median beats a mean on a handful of customers, where one outlier moves
-  // the average to somewhere no real customer sits.
-  const medianRoi = useMemo(() => {
-    const values = (customers?.customers ?? [])
-      .map((c) => c.currentEconomics.roiMultiple)
-      .filter((v): v is number => v !== null && Number.isFinite(v))
-      .sort((a, b) => a - b);
-    if (values.length === 0) return null;
-    const mid = Math.floor(values.length / 2);
-    return values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
-  }, [customers]);
-
   const loading = revenueQuery.isPending || usersQuery.isPending;
   const download = () => {
     // The suggested filename in the print dialog comes from document.title, so
@@ -350,17 +338,12 @@ export function InvestorDeckView({ timeline }: { timeline: DailyFunnelPoint[] })
                 note="Currently active"
               />
             </div>
-            {medianRoi !== null ? (
-              <p className="text-base font-medium text-gray-900">
-                Median customer return: {medianRoi.toFixed(1)}x on spend. A meeting on the open
-                market costs about $700; our customers pay a fraction of that and can see the
-                figure every day.
-              </p>
-            ) : (
-              <p className="text-sm text-gray-500">
-                Customer return is not measurable yet across the fleet.
-              </p>
-            )}
+            {/* No median customer return: a fleet median ROI off the pipeline is retired
+                (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
+            <p className="text-base font-medium text-gray-900">
+              A meeting on the open market costs about $700; our customers pay a fraction of that
+              and can see the figure every day.
+            </p>
           </div>
         </Slide>
 

@@ -1,4 +1,4 @@
-import { formatCostUsd, formatReturnMultiple } from "@/lib/landing-format";
+import { formatCostUsd } from "@/lib/landing-format";
 import { hasDrawnOutcome, hasHeroOutcome, podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
 
 /**
@@ -180,8 +180,7 @@ function reseedCard(card: string, counts: Map<string, number>): string {
 function reseedProofCard(
   card: string,
   counts: Map<string, number>,
-  costs: Map<string, number>,
-  returnPerDollar: number | null
+  costs: Map<string, number>
 ): string {
   let out = card.replace(
     /<span data-proof-step="([a-z_]+)"><b>([^<]*)<\/b>/g,
@@ -211,15 +210,7 @@ function reseedProofCard(
     }
   );
 
-  if (returnPerDollar === null) return out;
-  const shaped = formatReturnMultiple(returnPerDollar);
-  // `data-decimals` moves with the figure: main.js reads it to format every frame of
-  // the count-up, so a return that crosses 10x and keeps a stale `1` would animate
-  // to a decimal it no longer states.
-  return out.replace(
-    /(<span class="big") data-count="[^"]*" data-decimals="[^"]*"/,
-    `$1 data-count="${shaped.text}" data-decimals="${shaped.decimals}"`
-  );
+  return out;
 }
 
 /**
@@ -231,7 +222,8 @@ function reseedProofCard(
  * literals, the page stated two different contacted counts for one client on one
  * screen — Doc Dinners read 12,552 at the top and 12,307 further down.
  *
- * The RETURN and the COST-PER-OUTCOME are read too, since features-service widened
+ * The COST-PER-OUTCOME is read too (the per-client return left the cards with
+ * ROI-CONSISTENCY-1103: a pipeline-based ROI is retired), since features-service widened
  * this same pass to carry them (v0.160.0) — nothing here divides anything. A ratio
  * computed in this file would be a metric invented by a consumer, which is the one
  * thing every figure on this page is not; a `null` from the producer means "not
@@ -251,9 +243,8 @@ export function reseedProofCards(html: string, data: ShowcaseOutcomes): string {
       if (!brand) return card;
       const counts = countsByStep(brand);
       const costs = costsByStep(brand);
-      const roi = typeof brand.returnPerDollar === "number" ? brand.returnPerDollar : null;
-      if (counts.size === 0 && costs.size === 0 && roi === null) return card;
-      return reseedProofCard(card, counts, costs, roi);
+      if (counts.size === 0 && costs.size === 0) return card;
+      return reseedProofCard(card, counts, costs);
     }
   );
 }

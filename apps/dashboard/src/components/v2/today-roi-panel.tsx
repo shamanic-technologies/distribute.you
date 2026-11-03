@@ -175,16 +175,11 @@ function StepBody({
             : "\u00a0"}
         </p>
       </div>
-      <div className="k-card grid grid-cols-2 divide-x divide-[var(--line-subtle)]">
+      {/* No $ pipeline here: it is a forecast that lives on Deals only (owner 2026-11-03). */}
+      <div className="k-card">
         <div className="p-3">
           <p className="k-label">Worth each</p>
           <p className="mt-1 text-[20px] font-medium tabular-nums">{step.valuePerOutcomeUsd != null ? formatUsdAdaptive(step.valuePerOutcomeUsd) : "—"}</p>
-        </div>
-        <div className="p-3">
-          <p className="k-label">Pipeline</p>
-          <p className="mt-1 text-[20px] font-medium tabular-nums">
-            {slice ? (slice.pipelineUsd != null ? formatUsdAdaptive(slice.pipelineUsd) : "—") : step.pricedValueUsd != null ? formatUsdAdaptive(step.pricedValueUsd) : "—"}
-          </p>
         </div>
       </div>
       <WhySection why={step.valueExplanation} brandId={brandId} />
@@ -295,14 +290,11 @@ function ContactedBody({
         <h2 className="text-[20px] font-medium leading-7 tracking-[-0.01em]">People contacted</h2>
         <p className="k-fg2 mt-1 text-[13px] tabular-nums">{formatCount(contacted.count)} contacted, no step reached yet</p>
       </div>
-      <div className="k-card grid grid-cols-2 divide-x divide-[var(--line-subtle)]">
+      {/* No $ pipeline here: it is a forecast that lives on Deals only (owner 2026-11-03). */}
+      <div className="k-card">
         <div className="p-3">
           <p className="k-label">Worth each</p>
           <p className="mt-1 text-[20px] font-medium tabular-nums">{contacted.valuePerPersonUsd != null ? formatUsdAdaptive(contacted.valuePerPersonUsd) : "—"}</p>
-        </div>
-        <div className="p-3">
-          <p className="k-label">Pipeline</p>
-          <p className="mt-1 text-[20px] font-medium tabular-nums">{contacted.pipelineUsd != null ? formatUsdAdaptive(contacted.pipelineUsd) : "—"}</p>
         </div>
       </div>
       {why && (

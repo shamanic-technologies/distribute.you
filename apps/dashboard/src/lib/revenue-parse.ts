@@ -10,6 +10,7 @@ import { z } from "zod";
 import { maturityPairSchema } from "./maturity";
 import type { RevenueOverview, RevenueOverviewWithLeads } from "./revenue-view";
 import { ExpectedReturnSchema } from "./expected-return";
+import { RealizedReturnSchema } from "./realized-return";
 
 /**
  * The ratios of a cost-economics block, served twice (features-service#1196, lib/maturity.ts).
@@ -196,6 +197,9 @@ const CostEconomicsSchema = z.object({
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
   maturity: EconomicsMaturitySchema.nullish(),
+  // The REALIZED return (ROI-CONSISTENCY-1103), the only measured return a screen shows.
+  // Nullish: null where no closed-deal source was read, absent on an older cached body.
+  realizedReturn: RealizedReturnSchema.nullish(),
 });
 // Return on spend across the brand's whole life. Both legs CUMULATIVE and REALIZED:
 // spend dated by runs' own cost buckets, pipeline by the per-lead event timestamps.
@@ -695,6 +699,7 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
       expectedConversions: d.costEconomics.expectedConversions,
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
       maturity: d.costEconomics.maturity ?? null,
+      realizedReturn: d.costEconomics.realizedReturn ?? null,
     },
     roiHistory: d.roiHistory ?? null,
     // Whole, verbatim. The card renders the served points and the served counts; the one

@@ -326,7 +326,6 @@
       "<ul>" +
       "<li><span>Tools</span>" + tools + "</li>" +
       "<li><span>Expected cost</span>" + cost + "</li>" +
-      (p.roi ? '<li><span>Expected return</span><span class="pf-m"><b>' + esc(p.roi) + "</b> per $1 spent</span></li>" : "") +
       "</ul></article>"
     );
   }

@@ -17,8 +17,8 @@
  * A failed channel read drops the whole section (the page never states a path nobody
  * served); a failed economics read drops only the figures.
  *
- * The ROI of a path is NOT shown: the producer serves it (`/public/stats/outcome-return-on-spend`)
- * but this page reads only what the public gateway serves for this section today.
+ * No return is shown: a channel's path is below a Target, and a return exists only where a
+ * value lands (owner 2026-11-03, ROI-CONSISTENCY-1103). Cost per outcome only.
  *
  * Alias-free: the unit tests render it directly. Behaviour: `public/landing/v2/path-finder.js`;
  * styles: `public/landing/v2/path-finder.css`.
@@ -27,7 +27,7 @@ import { catalogSections, type PlatformPrice } from "./catalog";
 
 export const PATH_FINDER_TOKEN = "<!--gtm-path-finder-->";
 export const PATH_FINDER_CSS_VERSION = 1;
-export const PATH_FINDER_JS_VERSION = 2;
+export const PATH_FINDER_JS_VERSION = 3;
 
 // ---------------------------------------------------------------------------
 // Served shapes (only the fields this section reads)
@@ -43,7 +43,7 @@ export type PfChannel = {
   transitions: { from: PfStep | null; to: PfStep }[];
 };
 /** One outcome of a channel: its expected cost and every route (leg keys) that reaches it. */
-export type PfOutcome = { cost: number | null; routes: string[][]; roi: number | null };
+export type PfOutcome = { cost: number | null; routes: string[][] };
 
 
 /** features-service's maturity verdict on a projected figure (CHANNEL-ECON-MATURITY-1031): READ, never re-graded. */
@@ -124,11 +124,9 @@ export function parseEconomics(body: unknown): PfEconomics {
       const key = step(oc.step, "economics outcome.step").key;
       // A figure features-service does not call mature (one reply bought for $2.18 was once
       // crowned "best path") reads "learning" and is never ranked.
-      const r = c.returnPerDollar;
       per.set(key, {
         cost: isMature(oc.maturity) && typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null,
         routes,
-        roi: isMature(c.returnPerDollarMaturity) && typeof r === "number" && Number.isFinite(r) && r > 0 ? r : null,
       });
     }
     out.set(str(c.channelSlug, "economics channelSlug"), per);
@@ -167,8 +165,6 @@ export type PfPath = {
   who: string;
   tools: Tool[];
   expectedUsd: number | null;
-  /** The served expected return per dollar spent (a projection, labelled so), or null. */
-  expectedReturn: number | null;
 };
 export type PfGoal = { key: string; chip: string; step: string; plural: string; paths: PfPath[] };
 
@@ -310,7 +306,6 @@ export function pathsTo(stepKey: string, d: PathFinderData): PfPath[] {
         who: whoRuns(c),
         tools: pathTools(c, d.prices),
         expectedUsd: eco?.cost ?? null,
-        expectedReturn: eco?.roi ?? null,
       },
     });
   }
@@ -401,7 +396,6 @@ export function pathFinderJson(d: PathFinderData): string {
       paths: g.paths.map((p) => ({
         ...p,
         expected: p.expectedUsd === null ? null : formatExpected(p.expectedUsd),
-        roi: p.expectedReturn === null ? null : `${p.expectedReturn.toFixed(1)}x`,
       })),
     })),
     tiles: tiles(d),

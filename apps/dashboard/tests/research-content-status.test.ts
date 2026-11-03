@@ -109,14 +109,15 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(activate).not.toContain("setWorkflowDynastyStatus");
   });
 
-  it("Models: Model, ROI, $ / outcome, % Conversion, # outcomes, $ Spent, Status, in that order (owner 2026-10-23)", () => {
+  it("Models: Model, $ / outcome, % Conversion, # outcomes, $ Spent, Status, in that order, no ROI (owner 2026-10-23, ROI-CONSISTENCY-1103)", () => {
     const head = list.slice(list.indexOf('{kind === "models" ? ('), list.indexOf("</thead>"));
-    const order = ["<RoiLabel />", "{`$ ${o.unit}`}", ">% Conversion</th>", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
+    expect(head).not.toContain("RoiLabel");
+    const order = ["{`$ ${o.unit}`}", ">% Conversion</th>", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     const models = head.slice(0, head.indexOf(') : kind === "workflows" ? ('));
     expect(models).not.toContain("Emails");
-    const roiAt = list.indexOf("<RowRoi f={r} />");
+    const roiAt = list.indexOf('{kind === "models" ? (', list.indexOf("<tbody>"));
     const cells = list.slice(roiAt, list.indexOf("<ContentStatusWord", roiAt));
     expect(cells).toContain("<Dash v={r.cost} />");
     // $ Spent prints the row's own served spend on every pipe; post columns sit before it (THREADS-IDEAS-AB).
@@ -124,9 +125,10 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(cells.indexOf("<PostCells")).toBeLessThan(cells.indexOf("r.spend}"));
   });
 
-  it("Templates: Template, Tactics, ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status, in that order (owner 2026-10-23)", () => {
+  it("Templates: Template, Tactics, % Conversion, $ / outcome, # outcomes, $ Spent, Status, in that order, no ROI (owner 2026-10-23, ROI-CONSISTENCY-1103)", () => {
     const head = list.slice(list.indexOf("Owner 2026-10-23: Template, Tactics"), list.indexOf('{kind === "models" ? ('));
-    const order = [">Tactics</th>", "<RoiLabel />", ">% Conversion</th>", "{`$ ${o.unit}`}", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
+    expect(head).not.toContain("RoiLabel");
+    const order = [">Tactics</th>", ">% Conversion</th>", "{`$ ${o.unit}`}", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(head).not.toContain("Workflows</th>");
@@ -138,13 +140,13 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list.slice(shownAt, list.indexOf("\n", shownAt))).not.toMatch(/\.sort\(|toSorted/);
   });
 
-  it("Templates: ROI + % Conversion (served), no Leg / # column, ⋮, and the outputs drawer on a row click", () => {
+  it("Templates: % Conversion (served), no ROI, no Leg / # column, ⋮, and the outputs drawer on a row click", () => {
     // Owner 2026-10-22: one leg per pipe page (Leg said nothing), the Active tab already states the status,
     // and the ROI order number meant nothing beside the ROI itself.
     expect(list).not.toContain(">Leg</th>");
     expect(list).not.toContain("<FirstAndMore");
     expect(list).not.toContain(">#</th>");
-    expect(list).toContain("<TemplateRoi t={r as ResearchTemplate} />");
+    expect(list).not.toContain("TemplateRoi");
     expect(list).toContain(">% Conversion</th>");
     expect(list).toContain("<TemplateOutputsPanel");
     // A row opens its detail in the right drawer (owner 2026-10-23), no panel open from the start.

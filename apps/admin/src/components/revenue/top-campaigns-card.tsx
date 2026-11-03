@@ -6,19 +6,19 @@ import { getFeatureRevenueByCampaign, listCampaignsByBrand } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
+import { formatMultiple } from "@/lib/realized-return-words";
 
 /**
- * Top-3 campaigns by ROI for the feature Overview — replaces the brand-wide
- * "Top cost sources" list in the cost/efficiency column.
+ * Top-3 campaigns by REALIZED return for the feature Overview — replaces the
+ * brand-wide "Top cost sources" list in the cost/efficiency column.
  *
- * Ranking: running campaigns (status !== "stopped") first, by ROI desc; if fewer
- * than 3 running, stopped campaigns (status === "stopped") fill the remaining
- * slots, also ROI desc. Capped at 3.
+ * Ranking: running campaigns (status !== "stopped") first, by realized return desc;
+ * if fewer than 3 running, stopped campaigns fill the remaining slots. Capped at 3.
  *
- * ROI = expected pipeline ÷ run cost, per campaign, from features-service
- * (`/revenue?groupBy=campaignId` — a single call for every campaign's ROI). The
- * campaign list supplies the name + status to join on. A campaign with no runs is
- * absent from the revenue groups → null ROI ("—"), sorted last within its group.
+ * Realized return = revenue of the Paid clients our outreach caused ÷ money actually
+ * spent, per campaign, served by features-service (`costEconomics.realizedReturn` on
+ * `/revenue?groupBy=campaignId`, ROI-CONSISTENCY-1103). The pipeline-based ROI is
+ * retired. A campaign with no runs is absent from the groups → "—", sorted last.
  */
 type CampaignRow = {
   id: string;
@@ -28,7 +28,7 @@ type CampaignRow = {
 };
 
 function formatRoi(roi: number | null): string {
-  return roi == null ? "—" : `${roi.toFixed(1)}×`;
+  return roi == null ? "—" : formatMultiple(roi);
 }
 
 // ROI desc; null ROI sorts last (no usable pipeline/cost yet).
@@ -67,7 +67,7 @@ export function TopCampaignsCard({
 
   const top3 = useMemo<CampaignRow[]>(() => {
     if (!revenueGroups || !campaignsData) return [];
-    const roiById = new Map(revenueGroups.map((g) => [g.campaignId, g.roiMultiple]));
+    const roiById = new Map(revenueGroups.map((g) => [g.campaignId, g.realizedReturn?.roiMultiple ?? null]));
     const rows: CampaignRow[] = campaignsData.campaigns
       .filter((c) => c.featureSlug === featureSlug)
       .map((c) => ({
@@ -85,7 +85,7 @@ export function TopCampaignsCard({
   // Static shell: card frame + title paint immediately; only the rows wait.
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top campaigns by ROI</p>
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top campaigns by realized return</p>
       {pending ? (
         [0, 1, 2].map((i) => (
           <div key={i} className="flex items-center gap-2">

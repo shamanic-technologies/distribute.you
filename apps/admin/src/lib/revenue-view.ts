@@ -9,6 +9,8 @@
 // Plain TS interfaces (no `@/lib/api` import) so these types stay safe to import
 // from components reused in the public-report bundle.
 
+import type { RealizedReturn } from "./realized-return";
+
 export interface RevenuePoint {
   date: string;
   cumulativePipelineUsd: number;
@@ -78,8 +80,12 @@ export interface CostEconomics {
   committedCostUsd: number | null;
   /** (committedCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
   costOfAcquisitionPct: number | null;
-  /** totalPipelineUsd / committedCostUsd. Null when cost is 0 or pipeline is null. */
+  /** totalPipelineUsd / committedCostUsd. Null when cost is 0 or pipeline is null.
+   *  RETIRED from every screen (ROI-CONSISTENCY-1103): parsed until features-service drops it. */
   roiMultiple: number | null;
+  /** The REALIZED return (ROI-CONSISTENCY-1103): Paid clients our outreach caused over money
+   *  actually spent, whole history. The only measured return a screen shows. */
+  realizedReturn: RealizedReturn | null;
 }
 
 /** Everything the overview + conversions pages render for a feature+brand. */

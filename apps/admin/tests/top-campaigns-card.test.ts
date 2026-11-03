@@ -19,8 +19,10 @@ describe("TopCampaignsCard — top-3 campaigns by ROI", () => {
     expect(card).toMatch(/export function TopCampaignsCard\b/);
   });
 
-  it("reads per-campaign ROI from the grouped revenue endpoint (one call)", () => {
+  it("reads per-campaign REALIZED return from the grouped revenue endpoint (one call), never the pipeline ROI", () => {
     expect(card).toContain("getFeatureRevenueByCampaign");
+    expect(card).toContain("g.realizedReturn?.roiMultiple");
+    expect(card).not.toContain("g.roiMultiple");
     expect(card).toContain("listCampaignsByBrand");
   });
 
@@ -43,7 +45,7 @@ describe("TopCampaignsCard — top-3 campaigns by ROI", () => {
   });
 
   it("static-shell: title outside the pending gate, rows skeleton while loading", () => {
-    expect(card).toContain("Top campaigns by ROI");
+    expect(card).toContain("Top campaigns by realized return");
     expect(card).toContain("Skeleton");
   });
 });

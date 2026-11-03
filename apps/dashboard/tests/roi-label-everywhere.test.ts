@@ -11,7 +11,6 @@ describe("every customer ROI label carries the expected (i)", () => {
     ["components/v2/today-page.tsx", "<StatTile label={<RoiLabel />}"],
     ["components/v2/copilot-chat.tsx", '{c.label === "ROI" ? <RoiLabel /> : c.label}'],
     ["components/v2/campaign-page.tsx", "<StatTile label={<RoiLabel />}>"],
-    ["components/v2/offer-campaigns.tsx", "<ExpectedLabel tip={ROI_TIP}>ROI</ExpectedLabel>"],
   ])("%s", (file, marker) => {
     expect(read(file)).toContain(marker);
   });
@@ -19,7 +18,7 @@ describe("every customer ROI label carries the expected (i)", () => {
   it("the Campaigns surfaces label ROI with the (i): campaign page (1: its This campaign tile) and the list rows", () => {
     expect(read("components/v2/funnel-campaigns.tsx").match(/<RoiLabel \/>/g)?.length).toBe(1);
     expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<RoiLabel>Expected ROI</RoiLabel>");
-    expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<RoiLabel>Measured ROI</RoiLabel>");
+    expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<RoiLabel>Realized ROI</RoiLabel>");
   });
 
   it("no customer surface prints a bare ROI header", () => {

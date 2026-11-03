@@ -7,8 +7,7 @@ import { pollOptions } from "@/lib/query-options";
 import { getConversationCounts, getLeadBucketCounts } from "@/lib/api";
 import { type RevenueWindow } from "@/lib/revenue-window";
 import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
-import { shownFigure, shownReturn } from "@/lib/maturity";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { shownFigure } from "@/lib/maturity";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -20,7 +19,6 @@ import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2CampaignHref, v2Href, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
-import { CampaignRoiChart } from "@/components/v2/campaign-roi-chart";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { LEG_STEPS, LegSteps, StepBar, SummaryCard, useCampaignWindow } from "@/components/v2/offer-channel-page";
@@ -34,9 +32,10 @@ import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById, useFunnelCapsWords } from "@/components/v2/funnel-campaigns";
-import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { CostValue, RoiLabel } from "@/components/v2/roi-label";
+import { ExpectedReturnValue, RealizedReturnLine } from "@/components/v2/return-figures";
 import { CampaignHoldNote, useCampaignHold } from "@/components/v2/campaign-hold";
-import { costToShowCents, roiToShow } from "@/lib/expected-return";
+import { costToShowCents } from "@/lib/expected-return";
 
 const CAMPAIGN_TABS: { key: V2CampaignTab; label: string; staff?: boolean }[] = [
   { key: "overview", label: "Overview" },
@@ -251,14 +250,15 @@ export function SpentTile({ win }: { win: { data: RevenueWindow | null; pending:
 
 /**
  * The campaign's ROI tile, first on both campaign kinds (cold email and answering), with the
- * expected (i) every ROI label carries. Green above break-even (lib/format-roi.ts roiIsGood).
+ * (i) every ROI label carries: the served EXPECTED return, then the REALIZED line (Paid
+ * clients over money spent), the only two returns a screen shows (owner 2026-11-03).
  */
 function RoiTile({ campaign }: { campaign: V2Campaign }) {
-  const { basis } = useStatBasis();
-  const roi = shownReturn(campaign.row.revenue?.economicsMaturity, basis);
+  const g = campaign.row.revenue ?? null;
   return (
     <StatTile label={<RoiLabel />}>
-      <Figure value={<RoiValue roi={roiToShow(roi, campaign.row.revenue?.expectedReturn)} learning={roi.learning} />} />
+      <Figure value={<ExpectedReturnValue expected={g?.expectedReturn} compact />} />
+      <RealizedReturnLine realized={g?.realizedReturn} className="mt-auto pt-2" />
     </StatTile>
   );
 }
@@ -329,12 +329,6 @@ function CampaignOverview({
         </div>
       </section>
 
-      <CampaignRoiChart
-        brandId={brandId}
-        campaignId={campaignId}
-        featureSlug={campaign.row.campaign.featureSlug ?? null}
-        economics={g?.economicsMaturity}
-      />
 
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <LegSteps
@@ -424,12 +418,6 @@ function ConversationOverview({
         </div>
       </section>
 
-      <CampaignRoiChart
-        brandId={brandId}
-        campaignId={campaign.row.campaign.id}
-        featureSlug={campaign.row.campaign.featureSlug ?? null}
-        economics={campaign.row.revenue?.economicsMaturity}
-      />
 
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section>

@@ -65,7 +65,8 @@ describe("the model page reads the catalogue, it does not keep one", () => {
   });
 
   it("renders served money through the shared formatters, deriving nothing", () => {
-    expect(PAGE).toContain("fmtRoi(row.bestReturnPerDollar)");
+    // No per-channel return (ROI-CONSISTENCY-1103).
+    expect(PAGE).not.toContain("bestReturnPerDollar");
     expect(PAGE).toContain("fmtUsd(cell.costPerOutcomeUsd)");
     // No browser-side arithmetic on a displayed stat.
     expect(PAGE).not.toMatch(/ReturnPerDollar\s*[*/+-]/);

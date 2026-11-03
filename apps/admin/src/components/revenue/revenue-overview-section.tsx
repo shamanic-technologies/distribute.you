@@ -95,8 +95,8 @@ export function RevenueOverviewSection({
           )}
         </div>
 
-        {/* Cost & efficiency — spend metrics (total / cost-of-acquisition / ROI)
-            with the Top-3 campaigns-by-ROI list as the bottom card (the brand-wide
+        {/* Cost & efficiency — total spend + realized return, with the Top-3
+            campaigns-by-realized-return list as the bottom card (the brand-wide
             top-cost-sources list stays on the Campaigns page). */}
         <RevenueCostSummary
           costBreakdown={costBreakdown}

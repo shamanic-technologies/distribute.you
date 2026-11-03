@@ -129,9 +129,9 @@ describe("served shapes", () => {
 
 describe("paths", () => {
   it("lists every channel reaching the goal, measured paths cheapest first, a figure features-service calls not mature as learning", () => {
-    expect(pathsTo("conversation", DATA).map((p) => [p.slug, p.expectedUsd, p.expectedReturn])).toEqual([
-      ["sales-cold-email-outreach", 319.278, 0.7536],
-      ["email-sending", null, null],
+    expect(pathsTo("conversation", DATA).map((p) => [p.slug, p.expectedUsd])).toEqual([
+      ["sales-cold-email-outreach", 319.278],
+      ["email-sending", null],
     ]);
     expect(pathsTo("meeting_booked", DATA).map((p) => p.slug)).toEqual(["sales-cold-email-outreach", "linkedin-ads", "agency-meeting-booking"]);
   });
@@ -198,14 +198,13 @@ describe("markup", () => {
     expect(html).toContain('data-goal="conversation"');
     expect(html).not.toContain('class="pf-chip" type="button" data-goal="meeting_booked"');
   });
-  it("labels every cost and return as expected, the return only where features-service serves it", () => {
+  it("labels every cost as expected and states no return: a path is below a Target (ROI-CONSISTENCY-1103)", () => {
     const js = read("public/landing/v2/path-finder.js");
     expect(js).toContain("<li><span>Expected cost</span>");
     expect(js).toContain('<span class="pf-m">learning</span>');
-    expect(js).toContain("<li><span>Expected return</span>");
+    expect(js).not.toContain("Expected return");
     const json = pathFinderJson(DATA);
-    expect(json).toContain('"roi":"0.8x"');
-    expect(json).not.toContain('"roi":"9.0x"');
+    expect(json).not.toContain('"roi"');
   });
   it("a crawler reads the paths as a plain list", () => {
     expect(prose).toContain("Interested replies from my buyers");

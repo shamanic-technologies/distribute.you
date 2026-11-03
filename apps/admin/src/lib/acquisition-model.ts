@@ -166,8 +166,7 @@ export type MatrixRow = {
   entryOnly: boolean;
   /** How many outcomes its paths reach, as served. Null when the economics read has no entry. */
   reachedOutcomeCount: number | null;
-  /** PROJECTED return per dollar on the channel's best-returning path, verbatim. */
-  bestReturnPerDollar: number | null;
+  // No per-channel return: a channel is below a Target (ROI-CONSISTENCY-1103).
   /** One entry per step of the catalogue, in catalogue order. */
   cells: MatrixCell[];
 };
@@ -219,7 +218,6 @@ export function buildMatrixRows(
         legLabels: (channel.stepTransitions ?? []).map(legLabel),
         entryOnly: (channel.stepTransitions ?? []).every((t) => t.from === null),
         reachedOutcomeCount: entry ? entry.outcomes.length : null,
-        bestReturnPerDollar: entry?.returnPerDollar ?? null,
         cells,
       };
     });

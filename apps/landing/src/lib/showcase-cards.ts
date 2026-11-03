@@ -33,7 +33,7 @@
  * null rung is left OUT of the card entirely rather than drawn as an empty one: on a
  * marketing page a zero reads as a fact about the client, not as a gap in our reading.
  */
-import { formatCostUsd, formatReturnMultiple } from "@/lib/landing-format";
+import { formatCostUsd } from "@/lib/landing-format";
 import { personFor } from "@/lib/showcase-people";
 import type { ShowcaseBrand, ShowcaseOutcome } from "@/lib/showcase-outcomes";
 
@@ -221,10 +221,6 @@ export function renderProofCard(brand: ShowcaseBrand): string | null {
   const domain = brand.brand?.domain;
   const name = brand.brand?.name;
   if (!domain || !name) return null;
-  const roi = typeof brand.returnPerDollar === "number" ? brand.returnPerDollar : null;
-  if (roi === null) return null;
-
-  const shaped = formatReturnMultiple(roi);
   const person = personFor(domain);
   const top = person
     ? `<div class="proof-top"><img class="face" src="${person.photo}" alt=""><div><div class="name">${esc(person.name)}</div><div class="meta">${esc(person.role)}</div></div></div>`
@@ -250,7 +246,7 @@ export function renderProofCard(brand: ShowcaseBrand): string | null {
 
   return `<article class="proof-card rv" data-proof-brand="${esc(domain)}">
         ${top}
-        <div class="proof-roi"><span class="big" data-count="${shaped.text}" data-decimals="${shaped.decimals}">0<small>x</small></span><span class="lbl">return on<br>paid budget</span></div>${costLine}
+        ${costLine.trimStart()}
         <div class="proof-funnel">${rungs}</div>
         <div class="proof-line"><span>Channel</span><b>Cold email</b></div>
       </article>`;

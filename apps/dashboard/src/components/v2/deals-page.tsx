@@ -61,7 +61,7 @@ export function DealsPage() {
       <div className="flex min-h-0 flex-col px-4 pb-10 pt-6 md:px-6">
         <div className="min-w-0">
           <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-            {pipeline != null ? `${formatUsdAdaptive(pipeline)} in expected pipeline` : "Deals"}
+            {pipeline != null ? `${formatUsdAdaptive(pipeline)} pipeline forecast` : "Deals"}
           </h1>
           <p className="k-fg2 mt-1 text-[14px]">
             {contacted != null && engaged != null && paid != null ? (

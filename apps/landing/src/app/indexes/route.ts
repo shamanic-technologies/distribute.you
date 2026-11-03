@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   if (list) {
     const details = await Promise.all(list.indexes.map((i) => fetchIndexDetail(i.slug)));
     details.forEach((d, n) => {
-      if (d && d !== "not_found") series.set(list.indexes[n].slug, d.points);
+      if (d && d !== "not_found" && d !== "retired") series.set(list.indexes[n].slug, d.points);
     });
   }
   return renderedResponse(renderIndexListPage(list, series), request, {

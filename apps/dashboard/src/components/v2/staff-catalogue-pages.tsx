@@ -14,7 +14,6 @@ import { formatRatePct } from "@/lib/pipe-stats";
 import { useOngoingCatalogue, useStaffCatalogueList, useStaffCatalogueObject, staffCatalogueObjectKey } from "@/components/v2/staff-catalogue-data";
 import { getStaffCatalogueObject } from "@/lib/api";
 import { useOrgQueryGate } from "@/lib/use-auth-query";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { v2CatalogueHref, v2OfferHref, v2Href, v2WorkflowHref } from "@/lib/v2/routes";
 import {
@@ -49,14 +48,6 @@ function Usd({ v }: { v: number | null | undefined }) {
   return v == null ? <span className="k-fg4">—</span> : <span className="tabular-nums">{formatUsdAdaptive(v)}</span>;
 }
 
-function Roi({ v }: { v: number | null | undefined }) {
-  return v == null ? (
-    <span className="k-fg4">—</span>
-  ) : (
-    <span className={`tabular-nums ${roiIsGood(v) ? "text-[var(--run)]" : ""}`}>{formatRoi(v)}</span>
-  );
-}
-
 export function OngoingDot() {
   return <span className="k-dot-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Ongoing" title="Ongoing" />;
 }
@@ -80,7 +71,8 @@ function rowOf(d: { id: string; name: string; line: string; costUsd: number | nu
 
 /**
  * The card table every catalogue list renders: the object's mark and name (its line under
- * it), its value (steps), the producer's cost in its unit, ROI and status. A row opens its page.
+ * it), its value (steps), the producer's cost in its unit and status. A row opens its page. No return:
+ * every catalogue object sits below a campaign's Target (owner 2026-11-03, ROI-CONSISTENCY-1103).
  */
 export function CatalogueTable({
   object,
@@ -109,7 +101,6 @@ export function CatalogueTable({
               <th className={TH}>Name</th>
               {object === "steps" && <th className={`${TH} text-right`}>Value</th>}
               <th className={`${TH} text-right`}>{costUnitLabel(costUnit)}</th>
-              <th className={`${TH} text-right`}>ROI</th>
               <th className={TH}>Status</th>
             </tr>
           </thead>
@@ -141,9 +132,6 @@ export function CatalogueTable({
                   )}
                   <td className={`${TD} text-right`}>
                     <Usd v={r.costUsd} />
-                  </td>
-                  <td className={`${TD} text-right`}>
-                    <Roi v={r.roi} />
                   </td>
                   <td className={TD}>
                     <CatalogueStatus status={r.status} />
@@ -418,12 +406,9 @@ export function CatalogueObjectPage({ object, id }: { object: CatalogueObject; i
               </p>
             )}
 
-            <div className={`k-card mt-6 grid divide-x divide-[var(--line-subtle)] ${object === "channels" ? "grid-cols-2" : "grid-cols-3"}`}>
+            <div className={`k-card mt-6 grid divide-x divide-[var(--line-subtle)] ${object === "channels" ? "grid-cols-1" : "grid-cols-2"}`}>
               <Kpi label={costUnitLabel(d.costUnit)}>
                 <Usd v={row.costUsd} />
-              </Kpi>
-              <Kpi label="ROI">
-                <Roi v={row.roi} />
               </Kpi>
               {object === "steps" && (
                 <Kpi label="Value">
@@ -803,7 +788,6 @@ function FunnelBody({ d, href, ongoing }: { d: Record<string, unknown>; href: Hr
                 <th className={`${TH} text-right`}>Rate</th>
                 <th className={`${TH} text-right`}>Needed per client</th>
                 <th className={`${TH} text-right`}>Cost per outcome</th>
-                <th className={`${TH} text-right`}>ROI</th>
                 <th className={TH}>Status</th>
               </tr>
             </thead>
@@ -839,9 +823,6 @@ function FunnelBody({ d, href, ongoing }: { d: Record<string, unknown>; href: Hr
                     <td className={`${TD} text-right tabular-nums`}>{l.outcomesNeededPerPayingClient ?? <span className="k-fg4">—</span>}</td>
                     <td className={`${TD} text-right`}>
                       <Usd v={p?.costUsd} />
-                    </td>
-                    <td className={`${TD} text-right`}>
-                      <Roi v={p?.roi} />
                     </td>
                     <td className={TD}>{p ? <CatalogueStatus status={p.status} /> : <span className="k-fg4">—</span>}</td>
                   </tr>

@@ -150,7 +150,7 @@ function PathsTable({
                 </th>
               )}
               <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">
-                <ExpectedLabel tip={EXPECTED_ROI_TIP}>{gainHeadline ? "Return" : "ROI"}</ExpectedLabel>
+                <ExpectedLabel tip={EXPECTED_ROI_TIP}>{gainHeadline ? "Expected return" : "Expected ROI"}</ExpectedLabel>
               </th>
             </tr>
           </thead>
@@ -348,7 +348,7 @@ export function PathBreakdown({
           <dd className="tabular-nums">{usd(path.costPerPayingClientUsd)}</dd>
         </div>
         <div>
-          <dt className="k-fg3">ROI</dt>
+          <dt className="k-fg3">Expected ROI</dt>
           <dd className="tabular-nums">{unavailable ?? formatRoi(path.roi)}</dd>
         </div>
       </dl>

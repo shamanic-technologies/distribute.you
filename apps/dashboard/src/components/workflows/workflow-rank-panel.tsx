@@ -47,9 +47,7 @@ import { LearningTag } from "@/components/learning-tag";
 import { WorkflowModelCell, WorkflowTemplateCell } from "@/components/workflows/workflow-cells";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
-import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
 import { formatCentsAsUsdAdaptive, formatUsdAdaptive } from "@/lib/format-number";
-import { formatRoi } from "@/lib/format-roi";
 import { GrainMark } from "@/components/marks/grain-mark";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import {
@@ -64,7 +62,6 @@ import {
   fleetComparison,
   workflowOutcomeCost,
   workflowOutcomeCount,
-  workflowRoi,
   type CampaignWorkflowRow,
   type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
@@ -328,16 +325,10 @@ function GrainBlock({
               </p>
             </div>
             {block.projected && !learning && (
-              <>
-                <Figure
-                  label="Return on spend"
-                  value={formatRoi(block.projected.roiMultiple ?? null)}
-                />
-                <Figure
-                  label="Cost per paid client"
-                  value={fmtUsd(block.projected.costPerPaidClientUsd)}
-                />
-              </>
+              <Figure
+                label="Cost per paid client"
+                value={fmtUsd(block.projected.costPerPaidClientUsd)}
+              />
             )}
           </div>
         </>
@@ -463,7 +454,6 @@ export function WorkflowRankPanel({
   // shown, with the producer's Learning verdict (lib/maturity.ts). Nothing is counted here.
   const { basis } = useStatBasis();
   const rowCost = workflowOutcomeCost(row, basis);
-  const rowRoi = workflowRoi(row, basis);
   const scopeLabel = campaignId ? "campaign" : "brand";
 
   // The drill-down body: the whole un-grouped answer, narrowed to this workflow — the
@@ -557,7 +547,6 @@ export function WorkflowRankPanel({
   // A chart is drawn ONLY when its series carries something. An empty chart reads as a
   // zero, which is the one thing an absent figure must never say.
   const hasOutcomeSeries = Boolean(outcomeSeries?.daily?.length);
-  const hasRoiHistory = Boolean(revenue?.roiHistory?.daily?.length);
   const hasFleet = fleetRows.some((r) => r.value != null);
 
   const grainOrder = campaignId ? GRAIN_ORDER : GRAIN_ORDER.filter((g) => g.key !== "campaign");
@@ -627,18 +616,7 @@ export function WorkflowRankPanel({
                 )}
               </p>
             </div>
-            {/* The ladder's OWN return, served. An unmeasured row states none at all —
-                an explore allowance is a cost floor, not a result to divide into. */}
-            <div>
-              <span className="text-gray-500">Return on spend</span>
-              <p className="font-medium text-gray-900">
-                {ranked.estLearning ? (
-                  <LearningTag withInfo={false} paused={paused} />
-                ) : (
-                  formatRoi(ladder?.roiMultiple ?? null)
-                )}
-              </p>
-            </div>
+            {/* No return: a workflow sits below the campaign's Target (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
             <WorkflowModelCell contentModel={row.contentModel} />
@@ -715,18 +693,6 @@ export function WorkflowRankPanel({
               series={outcomeSeries}
               label={outcomeNoun}
               pending={bodyPending}
-            />
-          </div>
-        )}
-
-        {/* Inline, the host page draws cost, value and return over time itself. */}
-        {hasRoiHistory && !inline && (
-          <div className="mb-4">
-            <RoiTrendCard
-              history={revenue?.roiHistory ?? null}
-              pending={bodyPending}
-              learning={rowRoi.learning}
-              paused={paused}
             />
           </div>
         )}

@@ -53,7 +53,6 @@ export function useStartCatalogue(): { catalogue: StartCatalogueState | null; ca
           founders,
           proof: {
             hotLeads: p.hotLeads ?? null,
-            medianReturnPerDollar: p.medianReturnPerDollar ?? null,
             showcase: Array.isArray(p.showcase) ? p.showcase : [],
           },
         });

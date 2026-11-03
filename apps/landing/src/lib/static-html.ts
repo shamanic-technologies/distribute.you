@@ -14,7 +14,6 @@ import { SUBSCRIBER_LINK_CAPTURE_SCRIPT } from "@/lib/subscriber-link";
 import { BEFORE_SEND_JS } from "@/lib/posthog-before-send";
 import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
-import { formatReturnMultiple } from "@/lib/landing-format";
 import { reseedFounderCount } from "@/lib/founder-count";
 import { INDEX_LINKS_TOKEN, displayValue, fetchIndexDetail, fetchIndexList, indexLinksHtml, isExpected, type IndexDetail } from "@/lib/fleet-indexes";
 import {
@@ -249,7 +248,6 @@ const HOT_LEAD_BAND_TOKEN = "__HOT_LEAD_BAND__";
 // here, so the homepage and /indexes/<slug> can never quote two numbers for one figure.
 // features-service owns the population, the 2-client floor and the $100 spend floor.
 export const ENGAGED_LEAD_INDEX_SLUG = "cold-email-cost-per-engaged-lead";
-export const ROI_INDEX_SLUG = "cold-email-roi";
 // Owner 2026-10-19: the hero's price is what a booked meeting costs, read off the meeting
 // index (« $457 <- real number from the research »), no longer the engaged-lead price.
 // The index is our best workflow's figure, not a median, so the label says neither.
@@ -259,12 +257,6 @@ export interface HotLeadStats {
   hotLeads: number;
   companies: number;
   medianCostUsd: number;
-}
-
-/** The fleet's median return on spend, as the ROI index states it today. */
-export interface FleetReturnStats {
-  medianReturnPerDollar: number;
-  brandCount: number;
 }
 
 function latestInputs(detail: IndexDetail): Record<string, unknown> {
@@ -317,13 +309,6 @@ export function meetingCostIsExpected(detail: IndexDetail | null): boolean {
   return isExpected(detail?.index);
 }
 
-/** The ROI index as the hero states it; null drops the third stat alone. */
-export function fleetReturnFromIndex(detail: IndexDetail | null): FleetReturnStats | null {
-  if (!detail || !positive(detail.index.value)) return null;
-  const clients = latestInputs(detail).clients;
-  return { medianReturnPerDollar: detail.index.value, brandCount: positive(clients) ? clients : detail.index.outcomes };
-}
-
 // The landing renders while a build waits on it, so every live read is bounded and
 // drops its figure rather than holding the page.
 const FLEET_READ_TIMEOUT_MS = 8_000;
@@ -337,25 +322,15 @@ const FLEET_READ_TIMEOUT_MS = 8_000;
  * price and the return only (the comparison band still carries the count). Neither
  * figure read = no row at all, never an empty strip.
  */
-export function hotLeadRowHtml(
-  meetingCostUsd: number | null,
-  fleetReturn: FleetReturnStats | null = null,
-  meetingCostExpected = false,
-): string {
+export function hotLeadRowHtml(meetingCostUsd: number | null, meetingCostExpected = false): string {
   const cost = meetingCostUsd === null ? null : formatMeetingCost(meetingCostUsd);
-  const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
-  if (!cost && !returnFigure) return "";
+  if (!cost) return "";
   return (
     '<div class="hero-stats">' +
     (cost
       ? '<span class="hstat">' +
         `<span class="hstat-n"><b>${cost}</b></span>` +
         `<span class="hstat-l">${meetingCostExpected ? "expected cost per booked meeting" : "cost per booked meeting"}</span></span>`
-      : "") +
-    (returnFigure
-      ? '<span class="hstat">' +
-        `<span class="hstat-n"><b>${returnFigure.text}x</b></span>` +
-        '<span class="hstat-l">median ROI reported</span></span>'
       : "") +
     "</div>"
   );
@@ -383,11 +358,6 @@ export function stepMeetingCostHtml(meetingCostUsd: number | null, expected = fa
 
 const STEP_FROM_RATIO = 740 / 600;
 
-export function stepReturnHtml(fleetReturn: FleetReturnStats | null): string {
-  if (!fleetReturn) return "";
-  return stepTileHtml("ROI", `${formatReturnMultiple(fleetReturn.medianReturnPerDollar).text}x`);
-}
-
 function stepTileHtml(label: string, value: string, note = "measured"): string {
   return `<div class="control"><div class="k">${label}</div><div class="v">${value}</div><span class="ok">${note}</span></div>`;
 }
@@ -399,28 +369,21 @@ function stepTileHtml(label: string, value: string, note = "measured"): string {
  * dashboard's own ROI formatter, so a client meets one convention in both places.
  */
 /**
- * The dark stat band the comparison pages close on: the hero row's two figures, plus
- * the fleet's median return when features-service can state one.
+ * The dark stat band the comparison pages close on: the hero row's figures. The fleet's
+ * median return left it with the ROI index (owner 2026-11-03, ROI-CONSISTENCY-1103).
  *
  * The hot-lead pair rides the SAME `HotLeadStats` the homepage hero states, so a compare
- * page and the homepage cannot describe two different fleets. The return is a separate
- * read and therefore a separate argument: it is `null` whenever the producer says the
- * figure is unmeasurable or the read failed, and then the band renders exactly as it did
- * before — two figures, never a third slot holding a dash.
- *
- * The numerals ride `data-count` (+ `data-decimals` for the return) so main.js counts
- * them up like the homepage's own band. `stats two` centres a 2-up band; a 3-up one is
- * the base `.stats` grid, which already collapses to one column at 960px.
+ * page and the homepage cannot describe two different fleets. The numerals ride
+ * `data-count` so main.js counts them up like the homepage's own band. `stats two`
+ * centres a 2-up band; one figure alone also takes it.
  */
 export function hotLeadBandHtml(
   stats: HotLeadStats,
-  fleetReturn: FleetReturnStats | null = null,
   meetingCostUsd: number | null = null,
   meetingCostExpected = false,
 ): string {
   const companies = stats.companies.toLocaleString("en-US");
-  const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
-  const statCount = 1 + (meetingCostUsd === null ? 0 : 1) + (returnFigure ? 1 : 0);
+  const statCount = 1 + (meetingCostUsd === null ? 0 : 1);
   return (
     '<section class="framed dark">' +
     '<div class="wrap">' +
@@ -432,9 +395,6 @@ export function hotLeadBandHtml(
     (meetingCostUsd === null
       ? ""
       : `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${displayValue(meetingCostUsd)}">0</span></div><div class="l">${meetingCostExpected ? "expected cost per booked meeting" : "cost per booked meeting"}</div></div>`) +
-    (returnFigure
-      ? `<div class="stat rv"><div class="n"><span data-count="${returnFigure.text}" data-decimals="${returnFigure.decimals}">0</span><span class="u">x</span></div><div class="l">median ROI of our clients</div></div>`
-      : "") +
     "</div></div></section>"
   );
 }
@@ -580,27 +540,29 @@ async function withHotLeadStats(html: string) {
 
   // ONE read per index, shared by both surfaces: the hero and a compare page cannot
   // quote two medians. A failed read is logged by the reader and drops its figure.
-  const [engaged, roi, meeting] = await Promise.all([
+  // The fleet ROI index is RETIRED (owner 2026-11-03, ROI-CONSISTENCY-1103): a return
+  // exists only where a value lands, so the hero states no median client return.
+  const [engaged, meeting] = await Promise.all([
     fetchIndexDetail(ENGAGED_LEAD_INDEX_SLUG),
-    fetchIndexDetail(ROI_INDEX_SLUG),
     fetchIndexDetail(MEETING_INDEX_SLUG),
   ]);
-  const stats = hotLeadStatsFromIndex(engaged === "not_found" ? null : engaged);
-  const fleetReturn = fleetReturnFromIndex(roi === "not_found" ? null : roi);
-  const meetingCost = meetingCostFromIndex(meeting === "not_found" ? null : meeting);
-  const meetingExpected = meetingCostIsExpected(meeting === "not_found" ? null : meeting);
-  if (engaged === "not_found" || roi === "not_found" || meeting === "not_found") {
+  const stats = hotLeadStatsFromIndex(engaged === "not_found" || engaged === "retired" ? null : engaged);
+  const meetingRead = meeting === "not_found" || meeting === "retired" ? null : meeting;
+  const meetingCost = meetingCostFromIndex(meetingRead);
+  const meetingExpected = meetingCostIsExpected(meetingRead);
+  if (engaged === "not_found" || meeting === "not_found") {
     console.error(
-      `[landing] hero index missing: ${ENGAGED_LEAD_INDEX_SLUG}=${engaged === "not_found"} ${ROI_INDEX_SLUG}=${roi === "not_found"} ${MEETING_INDEX_SLUG}=${meeting === "not_found"}`,
+      `[landing] hero index missing: ${ENGAGED_LEAD_INDEX_SLUG}=${engaged === "not_found"} ${MEETING_INDEX_SLUG}=${meeting === "not_found"}`,
     );
   }
 
   return html
-    .replaceAll(HOT_LEAD_ROW_TOKEN, hotLeadRowHtml(meetingCost, fleetReturn, meetingExpected))
+    .replaceAll(HOT_LEAD_ROW_TOKEN, hotLeadRowHtml(meetingCost, meetingExpected))
     .replaceAll(STEP_MEETING_COST_TOKEN, stepMeetingCostHtml(meetingCost, meetingExpected))
-    .replaceAll(STEP_RETURN_TOKEN, stepReturnHtml(fleetReturn))
+    // The step's ROI tile left with the ROI index: its token renders nothing.
+    .replaceAll(STEP_RETURN_TOKEN, "")
     // The band states the count beside the two figures: no count, no band.
-    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn, meetingCost, meetingExpected) : "");
+    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, meetingCost, meetingExpected) : "");
 }
 
 function canonicalUrlFrom(html: string, fallbackPath?: string): string | undefined {

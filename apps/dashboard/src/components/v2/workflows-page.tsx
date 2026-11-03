@@ -19,7 +19,6 @@ import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
 import { DEPRECATED_ON_LEG_LABEL } from "@/lib/workflow-eligibility";
-import { workflowRoi } from "@/lib/campaign-workflow-rows";
 import { campaignWorkflowRows, shortWorkflowName, type CampaignLadderRow } from "@/lib/live-workflow-rows";
 import { useFeatures } from "@/lib/features-context";
 import { LiveRankingStrip, LiveWorkflowCells, LiveWorkflowChips, LiveWorkflowHeads } from "@/components/v2/live-workflow-cells";
@@ -108,7 +107,7 @@ export function V2WorkflowsPage() {
             <p className="k-fg2 mt-1 text-[14px]">
               Offer is the campaign&apos;s own offer, Brand is this brand alone, Global is every client we run a workflow for.
               Rows are in the rank we would put the campaign on. Money goes first to the cheap learning workflows above the
-              first mature one, then settles on it. ROI, Rate, Outcomes and Invested are the campaign&apos;s own.
+              first mature one, then settles on it. Rate, Outcomes and Invested are the campaign&apos;s own.
             </p>
           </div>
           {settled && specs.length > 0 && (
@@ -215,16 +214,17 @@ function CampaignSection({
     });
     return priced;
   }, [r.ranked, heldBySlug, basis]);
-  // The campaign's own live figures (its campaign grain + its realized return), with the
-  // row that goes first (rank 1) and the producer's recommendation (where the money goes).
-  const live = useMemo(() => {
-    const roiBySlug = new Map(r.rows.map((row) => [row.workflowDynastySlug, workflowRoi(row, basis).value]));
-    return campaignWorkflowRows({
-      ladderRows: r.allLadderRows as unknown as CampaignLadderRow[],
-      roiBySlug,
-      recommendedSlug: r.ladder?.recommendedWorkflowDynastySlug ?? null,
-    });
-  }, [r.allLadderRows, r.rows, r.ladder, basis]);
+  // The campaign's own live figures (its campaign grain), with the row that goes first (rank 1)
+  // and the producer's recommendation (where the money goes). No return per workflow: a workflow
+  // sits below the campaign's Target (owner 2026-11-03, ROI-CONSISTENCY-1103).
+  const live = useMemo(
+    () =>
+      campaignWorkflowRows({
+        ladderRows: r.allLadderRows as unknown as CampaignLadderRow[],
+        recommendedSlug: r.ladder?.recommendedWorkflowDynastySlug ?? null,
+      }),
+    [r.allLadderRows, r.ladder],
+  );
   const liveBySlug = useMemo(() => new Map(live.map((row) => [row.slug, row])), [live]);
   const shown = expanded ? rows : rows.slice(0, ROWS_SHOWN);
   const hrefFor = useCallback(
@@ -280,7 +280,7 @@ function CampaignSection({
               <tbody>
                 {r.ranked.length === 0 ? (
                   <tr>
-                    <td colSpan={13}>
+                    <td colSpan={12}>
                       <EmptyNote>This pipe offers no workflow yet.</EmptyNote>
                     </td>
                   </tr>

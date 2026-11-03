@@ -125,15 +125,13 @@ describe("shuffleWithSeed: the cards sit in a random order, stable within one vi
   });
 });
 
-describe("reassuranceFor: one fleet figure per question, the homepage hero's three", () => {
-  const proof = { hotLeads: { hotLeads: 881, companies: 23, medianCostUsd: 6.2 }, medianReturnPerDollar: 5.2 };
-  const fmt = (x: number) => `${x.toFixed(1)}x`;
-  it("states the count, then the return", () => {
-    expect(reassuranceFor("outcome", proof, fmt)).toEqual({ figure: "881", label: "engaged leads for 23 companies" });
-    expect(reassuranceFor("returns", proof, fmt)).toEqual({ figure: "5.2x", label: "median ROI reported" });
+describe("reassuranceFor: one fleet count, never a fleet return (ROI-CONSISTENCY-1103)", () => {
+  const proof = { hotLeads: { hotLeads: 881, companies: 23, medianCostUsd: 6.2 } };
+  it("states the count", () => {
+    expect(reassuranceFor("outcome", proof)).toEqual({ figure: "881", label: "engaged leads for 23 companies" });
   });
   it("falls back to nothing (the founders line) for a figure we do not hold", () => {
-    expect(reassuranceFor("returns", { hotLeads: null, medianReturnPerDollar: null }, fmt)).toBeNull();
-    expect(reassuranceFor("outcome", null, fmt)).toBeNull();
+    expect(reassuranceFor("outcome", { hotLeads: null })).toBeNull();
+    expect(reassuranceFor("outcome", null)).toBeNull();
   });
 });

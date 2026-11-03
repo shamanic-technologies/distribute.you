@@ -9,9 +9,9 @@ export default function CustomerSuccessPage() {
         <h1 className="text-2xl font-semibold text-gray-950">Customer Success</h1>
         <p className="mt-1 text-sm text-gray-500">
           One row per ever-active customer (org and brand), currently-active first, with a
-          green / yellow / red health badge and value economics. Green means active with a
-          healthy ROI and audience runway; yellow flags a below-breakeven ROI or a near-exhausted
-          audience; red means not active. Every number is computed and owned by the backend.
+          green / yellow / red health badge and value economics. Green means active with
+          audience runway; yellow flags a near-exhausted audience or a weak verdict from the
+          backend; red means not active. Every number is computed and owned by the backend.
         </p>
       </div>
 

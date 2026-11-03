@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ADMIN_ALLOWED_EMAILS } from "../src/lib/admin-allowlist";
 import {
+  digestIsNews,
   collectOutcomeDigestSends,
   renderOutcomeDigestHtml,
-  roiVisiblyRose,
   sendOutcomeDigestEmails,
   type DigestFetch,
 } from "../src/lib/outcome-digest";
@@ -100,10 +100,6 @@ describe("daily outcome digest", () => {
       featureSlug: "sales-cold-email-outreach",
       headline: { totalPipelineUsd: 12500 },
       costEconomics: { maturity: NULL_PAIR, committedCostUsd: 250, costOfAcquisitionPct: 2, roiMultiple: 50 },
-      // The digest only fires when the return went UP on the day, so every fixture
-      // that expects a send carries an improving curve. Both figures are served —
-      // the email prints these two points and computes nothing.
-      roiHistory: improvingRoi(day),
       timeSeries: [],
       organizations: ORGS,
       leads,
@@ -113,42 +109,18 @@ describe("daily outcome digest", () => {
     };
   }
 
-  /** A two-point cumulative curve that RISES on `day` — the send condition. */
-  function improvingRoi(day: string) {
-    return {
-      daily: [
-        { date: dayBefore(day), cumulativeSpendUsd: 200, cumulativePipelineUsd: 8000, roiMultiple: 40 },
-        { date: day, cumulativeSpendUsd: 250, cumulativePipelineUsd: 12500, roiMultiple: 50 },
-      ],
-      datedPipelineUsd: 12500,
-      undatedPipelineUsd: 0,
-    };
-  }
-
-  /** The same curve FLAT on `day` — the return did not move, so nothing is news. */
-  function flatRoi(day: string) {
-    return {
-      daily: [
-        { date: dayBefore(day), cumulativeSpendUsd: 200, cumulativePipelineUsd: 8000, roiMultiple: 50 },
-        { date: day, cumulativeSpendUsd: 250, cumulativePipelineUsd: 12500, roiMultiple: 50 },
-      ],
-      datedPipelineUsd: 12500,
-      undatedPipelineUsd: 0,
-    };
-  }
-
   function dayBefore(day: string): string {
     const [y, m, d] = day.split("-").map(Number);
     return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
   }
 
+  // A day the email is NEWS for: one sale (the realized return moved) beside the replies.
   function brandRevenue(repliedCountOnDay: number, day: string): unknown {
     const at = outcomeAtOnDay(day);
-    return revenueWithLeads(
-      Array.from({ length: repliedCountOnDay }, (_, i) =>
-        lead(i, { repliedPositiveAt: at }),
-      ),
-    );
+    return revenueWithLeads([
+      ...Array.from({ length: repliedCountOnDay }, (_, i) => lead(i, { repliedPositiveAt: at })),
+      lead(repliedCountOnDay, { purchased: true, purchasedAt: at }),
+    ]);
   }
 
   it("prepares a per-brand send for EVERY customer user (no beta gate)", async () => {
@@ -229,9 +201,7 @@ describe("daily outcome digest", () => {
       brandName: "Acme",
       metadata: {
         brandName: "Acme",
-        roiToday: "50×",
-        roiPrevious: "40×",
-        newOutcomes: "3 positive replies",
+        newOutcomes: "1 sale and 3 positive replies",
         totalOutcomeOrganizations: "2",
       },
     });
@@ -320,7 +290,6 @@ describe("daily outcome digest", () => {
   });
 
   it("does not prepare a send when a brand has pipeline but no outcome that day", async () => {
-    const day = previousUtcDay();
     const fetchMock: DigestFetch = async (input) => {
       const url = String(input);
       if (url.startsWith("https://api.clerk.com/v1/organizations")) {
@@ -357,8 +326,8 @@ describe("daily outcome digest", () => {
         });
       }
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1&pricing=net&leads=full") {
-        // Pipeline present, but zero positive replies on the reported day.
-        return jsonResponse(brandRevenue(0, day));
+        // Pipeline present, but nothing landed on the reported day.
+        return jsonResponse(revenueWithLeads([lead(0, {})]));
       }
       throw new Error(`Unexpected fetch ${url}`);
     };
@@ -642,11 +611,12 @@ describe("daily outcome digest", () => {
     const revenue = revenueWithLeads([
       lead(0, { formSubmission: true, formSubmissionAt: at, clickedAt: at }),
       lead(1, { formSubmission: true, formSubmissionAt: at, clickedAt: at }),
+      lead(2, { purchased: true, purchasedAt: at }),
     ]);
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
     expect(result.preparedSends).toHaveLength(1);
     expect(result.preparedSends[0].metadata).toMatchObject({
-      newOutcomes: "2 form submissions",
+      newOutcomes: "1 sale and 2 form submissions",
     });
     // A lead that both clicked and submitted is reported as the MORE ADVANCED of
     // the two — reporting the visit would understate what happened.
@@ -662,54 +632,43 @@ describe("daily outcome digest", () => {
       lead(0, { signup: true, signupAt: at, clickedAt: at }),
       lead(1, { repliedPositiveAt: at }),
       lead(2, { repliedPositiveAt: at }),
+      lead(3, { purchased: true, purchasedAt: at }),
     ]);
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
     expect(result.preparedSends).toHaveLength(1);
     // Most advanced first, and the counts add up to the people the email lists.
     expect(result.preparedSends[0].metadata).toMatchObject({
-      newOutcomes: "1 signup and 2 positive replies",
+      newOutcomes: "1 sale, 1 signup and 2 positive replies",
     });
   });
 
-  it("sends NOTHING when the return did not improve, however much landed", async () => {
-    // The gate is the point of the email. A day that produced outcomes but moved the
-    // return nowhere is not news, and an inbox that gets it anyway learns to ignore
-    // the one that is.
+  it("states no return: the pipeline-based return is retired (ROI-CONSISTENCY-1103)", async () => {
     const at = outcomeAtOnDay(previousUtcDay());
-    const revenue = revenueWithLeads([
-      lead(0, { repliedPositiveAt: at }),
-      lead(1, { repliedPositiveAt: at }),
-    ]) as Record<string, unknown>;
-    revenue.roiHistory = flatRoi(previousUtcDay());
+    const revenue = revenueWithLeads([lead(0, { purchased: true, purchasedAt: at })]);
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
+    expect(result.preparedSends).toHaveLength(1);
+    expect(result.preparedSends[0].metadata.roiToday).toBeUndefined();
+    expect(result.preparedSends[0].metadata.roiPrevious).toBeUndefined();
+  });
+
+  it("sends nothing on a day of replies with no sale: the realized return did not move", async () => {
+    const at = outcomeAtOnDay(previousUtcDay());
+    const revenue = revenueWithLeads([lead(0, { repliedPositiveAt: at }), lead(1, { repliedPositiveAt: at })]);
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
     expect(result.preparedSends).toHaveLength(0);
   });
 
-  it("sends nothing when the return cannot be measured at all", async () => {
-    // features-service is fail-soft on the curve, so an absent one means "we could
-    // not measure this" — never "it improved".
-    const at = outcomeAtOnDay(previousUtcDay());
-    const revenue = revenueWithLeads([lead(0, { repliedPositiveAt: at })]) as Record<string, unknown>;
-    revenue.roiHistory = null;
-    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
-    expect(result.preparedSends).toHaveLength(0);
-  });
-
-  it("sends nothing when the return rose but nothing new landed", async () => {
+  it("sends nothing when nothing new landed", async () => {
     const revenue = revenueWithLeads([lead(0, {})]);
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
     expect(result.preparedSends).toHaveLength(0);
   });
 });
 
-describe("roiVisiblyRose", () => {
-  it("is false when both figures print the same (1.19x -> 1.25x reads 1.2x, up from 1.2x)", () => {
-    expect(roiVisiblyRose({ today: 1.246, previous: 1.19 })).toBe(false);
-  });
-  it("is true when the printed figure moves", () => {
-    expect(roiVisiblyRose({ today: 1.26, previous: 1.24 })).toBe(true);
-  });
-  it("is false on a fall", () => {
-    expect(roiVisiblyRose({ today: 1.1, previous: 1.5 })).toBe(false);
+describe("the digest is news: it sends only when the realized return moved (ROI-CONSISTENCY-1103)", () => {
+  it("a sale on the day sends; replies, signups or visits alone do not", () => {
+    expect(digestIsNews([{ singular: "sale", count: 1 }, { singular: "positive reply", count: 2 }])).toBe(true);
+    expect(digestIsNews([{ singular: "positive reply", count: 3 }, { singular: "signup", count: 1 }])).toBe(false);
+    expect(digestIsNews([])).toBe(false);
   });
 });

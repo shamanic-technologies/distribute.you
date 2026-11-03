@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { fleetReturnFromIndex, hotLeadBandHtml, hotLeadRowHtml, hotLeadStatsFromIndex, meetingCostFromIndex, meetingCostIsExpected, stepMeetingCostHtml, stepReturnHtml } from "@/lib/static-html";
+import { hotLeadBandHtml, hotLeadRowHtml, hotLeadStatsFromIndex, meetingCostFromIndex, meetingCostIsExpected, stepMeetingCostHtml } from "@/lib/static-html";
 import type { IndexDetail } from "@/lib/fleet-indexes";
 
 const LANDING = path.join(process.cwd(), "public/landing");
@@ -24,7 +24,7 @@ function indexDetail(value: number | null, inputs: Record<string, unknown>, over
   };
 }
 
-describe("the hero states the engaged-lead and ROI indexes (2026-10-19)", () => {
+describe("the hero states the engaged-lead index, never the retired ROI index (ROI-CONSISTENCY-1103)", () => {
   it("price = the index value, count and companies = its inputs", () => {
     expect(hotLeadStatsFromIndex(indexDetail(10.48, { engagedLeads: 886, clients: 28 }))).toEqual({ hotLeads: 886, companies: 28, medianCostUsd: 10.48 });
   });
@@ -35,16 +35,11 @@ describe("the hero states the engaged-lead and ROI indexes (2026-10-19)", () => 
     expect(hotLeadStatsFromIndex(indexDetail(10.48, { clients: 28 }))).toBeNull();
   });
 
-  it("the return is the ROI index value, dropped alone when absent", () => {
-    expect(fleetReturnFromIndex(indexDetail(1.98, { clients: 5 }, { unit: "multiple" }))).toEqual({ medianReturnPerDollar: 1.98, brandCount: 5 });
-    expect(fleetReturnFromIndex(indexDetail(null, {}))).toBeNull();
-    expect(fleetReturnFromIndex(null)).toBeNull();
-  });
-
   it("one read per index serves both surfaces, and nothing is recomputed here", () => {
     const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
     expect(src.match(/fetchIndexDetail\(ENGAGED_LEAD_INDEX_SLUG\)/g)).toHaveLength(1);
-    expect(src.match(/fetchIndexDetail\(ROI_INDEX_SLUG\)/g)).toHaveLength(1);
+    expect(src).not.toContain("ROI_INDEX_SLUG");
+    expect(src).not.toContain("median ROI");
     expect(src.match(/fetchIndexDetail\(MEETING_INDEX_SLUG\)/g)).toHaveLength(1);
     expect(src).toContain('MEETING_INDEX_SLUG = "cold-email-cost-per-meeting"');
     expect(src).not.toContain("/v1/public/features/ranked?");
@@ -61,14 +56,12 @@ describe("the hero price is the meeting index (owner 2026-10-19)", () => {
     // being computed, flagged `floor: "yes"`; the hero printed "$0 cost per booked meeting".
     expect(meetingCostFromIndex(indexDetail(0.0132, { method: "ledger_every_path", floor: "yes", daysMissing: 265 }))).toBeNull();
     expect(meetingCostFromIndex(indexDetail(866.47, { method: "ledger_every_path", floor: "no" }))).toBe(866.47);
-    const row = hotLeadRowHtml(null, { medianReturnPerDollar: 2.2, brandCount: 9 });
-    expect(row).not.toContain("cost per booked meeting");
-    expect(row.match(/class="hstat"/g)).toHaveLength(1);
+    expect(hotLeadRowHtml(null)).toBe("");
   });
 
   it("never states the engaged-lead price nor calls the meeting figure a median", () => {
     const row = hotLeadRowHtml(457.2);
-    const band = hotLeadBandHtml({ hotLeads: 740, companies: 21, medianCostUsd: 6 }, null, 457.2);
+    const band = hotLeadBandHtml({ hotLeads: 740, companies: 21, medianCostUsd: 6 }, 457.2);
     for (const html of [row, band]) {
       expect(html).not.toContain("cost per engaged lead");
       expect(html).not.toContain("median cost per booked meeting");
@@ -87,10 +80,10 @@ describe("an expected meeting price is labelled expected (MEETING-INDEX-EXPECTED
   });
 
   it("hero, How it works step 3 and the compare band all say expected", () => {
-    expect(hotLeadRowHtml(794.12, null, true)).toContain("<b>$790</b>");
-    expect(hotLeadRowHtml(794.12, null, true)).toContain(">expected cost per booked meeting<");
+    expect(hotLeadRowHtml(794.12, true)).toContain("<b>$790</b>");
+    expect(hotLeadRowHtml(794.12, true)).toContain(">expected cost per booked meeting<");
     expect(stepMeetingCostHtml(794.12, true)).toContain(">Expected cost / meeting<");
-    expect(hotLeadBandHtml(stats, null, 794.12, true)).toContain(">expected cost per booked meeting<");
+    expect(hotLeadBandHtml(stats, 794.12, true)).toContain(">expected cost per booked meeting<");
   });
 
   it("an absent or measured kind reads as measured: no label", () => {
@@ -99,7 +92,7 @@ describe("an expected meeting price is labelled expected (MEETING-INDEX-EXPECTED
     expect(meetingCostIsExpected(null)).toBe(false);
     expect(hotLeadRowHtml(457.2)).not.toContain("expected");
     expect(stepMeetingCostHtml(457.2)).not.toContain("Expected");
-    expect(hotLeadBandHtml(stats, null, 457.2)).not.toContain("expected");
+    expect(hotLeadBandHtml(stats, 457.2)).not.toContain("expected");
   });
 
   it("a null expected value still drops the price", () => {
@@ -108,9 +101,9 @@ describe("an expected meeting price is labelled expected (MEETING-INDEX-EXPECTED
 
   it("the page wiring passes the kind to all three surfaces", () => {
     const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
-    expect(src).toContain("hotLeadRowHtml(meetingCost, fleetReturn, meetingExpected)");
+    expect(src).toContain("hotLeadRowHtml(meetingCost, meetingExpected)");
     expect(src).toContain("stepMeetingCostHtml(meetingCost, meetingExpected)");
-    expect(src).toContain("hotLeadBandHtml(stats, fleetReturn, meetingCost, meetingExpected)");
+    expect(src).toContain("hotLeadBandHtml(stats, meetingCost, meetingExpected)");
   });
 });
 
@@ -129,29 +122,9 @@ describe("hotLeadRowHtml", () => {
     expect(hotLeadRowHtml(5.4)).toContain(">$5</b>");
   });
 
-  it("states the fleet's median return after the price when one can be measured", () => {
-    const row = hotLeadRowHtml(457.2, { medianReturnPerDollar: 2.1955731579141204, brandCount: 9 });
-    expect(row).toContain("<b>2.2x</b>");
-    expect(row).toContain('<span class="hstat-l">median ROI reported</span>');
-    expect(row.indexOf("median ROI reported")).toBeGreaterThan(row.indexOf("cost per booked meeting"));
-    expect(row.match(/class="hstat"/g)).toHaveLength(2);
-  });
-
-  it("drops the return alone when it cannot be stated", () => {
-    const one = hotLeadRowHtml(457.2, null);
-    expect(one).not.toContain("median ROI reported");
-    expect(one.match(/class="hstat"/g)).toHaveLength(1);
-  });
-
-  it("renders nothing when neither figure can be read - never an empty strip", () => {
-    expect(hotLeadRowHtml(null, null)).toBe("");
-  });
-
-  it("states the SAME median as the comparison band", () => {
-    const fleetReturn = { medianReturnPerDollar: 2.1955731579141204, brandCount: 9 };
-    const stats = { hotLeads: 740, companies: 21, medianCostUsd: 6 };
-    expect(hotLeadRowHtml(457.2, fleetReturn)).toContain("2.2x");
-    expect(hotLeadBandHtml(stats, fleetReturn)).toContain('data-count="2.2"');
+  it("renders nothing when the price cannot be read - never an empty strip, never a median ROI", () => {
+    expect(hotLeadRowHtml(null)).toBe("");
+    expect(hotLeadRowHtml(457.2)).not.toContain("ROI");
   });
 });
 
@@ -166,18 +139,13 @@ describe("step 03 prices a meeting with the hero's figure (owner 2026-10-21)", (
     expect(stepMeetingCostHtml(600)).toContain("↓ from $740");
   });
 
-  it("states the same ROI as the hero row", () => {
-    const fleetReturn = { medianReturnPerDollar: 1.94, brandCount: 9 };
-    expect(stepReturnHtml(fleetReturn)).toContain('<div class="k">ROI</div><div class="v">1.9x</div>');
-    expect(hotLeadRowHtml(67.6, fleetReturn)).toContain("<b>1.9x</b>");
-  });
-
   it("drops a tile when its index cannot be read", () => {
     expect(stepMeetingCostHtml(null)).toBe("");
-    expect(stepReturnHtml(null)).toBe("");
   });
 
-  it("is a server-rendered token on both homepage arms, no hardcoded price left", () => {
+  it("is a server-rendered token on both homepage arms, no hardcoded price left; the ROI tile renders empty", () => {
+    const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
+    expect(src).toContain('.replaceAll(STEP_RETURN_TOKEN, "")');
     for (const file of ["index-v2.html", "index-v2-subscription.html"]) {
       const page = readFileSync(path.join(LANDING, file), "utf8");
       expect(page).toContain("__STEP_MEETING_COST__");
@@ -189,7 +157,7 @@ describe("step 03 prices a meeting with the hero's figure (owner 2026-10-21)", (
 });
 
 describe("hotLeadBandHtml", () => {
-  const band = hotLeadBandHtml({ hotLeads: 760, companies: 21, medianCostUsd: 6.4 }, null, 457.2);
+  const band = hotLeadBandHtml({ hotLeads: 760, companies: 21, medianCostUsd: 6.4 }, 457.2);
 
   it("states the same two figures as the hero row, as a two-stat dark band", () => {
     expect(band).toContain('<section class="framed dark">');
@@ -200,36 +168,7 @@ describe("hotLeadBandHtml", () => {
     expect(band).toContain("cost per booked meeting");
   });
 
-  it("states the fleet's median return as a third figure when one can be measured", () => {
-    const withReturn = hotLeadBandHtml(
-      { hotLeads: 760, companies: 21, medianCostUsd: 6.4 },
-      { medianReturnPerDollar: 3.7, brandCount: 9 },
-      457.2,
-    );
-    expect(withReturn).toContain("median ROI of our clients");
-    // One decimal under 10x, counted up by main.js like its two neighbours.
-    expect(withReturn).toContain('<span data-count="3.7" data-decimals="1">0</span>');
-    expect(withReturn).toContain('<span class="u">x</span>');
-    // Three figures are the base .stats grid; `two` only ever centres a 2-up band.
-    expect(withReturn).toContain('<div class="stats">');
-    expect(withReturn).not.toContain('class="stats two"');
-    // The pair it closes on is untouched.
-    expect(withReturn).toContain("engaged leads for 21 companies");
-    expect(withReturn).toContain("cost per booked meeting");
-  });
-
-  it("reads a return of 10x and up as a whole number - a decimal there is precision we do not have", () => {
-    const big = hotLeadBandHtml(
-      { hotLeads: 760, companies: 21, medianCostUsd: 6.4 },
-      { medianReturnPerDollar: 41.4, brandCount: 9 },
-    );
-    expect(big).toContain('<span data-count="41" data-decimals="0">0</span>');
-  });
-
-  it("drops the return alone when it cannot be stated, and keeps the other two", () => {
-    // Absent return === the band as it shipped: two figures, never a third slot
-    // holding a dash. `null` is the default, so a caller that knows nothing renders it.
-    expect(hotLeadBandHtml({ hotLeads: 760, companies: 21, medianCostUsd: 6.4 }, null, 457.2)).toBe(band);
+  it("never states a median ROI (ROI-CONSISTENCY-1103)", () => {
     expect(band).not.toContain("median ROI of our clients");
   });
 

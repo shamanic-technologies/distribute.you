@@ -74,9 +74,7 @@ describe("measured first while Learning", () => {
   it.each([
     ["components/v2/campaign-page.tsx", "<CostValue cost={costShown} learning={cost.learning} />"],
     ["components/v2/campaign-page-next.tsx", "<CostValue cost={costShown} learning={cost.learning} />"],
-    ["components/v2/today-page.tsx", "roiShown.learning"],
-    ["components/v2/copilot-chat.tsx", "figures.returnShown.learning"],
-  ])("%s states the measured figure first", (file, marker) => {
+      ])("%s states the measured figure first", (file, marker) => {
     expect(readFileSync(join(__dirname, "..", "src", file), "utf8")).toContain(marker);
   });
 });
@@ -102,11 +100,10 @@ describe("expectedReasonWords", () => {
 describe("every ROI surface reads the expected return", () => {
   const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
   it.each([
-    ["components/v2/today-page.tsx", "roiToShow(shownRoi, data?.expectedReturn)"],
-    ["components/v2/copilot-chat.tsx", "roiToShow(roi, rev.data?.expectedReturn)"],
-    ["components/v2/campaign-page.tsx", "roiToShow(roi, campaign.row.revenue?.expectedReturn)"],
-    ["components/v2/offer-campaigns.tsx", "roiToShow(roi, g?.expectedReturn)"],
-    ["components/v2/funnel-campaigns.tsx", "roiToShow(shown, row.expectedReturn)"],
+    ["components/v2/today-page.tsx", "const expected = data?.expectedReturn ?? null;"],
+    ["components/v2/copilot-chat.tsx", "expectedReturn: rev.data?.expectedReturn ?? null,"],
+    ["components/v2/campaign-page.tsx", "<ExpectedReturnValue expected={g?.expectedReturn} compact />"],
+    ["components/v2/funnel-campaigns.tsx", "<ExpectedReturnValue expected={row.expectedReturn} compact={compact} />"],
   ])("%s", (file, marker) => {
     expect(read(file)).toContain(marker);
   });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { reseedProofCards, type ShowcaseOutcomes } from "../../src/lib/showcase-outcomes";
-import { formatCostUsd, formatReturnMultiple } from "../../src/lib/landing-format";
+import { formatCostUsd } from "../../src/lib/landing-format";
 
 const HTML = readFileSync(join(process.cwd(), "public/landing/index-v2.html"), "utf8");
 const LIB = readFileSync(join(process.cwd(), "src/lib/showcase-outcomes.ts"), "utf8");
@@ -134,24 +134,6 @@ describe("reseedProofCards", () => {
     expect(out).toContain("<b>2,318</b>contacted");
   });
 
-  it("states the return the producer serves, with the decimals it will animate to", () => {
-    const html = card("docdinners.com", [["contacted", "12,307", "contacted"]], "2.2");
-    const out = reseedProofCards(
-      html,
-      payload("docdinners.com", [["contacted", 12552]], true, 2.1112218935072433)
-    );
-    expect(out).toContain('data-count="2.1" data-decimals="1"');
-    expect(out).not.toContain('data-count="2.2"');
-  });
-
-  it("drops the decimal on a return past 10x, and moves data-decimals with it", () => {
-    // A stale `1` there would animate every frame to a decimal the figure no longer
-    // states.
-    const html = card("docdinners.com", [["contacted", "1", "contacted"]], "2.2");
-    const out = reseedProofCards(html, payload("docdinners.com", [], true, 12.4));
-    expect(out).toContain('data-count="12" data-decimals="0"');
-  });
-
   it("prices the ONE step the card names, joined by that step's own key", () => {
     // Doc Dinners' card names the POSITIVE-REPLY step: it shipped pointing at the
     // meeting-booked key once (#4180 renamed the label without moving the key) and
@@ -187,13 +169,6 @@ describe("reseedProofCards", () => {
       )
     );
     expect(out).toContain("<b>$4.1</b>");
-    expect(out).toContain('data-count="7.5"');
-  });
-
-  it("leaves the return alone when the producer states none", () => {
-    const html = card("docdinners.com", [["contacted", "12,307", "contacted"]], "2.2");
-    const out = reseedProofCards(html, payload("docdinners.com", [["contacted", 12552]], true, null));
-    expect(out).toContain('data-count="2.2"');
   });
 
   it("leaves the price alone on a null cost — never a $0", () => {
@@ -209,13 +184,13 @@ describe("reseedProofCards", () => {
     expect(out).not.toContain("$0");
   });
 
-  it("states the brand's own return, across everything it ran", () => {
-    // The outcome read carries ONE realized return per client, the figure their own
-    // dashboard states. No per-path return is chosen or blended here.
+  it("never states a client's return: the pipeline-based ROI is retired (ROI-CONSISTENCY-1103)", () => {
     const html = card("docdinners.com", [["contacted", "12,307", "contacted"]], "2.2", "$1,159");
     const out = reseedProofCards(html, payload("docdinners.com", [["contacted", 12552]], true, 2.1));
     expect(out).toContain("<b>12,552</b>contacted");
-    expect(out).toContain('data-count="2.1"');
+    expect(out).not.toContain('data-count="2.1"');
+    expect(HTML).not.toContain("proof-roi");
+    expect(HTML).not.toContain("return on<br>paid budget");
   });
 
   it("returns the page untouched when the read carries no brand at all", () => {

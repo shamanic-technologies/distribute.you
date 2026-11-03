@@ -5,7 +5,7 @@ import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YA
 import { EmptyNote, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { RecordsTabs } from "@/components/v2/records";
 import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
-import { RoiLabel, RoiValue, LearningFigure } from "@/components/v2/roi-label";
+import { LearningFigure } from "@/components/v2/roi-label";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ResearchStaleNote, SectionMark, SectionName } from "@/components/v2/research-bits";
 import { StatusWord } from "@/components/v2/research-status";
@@ -16,7 +16,6 @@ import { pipeCatalog, researchCatalogHref, type ResearchPipe } from "@/lib/resea
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/pipe-stats";
-import { formatRoi } from "@/lib/format-roi";
 import {
   deprecatedPartsWords,
   performanceByTab,
@@ -108,8 +107,9 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
           </div>
         ) : (
           <>
-            <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-              <StatTile label={<RoiLabel />}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <BigRoi f={t.roi} /> : DASH}</StatTile>
+            {/* No return tile: a workflow / template / LLM combination sits below a campaign's Target
+                (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
+            <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
               <StatTile label={`$ ${unit}`}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.costPerOutcomeUsd} format={formatUsdAdaptive} /> : DASH}</StatTile>
               <StatTile label="% Conversion">{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.conversionRatePct} format={formatRatePct} /> : DASH}</StatTile>
               <StatTile label={`# ${perf?.outcomeNounPlural ?? "Outcomes"}`}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <BigText>{t.outcomes.display}</BigText> : DASH}</StatTile>
@@ -150,14 +150,14 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                         {!byTab || !answered ? (
                           [0, 1, 2, 3, 4].map((i) => (
                             <tr key={i} className="k-row h-10">
-                              <td colSpan={9} className="px-4">
+                              <td colSpan={8} className="px-4">
                                 <Shimmer className="h-4 w-full" />
                               </td>
                             </tr>
                           ))
                         ) : shown.length === 0 ? (
                           <tr>
-                            <td colSpan={9}>
+                            <td colSpan={8}>
                               <EmptyNote>
                                 {rows.length === 0
                                   ? `No email has gone out on this pipe yet.`
@@ -182,7 +182,6 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
               </section>
 
               <aside className="min-w-0 space-y-3">
-                <SeriesCard title="ROI" answered={answered} points={points} pick={(p) => p.roi} format={(v) => formatRoi(v)} expected={expectedOf(t?.roi)} />
                 <SeriesCard title={`$ ${unit}`} answered={answered} points={points} pick={(p) => p.costPerOutcomeUsd} format={formatUsdAdaptive} expected={expectedOf(t?.costPerOutcomeUsd)} />
                 <SeriesCard title="% Conversion" answered={answered} points={points} pick={(p) => p.conversionRatePct} format={formatRatePct} expected={expectedOf(t?.conversionRatePct)} />
                 <SeriesCard title={`# ${perf?.outcomeNounPlural ?? "Outcomes"}, added up`} answered={answered} points={points} pick={(p) => p.outcomes} format={formatCount} />
@@ -215,9 +214,6 @@ function ComboHead({ unit, outcomes }: { unit: string; outcomes: string }) {
         <th className={`${TH} w-[116px]`}>Workflow</th>
         <th className={TH}>Template</th>
         <th className={`${TH} w-[96px]`}>LLM</th>
-        <th className={`${TH} w-[64px] text-right`}>
-          <RoiLabel />
-        </th>
         <th className={`${TH} w-[72px] text-right`}>{`$ ${unit}`}</th>
         <th className={`${TH} w-[72px] text-right`}>% Conv.</th>
         <th className={`${TH} w-[60px] text-right`}>{`# ${outcomes}`}</th>
@@ -274,9 +270,6 @@ function ComboRow({ row, nav }: { row: PerformanceRow; nav: RowNav }) {
         )}
       </td>
       <td className="whitespace-nowrap px-3 text-right tabular-nums">
-        <RowRoi f={row.roi} learning={row.learning} />
-      </td>
-      <td className="whitespace-nowrap px-3 text-right tabular-nums">
         <Cell f={row.costPerOutcomeUsd} learning={row.learning} format={formatUsdAdaptive} stacked />
       </td>
       <td className="whitespace-nowrap px-3 text-right tabular-nums">
@@ -307,7 +300,7 @@ function RunningNow({ answered, served, unit, outcomes, nav }: { answered: boole
           <tbody>
             {!answered ? (
               <tr className="k-row h-10">
-                <td colSpan={9} className="px-4">
+                <td colSpan={8} className="px-4">
                   <Shimmer className="h-4 w-full" />
                 </td>
               </tr>
@@ -315,7 +308,7 @@ function RunningNow({ answered, served, unit, outcomes, nav }: { answered: boole
               <ComboRow row={served.row} nav={nav} />
             ) : (
               <tr>
-                <td colSpan={9} className="px-4 py-3">
+                <td colSpan={8} className="px-4 py-3">
                   <p className="text-[13px]">{served ? [served.workflow?.label, served.template?.label, served.llm?.label].map((x) => x ?? "—").join(" × ") : "—"}</p>
                   <p className="k-fg3 mt-0.5 text-[12px]">{servedNowReasonWords(served ? served.unavailableReason : "pipe_not_read")}</p>
                 </td>
@@ -364,14 +357,6 @@ function BigText({ children }: { children: React.ReactNode }) {
   return <div className="text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">{children}</div>;
 }
 
-function BigRoi({ f }: { f: PerformanceFigure }) {
-  return (
-    <BigText>
-      <RoiValue roi={{ value: f.value, expected: f.value != null && f.basis === "expected", reason: f.value == null ? f.unavailableReason : null }} />
-    </BigText>
-  );
-}
-
 function Big({ f, format }: { f: PerformanceFigure; format: (v: number) => string }) {
   return (
     <BigText>
@@ -407,13 +392,6 @@ function Stacked({ value, tag, grey = false }: { value: string; tag: string; gre
       <span className="k-fg3 text-[11px] font-normal">{tag}</span>
     </span>
   );
-}
-
-/** A row's ROI: measured only (PERF-COST-ORDER-1024), `—` before its first outcome. */
-function RowRoi({ f, learning }: { f: PerformanceFigure; learning: boolean }) {
-  if (f.value == null) return DASH;
-  if (learning) return <Stacked value={formatRoi(f.value)} tag="Learning" grey />;
-  return <RoiValue roi={{ value: f.value, expected: false, reason: null }} />;
 }
 
 /** One served monthly series as a line; the served expected value dotted when the pipe's figure is the expected one. */

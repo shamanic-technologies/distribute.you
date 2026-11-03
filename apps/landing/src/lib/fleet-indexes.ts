@@ -149,6 +149,18 @@ export const RENAMED_INDEX_SLUGS: Readonly<Record<string, string>> = {
   "sceo-meeting-rate": "cold-email-meeting-rate",
 };
 
+/**
+ * A RETURN index (`unit: "multiple"`, the median client ROI) is RETIRED (owner 2026-11-03,
+ * ROI-CONSISTENCY-1103): a return exists only where a value lands, never as a fleet
+ * median over pipeline. It is dropped from the list, its page answers like an unknown
+ * slug, and its old URL redirects to the list (`RETIRED_INDEX_REDIRECT`).
+ */
+export function isRetiredIndex(s: Pick<IndexSummary, "unit">): boolean {
+  return s.unit === "multiple";
+}
+/** Where a retired index's old public URL now points. */
+export const RETIRED_INDEX_REDIRECT = "/indexes";
+
 // ---------------------------------------------------------------------------
 // Reading through the gateway
 // ---------------------------------------------------------------------------
@@ -174,20 +186,22 @@ export async function fetchIndexList(timeoutMs = 8_000): Promise<IndexList | nul
   try {
     const { status, body } = await readJson("/public/indexes", timeoutMs);
     if (status !== 200) throw new Error(`status ${status}`);
-    return parseIndexList(body);
+    const list = parseIndexList(body);
+    return { ...list, indexes: list.indexes.filter((i) => !isRetiredIndex(i)) };
   } catch (err) {
     console.error("[landing] /v1/public/indexes read failed", err);
     return null;
   }
 }
 
-/** One index and its daily series; "not_found" on an unknown slug, null on a failed read. */
-export async function fetchIndexDetail(slug: string): Promise<IndexDetail | "not_found" | null> {
+/** One index and its daily series; "not_found" on an unknown slug, "retired" on a retired one, null on a failed read. */
+export async function fetchIndexDetail(slug: string): Promise<IndexDetail | "not_found" | "retired" | null> {
   try {
     const { status, body } = await readJson(`/public/indexes/${encodeURIComponent(slug)}`, 8_000);
     if (status === 404) return "not_found";
     if (status !== 200) throw new Error(`status ${status}`);
-    return parseIndexDetail(body);
+    const detail = parseIndexDetail(body);
+    return isRetiredIndex(detail.index) ? "retired" : detail;
   } catch (err) {
     console.error(`[landing] /v1/public/indexes/${slug} read failed`, err);
     return null;

@@ -299,30 +299,25 @@ export const EMAIL_TEMPLATES = [
   // tests/email-templates-no-dash.test.ts).
   ...dunningTemplates(),
 
-  // ── Daily return digest ──
-  // The dashboard cron sends ONE email PER BRAND, and ONLY when that brand's return
-  // on spend went UP on the day. That gate is the whole point: a digest that arrives
-  // whatever happened is a report, and an inbox learns to ignore it. A flat or
-  // falling day sends nothing.
+  // ── Daily outcome digest ──
+  // The dashboard cron sends ONE email PER BRAND, and ONLY on a day something landed
+  // (a positive reply, a signup...). No return is stated: the pipeline-based return
+  // it used to headline is retired everywhere (owner 2026-11-03, ROI-CONSISTENCY-1103).
   //
   // There is no goal here. A brand buys several outcomes at once, so the email
   // names what actually landed — `{{newOutcomes}}` reads "3 positive replies and 1
   // signup" — rather than collapsing the day onto the one outcome a retired brand
-  // column happened to point at. Both return figures are served by features-service
-  // (its per-day cumulative curve); nothing is computed here.
+  // column happened to point at. Nothing is computed here.
   // Variables:
-  //   brandName, brandUrl, roiToday, roiPrevious, newOutcomes, totalLeads,
+  //   brandName, brandUrl, newOutcomes, totalLeads,
   //   totalOutcomeOrganizations, digestHtml, digestText
   {
     name: "daily-outcome-digest",
-    subject: "{{brandName}} is now returning {{roiToday}} per dollar",
+    subject: "{{brandName}} got {{newOutcomes}} yesterday",
     htmlBody: emailLayout(`
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        {{brandName}} is now returning <strong style="color:#15803d;">{{roiToday}}</strong> for every dollar spent, up from {{roiPrevious}}.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        What moved it: <strong>{{newOutcomes}}</strong>.
+        {{brandName}} got <strong style="color:#15803d;">{{newOutcomes}}</strong> yesterday.
       </p>
       <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:16px;">
         {{totalLeads}} people in your pipeline.
@@ -332,7 +327,7 @@ export const EMAIL_TEMPLATES = [
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Kevin<br />Founder, distribute.you</p>`),
-    textBody: `Hey,\n\n{{brandName}} is now returning {{roiToday}} for every dollar spent, up from {{roiPrevious}}.\n\nWhat moved it: {{newOutcomes}}.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you${TEXT_SIGNOFF}`,
+    textBody: `Hey,\n\n{{brandName}} got {{newOutcomes}} yesterday.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you${TEXT_SIGNOFF}`,
   },
 ];
 
@@ -806,7 +801,7 @@ const COPILOT_SYSTEM_PROMPT = `You are the copilot of distribute.you, a done-for
 - Read the account before you advise: use the read tools (offers, offer performance, replies to handle, spend by campaign, campaign next steps, recent runs, billing account, usage). The request context also carries the figures shown at the top of the chat (\`account\`), the selected offer (\`offerId\`), the page open on the right (\`currentPage\`) and what the person just did on the dashboard, newest last (\`recentActions\`: pages opened and buttons clicked, with their time). Read \`recentActions\` to understand what they are trying to do, and answer that.
 - Every figure comes from a tool or the request context, so that the maths is known to be right: never invent one.
 - When the person needs a figure no tool serves (what is left to spend, an amount per day to reach a date), work it out from served figures and give it, saying it is an estimate. In the same answer, file a feature request with \`request_staff\` (kind feature) so the platform serves the exact figure.
-- \`returnIsLearning: true\` means the account has no measured return yet: never give a return figure for it.
+- Only two returns exist: \`expectedReturn\` (what one client is worth over what it costs to win one from the start; say "expected", and "still learning" unless its basis is measured) and \`realizedReturn\` (what the paid clients we brought are worth over the money actually spent). Never quote any other return or a pipeline as a return.
 - A postpaid account (\`payment_mode: postpaid\`) works like Google Ads: the card is charged automatically for what was spent, so billing is a non-topic. Never mention a credit line, a charge threshold, adding funds, a top-up, paying now, a free credit to unlock, or billing holding a campaign. The only money the person decides is each campaign's budget.
 - Money: tools serve it in cents. On a card, put the served cents value as is with unit "cents" (the screen prints it in dollars). In text, it is dollars (the cents divided by 100): the one conversion you may do.
 

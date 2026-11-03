@@ -326,14 +326,12 @@ function proofHtml(): string {
     <div class="proof-grid">
       <article class="proof-card rv" data-proof-brand="docdinners.com">
         <div class="proof-top"><img class="face" src="/landing/v2/assets/ryan-parenti.jpg" alt=""><div><div class="name">Ryan W.D. Parenti</div><div class="meta">Founder, Doc Dinners</div></div></div>
-        <div class="proof-roi"><span class="big" data-count="1.9" data-decimals="1">0<small>x</small></span><span class="lbl">return on<br>paid budget</span></div>
         <div class="proof-line" data-proof-cost-step="conversation"><span>Cost per positive reply</span><b>$438</b></div>
         <div class="proof-funnel"><span data-proof-step="contacted"><b>18,596</b>contacted</span><span data-proof-step="conversation"><b>30</b>positive replies</span><span data-proof-step="meeting_booked"><b>7</b>meetings booked</span></div>
         <div class="proof-line"><span>Channel</span><b>Cold email</b></div>
       </article>
       <article class="proof-card rv" data-proof-brand="shockwavecenters.com">
         <div class="proof-top"><img class="face" src="/landing/v2/assets/david-tucker.jpg" alt=""><div><div class="name">David Tucker</div><div class="meta">Cofounder, Shockwave Centers</div></div></div>
-        <div class="proof-roi"><span class="big" data-count="2.2" data-decimals="1">0<small>x</small></span><span class="lbl">return on<br>paid budget</span></div>
         <div class="proof-line" data-proof-cost-step="conversation"><span>Cost per positive reply</span><b>$68</b></div>
         <div class="proof-funnel"><span data-proof-step="contacted"><b>5,985</b>contacted</span><span data-proof-step="conversation"><b>8</b>positive replies</span></div>
         <div class="proof-line"><span>Channel</span><b>Cold email</b></div>

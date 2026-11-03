@@ -15,7 +15,7 @@
  * sticky story. The HTML is the final state (the full week); reduced motion plays nothing.
  *
  * Every figure is READ at render, never typed here:
- * - `__HOT_LEAD_ROW__`: the fleet's cost per booked meeting and median ROI (static-html.ts
+ * - `__HOT_LEAD_ROW__`: the fleet's cost per booked meeting (static-html.ts
  *   `withHotLeadStats`, the same read the homepage hero and `/ai-sdr` state);
  * - the client cards (`data-brand`) and proof cards (`data-proof-brand`): features-service's
  *   pick and counts (`withShowcaseOutcomes`), outreach-caused results only;
@@ -322,14 +322,12 @@ function receiptsHtml(): string {
     <div class="proof-grid">
       <article class="proof-card rv" data-proof-brand="docdinners.com">
         <div class="proof-top"><img class="face" src="/landing/v2/assets/ryan-parenti.jpg" alt=""><div><div class="name">Ryan W.D. Parenti</div><div class="meta">Founder, Doc Dinners</div></div></div>
-        <div class="proof-roi"><span class="big" data-count="2.2" data-decimals="1">0<small>x</small></span><span class="lbl">return on<br>paid budget</span></div>
         <div class="proof-line" data-proof-cost-step="conversation"><span>Cost per positive reply</span><b>$225</b></div>
         <div class="proof-funnel"><span data-proof-step="contacted"><b>12,307</b>contacted</span><span data-proof-step="conversation"><b>20</b>positive replies</span><span data-proof-step="meeting_booked"><b>3</b>meetings booked</span></div>
         <div class="proof-line"><span>Channel</span><b>Cold email</b></div>
       </article>
       <article class="proof-card rv" data-proof-brand="shockwavecenters.com">
         <div class="proof-top"><img class="face" src="/landing/v2/assets/david-tucker.jpg" alt=""><div><div class="name">David Tucker</div><div class="meta">Cofounder, Shockwave Centers</div></div></div>
-        <div class="proof-roi"><span class="big" data-count="2.0" data-decimals="1">0<small>x</small></span><span class="lbl">return on<br>paid budget</span></div>
         <div class="proof-line" data-proof-cost-step="conversation"><span>Cost per positive reply</span><b>$68</b></div>
         <div class="proof-funnel"><span data-proof-step="contacted"><b>5,985</b>contacted</span><span data-proof-step="conversation"><b>8</b>positive replies</span></div>
         <div class="proof-line"><span>Channel</span><b>Cold email</b></div>

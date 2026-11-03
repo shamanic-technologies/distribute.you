@@ -32,12 +32,6 @@ function pct(value: number | null | undefined): string {
   return `${value.toFixed(1)}%`;
 }
 
-/** ROI multiple, e.g. "2.3x": null/undefined -> "-". */
-function roi(value: number | null | undefined): string {
-  if (value === null || value === undefined || Number.isNaN(value)) return DASH;
-  return `${value.toFixed(1)}x`;
-}
-
 function count(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return DASH;
   return value.toLocaleString("en-US");
@@ -312,8 +306,6 @@ function RightPanel({ row, names, onClose }: { row: CustomerRow; names: Record<s
         <div className="mt-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
           <PanelRow label="Active" value={row.health.inputs.active ? "Yes" : "No"} />
           <PanelRow label="Has budget" value={row.health.inputs.hasBudget ? "Yes" : "No"} />
-          <PanelRow label="ROI healthy (>= 1x)" value={row.health.inputs.roiHealthy ? "Yes" : "No"} />
-          <PanelRow label="ROI multiple" value={roi(row.health.inputs.roiMultiple)} />
           <PanelRow label="Audience % used" value={pct(row.health.inputs.audiencePctUsed)} />
           <PanelRow
             label={`Audience near exhausted (>= ${pct(row.health.inputs.audienceNearExhaustedThresholdPct)})`}
@@ -323,12 +315,10 @@ function RightPanel({ row, names, onClose }: { row: CustomerRow; names: Record<s
       </PanelSection>
 
       <PanelSection title="Current economics">
+        {/* No pipeline, ROI, $ CAC or % CAC: every return off the pipeline is retired
+            (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
         <PanelRow label="Committed spend" value={usd(row.currentEconomics.committedSpendUsd)} />
-        <PanelRow label="Expected pipeline" value={usd(row.currentEconomics.expectedPipelineUsd)} />
-        <PanelRow label="Current CAC" value={usd(row.currentEconomics.currentCacUsd)} />
         <PanelRow label="Breakeven CAC (LTR)" value={usd(row.breakevenCacUsd)} />
-        <PanelRow label="ROI multiple" value={roi(row.currentEconomics.roiMultiple)} />
-        <PanelRow label="CAC % of LTR" value={pct(row.currentEconomics.cacPct)} />
       </PanelSection>
 
       <PanelSection title="Conversion economics">
@@ -499,17 +489,14 @@ function CustomerTable({ data }: { data: CustomerSuccessBoard }) {
 
       <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 overflow-x-auto">
-          <table className="min-w-[1020px] w-full text-sm">
+          <table className="min-w-[820px] w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                 <th className="py-2 pr-3 font-medium">Health</th>
                 <th className="py-2 px-3 font-medium">Customer</th>
                 <th className="py-2 px-3 font-medium">Status</th>
                 <th className="py-2 px-3 font-medium">Goal</th>
-                <th className="py-2 px-3 text-right font-medium">Current CAC</th>
                 <th className="py-2 px-3 text-right font-medium">Breakeven CAC</th>
-                <th className="py-2 px-3 text-right font-medium">ROI</th>
-                <th className="py-2 px-3 text-right font-medium">% CAC</th>
                 <th className="py-2 px-3 text-right font-medium">Aud. % used</th>
                 <th className="py-2 px-3 text-right font-medium">Aud. remaining</th>
                 <th className="py-2 px-3 text-right font-medium">Sessions 7d/30d</th>
@@ -542,10 +529,7 @@ function CustomerTable({ data }: { data: CustomerSuccessBoard }) {
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-gray-700">{goalLabel(row.optimizationGoal)}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-gray-900">{usd(row.currentEconomics.currentCacUsd)}</td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">{usd(row.breakevenCacUsd)}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-gray-900">{roi(row.currentEconomics.roiMultiple)}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">{pct(row.currentEconomics.cacPct)}</td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">{pct(row.audiences.pctUsed)}</td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">{count(row.audiences.totalRemaining)}</td>
                     <td className="py-2.5 px-3 text-right">
@@ -559,7 +543,7 @@ function CustomerTable({ data }: { data: CustomerSuccessBoard }) {
               })}
               {data.customers.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="py-8 text-center text-sm text-gray-400">
+                  <td colSpan={9} className="py-8 text-center text-sm text-gray-400">
                     No customers yet.
                   </td>
                 </tr>

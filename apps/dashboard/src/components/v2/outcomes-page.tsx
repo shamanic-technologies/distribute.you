@@ -32,9 +32,9 @@ import { BarSpark, EmptyNote, Shimmer, SparkLine, TopBar } from "@/components/v2
 import { OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { Arrow } from "@/components/v2/research-bits";
-import { LearningFigure, RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { LearningFigure } from "@/components/v2/roi-label";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { costStepOf, outcomeRoiOf, type OfferOutcomeCostSeries, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
+import { costStepOf, type OfferOutcomeCostSeries, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
 import { stepLabel } from "@/lib/legs";
 
 /**
@@ -239,14 +239,8 @@ function OutcomeCard({
       </div>
 
       <div className="mt-auto flex items-center gap-2 pt-3 text-[13px]">
-        <span className="k-fg3 shrink-0">
-          <span className="relative z-10">
-            <RoiLabel />
-          </span>
-        </span>
-        <div className="min-w-0 flex-1 truncate font-medium tabular-nums">
-          {!costAnswered ? <Shimmer className="h-4 w-14" /> : <RoiValue roi={outcomeRoiOf(cost)} learning={cost?.sinceInception.learning} />}
-        </div>
+        {/* No return below a Target (ROI-CONSISTENCY-1103): the card opens its outcome's page. */}
+        <span className="k-fg3 min-w-0 flex-1 truncate">See who reached it</span>
         <Arrow />
       </div>
       <div className="relative z-10 mt-2 min-w-0 text-[12px]">

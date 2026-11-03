@@ -10,8 +10,6 @@ import { SortableTh } from "@/components/feature-stats/primitives";
 import {
   cmpValues,
   fmtCount,
-  fmtPct,
-  fmtRoi,
   fmtUsd,
   nextSort,
   type Sort,
@@ -21,11 +19,12 @@ import {
   buildBrandWorkflowRows,
 } from "@/lib/brand-workflow-rows";
 
-const COLUMN_COUNT = 11;
+const COLUMN_COUNT = 7;
 
 /**
  * Workflows — every workflow THIS brand has run, and what each one returned for
- * this brand. Realized, never projected.
+ * this brand. Realized, never projected. No return per workflow: a workflow is
+ * below a Target, so it shows costs per outcome only (ROI-CONSISTENCY-1103).
  *
  * Every column is brand-scoped. The cross-brand benchmark used to sit in the
  * right half of this same table under the same column names, which invited the
@@ -46,9 +45,8 @@ export default function BrandWorkflowStatsPage() {
     pollOptionsSlower,
   );
 
-  // Default: this brand's biggest return first — the page exists to answer
-  // "which of my workflows paid". A workflow with no measured return sorts last.
-  const [sort, setSort] = useState<Sort>({ key: "roi", dir: "desc" });
+  // Default: where this brand's money went first.
+  const [sort, setSort] = useState<Sort>({ key: "invested", dir: "desc" });
   const onSort = (key: string) => setSort(nextSort(sort, key));
 
   const rows = buildBrandWorkflowRows(brand.data ?? []).sort((a, b) =>
@@ -80,20 +78,16 @@ export default function BrandWorkflowStatsPage() {
 
       <section className="space-y-3">
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="w-full min-w-[1180px] text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-[10px] uppercase tracking-wide text-gray-400">
                 <th className="px-4 pt-3" />
-                <th className="px-4 pt-3 text-right" colSpan={10}>
+                <th className="px-4 pt-3 text-right" colSpan={6}>
                   This brand · realized
                 </th>
               </tr>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
                 <SortableTh label="Workflow" sortKey="name" sort={sort} onSort={onSort} align="left" />
-                <SortableTh label="ROI" sortKey="roi" sort={sort} onSort={onSort} />
-                <SortableTh label="% CAC" sortKey="cacPct" sort={sort} onSort={onSort} />
-                <SortableTh label="$ CAC" sortKey="cacUsd" sort={sort} onSort={onSort} />
-                <SortableTh label="Revenue" sortKey="revenue" sort={sort} onSort={onSort} />
                 <SortableTh
                   label="Positive replies"
                   sortKey="positiveReplies"
@@ -128,12 +122,6 @@ export default function BrandWorkflowStatsPage() {
                 rows.map((row) => (
                   <tr key={row.slug} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-800">{row.name}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">
-                      {fmtRoi(row.roiMultiple)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-600">{fmtPct(row.cacPct)}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">{fmtUsd(row.cacUsd)}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">{fmtUsd(row.pipelineUsd)}</td>
                     <td className="px-4 py-3 text-right text-gray-600">
                       {fmtCount(row.positiveReplies)}
                     </td>
@@ -167,10 +155,9 @@ export default function BrandWorkflowStatsPage() {
         )}
 
         <p className="text-xs text-gray-400">
-          What this brand actually got back, per workflow: return on spend, cost of acquisition as a
-          share of revenue and in dollars, pipeline revenue, how many people were contacted, what
-          came back, and what each outcome cost. $ Invested is the billed spend the return divides
-          by, so the row cannot disagree with itself. A workflow upgraded to a new version is one
+          What this brand actually got back, per workflow: how many people were contacted, what
+          came back, and what each outcome cost. No return per workflow: a return exists only where
+          a value lands (a campaign&apos;s Target). A workflow upgraded to a new version is one
           row, not two. Every figure comes straight from features-service; a blank means it could not
           be measured, never a zero. The same workflows across every client brand are on the fleet
           Workflows page.

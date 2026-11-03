@@ -217,11 +217,12 @@ describe("Sales path page: expected figures say so (owner 2026-10-05)", () => {
   const read = (rel: string) => readFileSync(join(__dirname, "..", rel), "utf8");
   it("every expected-value column header carries the (i)", () => {
     const paths = read("src/components/v2/offer-sales-paths.tsx");
-    expect(paths).toContain('<ExpectedLabel tip={EXPECTED_ROI_TIP}>{gainHeadline ? "Return" : "ROI"}</ExpectedLabel>');
+    expect(paths).toContain('<ExpectedLabel tip={EXPECTED_ROI_TIP}>{gainHeadline ? "Expected return" : "Expected ROI"}</ExpectedLabel>');
     expect(paths.split("<ExpectedLabel tip={EXPECTED_COST_PER_CLIENT_TIP}>Cost per paying client</ExpectedLabel>").length).toBe(3);
     expect(paths).toContain("<InfoTooltip tip={tip}");
     const campaigns = read("src/components/v2/offer-campaigns.tsx");
-    expect(campaigns).toContain("<ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>");
+    // A per-pipe campaign row states no return (ROI-CONSISTENCY-1103).
+    expect(campaigns).not.toContain("EXPECTED_ROI_TIP");
   });
 });
 

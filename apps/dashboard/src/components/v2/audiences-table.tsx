@@ -13,7 +13,6 @@ import {
   type SourcingOrigin,
 } from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { companyPageSlug, linkedInSignalOf, type LinkedInSignal } from "@/lib/signal-audience";
@@ -38,8 +37,6 @@ import { isClientProfile, sourceHeldByProfile, sourcesOfProfile, type ProfileSou
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
 import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
-import { ROI_TIP } from "@/components/v2/roi-label";
-import { InfoTooltip } from "@/components/visibility/metric-info";
 
 type Tab = "active" | "suggested" | "archived";
 
@@ -137,12 +134,6 @@ function AudienceCell({
   const dash = <span className="k-fg4">—</span>;
   const figure = audienceFigure(column.col, stats, basis);
   switch (column.kind) {
-    case "roi": {
-      if (figure.learning) return <Withheld paused={paused} />;
-      const v = figure.value;
-      if (v == null) return dash;
-      return <span className={`font-medium ${roiIsGood(v) ? "text-[var(--run)]" : ""}`}>{formatRoi(v)}</span>;
-    }
     case "pct": {
       if (figure.learning) return <Withheld paused={paused} />;
       return figure.value == null ? dash : <>{Math.round(figure.value)}%</>;
@@ -302,7 +293,7 @@ export function V2AudiencesTable({
       <p className="k-fg2 mb-3 text-[13px]">
         {t.campaignScoped
           ? "The figures count this campaign only. The audiences belong to the offer, so pausing or archiving one here changes it for every campaign."
-          : "ROI, % CAC and $ CAC are projected from your conversion rates and lifetime revenue; $ Invested is what each audience has cost so far."}{" "}
+          : "$ Invested is what each audience has cost so far."}{" "}
         A price counts only outreach sent long enough ago for its answers to have arrived, and reads Learning until that outreach has produced enough outcomes.
       </p>
       )}
@@ -732,8 +723,6 @@ function SortTh({
         {label}
         <span className="w-2 text-[9px] leading-none">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
       </button>
-      {/* Every ROI column says it is expected (owner 2026-10-11), outside the sort button. */}
-      {col === "roi" && <InfoTooltip tip={ROI_TIP} placement="bottom" />}
     </th>
   );
 }

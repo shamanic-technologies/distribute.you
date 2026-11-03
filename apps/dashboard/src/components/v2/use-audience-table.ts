@@ -123,7 +123,7 @@ export function useAudienceTable({
   const showVisitCols = legScoped ? legPair === "visit" : hasStep("website_visits") && !brandLevelMoney;
 
   const defaultSortCol: AudienceSortCol = brandLevelMoney
-    ? "roi"
+    ? "invested"
     : (legScoped ? legRankMetric(campaignLeg) : null) ?? audienceRankMetric(optimizationGoal, trackerSetUp);
   const defaultSortDir: "asc" | "desc" = brandLevelMoney ? "desc" : "asc";
 

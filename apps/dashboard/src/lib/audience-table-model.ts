@@ -48,7 +48,7 @@ export interface AudienceColumnFlags {
   showVisitCols: boolean;
 }
 
-export type AudienceColumnKind = "roi" | "pct" | "usd" | "cents" | "cost" | "count" | "remaining";
+export type AudienceColumnKind = "pct" | "usd" | "cents" | "cost" | "count" | "remaining";
 
 export interface AudienceColumn {
   col: AudienceSortCol;
@@ -66,12 +66,8 @@ export interface AudienceColumn {
 export function audienceColumns(f: AudienceColumnFlags): AudienceColumn[] {
   const cols: AudienceColumn[] = [];
   if (f.brandLevelMoney) {
-    cols.push(
-      { col: "roi", label: "ROI", kind: "roi", fromStats: true },
-      { col: "cacPct", label: "% CAC", kind: "pct", fromStats: true },
-      { col: "cacUsd", label: "$ CAC", kind: "usd", fromStats: true },
-      { col: "invested", label: "$ Invested", kind: "cents", fromStats: true },
-    );
+    // No per-audience return, % CAC or $ CAC (ROI-CONSISTENCY-1103): a return exists only where a value lands.
+    cols.push({ col: "invested", label: "$ Invested", kind: "cents", fromStats: true });
   }
   if (f.showSaleCols) {
     cols.push(

@@ -7,7 +7,6 @@ import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YA
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getStaffPipeStats } from "@/lib/api";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import {
   endToEndRate,
@@ -32,7 +31,6 @@ import {
   type PipeStatsScope,
 } from "@/lib/pipe-stats";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
-import { RoiLabel } from "@/components/v2/roi-label";
 
 /** One colour per scope, the same in the table header dot and on every line. */
 const SCOPE_COLOR: Record<PipeStatsScope, string> = {
@@ -53,8 +51,9 @@ const TD = "px-3 py-2 text-right tabular-nums first:pl-4 first:text-left last:pr
 
 /**
  * The pipe's own figures since inception (owner 2026-10-12): a table comparing all clients,
- * this brand and this offer (volumes in the pipe's own words, spend, cost per outcome, ROI),
- * then the same figures over time. Every number is features-service's (lib/pipe-stats.ts).
+ * this brand and this offer (volumes in the pipe's own words, spend, cost per outcome), then the
+ * same figures over time. No return: a pipe sits below a campaign's Target (owner 2026-11-03,
+ * ROI-CONSISTENCY-1103). Every number is features-service's (lib/pipe-stats.ts).
  */
 export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string; brandId: string; offerId: string | null }) {
   const fleet = usePipeStats(pipeId, "fleet", brandId, offerId);
@@ -120,15 +119,6 @@ export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string;
                     )
                   }
                 </Row>
-                <Row label={<RoiLabel />} scopes={scopes} reads={reads}>
-                  {(s) =>
-                    s.roi == null ? (
-                      <span className="k-fg3 text-[12px]">{unavailableWords(s.roiUnavailableReason)}</span>
-                    ) : (
-                      <span className={roiIsGood(s.roi) ? "text-[var(--run)]" : ""}>{formatRoi(s.roi)}</span>
-                    )
-                  }
-                </Row>
               </tbody>
             </table>
           </div>
@@ -145,7 +135,7 @@ export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string;
 
       {scopes.some((x) => data[x]?.teamImpact) && <TeamImpactSection data={data} scopes={scopes} />}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div>
         <ScopeChart
           title={`Cost per ${outcomeLabel.toLowerCase()} over time`}
           rows={mergeHistories(data, (p) => p.costPerOutcomeUsd)}
@@ -153,15 +143,6 @@ export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string;
           answered={answered}
           format={formatUsdAdaptive}
           empty={`No ${outcomeLabel.toLowerCase()} yet, so no cost per one.`}
-        />
-        <ScopeChart
-          title={<RoiLabel>ROI over time</RoiLabel>}
-          rows={mergeHistories(data, (p) => p.roi)}
-          scopes={scopes}
-          answered={answered}
-          format={formatRoi}
-          log
-          empty="No return to show yet."
         />
       </div>
 
@@ -231,7 +212,6 @@ function ScopeChart({
   scopes,
   answered,
   format,
-  log,
   empty,
 }: {
   title: React.ReactNode;
@@ -239,8 +219,6 @@ function ScopeChart({
   scopes: PipeStatsScope[];
   answered: boolean;
   format: (v: number) => string;
-  /** A return can start in the thousands on the first outcome: a log axis keeps the later days readable. */
-  log?: boolean;
   empty: string;
 }) {
   return (
@@ -261,9 +239,7 @@ function ScopeChart({
               width={52}
               tickCount={4}
               tickFormatter={(v: number) => format(v)}
-              {...(log ? { scale: "log" as const, domain: ["auto", "auto"] as [string, string], allowDataOverflow: true } : {})}
             />
-            {log && <ReferenceLine y={1} stroke="var(--line-strong)" strokeDasharray="3 3" />}
             <Tooltip cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }} content={<ScopeTooltip names={PIPE_STATS_SCOPE_LABELS} format={format} />} />
             {scopes.map((s) => (
               <Line key={s} type="stepAfter" dataKey={s} stroke={SCOPE_COLOR[s]} strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
