@@ -35,6 +35,9 @@ export const UnsentAnswerDaySchema = z.object({
   replaying: num,
   refused: num,
   failed: num,
+  // UNSENT-ANSWERED-ELSEWHERE-1103: every run carrying the person ended well but found nothing to do (the pipe owed them
+  // nothing). Not a failure. Absent on a payload older than campaign-service v0.75.124: read as 0 so the page never breaks.
+  nothingToDo: num.optional().transform((v) => v ?? 0),
   refusedByCode: z.array(z.object({ code: z.string(), count: num })),
 });
 

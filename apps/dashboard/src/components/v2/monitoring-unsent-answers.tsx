@@ -76,6 +76,7 @@ export function UnsentAnswersChart({ data }: { data: UnsentAnswers }) {
           { key: "answered", label: "Sent", color: "var(--data-teal)", get: (m) => m.answered },
           { key: "answeredByTeam", label: "By their team", color: "var(--data-violet)", get: (m) => m.answeredByTeam },
           { key: "replaying", label: "Replaying", color: "var(--data-sky)", get: (m) => m.replaying },
+          { key: "nothingToDo", label: "Nothing owed", color: "var(--fg-4)", get: (m) => m.nothingToDo },
           { key: "failed", label: "Failed", color: RED, get: (m) => m.failed },
           { key: "refused", label: "Refused", color: REFUSED, get: (m) => m.refused },
         ]}
@@ -101,7 +102,7 @@ export function UnsentAnswersView({ data, brand }: { data: UnsentAnswers; brand:
           </p>
           <p className="k-fg3 mt-0.5 text-[12px]">
             Red when the sender refused an answer, or every run for it failed. Answered by the brand&apos;s team, or held while the
-            channel comes back, is normal. Read {utcTime(data.generatedAt)} UTC.
+            channel comes back, is normal. A run that finds nothing owed is not a failure. Read {utcTime(data.generatedAt)} UTC.
           </p>
         </div>
       </div>
