@@ -128,13 +128,9 @@ describe("no referral or free credit surface for a no-free-money org", () => {
     expect(src("src/lib/use-no-free-money.ts")).toContain("show: account !== undefined && !offersNoFreeMoney(account)");
   });
 
-  it("the referral page promises no reward and Billing shows no free credit for it", () => {
-    const page = src("src/components/v2/setup-pages.tsx");
-    const at = page.indexOf("if (offersNoFreeMoney(account)) {");
-    expect(at).toBeGreaterThan(0);
-    const from = page.indexOf("return (", at);
-    const branch = page.slice(from, page.indexOf("  return (\n    <V2Page", from));
-    expect(branch).not.toMatch(/REFERRAL_CREDIT_USD|free|credit/i);
+  it("the referral page is gone (old URL lands on Billing) and Billing shows no free credit for it", () => {
+    expect(src("src/components/v2/setup-pages.tsx")).not.toContain("V2ReferralPage");
+    expect(src("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/referral/page.tsx")).toContain("/billing`);");
     expect(src("src/components/v2/billing-page.tsx")).toContain('{account && !offersNoFreeMoney(account) && hasFreeCredit && (\n        <Section id="free-credit"');
   });
 });
