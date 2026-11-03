@@ -1,7 +1,8 @@
 /**
  * The Telegram side of the landing chat. The bot relays every visitor message to ONE
- * chat, the team's, and accepts replies from that chat only. The one message it takes
- * from any chat is `/start <code>`: a customer linking their org (lib/chat/owner-link.ts).
+ * chat, the team's, and accepts replies from that chat only. From any other chat it takes
+ * `/start <code>` (a customer linking their org, lib/chat/owner-link.ts) and hands every
+ * other message to Sophie, the customer's Copilot (lib/chat/copilot-relay.ts).
  *
  * Three variables on the landing app's env, and the chat is OFF until all three are
  * set: the widget then says the chat is offline and points at the other channels, so a
@@ -50,6 +51,8 @@ export type TelegramUpdate = {
     message_id: number;
     chat: { id: number };
     text?: string;
+    /** The text under a photo or file. */
+    caption?: string;
     reply_to_message?: { message_id: number };
   };
 };

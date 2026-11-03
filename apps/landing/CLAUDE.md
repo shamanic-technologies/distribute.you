@@ -164,3 +164,7 @@ AI scrapers parse raw HTML only (a Suspense fallback = indexed skeleton). Applie
 - **Markdown variant is `cache-control: no-store`** (Cloudflare honours `Vary` only for `Accept-Encoding`); HTML keeps `s-maxage=86400`.
 - **404 is a catch-all route handler** (`src/app/[...notFound]/route.ts` -> `404.html`), since `not-found.tsx` cannot read `Accept` without making the root dynamic.
 - Lockstep surfaces: `public/llms.txt` (what we are, when to use/not, developer URLs), `src/app/.well-known/mcp.json/route.ts` (de-facto convention), `/about` + `/contact` trust pages. Guards: `tests/unit/agent-readiness.test.ts`.
+
+## The platform Telegram bot (`/api/chat/telegram`): three jobs, one webhook
+
+The team chat (`TELEGRAM_OWNER_CHAT_ID`) is the visitor-chat relay. From ANY chat, `/start <code>` links that chat to a customer's org (client-service). Every OTHER message from a non-team chat goes to Sophie (SOPHIE-TELEGRAM-1103, `lib/chat/copilot-relay.ts` → chat-service `POST /internal/copilot/telegram-messages`): chat-service resolves the chat's link (client-service) and answers a linked chat itself; an unlinked chat gets `NOT_LINKED_REPLY` (the existing Connect Telegram path) here, never a turn on another org. Needs `CHAT_SERVICE_URL` + `CHAT_SERVICE_API_KEY` in `env/landing-app.env`. Always answer Telegram 200 (a non-2xx makes it retry, then stop delivering). No second bot, no Telegram-only prompt.
