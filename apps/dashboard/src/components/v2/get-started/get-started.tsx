@@ -339,6 +339,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [offerError, setOfferError] = useState<string | null>(null);
   // Step 4: who to write to, in words; the ONE picked is created under the offer.
   const icpRef = useRef("");
+  // The same words on screen: step 4 shows who we will write to as soon as they are drafted,
+  // while the audiences are still being split out of them (a visitor left after 7s of skeleton).
+  const [audienceTarget, setAudienceTarget] = useState("");
   // A brand with no website: its offers are read from what the visitor typed about it.
   const ownWordsRef = useRef<string | null>(null);
   const [audienceProposals, setAudienceProposals] = useState<AudienceSegmentProposal[]>([]);
@@ -567,6 +570,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     setAnswered(!!s.answered);
     if (s.signalsDone) signalsSaved.current = Promise.resolve();
     if (s.icp) icpRef.current = s.icp;
+    if (s.icp) setAudienceTarget(s.icp);
     setStarted(true);
     ran.current = true;
     const restored: Record<GetStartedStepKey, StepState> = {
@@ -743,6 +747,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     try {
       const { segments } = await proposeAudienceSegments(brandId, text);
       icpRef.current = text;
+      setAudienceTarget(text);
       saveSnapshot({ icp: text });
       estimated.current = false;
       setAudienceCounts({});
@@ -765,6 +770,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     try {
       const { icp } = await suggestBrandIcp(id, undefined, undefined, offerId);
       icpRef.current = icp;
+      setAudienceTarget(icp);
       saveSnapshot({ icp });
       const { segments } = await proposeAudienceSegments(id, icp);
       showAudiences(segments);
@@ -1733,7 +1739,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // opens the wall on the plan it checked.
   const readyForCampaign = started && !!brandId && !!offer && !!audience && answered;
   useEffect(() => {
-    if (org || !started || walkOffer !== null) return;
+    // Once the brand exists: before that the signed-out session may not be minted yet (401).
+    if (org || !started || !brandId || walkOffer !== null) return;
     let live = true;
     void readWalkOffer().then((o) => {
       if (live && o) setWalkOffer(o);
@@ -1741,7 +1748,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     return () => {
       live = false;
     };
-  }, [org, started, walkOffer]);
+  }, [org, started, brandId, walkOffer]);
   const launchPlan = useMemo(() => {
     const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null });
     return "plan" in r ? r.plan : null;
@@ -1879,6 +1886,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           error={audienceError}
           counts={audienceCounts}
           counting={estimating || (!estimated.current && !!offerPromise.current)}
+          target={audienceTarget}
           waitingForOffer={!offer && !pendingOffer}
           onPick={(i) => void pickAudience(i)}
           onOwn={(text) => void proposeOwnAudience(text)}
@@ -3488,6 +3496,7 @@ function AudienceStage({
   error,
   counts,
   counting,
+  target,
   waitingForOffer,
   onPick,
   onOwn,
@@ -3502,6 +3511,8 @@ function AudienceStage({
   counts: Record<string, number>;
   /** The audiences are being counted: a missing figure shows a loading bar, not nothing. */
   counting: boolean;
+  /** Who we will write to, in words, once drafted: shown while the audiences are split out of it. */
+  target: string;
   waitingForOffer: boolean;
   onPick: (i: number) => void;
   /** "Something else": who they want to reach, in their words. */
@@ -3563,7 +3574,18 @@ function AudienceStage({
   return (
     <StepCard index={4} title="Who to write to" state={state} meta={<StateWord state={state} />}>
       {state === "running" || state === "waiting" ? (
-        <OptionSkeleton />
+        target ? (
+          <>
+            <p className="k-label">We will write to</p>
+            <p className="gs-in k-fg mt-1.5 line-clamp-4 whitespace-pre-line text-[14px] leading-6">{target}</p>
+            <p className="k-fg3 mt-3 text-[12.5px]">Splitting them into groups you can pick from…</p>
+            <div className="mt-2">
+              <OptionSkeleton />
+            </div>
+          </>
+        ) : (
+          <OptionSkeleton />
+        )
       ) : ownOpen ? (
         ownForm
       ) : proposals.length === 0 ? (
