@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ADDRESS_TABS, addressTab, backlogVerdict, bucketQueued, capacityVsPlanned, mailboxInProduction } from "../src/lib/monitoring/sending";
+import { ADDRESS_TABS, addressTab, backlogVerdict, bucketQueued, capacityVsPlanned, MAILBOX_TABS, mailboxInProduction, mailboxStatus, mailboxTab } from "../src/lib/monitoring/sending";
 
 const read = (rel: string) => readFileSync(join(__dirname, "../src", rel), "utf8");
 
@@ -82,5 +82,26 @@ describe("Accounts page (ACCOUNTS-PROD-TABS-1021)", () => {
     expect(page).toContain('<CapacityPlanChart scope={{}} lifecycle="in_production" />');
     const drill = read("components/v2/monitoring-drilldown.tsx");
     expect(drill).toContain("<CapacityPlanChart scope={scope} />");
+  });
+});
+
+describe("Mailboxes page: one tab per status, closest to production first", () => {
+  const mb = (absentSince: string | null, ...statuses: Array<string | null>) => ({ absentSince, addresses: statuses.map((lifecycleStatus) => ({ lifecycleStatus })) });
+  it("orders the tabs In production, In recovery, Deactivated, No address, Gone", () => {
+    expect(MAILBOX_TABS.map((t) => t.label)).toEqual(["In production", "In recovery", "Deactivated", "No address", "Gone"]);
+  });
+  it("a mailbox sits under its address closest to production, Gone once absent, Other otherwise", () => {
+    expect(mailboxTab(mb(null, "in_recovery", "in_production"))).toBe("production");
+    expect(mailboxStatus(mb(null, "deactivated_by_user", "in_recovery"))).toBe("in_recovery");
+    expect(mailboxTab(mb(null, "deactivated_by_instantly"))).toBe("deactivated");
+    expect(mailboxTab(mb("2026-10-30", "in_production"))).toBe("gone");
+    expect(mailboxTab(mb(null))).toBe("none");
+    expect(mailboxTab(mb(null, "brand_new_value"))).toBe("other");
+  });
+  it("the page filters on mailboxTab and counts every mailbox", () => {
+    const src = read("components/v2/monitoring-sending.tsx");
+    const page = src.slice(src.indexOf("export function MailboxesPage("), src.indexOf("export function AccountsPage("));
+    expect(page).toContain("mailboxTab(m) === tab");
+    expect(page).toContain("count={all.length}");
   });
 });
