@@ -319,6 +319,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // so without these the Integrations section cold-skeletons every time.
   "brandKeys",
   "crmConnections",
+  // The GoHighLevel token scopes the connect form lists (crm-service, a constant list).
+  "ghlScopes",
   "posthogConnections",
   "googleAccounts",
   "googleCalendars",

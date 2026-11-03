@@ -888,6 +888,27 @@ export async function recheckCrmBookingAccess(
   return parsed.data;
 }
 
+const GhlScopesSchema = z.object({
+  scopes: z.object({ mirror: z.array(z.string()), booking: z.array(z.string()) }),
+});
+
+export type GhlScopes = z.infer<typeof GhlScopesSchema>["scopes"];
+
+/**
+ * The GoHighLevel token scopes to grant a NEW connection (crm-service owns the list):
+ * `mirror` reads the CRM, `booking` lets our AI book meetings. The connect form lists
+ * both, so a fresh connection books from day one. `brandId` rides the query (identity).
+ */
+export async function getGhlScopes(brandId: string, token?: string): Promise<GhlScopes> {
+  const raw = await apiCall<unknown>(`/orgs/gohighlevel/scopes?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = GhlScopesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getGhlScopes response shape mismatch", parsed.error.flatten());
+    throw new Error("getGhlScopes returned an unexpected shape");
+  }
+  return parsed.data.scopes;
+}
+
 // ==================== GMAIL (google-service), per organization ====================
 //
 // The mailbox is connected by a Google sign-in round trip google-service owns (see
