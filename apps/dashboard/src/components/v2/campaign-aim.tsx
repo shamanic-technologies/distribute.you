@@ -5,6 +5,7 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { stepLabel } from "@/lib/legs";
 import { shortUtcDay } from "@/lib/campaign-path-change";
 import type { FunnelCampaignCopy, SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
+import { StepMark } from "@/components/marks/step-mark";
 import { BriefField } from "@/components/v2/campaign-brief-field";
 import { TypeTag } from "@/components/v2/funnel-campaigns";
 import { SectionTitle, Shimmer } from "@/components/v2/ui";
@@ -12,7 +13,7 @@ import { SectionTitle, Shimmer } from "@/components/v2/ui";
 /**
  * WHAT A CAMPAIGN AIMS AT, for EVERY customer (P5.1, owner 2026-10-31; the GTM Factory "Goal" header since
  * FACTORY-USER-DASHBOARD-1102): the campaign page opens on it.
- * - its Target (campaign-service `target`, named by the served step label) and its Type (📅 Daily / ⚡ trigger);
+ * - its Target (campaign-service `target`, named by the served step label beside its `StepMark`) and its Type (📅 Daily / ⚡ trigger);
  * - its brief, the client's own words on how to run it, edited in place (blur saves, no Save button);
  * What runs is the Plan below (each outcome's Engine and its scripts, `factory-campaign.tsx`): no pipe line here
  * (owner 2026-11-02: the backend runs Engines per outcome, the pipes are gone from every page).
@@ -43,8 +44,10 @@ export function CampaignAimSection({
         <div className="grid gap-4 px-4 py-3.5 md:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,1fr)]">
           <div className="min-w-0">
             <p className="k-label">Target</p>
-            <p className="mt-1.5 text-[14px] font-medium">{targetLabel ?? (campaign.target && !catalogueReady ? <Shimmer className="h-5 w-24" /> : dash)}</p>
-            <p className="k-fg3 mt-0.5 text-[12px]">What it orders</p>
+            <p className="mt-1.5 flex items-center gap-2 text-[14px] font-medium">
+              {targetLabel && <StepMark stepKey={campaign.target} size="xs" />}
+              {targetLabel ?? (campaign.target && !catalogueReady ? <Shimmer className="h-5 w-24" /> : dash)}
+            </p>
           </div>
           <div className="min-w-0">
             <p className="k-label">Starts from</p>

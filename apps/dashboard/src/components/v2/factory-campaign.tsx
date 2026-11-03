@@ -1,7 +1,6 @@
 "use client";
 
 import { PlayIcon } from "@phosphor-icons/react/dist/csr/Play";
-import { TargetIcon } from "@phosphor-icons/react/dist/csr/Target";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { stepLabel, type LegCatalogue } from "@/lib/legs";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
@@ -16,6 +15,7 @@ import { milestoneReasonWords, planLegsFromTarget, strategyOfPlace, type Milesto
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getFunnelCampaignMilestones, getFunnelCampaignPeopleJourneys } from "@/lib/api";
+import { StepMark } from "@/components/marks/step-mark";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
@@ -179,8 +179,9 @@ export function FactoryMilestones({ brandId, campaignId }: { brandId: string; ca
                   <tr key={r.step} className="k-line-subtle border-b last:border-b-0">
                     <td className="px-3 py-2 pl-4">
                       <span className={`inline-flex items-center gap-2 ${r.step === "start" ? "" : "font-medium"}`}>
-                        {r.step === "start" ? <PlayIcon size={14} weight="duotone" className="k-fg3" aria-hidden /> : r.isTarget ? <TargetIcon size={14} weight="duotone" className="text-[var(--accent)]" aria-hidden /> : null}
+                        {r.step === "start" ? <PlayIcon size={14} weight="duotone" className="k-fg3" aria-hidden /> : <StepMark stepKey={r.step} size="xs" />}
                         {r.label}
+                        {r.isTarget && <span className="k-chip">Target</span>}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
@@ -265,7 +266,7 @@ function PlanNodeRow({ node, depth, catalogue }: { node: PlanNode; depth: number
     <li style={{ paddingLeft: depth * 16 }}>
       <div className="k-inset rounded-[10px] px-3 py-2">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
-          {depth === 0 && <TargetIcon size={14} weight="duotone" className="text-[var(--accent)]" aria-hidden />}
+          <StepMark stepKey={node.outcome} size="xs" />
           <span className="font-medium">{label}</span>
           {depth === 0 && <span className="k-chip">Target</span>}
           {node.place ? (
@@ -342,7 +343,10 @@ export function FactoryStrategies({ shadow }: { shadow: FactoryShadowPlan | null
           const s = strategyOfPlace(p, verdicts);
           return (
             <div key={`${p.outcome}-${p.consumer}`} className="k-card px-4 py-3">
-              <p className="text-[14px] font-medium">{stepLabel(catalogue, p.outcome) ?? p.outcomeName}</p>
+              <p className="flex items-center gap-2 text-[14px] font-medium">
+                <StepMark stepKey={p.outcome} size="xs" />
+                {stepLabel(catalogue, p.outcome) ?? p.outcomeName}
+              </p>
               <p className="k-fg3 text-[12px]">For {stepLabel(catalogue, p.consumer) ?? p.consumerName}</p>
               <p className="k-label mt-3">Keeps</p>
               <p className="mt-1 text-[13px]">{s.kept.length > 0 ? s.kept.join(", ") : "Every way that makes it"}</p>
@@ -370,16 +374,17 @@ export function FactoryScripts({ shadow }: { shadow: FactoryShadowPlan | null })
     <section className="space-y-4">
       <SectionTitle count={places.length}>Scripts per Engine</SectionTitle>
       {places.map((p) => (
-        <ScriptsTable key={`${p.outcome}-${p.consumer}`} place={p} label={stepLabel(catalogue, p.outcome) ?? p.outcomeName} next={stepLabel(catalogue, p.consumer) ?? p.consumerName} />
+        <ScriptsTable key={`${p.outcome}-${p.consumer}`} place={p} stepKey={p.outcome} label={stepLabel(catalogue, p.outcome) ?? p.outcomeName} next={stepLabel(catalogue, p.consumer) ?? p.consumerName} />
       ))}
     </section>
   );
 }
 
-function ScriptsTable({ place, label, next }: { place: EnginePlaceFull; label: string; next: string }) {
+function ScriptsTable({ place, stepKey, label, next }: { place: EnginePlaceFull; stepKey: string; label: string; next: string }) {
   return (
     <div className="k-card overflow-hidden">
-      <div className="k-line-subtle flex flex-wrap items-baseline gap-x-2 border-b px-4 py-2.5">
+      <div className="k-line-subtle flex flex-wrap items-center gap-x-2 border-b px-4 py-2.5">
+        <StepMark stepKey={stepKey} size="xs" />
         <span className="text-[14px] font-medium">{label}</span>
         <span className="k-fg3 text-[12px]">
           {place.candidates.length} {place.candidates.length === 1 ? "script" : "scripts"} · for {next}

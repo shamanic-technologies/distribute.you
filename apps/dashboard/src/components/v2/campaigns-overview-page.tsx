@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
+import { StepMark } from "@/components/marks/step-mark";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getSalesFunnelCaps, listFunnelCampaignCopies, listFunnelCampaignRows, listOfferSalesFunnels } from "@/lib/api";
@@ -444,7 +445,10 @@ export function CampaignLine({
       </div>
       <div className="hidden min-w-0 md:block">
         <div className="k-label">Target</div>
-        <div className="mt-0.5 truncate text-[13px]">{targetLabel ?? (campaign.target && !catalogueReady ? <Shimmer className="h-4 w-16 rounded" /> : DASH)}</div>
+        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px]">
+          {targetLabel && <StepMark stepKey={campaign.target} size="xs" />}
+          <span className="truncate">{targetLabel ?? (campaign.target && !catalogueReady ? <Shimmer className="h-4 w-16 rounded" /> : DASH)}</span>
+        </div>
       </div>
       <div className="hidden text-right md:block">
         <div className="k-label">
