@@ -88,6 +88,8 @@ describe("give lists", () => {
 describe("Channels tab wiring", () => {
   const tabs = read("src/components/v2/setup-pages.tsx");
   const page = read("src/components/v2/offer-channels-page.tsx");
+  const give = read("src/components/v2/offer-give-lists.tsx");
+  const offerPage = read("src/components/v2/setup-pages.tsx");
 
   it("Targeting is a tab of the offer (owner 2026-10-10); Sales path and Channels are not, no beta gate", () => {
     expect(tabs).toContain('{ label: "Targeting", href: v2OfferHref(orgId, brandId, offerId, "targeting")');
@@ -100,25 +102,36 @@ describe("Channels tab wiring", () => {
     }
   });
 
-  it("reads the legs off the offer's sales funnel campaigns and the give lists off the offer user-fields", () => {
+  it("reads the legs off the offer's sales funnel campaigns", () => {
     expect(page).toContain('["salesFunnelCampaigns", brandId, offerId]');
     expect(page).not.toContain("getOfferSalesPath");
-    expect(page).toContain('["offerUserFields", brandId, offerId]');
-    expect(page).toContain("saveOfferUserFields(brandId, offerId, giveListsPayload(next))");
     expect(page).toContain("SALES_PATH_CHANNEL_SLUGS");
+  });
+
+  it("the give lists have ONE editable home, the offer page under Your offer (owner 2026-11-03)", () => {
+    expect(give).toContain('["offerUserFields", brandId, offerId]');
+    expect(give).toContain("saveOfferUserFields(brandId, offerId, giveListsPayload(next))");
+    expect(page).not.toContain("saveOfferUserFields");
+    expect(page).not.toContain("giveListsPayload");
+    const card = offerPage.indexOf("<BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />");
+    expect(card).toBeGreaterThan(-1);
+    expect(offerPage.indexOf("<OfferGiveLists brandId={brandId} offerId={offerId} />")).toBeGreaterThan(card);
   });
 
   it("autosaves on leaving a field: no Save button, a rate write re-reads every money root", () => {
     expect(page).not.toMatch(/>\s*Save\s*</);
-    expect(page.match(/onBlur=\{commit\}/g)?.length).toBe(2);
+    expect(page.match(/onBlur=\{commit\}/g)?.length).toBe(1);
+    expect(give).not.toMatch(/>\s*Save\s*</);
+    expect(give.match(/onBlur=\{commit\}/g)?.length).toBe(1);
     expect(page).toContain('["brandConversionRates", brandId]');
     expect(page).toContain("rate.effectiveRatePct");
     expect(page).toContain("invalidateConversionRates(qc)");
   });
 
   it("reads as plain text at rest: the list button draws no frame", () => {
-    const at = page.indexOf("onClick={() => setText(shown.join");
-    const btn = page.slice(at, page.indexOf(">", page.indexOf("className=", at)));
+    const at = give.indexOf("onClick={() => setText(shown.join");
+    expect(at).toBeGreaterThan(-1);
+    const btn = give.slice(at, give.indexOf(">", give.indexOf("className=", at)));
     expect(btn).not.toContain("box-shadow");
     expect(btn).not.toContain("k-input");
   });
