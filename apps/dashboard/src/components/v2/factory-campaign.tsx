@@ -100,7 +100,8 @@ export function FactoryJourneys({ brandId, campaignId }: { brandId: string; camp
                   ? t.scripts.map((sc, i) => (
                       <span key={sc.workflowDynastySlug}>
                         {i > 0 && ", "}
-                        <span className="k-fg tabular-nums">{formatShare(sc.sharePct)}%</span> by {sc.workflowName}
+                        <span className="k-fg tabular-nums">{formatShare(sc.sharePct)}%</span> by{" "}
+                        <CatalogueName kind="workflow" name={sc.workflowName} icon={sc.icon} color={sc.color} className="align-middle" />
                       </span>
                     ))
                   : (milestoneReasonWords(t.scriptsUnavailableReason) ?? DASH)}
@@ -297,7 +298,7 @@ function CandidateLine({ c }: { c: EngineCandidateRow }) {
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_120px_auto] items-center gap-3 text-[12px]">
       <span className="flex min-w-0 items-center gap-1.5">
-        <CatalogueName kind="workflow" name={c.workflowDynastyName ?? c.channelName} />
+        <CatalogueName kind="workflow" name={c.workflowDynastyName ?? c.channelName} icon={c.icon} color={c.color} />
         {c.isEnginePick && (
           <span className="k-chip" style={{ color: "var(--run)" }}>
             Pick of this pass
@@ -407,7 +408,7 @@ function ScriptsTable({ place, label, next }: { place: EnginePlaceFull; label: s
                 <tr key={c.candidateId} className="k-line-subtle border-b last:border-b-0">
                   <td className="px-3 py-2 pl-4">
                     <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-                      <CatalogueName kind="workflow" name={c.workflowDynastyName ?? c.channelName} />
+                      <CatalogueName kind="workflow" name={c.workflowDynastyName ?? c.channelName} icon={c.icon} color={c.color} />
                       <span className="k-fg3 text-[12px]">{c.channelName}</span>
                       {c.isEnginePick && (
                         <span className="k-chip" style={{ color: "var(--run)" }}>

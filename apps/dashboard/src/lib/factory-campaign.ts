@@ -93,7 +93,10 @@ export const CampaignMilestonesSchema = z
   .passthrough();
 export type CampaignMilestones = z.infer<typeof CampaignMilestonesSchema>;
 
-const JourneyScriptSchema = z.object({ workflowDynastySlug: z.string(), workflowName: z.string(), sharePct: z.number() }).passthrough();
+// `icon` / `color`: the script's served mark (features-service SCRIPT-MARKS-1103), null until it has one.
+const JourneyScriptSchema = z
+  .object({ workflowDynastySlug: z.string(), workflowName: z.string(), sharePct: z.number(), icon: z.string().nullish(), color: z.string().nullish() })
+  .passthrough();
 const JourneyTransitionSchema = z
   .object({
     pipeId: z.string(),
