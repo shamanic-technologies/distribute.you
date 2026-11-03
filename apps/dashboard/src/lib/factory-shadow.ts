@@ -70,7 +70,7 @@ const RunningLineSchema = z.union([
 // ─── The Engine per outcome of ONE campaign, in full (features-service `engine` on the factory-shadow body) ───
 
 const EngineRefSchema = z
-  .object({ candidateId: z.string(), pipeId: z.string(), channelName: z.string(), workflowDynastySlug: z.string(), workflowDynastyName: z.string().nullable() })
+  .object({ candidateId: z.string(), pipeId: z.string(), channelName: z.string(), workflowDynastySlug: z.string(), workflowDynastyName: z.string().nullable(), icon: z.string().nullish(), color: z.string().nullish() })
   .passthrough();
 
 /** One script competing at a place: its share of the Engine's draws, its belief's rate and cost per decision. */
@@ -216,7 +216,7 @@ export type FactoryChangeSide = z.infer<typeof ChangeSideSchema>;
 // that outcome). Served on Monitoring as `engine`; every figure below is served, none computed here.
 
 const EnginePickRefSchema = z
-  .object({ candidateId: z.string(), pipeId: z.string(), channelName: z.string(), workflowDynastySlug: z.string(), workflowDynastyName: z.string().nullable() })
+  .object({ candidateId: z.string(), pipeId: z.string(), channelName: z.string(), workflowDynastySlug: z.string(), workflowDynastyName: z.string().nullable(), icon: z.string().nullish(), color: z.string().nullish() })
   .passthrough();
 
 const EnginePlaceSummarySchema = z

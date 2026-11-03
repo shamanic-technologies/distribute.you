@@ -21,6 +21,9 @@ export const EnginePickSchema = z
     pickedAt: z.string().nullable(),
     runningSince: z.string().nullish(),
     retryAt: z.string().nullish(),
+    // SCRIPT-MARKS-1103 (features-service): the script dynasty's served mark, null until it has one.
+    icon: z.string().nullish(),
+    color: z.string().nullish(),
   })
   .passthrough();
 export type EnginePick = z.infer<typeof EnginePickSchema>;

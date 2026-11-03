@@ -49,7 +49,7 @@ export function EnginePicksSection({ orgId, brandId, offerId }: { orgId: string;
                 href={v2CampaignHref(orgId, brandId, p.campaignId)}
                 className="k-hover flex items-start gap-3 px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]"
               >
-                <CatalogueObjectMark kind="workflow" name={name} size={28} />
+                <CatalogueObjectMark kind="workflow" name={name} icon={p.icon} color={p.color} size={28} />
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-baseline gap-x-1.5 text-[13px]">
                     <span className="k-fg2">{p.outcomeName} · script:</span>
