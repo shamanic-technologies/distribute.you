@@ -67,11 +67,18 @@ describe("the public catalogue serves each pipe's name and mark", () => {
   });
 
   it("customer surfaces draw the served pipe mark, never the letter face", () => {
-    for (const f of ["today-page.tsx", "outcomes-page.tsx", "v2-shell.tsx", "campaign-page.tsx", "offer-campaigns.tsx", "offer-sources-tab.tsx"]) {
+    for (const f of ["today-page.tsx", "outcomes-page.tsx", "v2-shell.tsx", "campaign-page.tsx", "offer-campaigns.tsx"]) {
       const src = read(`src/components/v2/${f}`);
       expect(src, f).toContain("<ServedPipeMark pipeId={");
       expect(src, f).not.toMatch(/<(Served)?PipeFace\b|<PathAvatar\b/);
     }
+  });
+
+  it("Targeting > Sources lists the sources themselves, never the pipes that run them (owner 2026-11-03)", () => {
+    const tab = read("src/components/v2/offer-sources-tab.tsx");
+    expect(tab).toContain("<ProviderLogo domain={c.providerDomain ?? null}");
+    expect(tab).toContain("{c.channelName}</span>");
+    expect(tab).not.toMatch(/<ServedPipeMark\b|c\.name \?\?|<CampaignLeg\b/);
   });
 
   it("the mark reads the PUBLIC catalogue (one source for customer and staff), never the staff one", () => {

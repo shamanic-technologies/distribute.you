@@ -10,9 +10,7 @@ import { campaignKey, sortCampaigns, sourceCampaignsOfOffer } from "@/lib/offer-
 import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
-import { CampaignLeg } from "@/components/v2/offer-campaigns";
-import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
-import { featureLegId } from "@/lib/outbound-leg-key";
+import { ProviderLogo } from "@/components/provider-logo";
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 
 /**
@@ -26,6 +24,9 @@ import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
  * campaign's unit included), or when the offer's Lead Sourcing campaign runs and human-service
  * chose that origin for it (Lead Sourcing picks its origins itself; 2026-10-28 every row read Off
  * while "Wide Email Replies" sourced through Lead Sourcing).
+ *
+ * A row is the SOURCE itself (Apollo Cold Filters, its provider logo), never the pipe that runs it:
+ * pipes left the customer surfaces when the Engines took over (owner 2026-11-03, « we deleted them »).
  */
 export function OfferSourcesTab({
   orgId,
@@ -108,11 +109,10 @@ export function OfferSourcesTab({
       ) : (
         <div className="k-card overflow-hidden">
           <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[640px] text-[13px]">
+            <table className="w-full min-w-[480px] text-[13px]">
               <thead>
                 <tr className="k-line-subtle border-b">
                   <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Source</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">Finds</th>
                   <th className="k-label w-[140px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
                 </tr>
               </thead>
@@ -124,12 +124,9 @@ export function OfferSourcesTab({
                     <tr key={campaignKey(c.featureSlug, c.legKey)} className="k-row k-line-subtle h-12 border-b last:border-b-0">
                       <td className="px-3 py-2 pl-4">
                         <span className="flex min-w-0 items-center gap-2.5">
-                          <ServedPipeMark pipeId={featureLegId(c.featureSlug, c.legKey)} size={28} />
-                          <span className="truncate font-semibold">{c.name ?? c.channelName}</span>
+                          <ProviderLogo domain={c.providerDomain ?? null} size={20} className="shrink-0 rounded-[4px]" />
+                          <span className="truncate font-semibold">{c.channelName}</span>
                         </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <CampaignLeg campaign={c} />
                       </td>
                       <td className="px-3 py-2 pr-4 text-right">
                         {c.managed === false ? (
