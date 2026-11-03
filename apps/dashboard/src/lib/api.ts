@@ -125,6 +125,8 @@ import {
   OpsMessagesSchema,
   SeedPlacementDailySchema,
   SenderHealthSchema,
+  OptOutComparisonSchema,
+  type OptOutComparison,
   type LifecycleRules,
   type OpsAddresses,
   type OpsDomains,
@@ -2178,6 +2180,8 @@ export const STAFF_MONITORING_PATHS = {
   sentPerPeriod: "/instantly/ops/sent-per-period",
   // Our sending health (instantly-service ops, staff-only passthroughs).
   seedPlacementDaily: "/instantly/ops/seed-placement/daily",
+  // The three opt-out headers compared on seeds, and the one prospect mail carries (UNSUB-3WAY-1103).
+  seedOptOut: "/instantly/ops/seed-placement/opt-out",
   senderHealth: "/instantly/ops/sender-health",
   lifecycleRules: "/instantly/ops/lifecycle-rules",
   opsDomains: "/instantly/ops/domains",
@@ -2542,6 +2546,11 @@ export async function getStaffSentPerPeriod(grain: SentGrain): Promise<SentPerPe
 /** Seed inbox % per day at Google, Microsoft 365 and Outlook.com, each measured apart, per vendor too. */
 export async function getStaffSeedPlacementDaily(days: number): Promise<SeedPlacementDaily> {
   return parseStaff("getStaffSeedPlacementDaily", SeedPlacementDailySchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.seedPlacementDaily}?days=${days}`));
+}
+
+/** The three opt-out headers compared on seeds: inbox % per option, and the one prospect mail carries now. */
+export async function getStaffSeedOptOut(): Promise<OptOutComparison> {
+  return parseStaff("getStaffSeedOptOut", OptOutComparisonSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.seedOptOut));
 }
 
 /** Mailboxes kept out of prospect mail per day, and why (refused, or mostly spam at a provider). */
