@@ -1706,7 +1706,7 @@ export default function FeatureCreateCampaignPage() {
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-display font-semibold text-gray-800">Choose a workflow</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Ranked by CAC — best ROI for this objective (public cross-org stats). We auto-pick the lowest.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Ranked by cost per close for this objective (public cross-org stats). We auto-pick the lowest.</p>
                   </div>
                   <button type="button" onClick={() => setShowWorkflowPicker(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
                     <XMarkIcon className="w-5 h-5" />

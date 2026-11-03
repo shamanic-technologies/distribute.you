@@ -12,7 +12,6 @@ import type {
   QuotePitchStatus,
   StatsRegistry,
   Workflow,
-  WorkflowProjectionResponse,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 
@@ -429,49 +428,6 @@ export async function getReportRevenue(
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
   )();
-}
-
-/** PROJECTED per-workflow ROI for the public report's brand-scoped workflow
- *  table. There is no realized per-workflow revenue stat — ROI is projected by
- *  features-service `workflow-projection` (cross-org workflow efficiency × the
- *  offer's lifetime revenue and rates): ROI = 100 / cacPct, budget-invariant
- *  (budgetUsd:1 just populates `projection`). Keyed on `workflowDynastySlug`.
- *  Fail-soft: a cold/slow projection path degrades to "—" ROI rather than
- *  aborting the whole ISR prerender (CLAUDE.md build-time-prerender exception). */
-export interface WorkflowRoiProjection {
-  workflowDynastySlug: string;
-  roi: number | null;
-}
-
-export async function getReportWorkflowProjection(
-  orgId: string,
-  brandId: string,
-  featureSlug: string,
-): Promise<WorkflowRoiProjection[]> {
-  return cachedReportFetch(
-    async () => {
-      const raw = await adminGet<WorkflowProjectionResponse>(
-        "featureWorkflowProjection",
-        `/features/${encodeURIComponent(featureSlug)}/workflow-projection?brandId=${brandId}&objective=meeting-booked&budgetUsd=1`,
-        orgId,
-        { "x-brand-id": brandId },
-      );
-      return (raw.workflows ?? []).map((w) => {
-        const cacPct = w.projection?.cacPct;
-        return {
-          workflowDynastySlug: w.workflowDynastySlug,
-          roi: cacPct != null && cacPct > 0 ? 100 / cacPct : null,
-        };
-      });
-    },
-    [`getReportWorkflowProjection`, orgId, brandId, featureSlug],
-    {
-      tags: reportTags(orgId, brandId, featureSlug),
-      revalidate: REPORT_REVALIDATE_SECONDS,
-    },
-    () => [],
-    `getReportWorkflowProjection(${featureSlug})`,
-  );
 }
 
 export async function fetchCampaigns(orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> {

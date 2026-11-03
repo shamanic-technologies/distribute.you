@@ -6,14 +6,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchGlobalRankedWorkflows,
-  getWorkflowProjection,
-  keepLastGoodWorkflowProjection,
   listWorkflows,
   setWorkflowDynastyStatus,
-  type WorkflowProjectionResponse,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
-import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -50,10 +46,6 @@ function SortHeader({
   );
 }
 
-function formatRoi(roi: number | null | undefined): string {
-  return roi == null ? "—" : `${roi.toFixed(1)}×`;
-}
-
 export default function FeatureWorkflowsPage() {
   const params = useParams();
   const router = useRouter();
@@ -75,12 +67,10 @@ export default function FeatureWorkflowsPage() {
   const defaultSortDir = defaultSortOutput?.sortDirection
     ?? sortDirectionForType(registry[defaultSortKey]?.type)
     ?? "desc";
-  const revenueEnabled = isRevenueFeature(featureSlug);
-
-  // Default sort by ROI desc when the ROI column is shown (revenue feature);
-  // otherwise fall back to the feature's declared default output sort.
-  const [metric, setMetric] = useState(revenueEnabled ? "roi" : defaultSortKey);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">(revenueEnabled ? "desc" : defaultSortDir);
+  // No per-workflow return (ROI-CONSISTENCY-1103: a workflow is below a Target, and
+  // the projected ROI here was a browser ratio). The feature's declared sort leads.
+  const [metric, setMetric] = useState(defaultSortKey);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSortDir);
 
   // Edit slide-over: the workflow whose example emails are being previewed (null = closed).
   const [editWf, setEditWf] = useState<{ workflowSlug: string; workflowDynastyName: string } | null>(null);
@@ -115,35 +105,6 @@ export default function FeatureWorkflowsPage() {
     () => listWorkflows({ featureSlug }),
   );
 
-  // Per-workflow PROJECTED ROI (no realized per-workflow revenue stat exists):
-  // features-service workflow-projection × the offer's lifetime revenue and rates.
-  // ROI = 100 / cacPct, budget-invariant (budgetUsd:1 just populates `projection`).
-  // This is the cold Neon path, so it is NOT gated into the table barrier below —
-  // the table reveals on workflows+ranked and each ROI cell shows its own skeleton
-  // while pending. keep-last-good guards a degenerate cold-path refocus refetch.
-  const { data: projection } = useAuthQuery(
-    ["workflowProjection", brandId, featureSlug],
-    () => getWorkflowProjection({ featureSlug, brandId, objective: "meeting-booked", budgetUsd: 1 }),
-    {
-      enabled: revenueEnabled && wfDef?.implemented === true,
-      structuralSharing: (prev, next) =>
-        keepLastGoodWorkflowProjection(
-          prev as WorkflowProjectionResponse | undefined,
-          next as WorkflowProjectionResponse,
-        ),
-    },
-  );
-  const roiPending = revenueEnabled && projection === undefined;
-
-  const roiByDynasty = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const w of projection?.workflows ?? []) {
-      const cacPct = w.projection?.cacPct;
-      if (cacPct != null && cacPct > 0) map.set(w.workflowDynastySlug, 100 / cacPct);
-    }
-    return map;
-  }, [projection]);
-
   // Active workflows grouped by workflowDynastySlug: keep only the latest per dynasty
   const dynastyWorkflows = useMemo(() => {
     if (!workflowsData?.workflows) return [];
@@ -172,9 +133,8 @@ export default function FeatureWorkflowsPage() {
       status: (wf.status ?? "active") as "active" | "deprecated",
       deprecation: wf.deprecation ?? null,
       stats: statsMap.get(wf.workflowDynastySlug) ?? {},
-      roi: roiByDynasty.get(wf.workflowDynastySlug) ?? null,
     }));
-  }, [rankedData, dynastyWorkflows, roiByDynasty]);
+  }, [rankedData, dynastyWorkflows]);
 
   const handleSort = useCallback((key: string) => {
     setMetric((prev) => {
@@ -182,7 +142,7 @@ export default function FeatureWorkflowsPage() {
         setSortDir((d) => (d === "desc" ? "asc" : "desc"));
         return prev;
       }
-      const dir = key === "roi" ? "desc" : sortDirectionForType(registry[key]?.type);
+      const dir = sortDirectionForType(registry[key]?.type);
       setSortDir(dir);
       return key;
     });
@@ -191,8 +151,8 @@ export default function FeatureWorkflowsPage() {
   const sorted = useMemo(() => {
     if (rows.length === 0) return [];
     return [...rows].sort((a, b) => {
-      const aRaw = metric === "roi" ? a.roi : a.stats[metric] ?? null;
-      const bRaw = metric === "roi" ? b.roi : b.stats[metric] ?? null;
+      const aRaw = a.stats[metric] ?? null;
+      const bRaw = b.stats[metric] ?? null;
       const aNull = aRaw === null || aRaw === 0;
       const bNull = bRaw === null || bRaw === 0;
       if (aNull && bNull) return 0;
@@ -255,9 +215,6 @@ export default function FeatureWorkflowsPage() {
                     {registry[o.key]?.label ?? o.key}
                   </th>
                 ))}
-                {revenueEnabled && (
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
-                )}
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -265,7 +222,7 @@ export default function FeatureWorkflowsPage() {
             <tbody className="divide-y divide-gray-200">
               {[1, 2, 3].map((i) => (
                 <tr key={i}>
-                  {Array.from({ length: visibleOutputs.length + 3 + (revenueEnabled ? 1 : 0) }).map((_, j) => (
+                  {Array.from({ length: visibleOutputs.length + 3 }).map((_, j) => (
                     <td key={j} className="px-3 py-4">
                       <Skeleton className={`h-4 ${j === 0 ? "w-32" : "w-16"}`} />
                     </td>
@@ -306,15 +263,6 @@ export default function FeatureWorkflowsPage() {
                       onSort={handleSort}
                     />
                   ))}
-                  {revenueEnabled && (
-                    <SortHeader
-                      label="ROI"
-                      sortKey="roi"
-                      currentSort={metric}
-                      currentDir={sortDir}
-                      onSort={handleSort}
-                    />
-                  )}
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
@@ -342,11 +290,6 @@ export default function FeatureWorkflowsPage() {
                         {formatStatValue(wf.stats[o.key], registry[o.key])}
                       </td>
                     ))}
-                    {revenueEnabled && (
-                      <td className="px-3 py-4 text-sm font-medium text-green-700">
-                        {roiPending ? <Skeleton className="h-4 w-12" /> : formatRoi(wf.roi)}
-                      </td>
-                    )}
                     <td className="px-3 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${

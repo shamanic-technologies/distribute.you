@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RealizedReturnSchema, type RealizedReturn } from "./realized-return";
 import { buildCreditGrantBody } from "./credit-grant-body";
 import { parseFleetRevenueOutlook, type FleetRevenueOutlook } from "./revenue-outlook";
 
@@ -1252,6 +1253,8 @@ const FeatureRevenueByCampaignSchema = z.object({
         committedCostUsd: z.number().nullish(),
         costOfAcquisitionPct: z.number().nullable(),
         roiMultiple: z.number().nullable(),
+        // The campaign's REALIZED return (ROI-CONSISTENCY-1103). Nullish as served.
+        realizedReturn: RealizedReturnSchema.nullish(),
       }),
     }),
   ),
@@ -1262,8 +1265,10 @@ export interface CampaignRevenueGroup {
   totalPipelineUsd: number | null;
   /** COMMITTED spend for this campaign. Null is "no figure", never "cost nothing". */
   committedCostUsd: number | null;
-  /** totalPipelineUsd / committedCostUsd. Null when cost is 0 or pipeline is null. */
+  /** totalPipelineUsd / committedCostUsd. RETIRED from every screen (ROI-CONSISTENCY-1103). */
   roiMultiple: number | null;
+  /** The campaign's REALIZED return: Paid clients over money spent. Null when not served. */
+  realizedReturn: RealizedReturn | null;
 }
 
 /** GET /features/:slug/revenue?groupBy=campaignId — per-campaign ROI for a brand+feature. */
@@ -1286,6 +1291,7 @@ export async function getFeatureRevenueByCampaign(
     totalPipelineUsd: g.headline.totalPipelineUsd,
     committedCostUsd: g.costEconomics.committedCostUsd ?? null,
     roiMultiple: g.costEconomics.roiMultiple,
+    realizedReturn: g.costEconomics.realizedReturn ?? null,
   }));
 }
 

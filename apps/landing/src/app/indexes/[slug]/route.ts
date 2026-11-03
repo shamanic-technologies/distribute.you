@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { renderedResponse } from "@/lib/static-html";
 import { renderNotFoundPage } from "@/lib/pages/not-found";
-import { INDEX_REVALIDATE_SECONDS, RENAMED_INDEX_SLUGS, fetchIndexDetail, fetchIndexList } from "@/lib/fleet-indexes";
+import { INDEX_REVALIDATE_SECONDS, RENAMED_INDEX_SLUGS, RETIRED_INDEX_REDIRECT, fetchIndexDetail, fetchIndexList } from "@/lib/fleet-indexes";
 import { renderIndexPage } from "@/lib/pages/indexes";
 
 // Literal (Next reads it statically); equals INDEX_REVALIDATE_SECONDS.
@@ -20,6 +20,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     return renderedResponse(renderNotFoundPage(), request, { status: 404, canonicalPath: "/404" });
   }
   const [detail, list] = await Promise.all([fetchIndexDetail(slug), fetchIndexList()]);
+  // A retired index (the median client ROI, ROI-CONSISTENCY-1103): its old URL keeps its reader.
+  if (detail === "retired") return new NextResponse(null, { status: 301, headers: { Location: RETIRED_INDEX_REDIRECT } });
   if (detail === "not_found") {
     // A renamed index: permanent redirect, relative Location (request.url is the bind address).
     const renamed = RENAMED_INDEX_SLUGS[slug];

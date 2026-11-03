@@ -319,7 +319,9 @@ describe("the offer the page states", () => {
     // The 36-channel hub read as far-fetched and was cut. The ranking card compares
     // email templates and the AI models writing them, never channels we do not run.
     expect(html).not.toContain('id="channels"');
-    expect(html).toContain('<span class="win">Peer case study</span><span class="sub">Pro model</span></td><td></td><td class="roi">10.2x</td>');
+    // A template is ranked on what it books, never a return of its own (ROI-CONSISTENCY-1103).
+    expect(html).toContain('<span class="win">Peer case study</span><span class="sub">Pro model</span></td><td></td></tr>');
+    expect(html).not.toContain("<th>Email</th><th></th><th>ROI</th>");
   });
 });
 

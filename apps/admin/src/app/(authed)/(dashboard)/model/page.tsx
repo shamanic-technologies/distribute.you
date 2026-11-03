@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getPublicChannelCatalogue, getPublicChannelOutcomeEconomics } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
-import { fmtRoi, fmtUsd } from "@/lib/feature-stats-format";
+import { fmtUsd } from "@/lib/feature-stats-format";
 import {
   MODEL_OBJECTS,
   buildMatrixRows,
@@ -318,7 +318,6 @@ export default function ModelPage() {
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
                 <th className="px-4 py-2 font-medium">Channel</th>
-                <th className="px-4 py-2 font-medium text-right">Best return</th>
                 {steps.map((step) => (
                   <th key={step.key} className="px-4 py-2 font-medium text-right">
                     {step.label}
@@ -330,7 +329,7 @@ export default function ModelPage() {
               {catalogueLoading || economicsLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-gray-50">
-                    <td className="px-4 py-3" colSpan={steps.length + 2}>
+                    <td className="px-4 py-3" colSpan={steps.length + 1}>
                       <Skeleton className="h-4 w-full rounded" />
                     </td>
                   </tr>
@@ -339,7 +338,7 @@ export default function ModelPage() {
                 <tr>
                   <td
                     className="px-4 py-8 text-center text-sm text-gray-400"
-                    colSpan={Math.max(steps.length + 2, 2)}
+                    colSpan={Math.max(steps.length + 1, 2)}
                   >
                     {catalogue.isError
                       ? "Couldn't read the channel catalogue."
@@ -352,9 +351,6 @@ export default function ModelPage() {
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{row.name}</p>
                       <p className="text-[11px] text-gray-400 font-mono">{row.slug}</p>
-                    </td>
-                    <td className="px-4 py-3 text-right align-top font-medium text-gray-900">
-                      {fmtRoi(row.bestReturnPerDollar)}
                     </td>
                     {row.cells.map((cell, i) => (
                       <td key={steps[i].key} className="px-4 py-3 text-right align-top">

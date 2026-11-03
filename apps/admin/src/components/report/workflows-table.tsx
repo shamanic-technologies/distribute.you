@@ -13,8 +13,6 @@ export interface WorkflowRow {
   positiveReplies: number;
   /** USD cents of total run cost attributed to this workflow */
   totalCostCents: number;
-  /** Projected ROI (100 / cacPct from features-service workflow-projection). */
-  roiMultiple: number | null;
   /** ISO timestamp from the Workflow row; used by the page's default composite sort. */
   createdAt: string;
 }
@@ -41,11 +39,9 @@ function cpa(totalCostCents: number, count: number): string {
   return formatUsd(totalCostCents / count);
 }
 
-function formatRoi(roi: number | null): string {
-  return roi == null ? "—" : `${roi.toFixed(1)}×`;
-}
-
-function buildColumns(labels: WorkflowsTableLabels, showRevenueColumns: boolean): ReportTableColumn<WorkflowRow>[] {
+// No per-workflow return: a workflow is below a Target, so it shows cost per outcome
+// only (owner 2026-11-03, ROI-CONSISTENCY-1103).
+function buildColumns(labels: WorkflowsTableLabels): ReportTableColumn<WorkflowRow>[] {
   const columns: ReportTableColumn<WorkflowRow>[] = [
     {
       key: "name",
@@ -85,37 +81,23 @@ function buildColumns(labels: WorkflowsTableLabels, showRevenueColumns: boolean)
     },
   ];
 
-  if (showRevenueColumns) {
-    columns.push(
-      {
-        key: "roi",
-        label: "ROI",
-        sortValue: (r) => String(r.roiMultiple ?? -1).padStart(14, "0"),
-        render: (r) => <span className="font-medium text-green-700">{formatRoi(r.roiMultiple)}</span>,
-      },
-    );
-  }
-
   return columns;
 }
 
-function buildDrawerEntries(labels: WorkflowsTableLabels, showRevenueColumns: boolean) {
+function buildDrawerEntries(labels: WorkflowsTableLabels) {
   return (r: WorkflowRow): DrawerEntry[] => [
     { label: "Version", value: `v${r.version}` },
     { label: labels.leadsSent, value: r.emailsSent.toLocaleString("en-US") },
     { label: labels.leadsRepliesPositive, value: r.positiveReplies.toLocaleString("en-US") },
     { label: "Total cost", value: formatUsd(r.totalCostCents) },
     { label: "CAC / positive reply", value: cpa(r.totalCostCents, r.positiveReplies) },
-    ...(showRevenueColumns ? [
-      { label: "ROI", value: formatRoi(r.roiMultiple) },
-    ] : []),
     { label: "Description", value: r.description, block: true },
   ];
 }
 
-export function WorkflowsTable({ rows, labels, showRevenueColumns = false }: { rows: WorkflowRow[]; labels: WorkflowsTableLabels; showRevenueColumns?: boolean }) {
-  const columns = buildColumns(labels, showRevenueColumns);
-  const drawerEntries = buildDrawerEntries(labels, showRevenueColumns);
+export function WorkflowsTable({ rows, labels }: { rows: WorkflowRow[]; labels: WorkflowsTableLabels }) {
+  const columns = buildColumns(labels);
+  const drawerEntries = buildDrawerEntries(labels);
   return (
     <ReportTable
       rows={rows}

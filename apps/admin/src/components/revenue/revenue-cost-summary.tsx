@@ -6,16 +6,17 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { ProviderLogo } from "@/components/provider-logo";
 import { Skeleton } from "@/components/skeleton";
 import type { CostEconomics } from "@/lib/revenue-view";
+import { realizedLineText, realizedMultipleText } from "@/lib/realized-return-words";
 
 /**
  * Cost & efficiency summary for the feature Overview — total spend, the top-3
- * cost sources (provider logo + share, no $ amounts), and the two cost/revenue
- * efficiency metrics:
- *   - Cost of acquisition = total cost ÷ expected revenue (a %; lower is better)
- *   - ROI                 = expected revenue ÷ total cost (a × multiple)
+ * cost sources (provider logo + share, no $ amounts), and the REALIZED return:
+ * revenue of the Paid clients our outreach caused ÷ money actually spent, whole
+ * history (ROI-CONSISTENCY-1103). The pipeline-based ROI and % cost of acquisition
+ * are retired from every screen.
  *
- * The two ratios come straight from features-service (`costEconomics` on
- * /revenue) — the single source per DIS-232. Total spend + the top-3 provider
+ * The return comes straight from features-service (`costEconomics.realizedReturn`
+ * on /revenue), never divided here. Total spend + the top-3 provider
  * breakdown stay client-side (the provider-domain decomposition lives in the
  * cost breakdown, not in features-service).
  */
@@ -103,18 +104,16 @@ export function RevenueCostSummary({
     domain: domainByCost.get(e.name) ?? null,
   }));
 
-  // CAC % + ROI × come from features-service (single source) — null per its
-  // documented semantics (pipeline null/0, or cost 0).
-  const cacPct = costEconomics?.costOfAcquisitionPct;
-  const roiMultiple = costEconomics?.roiMultiple;
+  // The REALIZED return, served by features-service (ROI-CONSISTENCY-1103).
+  const realized = costEconomics?.realizedReturn ?? null;
 
-  // Right-of-chart column on the Overview: three stat cards (Total spent / Cost
-  // of acquisition / ROI) replacing the old org/lead/event counters, plus a
+  // Right-of-chart column on the Overview: two stat cards (Total spent / Realized
+  // return) replacing the old org/lead/event counters, plus a
   // compact top-3 cost-source list. Card markup matches the existing overview
   // stat cards so the column stays visually consistent.
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
         {/* Card frames + labels render instantly; only the value waits. */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-400">Total spent</p>
@@ -126,28 +125,16 @@ export function RevenueCostSummary({
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="flex items-center gap-1 text-xs text-gray-400">
-            Cost of acquisition
-            <InfoHint text="Share of expected pipeline revenue spent to generate it: total cost ÷ expected revenue. Lower is better." />
+            Realized return
+            <InfoHint text="What the paid clients we brought are worth, divided by the money actually spent, since the start." />
           </p>
           {pending ? (
             <Skeleton className="mt-1 h-7 w-16" />
           ) : (
-            <p className="mt-1 text-xl font-bold text-gray-900">
-              {cacPct == null ? "—" : `${Math.round(cacPct)}%`}
-            </p>
-          )}
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <p className="flex items-center gap-1 text-xs text-gray-400">
-            ROI
-            <InfoHint text="Return multiple on spend: expected revenue ÷ total cost. 3× means each $1 spent is expected to return $3." />
-          </p>
-          {pending ? (
-            <Skeleton className="mt-1 h-7 w-16" />
-          ) : (
-            <p className="mt-1 text-xl font-bold text-gray-900">
-              {roiMultiple == null ? "—" : `${roiMultiple.toFixed(1)}×`}
-            </p>
+            <>
+              <p className="mt-1 text-xl font-bold text-gray-900">{realizedMultipleText(realized)}</p>
+              {realizedLineText(realized) && <p className="mt-0.5 text-[11px] text-gray-400 tabular-nums">{realizedLineText(realized)}</p>}
+            </>
           )}
         </div>
       </div>

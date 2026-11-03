@@ -9,6 +9,7 @@ import {
   formatIndexValue,
   formatTick,
   indexLinksHtml,
+  isRetiredIndex,
   parseIndexDetail,
   parseIndexList,
   unavailableLine,
@@ -304,23 +305,18 @@ describe("rebuilt days read apart from the days we published live (INDEX-HISTORY
   });
 });
 
-describe("a return index reads like the hero ROI (cold-email-roi, 2026-10-19)", () => {
-  const roi = summary({ slug: "cold-email-roi", name: "Cold Email ROI Index", unit: "multiple", value: 3.62, valuePer: "back per dollar spent, median of our clients" });
-
-  it("the list accepts the unit instead of failing every page", () => {
-    expect(parseIndexList({ statusRule: RULE, indexes: [summary(), roi] }).indexes[1].unit).toBe("multiple");
-    expect(() => parseIndexList({ statusRule: RULE, indexes: [summary({ unit: "euro" as never })] })).toThrow();
+describe("a return index is retired (ROI-CONSISTENCY-1103)", () => {
+  it("isRetiredIndex names the median client ROI (unit multiple), and only it", () => {
+    expect(isRetiredIndex(summary({ slug: "cold-email-roi", unit: "multiple" }))).toBe(true);
+    expect(isRetiredIndex(summary())).toBe(false);
   });
 
-  it("value, ticks, table and JSON-LD speak in x", () => {
-    expect(formatIndexValue(3.62, "multiple")).toBe("4x");
-    expect(formatIndexValue(18.3, "multiple")).toBe("20x");
-    const page = renderIndexPage("cold-email-roi", { statusRule: RULE, index: roi, points: [point("2026-10-18", 3.4), point("2026-10-19", 3.62)] }, LIST);
-    expect(page).toContain('<div class="ix-value" data-motion="count-up">4x</div>');
-    expect(page).toContain("<td>3x</td>");
-    expect(page).not.toMatch(/\$3\.6/);
-    const ds = [...page.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1])).find((n) => n["@type"] === "Dataset");
-    expect(ds.variableMeasured.unitText).toBe("multiple of spend");
+  it("the list drops it and its page redirects to the list", () => {
+    const lib = readFileSync(path.resolve(__dirname, "../../src/lib/fleet-indexes.ts"), "utf8");
+    expect(lib).toContain("indexes: list.indexes.filter((i) => !isRetiredIndex(i))");
+    expect(lib).toContain('return isRetiredIndex(detail.index) ? "retired" : detail;');
+    const route = readFileSync(path.resolve(__dirname, "../../src/app/indexes/[slug]/route.ts"), "utf8");
+    expect(route).toContain('if (detail === "retired") return new NextResponse(null, { status: 301, headers: { Location: RETIRED_INDEX_REDIRECT } });');
   });
 });
 

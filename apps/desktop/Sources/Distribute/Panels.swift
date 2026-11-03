@@ -125,11 +125,12 @@ private struct TodayPanel: View {
             if let win = d.window?.window {
                 KCard {
                     Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
+                        // The only two returns a screen shows (ROI-CONSISTENCY-1103): expected,
+                        // with its realized line. No pipeline tile: the pipeline lives on Deals.
                         GridRow {
-                            Tile(label: "Return", value: shownReturn(d.revenue?.costEconomics?.maturity),
-                                 note: "on what you spent", color: K.teal)
-                            Tile(label: "Pipeline", value: usd(d.revenue?.headline?.totalPipelineUsd), note: "expected",
-                                 spark: win.expectedPipeline?.daily?.compactMap(\.cumulativePipelineUsd), color: K.teal)
+                            Tile(label: "Return", value: expectedReturnText(d.revenue?.expectedReturn),
+                                 note: returnNote(d.revenue), color: K.teal)
+                                .gridCellColumns(2)
                         }
                         Divider().overlay(K.lineSubtle).gridCellUnsizedAxes(.horizontal)
                         GridRow {
@@ -186,15 +187,25 @@ private struct Tile: View {
     }
 }
 
-/// Dashboard v2's return rule (`lib/maturity.ts`): before maturity, a flash return above
-/// 1x is shown, else "Learning"; after it, the mature return.
-func shownReturn(_ m: Maturity?) -> String {
-    guard let m else { return "—" }
-    if m.isMature == false {
-        if let r = m.flash?.roiMultiple, r > 1 { return String(format: "%.1f×", r) }
-        return "Learning"
+/// A return multiple the dashboard's way: one decimal under 10x, whole from 10x.
+func multipleText(_ r: Double) -> String {
+    r >= 10 ? String(format: "%.0fx", r) : String(format: "%.1fx", r)
+}
+
+/// The served EXPECTED return (dashboard v2 `ExpectedReturnValue`), or a dash.
+func expectedReturnText(_ e: ExpectedReturn?) -> String {
+    e?.roiMultiple.map(multipleText) ?? "—"
+}
+
+/// "Expected (Learning) · 0 paid clients · $94 spent": the basis, then the REALIZED return.
+func returnNote(_ rev: OfferRevenue?) -> String {
+    var parts = ["Expected (\(rev?.expectedReturn?.basis == "measured" ? "measured" : "Learning"))"]
+    if let r = rev?.costEconomics?.realizedReturn {
+        if r.closedWonCount > 0, let m = r.roiMultiple { parts.append("Realized \(multipleText(m))") }
+        parts.append("\(r.closedWonCount) paid \(r.closedWonCount == 1 ? "client" : "clients")")
+        if let s = r.spentUsd { parts.append("\(usd(s)) spent") }
     }
-    return m.mature?.roiMultiple.map { String(format: "%.1f×", $0) } ?? "—"
+    return parts.joined(separator: " · ")
 }
 
 // MARK: - Companies
@@ -222,11 +233,11 @@ private struct CompaniesPanel: View {
                             StateDot(word: stage, color: stage == "Close won" ? K.teal : stage == "Positive reply" || stage.hasPrefix("Meeting") ? K.run : K.fg4)
                         }
                         Spacer()
-                        Text(usd(o.expectedRevenueUsd)).font(K.body).monospacedDigit().foregroundStyle(K.fg1)
                     }
                 }
             }
-            Text("\(orgs.count.formatted()) companies · \(usd(rev.headline?.totalPipelineUsd)) expected pipeline")
+            // The pipeline lives on Deals only, as a forecast (ROI-CONSISTENCY-1103).
+            Text("\(orgs.count.formatted()) companies")
                 .font(K.meta).foregroundStyle(K.fg3).padding(.top, 4)
         }
     }
@@ -309,7 +320,7 @@ private struct DealsPanel: View {
                 ("Disqualified", c.disqualified), ("Opt-out", c.opted_out),
             ] + (c.unresolved > 0 ? [("Not placed", c.unresolved)] : [])
             if let pipe = d.pipelineUsd {
-                Text("\(usd(pipe)) in expected pipeline").font(.system(size: 18, weight: .semibold)).foregroundStyle(K.fg1)
+                Text("\(usd(pipe)) pipeline forecast").font(.system(size: 18, weight: .semibold)).foregroundStyle(K.fg1)
             }
             KCard {
                 StepBars(columns: cols).padding(14)

@@ -12,8 +12,8 @@ import {
   fetchFeatureStatsByWorkflow,
   fetchStatsRegistry,
   getReportRevenue,
-  getReportWorkflowProjection,
 } from "@/lib/report-api";
+import { realizedLineText, realizedMultipleText } from "@/lib/realized-return-words";
 import type { StatsRegistry } from "@/lib/api";
 
 export const revalidate = 14400;
@@ -45,26 +45,11 @@ function formatUsd(cents: number): string {
   return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-function formatUsdValue(usd: number | null): string {
-  if (usd == null) return "\u2014";
-  if (usd === 0) return "$0";
-  if (usd < 0.01) return "<$0.01";
-  if (usd < 100) return `$${usd.toFixed(2)}`;
-  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
-
-function formatRoi(roi: number | null): string {
-  return roi == null ? "\u2014" : `${roi.toFixed(1)}×`;
-}
-
 export default async function WorkflowsPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
   // Skeleton uses the keys that will populate the table so the fallback
   // column count matches the final render; labels are placeholders.
   const skeletonColumns = ["Workflow", "Version", "Leads Sent", "Leads Positive", "CAC / positive reply"];
-  const revenueSkeletonColumns = isRevenueFeature(featureSlug)
-    ? [...skeletonColumns, "ROI"]
-    : skeletonColumns;
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
       <Suspense
@@ -72,7 +57,7 @@ export default async function WorkflowsPage({ params }: PageProps) {
           <TableSectionSkeleton
             title="Workflows"
             description="Pipelines actually used for this brand, with cost-per-positive-reply for A/B comparison."
-            columnLabels={revenueSkeletonColumns}
+            columnLabels={skeletonColumns}
           />
         }
       >
@@ -84,14 +69,13 @@ export default async function WorkflowsPage({ params }: PageProps) {
 
 async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const revenueEnabled = isRevenueFeature(featureSlug);
-  const [allWorkflows, campaigns, totalStats, groupedStats, registry, brandRevenue, workflowRoi] = await Promise.all([
+  const [allWorkflows, campaigns, totalStats, groupedStats, registry, brandRevenue] = await Promise.all([
     fetchWorkflows(orgId, featureSlug),
     fetchCampaigns(orgId, brandId, featureSlug),
     fetchFeatureStats(orgId, brandId, featureSlug),
     fetchFeatureStatsByWorkflow(orgId, brandId, featureSlug),
     fetchStatsRegistry(orgId),
     revenueEnabled ? getReportRevenue(orgId, brandId, featureSlug) : Promise.resolve(null),
-    revenueEnabled ? getReportWorkflowProjection(orgId, brandId, featureSlug) : Promise.resolve([]),
   ]);
 
   const leadsSentLabel = registryLabel(registry, "leadsSent");
@@ -103,8 +87,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
 
   // Per-workflow stats index
   const statsBySlug = new Map(groupedStats.groups.map((g) => [g.workflowSlug ?? "", g]));
-  // Projected ROI is keyed on the workflow DYNASTY (cross-version), not the versioned slug.
-  const roiByDynasty = new Map(workflowRoi.map((r) => [r.workflowDynastySlug, r.roi]));
 
   const rows: WorkflowRow[] = workflows.map((w) => {
     const g = statsBySlug.get(w.workflowSlug);
@@ -119,7 +101,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
       emailsSent: typeof stats.leadsSent === "number" ? stats.leadsSent : 0,
       positiveReplies: typeof stats.leadsRepliesPositive === "number" ? stats.leadsRepliesPositive : 0,
       totalCostCents: cost,
-      roiMultiple: roiByDynasty.get(w.workflowDynastySlug) ?? null,
       createdAt: w.createdAt,
     };
   });
@@ -143,8 +124,9 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
   const brandPositiveReplies = typeof brandStats.leadsRepliesPositive === "number" ? brandStats.leadsRepliesPositive : 0;
   const brandCacPerReply = brandPositiveReplies > 0 ? formatUsd(brandTotalCost / brandPositiveReplies) : "—";
   const brandEmailsSent = typeof brandStats.leadsSent === "number" ? brandStats.leadsSent : 0;
-  const brandExpectedRevenue = brandRevenue?.totalPipelineUsd ?? null;
-  const brandRoi = brandRevenue?.costEconomics.roiMultiple ?? null;
+  // The brand's REALIZED return (ROI-CONSISTENCY-1103): Paid clients over money spent.
+  // The pipeline ("expected revenue") and its ROI are retired from this report.
+  const realized = brandRevenue?.costEconomics.realizedReturn ?? null;
 
   interface FlatRow {
     workflow: string;
@@ -153,7 +135,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     positiveReplies: number;
     totalCostUsd: string;
     cacPerReply: string;
-    roi: string;
   }
 
   const csvRows: FlatRow[] = rows.map((r) => ({
@@ -163,7 +144,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     positiveReplies: r.positiveReplies,
     totalCostUsd: formatUsd(r.totalCostCents),
     cacPerReply: r.positiveReplies > 0 ? formatUsd(r.totalCostCents / r.positiveReplies) : "",
-    roi: revenueEnabled ? formatRoi(r.roiMultiple) : "",
   }));
 
   const csvColumns: CsvColumn<FlatRow>[] = [
@@ -174,11 +154,6 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
     { label: "Total cost", value: (r) => r.totalCostUsd },
     { label: "CAC per positive reply", value: (r) => r.cacPerReply },
   ];
-  if (revenueEnabled) {
-    csvColumns.push(
-      { label: "ROI", value: (r) => r.roi },
-    );
-  }
 
   return (
     <>
@@ -186,12 +161,13 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
         title="Brand totals"
         description="All workflows combined for this brand. Use the per-workflow table below to compare performance."
       >
-        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           <SummaryTile label="Workflows used" value={workflows.length.toLocaleString("en-US")} />
           <SummaryTile label={leadsSentLabel} value={brandEmailsSent.toLocaleString("en-US")} />
           <SummaryTile label={leadsPositiveLabel} value={brandPositiveReplies.toLocaleString("en-US")} />
-          <SummaryTile label="Expected revenue" value={formatUsdValue(brandExpectedRevenue)} highlight />
-          <SummaryTile label="ROI" value={formatRoi(brandRoi)} highlight />
+          {revenueEnabled && (
+            <SummaryTile label="Realized return" value={realizedMultipleText(realized)} sub={realizedLineText(realized)} highlight />
+          )}
           <SummaryTile label="CAC / positive reply" value={brandCacPerReply} />
         </div>
       </SectionCard>
@@ -204,17 +180,18 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
           <CsvDownloadButton filename={`workflows-${featureSlug}.csv`} csv={toCsv(csvRows, csvColumns)} isEmpty={csvRows.length === 0} />
         }
       >
-        <WorkflowsTable rows={rows} labels={{ leadsSent: leadsSentLabel, leadsRepliesPositive: leadsPositiveLabel }} showRevenueColumns={revenueEnabled} />
+        <WorkflowsTable rows={rows} labels={{ leadsSent: leadsSentLabel, leadsRepliesPositive: leadsPositiveLabel }} />
       </SectionCard>
     </>
   );
 }
 
-function SummaryTile({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function SummaryTile({ label, value, sub, highlight }: { label: string; value: string; sub?: string | null; highlight?: boolean }) {
   return (
     <div className={`rounded-lg p-3 text-center ${highlight ? "bg-green-50 border border-green-200" : "bg-gray-50"}`}>
       <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
       <div className={`text-xl font-bold mt-0.5 ${highlight ? "text-green-700" : "text-gray-800"}`}>{value}</div>
+      {sub && <div className="text-[11px] text-gray-500 mt-0.5 tabular-nums">{sub}</div>}
     </div>
   );
 }

@@ -10,10 +10,10 @@ describe("Cost & efficiency card on feature Overview (served costEconomics)", ()
   const overview =
     read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/overview/page.tsx");
 
-  it("renders Total spent, Cost of acquisition and ROI cards with info hints", () => {
+  it("renders Total spent and the Realized return card, never % CAC or the pipeline ROI (ROI-CONSISTENCY-1103)", () => {
     expect(card).toContain("Total spent");
-    expect(card).toContain("Cost of acquisition");
-    expect(card).toContain("ROI");
+    expect(card).toContain("Realized return");
+    expect(card).not.toContain("Cost of acquisition");
     expect(card).toContain("InfoHint");
   });
 
@@ -43,15 +43,10 @@ describe("Cost & efficiency card on feature Overview (served costEconomics)", ()
     expect(section).not.toContain("Lead conversions");
   });
 
-  it("CAC % and ROI × read the served costEconomics, not client arithmetic", () => {
-    // Single source: the two ratios come straight off the features-service prop
-    // (read with `?.` — the card now renders its shell before data arrives).
-    expect(card).toContain("costEconomics?.costOfAcquisitionPct");
-    expect(card).toContain("costEconomics?.roiMultiple");
-    // Served nulls still render as an em dash.
-    expect(card).toContain('cacPct == null ? "—"');
-    expect(card).toContain('roiMultiple == null ? "—"');
-    // No re-derivation of the ratios from pipeline in the browser.
+  it("the realized return reads the served costEconomics.realizedReturn, not client arithmetic", () => {
+    expect(card).toContain("costEconomics?.realizedReturn");
+    expect(card).not.toContain("costEconomics?.roiMultiple");
+    expect(card).not.toContain("costEconomics?.costOfAcquisitionPct");
     expect(card).not.toContain("totalPipelineUsd");
   });
 

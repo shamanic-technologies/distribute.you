@@ -7,6 +7,7 @@
 // authed side; empty section on the report side), never a render crash.
 
 import { z } from "zod";
+import { RealizedReturnSchema } from "./realized-return";
 import type { RevenueOverview } from "./revenue-view";
 
 const RevenueTopPersonSchema = z.object({
@@ -57,6 +58,8 @@ const CostEconomicsSchema = z.object({
   committedCostUsd: z.number().nullish(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
+  // The REALIZED return (ROI-CONSISTENCY-1103). Nullish as served.
+  realizedReturn: RealizedReturnSchema.nullish(),
 });
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
@@ -85,6 +88,7 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
       committedCostUsd: d.costEconomics.committedCostUsd ?? null,
       costOfAcquisitionPct: d.costEconomics.costOfAcquisitionPct,
       roiMultiple: d.costEconomics.roiMultiple,
+      realizedReturn: d.costEconomics.realizedReturn ?? null,
     },
     timeSeries: d.timeSeries,
     organizations: d.organizations,

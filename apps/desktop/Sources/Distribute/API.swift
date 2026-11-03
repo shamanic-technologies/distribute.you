@@ -90,11 +90,19 @@ struct Offer: Decodable, Identifiable, Hashable {
 struct OfferList: Decodable { let offers: [Offer] }
 
 
-struct Maturity: Decodable {
-    struct Figures: Decodable { let roiMultiple: Double? }
-    let flash: Figures?
-    let mature: Figures?
-    let isMature: Bool?
+/// The campaign's EXPECTED return (features-service `expectedReturn`): its Target's value over what
+/// one costs to make from Start. `basis` "measured", else a hypothesis (shown as Learning).
+struct ExpectedReturn: Decodable {
+    let roiMultiple: Double?
+    let basis: String?
+}
+
+/// The REALIZED return (`costEconomics.realizedReturn`, ROI-CONSISTENCY-1103): revenue of the
+/// Paid clients our outreach caused over money actually spent, whole history.
+struct RealizedReturn: Decodable {
+    let closedWonCount: Int
+    let roiMultiple: Double?
+    let spentUsd: Double?
 }
 
 struct RevenueOrg: Decodable, Identifiable {
@@ -111,9 +119,10 @@ struct RevenueOrg: Decodable, Identifiable {
 
 struct OfferRevenue: Decodable {
     struct Headline: Decodable { let totalPipelineUsd: Double? }
-    struct Cost: Decodable { let maturity: Maturity? }
+    struct Cost: Decodable { let realizedReturn: RealizedReturn? }
     let headline: Headline?
     let costEconomics: Cost?
+    let expectedReturn: ExpectedReturn?
     let organizations: [RevenueOrg]
 }
 
@@ -123,14 +132,11 @@ struct RevenueWindow: Decodable {
     struct Emails: Decodable { let sent: Int; let delivered: Int; let bounced: Int; let deliveryRatePct: Double? }
     struct SpendDay: Decodable { let totalSpentCents: Double? }
     struct Spend: Decodable { let totalSpentCents: Double; let daily: [SpendDay]? }
-    struct PipeDay: Decodable { let cumulativePipelineUsd: Double? }
-    struct Pipeline: Decodable { let daily: [PipeDay]? }
     struct Body: Decodable {
         let emails: Emails?
         let spend: Spend?
         let recipientsRepliesPositive: Count?
         let recipientsClicked: Count?
-        let expectedPipeline: Pipeline?
     }
     let window: Body
 }

@@ -271,7 +271,8 @@ describe("a proof card", () => {
     const card = renderProofCard(docDinners)!;
     expect(card).toContain("/landing/v2/assets/ryan-parenti.jpg");
     expect(card).toContain("Ryan W.D. Parenti");
-    expect(card).toContain('data-count="1.6" data-decimals="1"');
+    // No client return on the card: the pipeline-based ROI is retired (ROI-CONSISTENCY-1103).
+    expect(card).not.toContain("proof-roi");
   });
 
   it("leads with the COMPANY when we have not, and invents nobody", () => {
@@ -312,13 +313,12 @@ describe("a proof card", () => {
     expect(card).not.toContain("meeting_booked");
   });
 
-  it("renders nothing for a client with no stated return", () => {
+  it("renders a client with no stated return: the card no longer states one (ROI-CONSISTENCY-1103)", () => {
     const noReturn: ShowcaseBrand = {
       ...opsfolio,
       returnPerDollar: null,
     };
-    // The card's headline IS the return, so there is no honest card without one.
-    expect(renderProofCard(noReturn)).toBeNull();
+    expect(renderProofCard(noReturn)).not.toBeNull();
   });
 
   it("escapes a name the customer wrote", () => {

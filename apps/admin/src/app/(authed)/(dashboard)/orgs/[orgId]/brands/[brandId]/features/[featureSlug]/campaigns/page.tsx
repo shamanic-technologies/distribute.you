@@ -22,7 +22,7 @@ import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { RevenueChart } from "@/components/revenue/revenue-chart";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
-import { TopWorkflowsCard } from "@/components/revenue/top-workflows-card";
+import { realizedLineText, realizedMultipleText } from "@/lib/realized-return-words";
 import { Skeleton } from "@/components/skeleton";
 import { formatStatValue } from "@/lib/format-stat";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
@@ -241,7 +241,7 @@ function GenericFeaturePage({
       </div>
 
       {/* Revenue hero (revenue features) — leads with $ generated over time + the
-          cost/efficiency column (Total spent / CAC / ROI). Static-shell-first:
+          cost/efficiency column (Total spent / Realized return). Static-shell-first:
           the card frames + titles paint immediately; only the values skeleton
           until the stats reveal together. Mirrors the feature Overview hero. */}
       {revenueEnabled && (
@@ -270,7 +270,6 @@ function GenericFeaturePage({
             costBreakdown={brandCostBreakdown}
             costEconomics={featureRevenueData?.costEconomics}
             pending={!heroRevealed}
-            bottomCard={<TopWorkflowsCard brandId={brandId} featureSlug={featureSlug} />}
           />
         </div>
       )}
@@ -405,8 +404,9 @@ function CampaignRow({
   const budget = formatBudget(campaign);
   const status = campaign.status;
   const statusStyle = STATUS_STYLES[status] || "bg-gray-100 text-gray-500 border-gray-200";
-  const revenueUsd = revenue?.totalPipelineUsd ?? null;
-  const roi = revenue?.costEconomics?.roiMultiple ?? null;
+  // The campaign's REALIZED return (ROI-CONSISTENCY-1103): Paid clients over money spent.
+  // The pipeline and its ROI are retired from this card.
+  const realized = revenue?.costEconomics?.realizedReturn ?? null;
 
   return (
     <Link
@@ -432,12 +432,12 @@ function CampaignRow({
         </div>
         <div className="flex items-center gap-3">
           {revenueEnabled ? (
-            // Gains framing: revenue generated (+ ROI) instead of spend.
+            // Gains framing: the realized return (paid clients over money spent).
             revenue === undefined ? (
               <div className="h-5 w-28 bg-gray-200 rounded animate-pulse" />
-            ) : revenueUsd !== null ? (
+            ) : realized ? (
               <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-lg">
-                {formatUsd(revenueUsd)} revenue{roi !== null ? ` · ${roi.toFixed(1)}× ROI` : ""}
+                Realized {realizedMultipleText(realized)} · {realizedLineText(realized)}
               </span>
             ) : null
           ) : !statsReady ? (

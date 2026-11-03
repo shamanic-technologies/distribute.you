@@ -50,9 +50,9 @@ describe("brand Workflows scorecard: routing + nav", () => {
 });
 
 describe("brand Workflows scorecard: the table", () => {
-  it("renders this brand's four realized money columns", () => {
+  it("renders no return, % CAC, $ CAC or pipeline column: a workflow is below a Target (ROI-CONSISTENCY-1103)", () => {
     for (const label of ["ROI", "% CAC", "$ CAC", "Revenue"]) {
-      expect(page).toContain(`label="${label}"`);
+      expect(page).not.toContain(`label="${label}"`);
     }
   });
 
@@ -129,10 +129,6 @@ describe("buildBrandWorkflowRows", () => {
     expect(row).toEqual({
       slug: "wf-a",
       name: "Brand wf-a",
-      roiMultiple: 3.2,
-      cacPct: 31,
-      cacUsd: 92.8,
-      pipelineUsd: 4200,
       positiveReplies: 14,
       cpprUsd: 92.8,
       websiteVisits: 52,
@@ -143,8 +139,6 @@ describe("buildBrandWorkflowRows", () => {
   });
 
   it("prints the COMMITTED spend the return divides by", () => {
-    // ROI rides committedCostUsd; a $ Invested column showing anything else would
-    // make the row contradict its own ROI.
     const [row] = buildBrandWorkflowRows([
       { ...group("wf-a"), costEconomics: { ...group("wf-a").costEconomics, committedCostUsd: 800 } },
     ]);
@@ -169,7 +163,6 @@ describe("buildBrandWorkflowRows", () => {
       { ...group("wf-a"), workflowSlugs: ["wf-a-v1", "wf-a-v2"] },
     ]);
     expect(row.slug).toBe("wf-a");
-    expect(row.roiMultiple).toBe(3.2);
   });
 
   it("reads the workflow key under either spelling, preferring the dynasty", () => {
@@ -204,10 +197,8 @@ describe("buildBrandWorkflowRows", () => {
         costEconomics: { costOfAcquisitionPct: null, roiMultiple: null },
       },
     ]);
-    expect(row.roiMultiple).toBeNull();
-    expect(row.cacUsd).toBeNull();
-    expect(fmtRoi(row.roiMultiple)).toBe("—");
-    expect(fmtPct(row.cacPct)).toBe("—");
+    expect(row.investedUsd).toBeNull();
+    expect(row.cpprUsd).toBeNull();
   });
 
   it("reads null, not zero, for an outcome the workflow bought none of", () => {
@@ -242,7 +233,7 @@ describe("buildBrandWorkflowRows", () => {
         costEconomics: { costOfAcquisitionPct: 31, roiMultiple: 3.2 },
       },
     ]);
-    expect(row.roiMultiple).toBe(3.2);
+    expect(row.slug).toBe("wf-a");
     expect(row.outreach).toBeNull();
     expect(row.cpprUsd).toBeNull();
   });
@@ -254,16 +245,12 @@ describe("buildBrandWorkflowRows", () => {
 
   it("exposes a sort key for every displayed column", () => {
     expect(Object.keys(BRAND_WORKFLOW_SORT_KEYS).sort()).toEqual([
-      "cacPct",
-      "cacUsd",
       "cppr",
       "cpwv",
       "invested",
       "name",
       "outreach",
       "positiveReplies",
-      "revenue",
-      "roi",
       "websiteVisits",
     ]);
   });
@@ -271,7 +258,6 @@ describe("buildBrandWorkflowRows", () => {
   it("sorts every column off this brand's own figure", () => {
     const [row] = buildBrandWorkflowRows([group("wf-a")]);
     expect(BRAND_WORKFLOW_SORT_KEYS.invested(row)).toBe(1299.47);
-    expect(BRAND_WORKFLOW_SORT_KEYS.revenue(row)).toBe(4200);
     expect(BRAND_WORKFLOW_SORT_KEYS.outreach(row)).toBe(638);
     expect(BRAND_WORKFLOW_SORT_KEYS.cppr(row)).toBe(92.8);
   });
