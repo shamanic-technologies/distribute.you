@@ -59,7 +59,7 @@ flowchart LR
 
 **The ICP is an outcome like any other.** An ICP is a plain sentence, written by the client or by an AI. Several ICPs compete as Units of the brand. A judge reads who fits a sentence: an AI in production, the hidden truth in the simulator.
 
-**The market is Start.** A market has a finite size. A script that sources leads draws people its source covers; when its reserve empties, its yield falls and budget moves elsewhere by itself.
+**The market is Start.** A market has a finite size. A script that sources leads draws people its source covers; when its reserve empties, its conversion rate falls and budget moves elsewhere by itself.
 
 ## 3. The six decisions
 
@@ -174,9 +174,9 @@ The **Supplier rating** is an Engine like any other. At each tick it reads the l
 
 The rule is one for every pick: **Thompson sampling on value per dollar**.
 
-1. Each candidate carries a belief about the share of its decisions that reach the next milestone, and a belief about its measured cost from the decision to that milestone.
-2. Draw one rate and one cost from each belief.
-3. Score each candidate: rate x value / cost.
+1. Each candidate carries a belief about its conversion rate, the share of its decisions that reach the next milestone, and a belief about its measured cost from the decision to that milestone.
+2. Draw one conversion rate and one cost from each belief.
+3. Score each candidate: conversion rate x value / cost.
 4. Pick the highest.
 
 A candidate with little data has wide beliefs: sometimes it draws high and gets tried. Exploration comes by construction.
@@ -187,13 +187,13 @@ Every Unit carries its **traceability**: the picks that led to it, its own inclu
 
 ### A branch is rated with its own picks at their best
 
-A candidate's measured rate mixes every pick still being learned under it. A cold email branch tried while its email finder, writer and template are still explored looks worse than it is. So the Rating multiplies a candidate's value by its **uplift**: over each candidate place under it, the best candidate's value per dollar over the value per dollar of the mix picked there this last week. The Plan reads the tree the same way.
+A candidate's measured conversion rate mixes every pick still being learned under it. A cold email branch tried while its email finder, writer and template are still explored looks worse than it is. So the Rating multiplies a candidate's value by its **uplift**: over each candidate place under it, the best candidate's value per dollar over the value per dollar of the mix picked there this last week. The Plan reads the tree the same way.
 
 ### Pooling, delays, time
 
 A belief is pooled across levels (the candidate everywhere it is offered, this candidate place across clients, clients sharing tactics, the client), each pulled toward the one above with a strength fitted from the data. Local data wins as it grows.
 
-Worked example, with a fleet rate of 2% counted as 200 trials of prior experience, for a client whose true rate is 3%:
+Worked example, with a fleet conversion rate of 2% counted as 200 trials of prior experience, for a client whose true conversion rate is 3%:
 
 | Client data | Estimate |
 |---|---|
@@ -212,7 +212,7 @@ The simulator knows the hidden truth, so it can grade the Rating. **Regret** is,
 
 ## 9. Splits and proposals
 
-The split mechanism looks for a tactic that separates successes from failures: a yes or no tactic splits true against false, a list tactic groups its values by rate, a number tactic is cut at the deciles of its values. A split is a conclusion only when the exact test on raw counts passes, corrected for the number of splits tried, and the like for like test inside the same client and month passes in the same direction.
+The split mechanism looks for a tactic that separates successes from failures: a yes or no tactic splits true against false, a list tactic groups its values by conversion rate, a number tactic is cut at the deciles of its values. A split is a conclusion only when the exact test on raw counts passes, corrected for the number of splits tried, and the like for like test inside the same client and month passes in the same direction.
 
 A split on **leads** proposes a finer ICP: an AI script writes a new Unit, a fork of the ICP it refines, that starts from its parent's belief and competes. A split on **scripts** proposes a strategy.
 
@@ -220,7 +220,7 @@ A split on **leads** proposes a finer ICP: an AI script writes a new Unit, a for
 
 Every decision rests on two numbers that flow in opposite directions, milestone by milestone of the campaign's Plan.
 
-**Cost flows forward from Start.** One Unit of a milestone costs what it took to make the previous one, plus its own cost per attempt, divided by its yield:
+**Cost flows forward from Start.** One Unit of a milestone costs what it took to make the previous one, plus its own cost per attempt `c`, divided by its **conversion rate** `y`, the share of attempts that reach it (`yieldRate` in the code):
 
 `C(start) = 0` and `C(to) = (C(from) + c) / y`
 
@@ -234,7 +234,7 @@ The cost of one Target Unit is `T = c1 / (y1 y2 ... yn) + c2 / (y2 ... yn) + ...
 
 A client sells a service with a lifetime revenue of **$2,100**, through three milestones:
 
-| From, to | Cost per attempt | Yield |
+| From, to | Cost per attempt | Conversion rate |
 |---|---|---|
 | Start to Lead interested | $1 | 2% |
 | Lead interested to Meeting booked | $2 | 40% |
@@ -258,7 +258,7 @@ Whoever attests an outcome is a script: a reply judge, a CRM import, a website t
 
 ## 12. Decide versus report
 
-**To decide**, the Rating reads each candidate's own measured cost and rate, from the decision to the next milestone. **To report**, the ledger prices every outcome by every path: its own production, plus its materials at their own unit cost. Expected and measured returns share one formula and one basis: subjects the campaign made from its start, never ones it took from the stock.
+**To decide**, the Rating reads each candidate's own measured cost and conversion rate, from the decision to the next milestone. **To report**, the ledger prices every outcome by every path: its own production, plus its materials at their own unit cost. Expected and measured returns share one formula and one basis: the Units of its Target the campaign made from its own inputs since its start, never Units it took from the stock. A return (value per dollar) exists only at a campaign's Target; below the Target, an outcome reports its cost per Unit, its cost from Start and its conversion rate, never a return.
 
 A Unit keeps the price paid to produce it, its **standard cost**, and every consumption pays that price. When a Unit is consumed again, the books show a **reuse gain**. Everything reconciles to the cent:
 
@@ -272,6 +272,6 @@ The email Engine's own cost for decisions: $9 over 4 Units consumed is **$2.25**
 
 ## 13. The simulator
 
-The framework ships with one fictional world as data ([`seed/fictional-world.json`](../seed/fictional-world.json)): Northwind Analytics, a client starting from scratch tonight, with cold email, LinkedIn and ads, vendor list prices and rates from public benchmarks; its market of fictional people and companies; the catalogue; and the hidden truth (yields, costs, delays, the effect of every script, template and lead tactic). The world ticks 24 times a day. At each tick every campaign recomputes its Plan, pulls or pushes, runs land their Units after their delay, the ledger fills and the Supplier rating learns. One seed gives one history, byte for byte.
+The framework ships with one fictional world as data ([`seed/fictional-world.json`](../seed/fictional-world.json)): Northwind Analytics, a client starting from scratch tonight, with cold email, LinkedIn and ads, vendor list prices and rates from public benchmarks; its market of fictional people and companies; the catalogue; and the hidden truth (conversion rates, costs, delays, the effect of every script, template and lead tactic). The world ticks 24 times a day. At each tick every campaign recomputes its Plan, pulls or pushes, runs land their Units after their delay, the ledger fills and the Supplier rating learns. One seed gives one history, byte for byte.
 
 The dashboard runs it: [`apps/dashboard`](../apps/dashboard), live at https://distribute-you.github.io/gtm-factory/. Built with its api data source, the same dashboard reads a running GTM Factory through its API ([`docs/api.md`](api.md)).
