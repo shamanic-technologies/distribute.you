@@ -1,24 +1,14 @@
 /**
- * THE HOMEPAGE'S CLIENT CARDS ARE BUILT FROM THE WIRE, NOT RESEEDED INTO FROZEN MARKUP.
+ * THE HERO'S CLIENT CARDS ARE BUILT FROM THE WIRE, NOT RESEEDED INTO FROZEN MARKUP.
  *
- * Two surfaces name real clients: the hero's live "who else grows on autopilot" row, and
- * the "what our clients got back" proof section about 600px below it. Until now both were
- * three hand-written cards naming three hand-picked domains, and the server rewrote the
- * FIGURES inside them on every render. That kept the numbers true and left the CHOICE
- * frozen: the same three clients, in the same order, whatever the fleet had done since.
- *
- * features-service picks now — the most recently started clients that have produced an
- * outcome for the hero, the highest-returning clients for the proof section — and this
- * module renders whatever it picked. Nothing here ranks, filters, floors or divides: the
- * order the producer states IS the order, and every figure is a served field.
- *
- * ── THE PAGE STILL OWNS THE WORDS ───────────────────────────────────────────────────
- *
- * The producer keys a step `conversation` and labels it "Positive reply"; the page says
- * "Positive replies". That wording is the customer's vocabulary and ours to choose, so
- * {@link STEP_LABEL} is the page's own and the producer's label is only the fallback
- * for a step this file has never heard of. Same rule as when the cards were
- * frozen markup — only the FIGURE ever crossed the wire.
+ * The hero's live "who else grows on autopilot" row used to be three hand-written cards
+ * whose FIGURES the server rewrote on every render: the numbers stayed true and the CHOICE
+ * froze. features-service picks now (the most recently started clients that have produced
+ * an outcome) and this module renders whatever it picked. Nothing here ranks, filters,
+ * floors or divides: the order the producer states IS the order, and every figure is a
+ * served field. The proof section below it keeps its shipped clients, figures reseeded
+ * (`reseedProofCards`): its return-ranked pick is gone with the client return
+ * (ROI-CONSISTENCY-1103). The hero's words are the page's own ({@link HERO_STEPS}).
  *
  * ── A ZERO IS DRAWN AND HIDDEN, NEVER DROPPED ───────────────────────────────────────
  *
@@ -33,43 +23,10 @@
  * null rung is left OUT of the card entirely rather than drawn as an empty one: on a
  * marketing page a zero reads as a fact about the client, not as a gap in our reading.
  */
-import { formatCostUsd } from "@/lib/landing-format";
-import { personFor } from "@/lib/showcase-people";
 import type { ShowcaseBrand, ShowcaseOutcome } from "@/lib/showcase-outcomes";
 
 /** The publishable logo.dev token the page already ships in its own markup. */
 const LOGO_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
-
-/** The outreach base: reached by no leg, and the one every first step converts from. */
-const CONTACTED = "contacted";
-
-/**
- * THE PAGE'S OWN WORD FOR EACH OUTCOME, plural for a count and singular for a price.
- *
- * Keyed on the producer's stable step key, never on its label: the label is buyer-facing
- * wording on ITS side and may be reworded, and a join on words is a join that silently
- * stops matching. A step absent from here falls back to the producer's own label, so an
- * outcome this page has never drawn still renders rather than going blank.
- */
-const STEP_LABEL: Readonly<Record<string, { plural: string; singular: string }>> = {
-  contacted: { plural: "Contacted", singular: "contact" },
-  conversation: { plural: "Positive replies", singular: "positive reply" },
-  website_visit: { plural: "Website visits", singular: "website visit" },
-  meeting_booked: { plural: "Meetings booked", singular: "meeting booked" },
-  meeting_attended: { plural: "Meetings attended", singular: "meeting attended" },
-  form_submitted: { plural: "Form submissions", singular: "form submission" },
-  signup: { plural: "Signups", singular: "signup" },
-  purchase: { plural: "Purchases", singular: "purchase" },
-  paid_client: { plural: "Closed won", singular: "closed deal" },
-};
-
-function pluralLabel(step: ShowcaseOutcome): string {
-  return STEP_LABEL[step.key]?.plural ?? step.label;
-}
-
-function singularLabel(step: ShowcaseOutcome): string {
-  return STEP_LABEL[step.key]?.singular ?? step.label.toLowerCase();
-}
 
 /**
  * Every character a brand's own name could carry that would end the attribute or the
@@ -96,7 +53,7 @@ function logoUrl(domain: string, size: number): string {
 }
 
 /**
- * A website visit is never drawn on a client card, hero or proof (owner 2026-10-19: « plus
+ * A website visit is never drawn on a client card (owner 2026-10-19: « plus
  * jamais des "website visits" »). A visit proves attention, not demand; the cards prove
  * interested leads and booked meetings.
  */
@@ -124,8 +81,8 @@ export const HERO_STEPS: readonly { key: string; label: string }[] = [
  * A CLIENT ENTERS THE HERO ROW WITH AT LEAST ONE MEETING BOOKED OR ONE INTERESTED LEAD.
  *
  * Owner 2026-10-19: « les last 3 brand qui ont eu au moins des booked meetings, si moins de 3
- * ceux qui ont eu des Interested leads ». It lifts the hero's share of the 2026-10-10 floor of
- * five ({@link MIN_DRAWN_OUTCOME}, still the proof section's): one booked meeting is enough.
+ * ceux qui ont eu des Interested leads ». It lifts the 2026-10-10 floor of five: one booked
+ * meeting is enough.
  * The producer picks and orders (meetings first); this only refuses a client whose card would
  * state two zeros.
  */
@@ -133,44 +90,6 @@ export function hasHeroOutcome(brand: ShowcaseBrand): boolean {
   return measuredSteps(brand).some(
     (step) => HERO_STEPS.some((h) => h.key === step.key) && (step.peopleReached as number) >= 1
   );
-}
-
-/**
- * The fewest people a drawn outcome needs before the card may name its client.
- *
- * Owner rule (2026-10-10): a card never leads with 1 positive reply; at least 5. One or two
- * outcomes read as luck, not as a client growing.
- */
-export const MIN_DRAWN_OUTCOME = 5;
-
-/**
- * A CLIENT IS NAMED ONLY IF ONE OUTCOME ITS CARD DRAWS, PAST OUTREACH, REACHED {@link MIN_DRAWN_OUTCOME}.
- *
- * The producer gates its pick on an outcome count read off its fleet snapshot, which can count an
- * outcome on a channel the card does not draw — so a client can arrive whose drawn outcomes are
- * contacted-and-zeros (measured 2026-09-24: livingvital.ch, 183 contacted, every step 0), or a
- * single positive reply (2026-10-10: legistai.com, 385 contacted, 1). A card that names a customer
- * and shows almost nothing is worse than a shorter row.
- */
-export function hasDrawnOutcome(brand: ShowcaseBrand): boolean {
-  return measuredSteps(brand).some(
-    (step) => step.key !== CONTACTED && (step.peopleReached as number) >= MIN_DRAWN_OUTCOME
-  );
-}
-
-/**
- * The outcome a card prices.
- *
- * The FIRST step after the outreach base — the outcome the channel is bought for, and
- * the one all three hand-written cards named. Deterministic rather than a pick: it is the
- * producer's first outcome in its own order, not the cheapest or the best of anything.
- */
-export function pricedStep(brand: ShowcaseBrand): ShowcaseOutcome | null {
-  for (const step of brand.outcomes ?? []) {
-    if (step.key === CONTACTED || NEVER_DRAWN.has(step.key)) continue;
-    if (typeof step.costPerReachUsd === "number") return step;
-  }
-  return null;
 }
 
 /**
@@ -207,64 +126,4 @@ export function renderShowcaseCard(brand: ShowcaseBrand): string | null {
             ${cells}
           </div>
         </a>`;
-}
-
-/**
- * One proof card: who they are, what they got back, what one outcome cost them, and the
- * outcomes behind it.
- *
- * The person leads when we have met them and the COMPANY leads when we have not — never
- * an invented name against a stock face. See `showcase-people.ts` for why an unnamed
- * client is drawn rather than skipped.
- */
-export function renderProofCard(brand: ShowcaseBrand): string | null {
-  const domain = brand.brand?.domain;
-  const name = brand.brand?.name;
-  if (!domain || !name) return null;
-  const person = personFor(domain);
-  const top = person
-    ? `<div class="proof-top"><img class="face" src="${person.photo}" alt=""><div><div class="name">${esc(person.name)}</div><div class="meta">${esc(person.role)}</div></div></div>`
-    : `<div class="proof-top"><img class="face" src="${logoUrl(domain, 128)}" alt=""><div><div class="name">${esc(name)}</div><div class="meta">${esc(domain)}</div></div></div>`;
-
-  const priced = pricedStep(brand);
-  const costLine = priced
-    ? `\n        <div class="proof-line" data-proof-cost-step="${esc(priced.key)}"><span>Cost per ${esc(singularLabel(priced))}</span><b>${formatCostUsd(priced.costPerReachUsd as number)}</b></div>`
-    : "";
-
-  // A rung nobody reached is LEFT OUT of a proof card rather than drawn at zero. The hero
-  // card hides it instead, because `main.js` climbs those counters and has to be able to
-  // reveal the cell; nothing animates here, so an empty rung would just sit there stating
-  // a zero about a client.
-  const rungs = measuredSteps(brand)
-    .filter((step) => (step.peopleReached as number) > 0)
-    .slice(0, 3)
-    .map(
-      (step) =>
-        `<span data-proof-step="${esc(step.key)}"><b>${formatInt(step.peopleReached as number)}</b>${esc(singularLabel(step) === "contact" ? "contacted" : pluralLabel(step).toLowerCase())}</span>`
-    )
-    .join("");
-
-  return `<article class="proof-card rv" data-proof-brand="${esc(domain)}">
-        ${top}
-        ${costLine.trimStart()}
-        <div class="proof-funnel">${rungs}</div>
-        <div class="proof-line"><span>Channel</span><b>Cold email</b></div>
-      </article>`;
-}
-
-/**
- * WHERE EACH OF THE TOP THREE SITS ON THE ROW: best on the left, third in the middle,
- * second on the right.
- *
- * Owner-picked. It is a LAYOUT decision over an order the producer already stated, never
- * a re-ranking: the producer's first is still the first, it is simply drawn first rather
- * than drawn in the middle. A row that re-sorted here would be this page holding an
- * opinion about whose numbers are best, which is the one thing it must not do.
- */
-export const PODIUM_ORDER: readonly number[] = [0, 2, 1];
-
-/** Lay a producer-ordered list out on the podium, keeping every member. */
-export function podium<T>(items: readonly T[]): T[] {
-  if (items.length !== PODIUM_ORDER.length) return [...items];
-  return PODIUM_ORDER.map((index) => items[index]);
 }

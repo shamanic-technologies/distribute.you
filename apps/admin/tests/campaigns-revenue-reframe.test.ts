@@ -3,8 +3,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 // The feature-level Campaigns LIST page is reoriented toward revenue / gains for
-// revenue features (sales-cold-email-outreach): it leads with a revenue-over-time
-// hero + CAC/ROI, and per-campaign rows show revenue generated instead of spend.
+// revenue features (sales-cold-email-outreach): it leads with the cost /
+// realized-return column, and per-campaign rows show revenue generated instead of spend.
 // Non-revenue features keep the existing cost framing untouched. These are
 // source-substring guards (the repo convention for client-only page reframes).
 describe("Campaigns list page — revenue/gains reorientation", () => {
@@ -17,7 +17,6 @@ describe("Campaigns list page — revenue/gains reorientation", () => {
   it("imports the reusable revenue surface", () => {
     expect(src).toContain("getFeatureRevenue");
     expect(src).toContain("isRevenueFeature");
-    expect(src).toContain("RevenueChart");
     expect(src).toContain("RevenueCostSummary");
   });
 
@@ -34,8 +33,9 @@ describe("Campaigns list page — revenue/gains reorientation", () => {
     expect(src).toContain("getFeatureRevenue(featureSlug, brandId, campaign.id)");
   });
 
-  it("leads with a revenue-over-time hero, not a cost total", () => {
-    expect(src).toContain("Revenue generated over time");
+  it("shows no expected-pipeline chart (ROI-CONSISTENCY-1103)", () => {
+    expect(src).not.toContain("Revenue generated over time");
+    expect(src).not.toContain("RevenueChart");
   });
 
   it("frames per-campaign rows as revenue + ROI", () => {

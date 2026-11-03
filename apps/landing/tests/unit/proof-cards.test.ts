@@ -31,8 +31,7 @@ function card(
 function payload(
   domain: string,
   steps: Array<[key: string, peopleReached: number | null, costPerReachUsd?: number | null]>,
-  measured = true,
-  returnPerDollar: number | null = null
+  measured = true
 ): ShowcaseOutcomes {
   return {
     brands: [
@@ -44,7 +43,6 @@ function payload(
           peopleReached,
           costPerReachUsd: costPerReachUsd ?? null,
         })),
-        returnPerDollar,
         measured,
         unmeasuredReason: measured ? null : "no_lead_membership",
       },
@@ -147,9 +145,7 @@ describe("reseedProofCards", () => {
         [
           ["meeting_booked", 3, 1223.62],
           ["conversation", 20, 183.543],
-        ],
-        true,
-        2.1
+        ]
       )
     );
     expect(out).toContain("<b>$184</b>");
@@ -163,9 +159,7 @@ describe("reseedProofCards", () => {
       html,
       payload(
         "shockwavecenters.com",
-        [["conversation", 148, 4.148716216216216]],
-        true,
-        7.509853259718874
+        [["conversation", 148, 4.148716216216216]]
       )
     );
     expect(out).toContain("<b>$4.1</b>");
@@ -177,7 +171,7 @@ describe("reseedProofCards", () => {
     const html = card("docdinners.com", [["meeting_booked", "3", "meetings"]], "2.2", "$1,159");
     const out = reseedProofCards(
       html,
-      payload("docdinners.com", [["meeting_booked", 0, null]], true, 2.1)
+      payload("docdinners.com", [["meeting_booked", 0, null]])
     );
     expect(out).toContain("<b>0</b>meetings");
     expect(out).toContain("<b>$1,159</b>");
@@ -186,7 +180,7 @@ describe("reseedProofCards", () => {
 
   it("never states a client's return: the pipeline-based ROI is retired (ROI-CONSISTENCY-1103)", () => {
     const html = card("docdinners.com", [["contacted", "12,307", "contacted"]], "2.2", "$1,159");
-    const out = reseedProofCards(html, payload("docdinners.com", [["contacted", 12552]], true, 2.1));
+    const out = reseedProofCards(html, payload("docdinners.com", [["contacted", 12552]]));
     expect(out).toContain("<b>12,552</b>contacted");
     expect(out).not.toContain('data-count="2.1"');
     expect(HTML).not.toContain("proof-roi");
@@ -242,17 +236,18 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
   it("reseeds both surfaces from ONE read", () => {
     const body = STATIC_HTML.slice(
       STATIC_HTML.indexOf("async function withShowcaseOutcomes("),
-      STATIC_HTML.indexOf("async function fetchFleetReturn(")
+      STATIC_HTML.indexOf("async function fetchFounderCount(")
     );
     // The INVARIANT is one read behind both surfaces, not the shape of the call. It used to
     // pin the nested `reseedProofCards(reseedShowcaseCards(...))` literal, which went red the
     // day the producer started picking WHICH clients the page names and each surface gained
     // its own branch — a guard freezing the instrument alongside the rule.
     expect((body.match(/await fetchShowcaseOutcomes\(\)/g) ?? []).length).toBe(1);
-    // Both surfaces are still covered by that one read, whichever branch each one takes: the
-    // producer's pick when it answered, the shipped clients' figures reseeded when it did not.
+    // Both surfaces are still covered by that one read: the hero takes the producer's pick when
+    // it answered, its shipped clients reseeded when it did not; the proof section always keeps
+    // its shipped clients, reseeded (its return-ranked pick is gone, ROI-CONSISTENCY-1103).
     expect(body).toContain("renderShowcaseSelection(");
-    expect(body).toContain("renderProofSelection(");
+    expect(body).not.toContain("renderProofSelection(");
     expect(body).toContain("reseedShowcaseCards(out, data)");
     expect(body).toContain("reseedProofCards(out, data)");
   });

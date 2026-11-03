@@ -21,9 +21,10 @@ struct TodayData {
     let needsCall: LeadPage
 }
 
+/// The deals board. No pipeline forecast: the pipeline figure left features-service with the
+/// retired return fields (ROI-CONSISTENCY-1103).
 struct DealsData {
     let standing: StandingCounts
-    let pipelineUsd: Double?
 }
 
 struct OfferData {
@@ -357,10 +358,7 @@ final class AppState: ObservableObject {
             await run({ people = $0 }) { try await api.leads(brandId: b, offerId: o, extra: ["bucket": peopleBucket, "limit": "50"]) }
         case .deals:
             await run({ deals = $0 }) {
-                let st = try await api.standingCounts(brandId: b, offerId: o)
-                var pipe: Double? = nil
-                if offerHasCampaign { pipe = try await api.offerRevenue(offerId: o, brandId: b).headline?.totalPipelineUsd }
-                return DealsData(standing: st, pipelineUsd: pipe)
+                DealsData(standing: try await api.standingCounts(brandId: b, offerId: o))
             }
         case .offer:
             // Targeting lives inside the Offer (owner 2026-10-10).

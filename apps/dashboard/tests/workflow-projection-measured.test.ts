@@ -181,13 +181,6 @@ describe("the filter runs at the ONE reader boundary", () => {
       "lib/brand-conversion-rates.ts",
       // Same fifth producer (instantly-service placement alert): the lookup of a provider's latest measured day.
       "lib/monitoring/sending.ts",
-      // A THIRD producer's field under the same name: features-service's public
-      // return-on-spend read marks a whole channel `measured`, meaning enough brands past the spend floor to state a median.
-      // The pre-signup proof screen branches on it to decide whether it may state
-      // a figure at all, which is the opposite question from a projection row's.
-      // Same third producer: the proof module reads `showcase-funnels`' per-brand
-      // `measured` (the fleet holds a realized return for that named client).
-      "lib/start-proof.ts",
       // The matrix that second reader draws. It BRANCHES on `measured` for exactly the
       // same reason as the ordering module below: an explore row's figure is the price
       // of one outreach, so it is the cheapest cell on the grid by construction and

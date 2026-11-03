@@ -8,7 +8,6 @@ import {
   researchTemplateOf,
   researchTemplateVersion,
   researchTemplateVersionHref,
-  researchRoiOf,
   templateContentKey,
   templateModels,
   templateRowStatus,
@@ -190,16 +189,6 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
     expect(cell).toContain("templateRowStatus(r as ResearchTemplate, templateStatuses)");
     expect(cell).not.toContain("templateStatuses.map.get(");
     expect(src).toContain('const why = templateRowStatus(t, statuses) === "deprecated" ? statuses.deprecationOf(templateContentKey(t)) : null;');
-  });
-
-  it("prints a served catalogue return: detail measured or expected, the printed string alone, the pre-hotfix object", () => {
-    const d = { display: "1.40x", source: null, spendCovered: null, unavailableReason: null };
-    expect(researchRoiOf({ roi: "1.40x", roiDetail: { ...d, value: 1.4, basis: "measured" } })).toEqual({ show: { value: 1.4, expected: false, reason: null } });
-    expect(researchRoiOf({ roi: "2.10x", roiDetail: { ...d, value: 2.1, basis: "expected" } })).toEqual({ show: { value: 2.1, expected: true, reason: null } });
-    expect(researchRoiOf({ roi: null, roiDetail: { ...d, value: null, basis: null, unavailableReason: "no_return_on_pipe" } })).toEqual({ show: { value: null, expected: false, reason: "no_return_on_pipe" } });
-    expect(researchRoiOf({ roi: "1.40x" })).toEqual({ text: "1.40x" });
-    expect(researchRoiOf({ roi: { ...d, value: 1.4, basis: "measured" } })).toEqual({ show: { value: 1.4, expected: false, reason: null } });
-    expect(researchRoiOf({})).toBeNull();
   });
 
   it("splits the rows into the Active and Deprecated tabs in the served order, nothing while pending", () => {

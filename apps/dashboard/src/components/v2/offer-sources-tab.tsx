@@ -7,7 +7,6 @@ import { getLeadSourcingSources, getOfferSalesPaths } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { campaignKey, sortCampaigns, sourceCampaignsOfOffer } from "@/lib/offer-campaigns";
-import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -76,7 +75,7 @@ export function OfferSourcesTab({
   const sources = useMemo(
     () =>
       sortCampaigns(
-        sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),
+        sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? []),
         isOn,
       ),
     [paths.data, isOn],

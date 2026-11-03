@@ -79,7 +79,8 @@ export const DealsLifecycleSchema = z
     columns: z.literal("lifecycle"),
     unvaluedReason: z.string().nullable(),
     totalUsd: z.number().nullable(),
-    expectedPipelineUsd: z.number().nullable(),
+    // Nullish: features-service's return guard lists this name; a body without it must not break the board.
+    expectedPipelineUsd: z.number().nullish(),
     wonUsd: z.number().nullable(),
     rungs: z.array(DealsLifecycleRungSchema),
   })

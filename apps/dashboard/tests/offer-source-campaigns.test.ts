@@ -12,16 +12,15 @@ import { campaignsOfOffer, sourceCampaignsOfOffer } from "../src/lib/offer-campa
  */
 const read = (p: string) => fs.readFileSync(path.join(__dirname, "..", p), "utf-8");
 const body = parseOfferSalesPaths(JSON.parse(read("tests/fixtures/offer-sales-paths-sources.prod.json")), "test");
-const label = (r: string | null) => r;
 
 import { campaignTag } from "../src/lib/offer-campaigns";
 import { SERVED_STEPS } from "./fixtures/served-steps";
 import { salesPathAvatarSrc } from "../src/lib/sales-path-avatars";
 
 describe("source campaigns read from the real prod body", () => {
-  const sources = sourceCampaignsOfOffer(body.sourceCampaigns ?? [], label);
+  const sources = sourceCampaignsOfOffer(body.sourceCampaigns ?? []);
 
-  it("one row per live source, named, with its provider mark and its served ROI", () => {
+  it("one row per live source, named, with its provider mark", () => {
     expect(sources.map((s) => [s.name, s.channelName])).toEqual([
       ["Solstice", "Apollo Cold Filters"],
       ["Sovereign", "Apollo Buying Signals"],
@@ -32,11 +31,10 @@ describe("source campaigns read from the real prod body", () => {
     expect(sources.every((s) => s.kind === "source" && s.reactive && s.toLabel === "Lead found")).toBe(true);
     expect(sources[0]!.providerDomain).toBe("apollo.io");
     expect(sources[3]!.providerDomain).toBeNull();
-    expect(sources[0]!.roi).toBeCloseTo(0.298, 2);
   });
 
   it("Jubilation keeps its own leg and reads as fed by Lead found", () => {
-    const outreach = campaignsOfOffer(body.campaigns ?? [], body.paths, label);
+    const outreach = campaignsOfOffer(body.campaigns ?? [], body.paths);
     const jub = outreach.find((c) => c.name === "Jubilation")!;
     expect(jub.kind).toBe("outreach");
     expect(jub.legKey).toBe("start_to_conversation");
@@ -55,7 +53,6 @@ describe("source campaigns read from the real prod body", () => {
   it("a retired source is never offered", () => {
     const retired = sourceCampaignsOfOffer(
       [{ ...body.sourceCampaigns![0]!, live: false }],
-      label,
     );
     expect(retired).toEqual([]);
   });

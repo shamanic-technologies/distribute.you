@@ -160,6 +160,11 @@ export function isRetiredIndex(s: Pick<IndexSummary, "unit">): boolean {
 }
 /** Where a retired index's old public URL now points. */
 export const RETIRED_INDEX_REDIRECT = "/indexes";
+/**
+ * Retired slugs the service no longer serves at all: their old URL still redirects to the
+ * list, so a link or a search result keeps its reader once the page is gone upstream.
+ */
+export const RETIRED_INDEX_SLUGS: ReadonlySet<string> = new Set(["cold-email-roi"]);
 
 // ---------------------------------------------------------------------------
 // Reading through the gateway

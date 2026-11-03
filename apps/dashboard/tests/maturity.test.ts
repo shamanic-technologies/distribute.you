@@ -8,7 +8,6 @@ import {
   maturityPairSchema,
   pairIsLearning,
   shownFigure,
-  shownReturn,
   type MaturityPair,
 } from "../src/lib/maturity";
 import { STAT_BASIS_COOKIE, statBasisCookieAssignment, statBasisFromCookie } from "../src/lib/stat-basis-cookie";
@@ -19,33 +18,7 @@ const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8"
 // features-service#1196: every ratio is served as a PAIR (flash, mature) with the
 // producer's verdict. The dashboard states the mature half and tags Learning exactly where
 // the producer says `isMature: false`. It decides nothing itself.
-// Owner 2026-10-03: a return still learning shows its to-date (flash) figure when that is
-// already above break-even; at or below 1x it stays Learning.
-describe("shownReturn — Learning gives way to a to-date return above 1x", () => {
-  type R = { roiMultiple: number | null };
-  const pair = (p: Partial<MaturityPair<R>>): MaturityPair<R> => ({ flash: null, mature: null, isMature: null, ...p });
-
-  it("not mature, flash above 1x: states the flash return, no Learning", () => {
-    expect(shownReturn(pair({ flash: { roiMultiple: 2.4 }, mature: { roiMultiple: 0.3 }, isMature: false }), "mature")).toEqual({
-      value: 2.4,
-      learning: false,
-    });
-  });
-
-  it("not mature, flash at or below 1x or absent: Learning", () => {
-    for (const flash of [{ roiMultiple: 1 }, { roiMultiple: 0.4 }, { roiMultiple: null }, null]) {
-      // The to-date return rides beside the verdict (owner 2026-10-19: shown greyed, never hidden).
-      expect(shownReturn(pair({ flash, isMature: false }), "mature")).toEqual({ value: null, learning: true, toDate: flash?.roiMultiple ?? null });
-    }
-  });
-
-  it("mature: the mature half, even when flash is higher", () => {
-    expect(shownReturn(pair({ flash: { roiMultiple: 5 }, mature: { roiMultiple: 0.8 }, isMature: true }), "mature")).toEqual({
-      value: 0.8,
-      learning: false,
-    });
-  });
-
+describe("Today states no pipeline-based return", () => {
   it("Today states no pipeline-based return: expected + realized only (ROI-CONSISTENCY-1103)", () => {
     const src = read("components/v2/today-page.tsx");
     expect(src).not.toContain("shownReturn(");
@@ -120,26 +93,10 @@ describe("shownFigure — one ratio, read off the served pair", () => {
   });
 });
 
-// Owner 2026-10-08: "passer tout le user dashboard en mature ou flash automatiquement en
-// fonction du chiffre le plus grand de ROI".
-describe("autoStatBasis — the half with the higher return", () => {
-  type R = { roiMultiple: number | null };
-  const pair = (p: Partial<MaturityPair<R>>): MaturityPair<R> => ({ flash: null, mature: null, isMature: null, ...p });
-
-  it("flash above mature: flash (1.6x vs 1.3x)", () => {
-    expect(autoStatBasis(pair({ flash: { roiMultiple: 1.6 }, mature: { roiMultiple: 1.3 }, isMature: true }))).toBe("flash");
-  });
-  it("mature above or equal to flash: mature", () => {
-    expect(autoStatBasis(pair({ flash: { roiMultiple: 1.1 }, mature: { roiMultiple: 1.3 }, isMature: true }))).toBe("mature");
-    expect(autoStatBasis(pair({ flash: { roiMultiple: 1.3 }, mature: { roiMultiple: 1.3 }, isMature: true }))).toBe("mature");
-  });
-  it("mature still Learning: flash only above break-even", () => {
-    expect(autoStatBasis(pair({ flash: { roiMultiple: 2.4 }, mature: { roiMultiple: 3 }, isMature: false }))).toBe("flash");
-    expect(autoStatBasis(pair({ flash: { roiMultiple: 0.8 }, isMature: false }))).toBe("mature");
-  });
-  it("no pair or no flash return: mature", () => {
-    expect(autoStatBasis(null)).toBe("mature");
-    expect(autoStatBasis(pair({ mature: { roiMultiple: 1.3 }, isMature: true }))).toBe("mature");
+// ROI-CONSISTENCY-1103: the return pair it compared is retired, so Auto states the mature half.
+describe("autoStatBasis", () => {
+  it("states the mature half", () => {
+    expect(autoStatBasis()).toBe("mature");
   });
 });
 
@@ -161,9 +118,9 @@ describe("the staff Auto / Mature / Flash switch", () => {
   it("forces every reader outside staff mode to auto, whatever the cookie says", () => {
     const hook = read("lib/use-stat-basis.ts");
     expect(hook).toContain('const choice: StatBasisChoice = isStaff ? stored : "auto";');
-    expect(hook).toContain('const basis: StatBasis = choice === "auto" ? autoStatBasis(pair) : choice;');
+    expect(hook).toContain('const basis: StatBasis = choice === "auto" ? autoStatBasis() : choice;');
     expect(hook).toContain('const readServer = (): StatBasisChoice => "auto";');
-    expect(hook).toContain("useOfferReturnPairIfAny()");
+    expect(hook).not.toContain("useOfferReturnPairIfAny");
     const sw = read("components/v2/stat-basis-switch.tsx");
     expect(sw).toContain("if (!isStaff) return null;");
     // Staff mode is what says which world you are in; the switch carries no tag.
@@ -249,7 +206,7 @@ describe("every surface states the served mature figure", () => {
   it("the audience tables read each row's own pairs through ONE model", () => {
     const model = read("lib/audience-table-model.ts");
     expect(model).toContain("stats.metrics.maturity");
-    expect(model).toContain("stats.projection?.maturity");
+    expect(model).not.toContain("stats.projection");
     expect(read("components/v2/audiences-table.tsx")).toContain("audienceFigure(");
   });
 
@@ -372,15 +329,9 @@ describe("the chart headlines state the served mature figure, never the curve's 
   });
   const body = (extra: Record<string, unknown>) => ({
     featureSlug: "sales-cold-email-outreach",
-    headline: { totalPipelineUsd: 100 },
     costEconomics: {
-      maturity: { flash: null, mature: null, isMature: null },
       committedCostUsd: 612.5,
-      costOfAcquisitionPct: null,
-      roiMultiple: null,
-      costPerAcquisitionUsd: null,
     },
-    timeSeries: [],
     organizations: [],
     events: [],
     attributedOutcomes: [],
@@ -400,17 +351,6 @@ describe("the chart headlines state the served mature figure, never the curve's 
     expect(() =>
       parseFeatureRevenue(body({ maturity: { isMature: true, legs: [leg({ isMature: undefined })] } }), "test"),
     ).toThrow();
-  });
-
-  it("a body with NO pair parses and states no figure: optional as the producer declares it", async () => {
-    // Measured on the deploy that shipped the pairs: the first reads of four scopes came
-    // back from pre-deploy cached snapshots without them. Absent -> dash, never legacy.
-    const { parseFeatureRevenue } = await import("../src/lib/revenue-parse");
-    const b = body({});
-    delete (b.costEconomics as Record<string, unknown>).maturity;
-    const parsed = parseFeatureRevenue(b, "test");
-    expect(parsed.costEconomics.maturity).toBeNull();
-    expect(shownFigure(parsed.costEconomics.maturity, (h) => h.roiMultiple, "mature")).toEqual({ value: null, learning: false });
   });
 
   it("the Learning verdict on a leg follows the served pair, never a count here", () => {

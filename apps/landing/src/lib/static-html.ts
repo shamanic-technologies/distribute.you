@@ -17,7 +17,6 @@ import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { reseedFounderCount } from "@/lib/founder-count";
 import { INDEX_LINKS_TOKEN, displayValue, fetchIndexDetail, fetchIndexList, indexLinksHtml, isExpected, type IndexDetail } from "@/lib/fleet-indexes";
 import {
-  renderProofSelection,
   renderShowcaseSelection,
   reseedProofCards,
   reseedShowcaseCards,
@@ -448,23 +447,15 @@ async function withShowcaseOutcomes(html: string): Promise<string> {
   try {
     const data = await fetchShowcaseOutcomes();
     if (!data) return html;
-    // The producer PICKS which clients the page names — the most recently begun ones carrying an
-    // outcome for the hero, the highest-returning ones for the proof section. Each group answers its
-    // own question and carries its own verdict, so they are read INDEPENDENTLY: in production today
-    // the return group is measured over ten qualifying clients while the recent one answers
-    // `no_qualifying_clients`, and holding one back for the other would ship the podium as dead code.
-    //
-    // A group the producer declined to answer leaves ITS section on the three clients the page ships
-    // with, reseeded — which is what this page did before the pick existed. Nothing here ranks,
-    // floors or divides; the only decision on this side is where each of the top three sits.
+    // The producer PICKS which clients the hero names (the most recently begun ones carrying an
+    // outcome). The proof section keeps the three clients it ships with, figures reseeded: its
+    // return-ranked pick left with the client return (ROI-CONSISTENCY-1103). An unanswered pick
+    // leaves the hero on its shipped clients, reseeded. Nothing here ranks, floors or divides.
     const recent = pickedBrands(data.groups?.recentlyStarted, "recentlyStarted", hasHeroOutcome);
-    const topReturn = pickedBrands(data.groups?.highestReturn, "highestReturn");
     let out = html;
     if (recent) out = renderShowcaseSelection(out, recent);
-    if (topReturn) out = renderProofSelection(out, topReturn);
-    // Whatever the pick did not cover keeps its shipped clients and has their figures refreshed.
-    if (!recent) out = reseedShowcaseCards(out, data);
-    if (!topReturn) out = reseedProofCards(out, data);
+    else out = reseedShowcaseCards(out, data);
+    out = reseedProofCards(out, data);
     return out;
   } catch (error) {
     console.error("[landing] showcase outcome counts unavailable, keeping the shipped figures", error);

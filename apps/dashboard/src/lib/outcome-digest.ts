@@ -79,7 +79,6 @@ export interface DigestLead {
 export interface DigestBrandSummary {
   brandName: string;
   brandUrl: string | null;
-  totalPipelineUsd: number;
   organizations: DigestOutcomeOrg[];
   leads: DigestLead[];
 }
@@ -688,7 +687,6 @@ function toDigestBrandSummary(
   return {
     brandName: brand.name ?? brand.domain ?? brand.url ?? brand.id,
     brandUrl: brand.url,
-    totalPipelineUsd: revenue.totalPipelineUsd ?? 0,
     organizations,
     leads,
   };

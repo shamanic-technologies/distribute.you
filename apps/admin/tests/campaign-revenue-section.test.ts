@@ -70,11 +70,9 @@ describe("RevenueCostSummary — optional bottomCard slot (budget on campaign pa
 describe("CampaignRevenueSection — overview-style layout for the campaign page", () => {
   const sec = read("components/campaign/campaign-revenue-section.tsx");
 
-  it("row 1: line chart (2/3) + cost-economics column with the budget card (1/3)", () => {
-    expect(sec).toContain("Pipeline revenue over time");
-    expect(sec).toContain("RevenueChart");
-    expect(sec).toContain("lg:grid-cols-3");
-    expect(sec).toContain("lg:col-span-2");
+  it("row 1: cost-economics column with the budget card, no pipeline chart (ROI-CONSISTENCY-1103)", () => {
+    expect(sec).not.toContain("Pipeline revenue over time");
+    expect(sec).not.toContain("RevenueChart");
     expect(sec).toContain("RevenueCostSummary");
     expect(sec).toContain("bottomCard={<CampaignBudgetCard");
   });
@@ -90,8 +88,8 @@ describe("CampaignRevenueSection — overview-style layout for the campaign page
   });
 
   it("threads a pending flag and skeletons value regions (static-shell-first)", () => {
-    expect(sec).toMatch(/pending/);
-    expect(sec).toContain("Skeleton");
+    expect(sec).toContain("pending={pending}");
+    expect(sec).toContain("pending={statsPending}");
   });
 });
 

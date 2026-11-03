@@ -14,14 +14,11 @@
  * Alias-free (type-only imports are erased at build), so it carries real unit tests.
  */
 
-import type { AudienceCostFigures, AudienceProjectionFigures, AudienceWire, FeatureAudienceStatsRow } from "./api";
+import type { AudienceCostFigures, AudienceWire, FeatureAudienceStatsRow } from "./api";
 import { shownFigure, type ShownFigure, type StatBasis } from "./maturity";
 
 export type AudienceSortCol =
   | "audience"
-  | "roi"
-  | "cacPct"
-  | "cacUsd"
   | "invested"
   | "replies"
   | "cppr"
@@ -128,15 +125,6 @@ const COST_FIELD: Partial<Record<AudienceSortCol, keyof AudienceCostFigures>> = 
   cpsale: "cpsaleCents",
 };
 
-/** The served field of `projection.maturity` each brand-level money column states. */
-const MONEY_FIELD: Partial<Record<AudienceSortCol, keyof AudienceProjectionFigures>> = {
-  roi: "returnPerDollar",
-  cacPct: "costOfAcquisitionPct",
-  cacUsd: "costPerPaidClientUsd",
-};
-
-export const isMoneyCol = (col: AudienceSortCol) => MONEY_FIELD[col] !== undefined;
-
 /**
  * What a ratio column states for one row on the reader's basis: the served figure, and
  * whether the producer says it is Learning. A column that is not a ratio, or a row with
@@ -151,8 +139,6 @@ export function audienceFigure(
   if (!stats) return none;
   const cost = COST_FIELD[col];
   if (cost) return shownFigure(stats.metrics.maturity, (h) => h[cost], basis);
-  const money = MONEY_FIELD[col];
-  if (money) return shownFigure(stats.projection?.maturity, (h) => h[money], basis);
   return none;
 }
 
@@ -163,7 +149,7 @@ export function audienceSortValue(
   stats: FeatureAudienceStatsRow | undefined,
   basis: StatBasis,
 ): string | number | null {
-  if (COST_FIELD[col] || MONEY_FIELD[col]) return audienceFigure(col, stats, basis).value;
+  if (COST_FIELD[col]) return audienceFigure(col, stats, basis).value;
   switch (col) {
     case "audience":
       return (audience.name || "").toLowerCase();

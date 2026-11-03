@@ -28,11 +28,9 @@ function fleet(slug: string, o: Partial<FleetRankingRow> = {}): FleetRankingRow 
     conversionRatePct: 1,
     outcomes: 3,
     spentUsd: 30,
-    roiMultiple: 2,
     goesFirst: false,
     moneyGoesHere: false,
     figures: {
-      roi: measured(2),
       costPerOutcomeUsd: measured(10),
       conversionRatePct: measured(1),
       spentUsd: { value: 30, unavailableReason: null },
@@ -76,7 +74,7 @@ describe("fleetWorkflowRows", () => {
 
   it("carries the served figures, last run and tactics verbatim (RESEARCH-WF-FIGURES-1022)", () => {
     const [r] = fleetWorkflowRows([fleet("a", { lastRunAt: "2026-10-22T16:00:00.000Z", tactics: [{ id: "named-angle", name: "Named angle" }] })]);
-    expect(r.figures.roi.value).toBe(2);
+    expect(r.figures.costPerOutcomeUsd.value).toBe(10);
     expect(r).toMatchObject({ lastRunAt: "2026-10-22T16:00:00.000Z", lastRunUnavailableReason: null, tactics: [{ id: "named-angle", name: "Named angle" }] });
     const [u] = fleetWorkflowRows([fleet("b", { tactics: null, tacticsUnavailableReason: "tactics_unreadable" })]);
     expect(u).toMatchObject({ tactics: null, tacticsUnavailableReason: "tactics_unreadable", lastRunAt: null });

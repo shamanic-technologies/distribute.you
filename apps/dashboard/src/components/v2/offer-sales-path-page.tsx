@@ -9,7 +9,7 @@ import { invalidateConversionRates } from "@/lib/write-invalidation";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { campaignKey, campaignsOfOffer } from "@/lib/offer-campaigns";
 import { useCampaigns } from "@/components/v2/use-campaigns";
-import { roiUnavailableLabel, type SalesPathLeg } from "@/lib/offer-sales-paths";
+import { type SalesPathLeg } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
@@ -64,7 +64,7 @@ export function V2OfferSalesPathPage() {
     [records, offerId],
   );
   const campaigns = useMemo(
-    () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel, (k) => ran.has(k)),
+    () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], (k) => ran.has(k)),
     [paths.data, ran],
   );
   const sources = useMemo(

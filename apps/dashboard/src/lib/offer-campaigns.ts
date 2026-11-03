@@ -29,10 +29,6 @@ export interface OfferCampaign {
   fromKey: string | null;
   fromLabel: string | null;
   toLabel: string;
-  /** features-service's ROI of this campaign; null = not measurable (see roiUnavailable). */
-  roi: number | null;
-  /** Why there is no ROI, in the producer's words; null when there is one. */
-  roiUnavailable: string | null;
   /** Fed by the offer's source campaigns: the step it then starts on ("Lead found"), shown on the Sales path page only. */
   fedByLabel: string | null;
   /** A source campaign's provider domain (its logo.dev mark); null otherwise or no single vendor. */
@@ -60,8 +56,6 @@ type ServedCampaign = {
   managed: boolean;
   operatedBy: string;
   selectedPathCount: number;
-  roi: number | null;
-  roiUnavailableReason: string | null;
   fedBy?: { step: { key: string; label: string } } | null;
 };
 
@@ -74,8 +68,6 @@ type ServedSourceCampaign = {
   toStep: { key: string; label: string };
   provider: { domain: string } | null;
   live: boolean;
-  roi: number | null;
-  roiUnavailableReason: string | null;
 };
 
 /**
@@ -88,7 +80,6 @@ type ServedSourceCampaign = {
 export function campaignsOfOffer(
   served: readonly ServedCampaign[],
   paths: ReadonlyArray<{ legs: readonly PathLegLike[] }>,
-  roiLabel: (reason: string | null) => string | null,
   alsoKeep: (key: string) => boolean = () => false,
 ): OfferCampaign[] {
   const legs = new Map<string, PathLegLike>();
@@ -116,8 +107,6 @@ export function campaignsOfOffer(
       fromLabel: leg.fromStep?.label ?? null,
       fedByLabel: c.fedBy?.step.label ?? null,
       toLabel: leg.toStep.label,
-      roi: c.roi,
-      roiUnavailable: roiLabel(c.roiUnavailableReason),
       providerDomain: null,
     });
   }
@@ -131,7 +120,6 @@ export function campaignsOfOffer(
  */
 export function sourceCampaignsOfOffer(
   served: readonly ServedSourceCampaign[],
-  roiLabel: (reason: string | null) => string | null,
 ): OfferCampaign[] {
   return served
     .filter((c) => c.live)
@@ -148,8 +136,6 @@ export function sourceCampaignsOfOffer(
       fromLabel: null,
       fedByLabel: null,
       toLabel: c.toStep.label,
-      roi: c.roi,
-      roiUnavailable: roiLabel(c.roiUnavailableReason),
       providerDomain: c.provider?.domain ?? null,
     }));
 }
@@ -163,20 +149,11 @@ export function campaignKey(featureSlug: string, legKey: string): string {
 
 /**
  * The table's order (owner 2026-10-05): campaigns that are on first, then proactive before
- * reactive, then ROI high to low (an unmeasured ROI last). `roiOf` names which served ROI
- * orders it (the Sales path table orders on each campaign's measured return). Orders
- * served figures; computes none.
+ * reactive (no per-campaign return is ranked, ROI-CONSISTENCY-1103).
  */
 export function sortCampaigns(
   campaigns: readonly OfferCampaign[],
   on: (c: OfferCampaign) => boolean,
-  roiOf: (c: OfferCampaign) => number | null = (c) => c.roi,
 ): OfferCampaign[] {
-  const roi = (c: OfferCampaign) => {
-    const v = roiOf(c);
-    return v == null || !Number.isFinite(v) ? -Infinity : v;
-  };
-  return [...campaigns].sort(
-    (a, b) => Number(on(b)) - Number(on(a)) || Number(a.reactive) - Number(b.reactive) || roi(b) - roi(a),
-  );
+  return [...campaigns].sort((a, b) => Number(on(b)) - Number(on(a)) || Number(a.reactive) - Number(b.reactive));
 }

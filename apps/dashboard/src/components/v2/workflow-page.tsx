@@ -5,15 +5,12 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL, pollOptions } from "@/lib/query-options";
 import {
   ApiError,
   editWorkflowPrompt,
   getBrand,
-  getFleetWorkflowActualCostHistory,
-  getFleetWorkflowReturnHistory,
   getPlatformPrompt,
   listAudiences,
   listBrandRunLedger,
@@ -222,7 +219,6 @@ export function V2WorkflowPage() {
               brandDomain={brandQ.data?.brand.domain ?? null}
               brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
             />
-            <OverTime featureSlug={spec.featureSlug} legKey={spec.legKey} dynasty={dynasty} />
             <RunsCard orgId={orgId} brandId={brandId} dynasty={dynasty} versions={ranking.versionsByDynasty.get(dynasty) ?? []} />
           </div>
           <div className="min-w-0 space-y-4">
@@ -518,161 +514,6 @@ function AudiencesCard({
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Cost over time ────────────────────────────────────────────────────────
-
-/**
- * The cumulative cost of this workflow across ALL client orgs (the fleet), on THIS pipe's leg
- * only, as features-service states it. Its pipeline value and a return on spend are not drawn:
- * a workflow sits below a campaign's Target (owner 2026-11-03, ROI-CONSISTENCY-1103).
- * The fleet is the grain where a workflow has a history (on one brand it is 0 to 2 days),
- * and it is the grain the table's Global column speaks. No org is named. Nothing is
- * divided here; a day the producer states no figure for is left out of that chart.
- *
- * USER COST (default, everyone on the beta list) is what clients were billed, net.
- * ACTUAL COST (STAFF only) is the same curve costed at what the vendors charged us before
- * our markup. It reveals our margin, so the switch is offered to the staff list alone and
- * the gateway refuses anyone else.
- */
-function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKey: string; dynasty: string }) {
-  // The basis is the page's (the switch in the top bar), shared with every cost page.
-  const { actual } = useCostBasis();
-  const q = useAuthQuery(
-    ["fleetWorkflowReturn", featureSlug, dynasty, legKey],
-    () => getFleetWorkflowReturnHistory(featureSlug, dynasty, legKey),
-    pollOptions,
-  );
-  const actualQ = useAuthQuery(
-    ["fleetWorkflowActualCost", featureSlug, dynasty, legKey],
-    () => getFleetWorkflowActualCostHistory(featureSlug, dynasty, legKey),
-    { ...pollOptions, enabled: actual, retry: false },
-  );
-  const src = actual ? actualQ : q;
-  // Answered once stays answered: a failed poll must not repaint a skeleton.
-  const pending = src.data === undefined && !src.isFetchedAfterMount;
-  const failed = src.data === undefined && src.isFetchedAfterMount;
-  const daily: { date: string; cumulativeSpendUsd: number | null; cumulativePipelineUsd: number; roiMultiple: number | null }[] =
-    actual ? (actualQ.data?.daily ?? []) : (q.data ?? []);
-  // A real time axis: the producer omits days with no spend and no outcome, so a category
-  // axis squeezed a quiet month into one step.
-  const points = daily.map((d) => ({
-    t: Date.parse(`${d.date}T00:00:00Z`),
-    date: d.date,
-    spend: d.cumulativeSpendUsd,
-  }));
-  const spendPoints = points.filter((p) => p.spend != null);
-  const unpriced = actual ? actualQ.data?.unpricedBilledCostUsd ?? 0 : 0;
-  const unpricedFrom = actual ? actualQ.data?.unpricedFromDate ?? null : null;
-  const unreadable = actual
-    ? actualQ.isFetchedAfterMount && !actualQ.isError && actualQ.data === null
-    : q.isFetchedAfterMount && !q.isError && q.data === null;
-
-  return (
-    <section>
-      <SectionTitle right={actual ? <span>Actual cost</span> : undefined}>
-        Over time <span className="k-fg3 font-normal">· all clients on this pipe</span>
-      </SectionTitle>
-      {unreadable && (
-        <p className="k-fg3 mb-2 text-[12px]">We could not read the {actual ? "actual cost" : "billed cost"} for this workflow just now.</p>
-      )}
-      {unpriced > 0 && (
-        <p className="k-fg3 mb-2 text-[12px]">
-          {formatUsdAdaptive(unpriced)} of billed spend
-          {unpricedFrom ? ` from ${unpricedFrom}` : ""} has no known vendor cost, so the actual cost stops there.
-        </p>
-      )}
-      {/* Cost only: its pipeline value and a return on spend are retired below a campaign's Target
-          (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
-      <div className="grid gap-3">
-        <ChartCard
-          title="Cost to run it"
-          note={actual ? "What the vendors charged us, before our margin, to date." : "What all clients were billed for it, to date."}
-          pending={pending}
-          failed={failed}
-          data={spendPoints}
-          dataKey="spend"
-          format={formatUsdAdaptive}
-        />
-      </div>
-    </section>
-  );
-}
-
-function ChartCard({
-  title,
-  note,
-  pending,
-  failed,
-  data,
-  dataKey,
-  format,
-}: {
-  title: string;
-  note: string;
-  pending: boolean;
-  failed: boolean;
-  data: { t: number; date: string; spend: number | null }[];
-  dataKey: "spend";
-  format: (v: number) => string;
-}) {
-  const last = data.length ? data[data.length - 1][dataKey] : null;
-  return (
-    <div className="k-card flex min-w-0 flex-col px-4 pb-3 pt-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="k-label truncate">{title}</span>
-      </div>
-      <div className="mt-2 text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
-        {pending ? <Shimmer className="h-7 w-20" /> : last == null ? <span className="k-fg4">—</span> : format(last)}
-      </div>
-      <p className="k-fg3 mt-0.5 text-[12px]">{note}</p>
-      <div className="mt-3 h-[120px]">
-        {pending ? (
-          <Shimmer className="h-full w-full" />
-        ) : failed ? (
-          <p className="k-fg3 pt-10 text-center text-[12px]">We could not read this curve just now.</p>
-        ) : data.length === 0 ? (
-          <p className="k-fg3 pt-10 text-center text-[12px]">No dated history for this workflow yet.</p>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <XAxis
-                dataKey="t"
-                type="number"
-                scale="time"
-                domain={["dataMin", "dataMax"]}
-                tick={{ fontSize: 11, fill: "var(--fg-3)" }}
-                tickLine={false}
-                axisLine={false}
-                minTickGap={40}
-                tickFormatter={(t: number) => new Date(t).toISOString().slice(5, 10)}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "var(--fg-3)" }}
-                tickLine={false}
-                axisLine={false}
-                width={44}
-                tickCount={3}
-                tickFormatter={(v: number) => format(v)}
-              />
-              <Tooltip
-                cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }}
-                content={({ active, payload, label }) =>
-                  active && payload?.length ? (
-                    <div className="k-popover px-2.5 py-1.5 text-[12px]">
-                      <p className="k-fg3 k-mono">{new Date(Number(label)).toISOString().slice(0, 10)}</p>
-                      <p className="font-medium tabular-nums">{format(Number(payload[0].value))}</p>
-                    </div>
-                  ) : null
-                }
-              />
-              <Line type="stepAfter" dataKey={dataKey} stroke="var(--accent)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
     </div>
   );
 }

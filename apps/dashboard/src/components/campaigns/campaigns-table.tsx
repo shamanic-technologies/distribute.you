@@ -47,7 +47,7 @@ export interface CampaignRow {
   revenue: CampaignRevenueGroup | null;
   /**
    * Whether this row's cost ratios are still LEARNING: the producer's own verdict
-   * on this campaign's mature cohort (`costEconomics.maturity.isMature: false`,
+   * on this campaign's mature cohort (`outcomes.maturity.isMature: false`,
    * lib/maturity.ts). Nothing here counts outcomes against a bar: the duration and the
    * count are the producer's, per leg, and a second judge is how one campaign came to
    * state four different costs per positive reply on four screens.
@@ -241,7 +241,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
         campaign: c,
         revenue,
         // No group, or a producer that cannot judge (`isMature: null`), is not Learning.
-        learning: pairIsLearning(revenue?.economicsMaturity),
+        learning: pairIsLearning(revenue?.outcomesMaturity),
       };
     });
     return joined.sort((a, b) => {

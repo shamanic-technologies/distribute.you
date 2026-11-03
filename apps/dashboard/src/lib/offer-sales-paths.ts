@@ -107,8 +107,6 @@ const PathSchema = z
     entryToPayingClientPct: z.number().nullable(),
     lifetimeRevenueUsd: z.number().nullable(),
     costPerPayingClientUsd: z.number().nullable(),
-    roi: z.number().nullable(),
-    roiUnavailableReason: z.string().nullable(),
   })
   .passthrough();
 
@@ -126,10 +124,6 @@ const CampaignSchema = z
     pathCount: z.number(),
     /** How many of the offer's TICKED paths use it; 0 = not on a ticked path. */
     selectedPathCount: z.number(),
-    /** The best ROI among the ticked paths that run it (null with a reason). */
-    roi: z.number().nullable(),
-    roiCombinationKey: z.string().nullable(),
-    roiUnavailableReason: z.string().nullable(),
     /** An outreach campaign fed by the offer's source campaigns: it starts on "Lead found" (features-service v0.179.79). */
     fedBy: z
       .object({ step: z.object({ key: z.string(), label: z.string() }).passthrough() })
@@ -170,8 +164,6 @@ const SourceCampaignSchema = z
     /** Whose data it is: the logo.dev mark is drawn off `domain`; null = no single vendor. */
     provider: z.object({ name: z.string(), domain: z.string() }).nullable(),
     live: z.boolean(),
-    roi: z.number().nullable(),
-    roiUnavailableReason: z.string().nullable(),
     /** Leads CARRYING this source: a lead two sources found counts in both (features-service v0.179.88). */
     leadsFound: z.number().nullable().optional(),
     /** Of `leadsFound`, the leads another source found too. */
@@ -306,30 +298,6 @@ export function costSourceLabel(source: string | null | undefined): string | nul
       return "Market benchmark";
     default:
       return source;
-  }
-}
-
-/** Why a path states no ROI. An unknown reason is shown verbatim. */
-export function roiUnavailableLabel(reason: string | null): string | null {
-  switch (reason) {
-    case null:
-      return null;
-    case "leg_cost_unavailable":
-      return "A leg has no price yet";
-    case "zero_conversion_rate":
-      return "A leg converts at 0%";
-    case "no_lifetime_revenue":
-      return "State this offer's lifetime revenue";
-    case "no_platform_cost":
-      return "Nothing on this path is run by us";
-    case "not_on_a_selected_path":
-      return "No ticked path uses it";
-    case "selected_paths_unavailable":
-      return "Could not read your ticked paths";
-    case "no_positive_reply_value":
-      return "State what a positive reply is worth";
-    default:
-      return reason;
   }
 }
 

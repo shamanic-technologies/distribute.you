@@ -46,7 +46,6 @@ function ladder(p: Partial<WorkflowLadderRow> & { workflowDynastySlug: string })
     grain: "brand",
     costBasis: "charged",
     costPerOutcomeUsd: 10,
-    roiMultiple: 3,
     estimatesByGrain: {},
     rank: 1,
     ...p,
@@ -108,7 +107,6 @@ describe("the order is the producer's `rank`, read and never derived", () => {
           grain: null,
           costBasis: null,
           costPerOutcomeUsd: 0.31,
-          roiMultiple: null,
           rank: 2,
         }),
       ],
@@ -379,7 +377,6 @@ describe("the sentence rests on served evidence and nothing else", () => {
         grain: null,
         costBasis: null,
         costPerOutcomeUsd: 0.31,
-        roiMultiple: null,
       }),
       base,
     );
@@ -394,7 +391,6 @@ describe("the sentence rests on served evidence and nothing else", () => {
         grain: null,
         costBasis: null,
         costPerOutcomeUsd: null,
-        roiMultiple: null,
       }),
       base,
     );

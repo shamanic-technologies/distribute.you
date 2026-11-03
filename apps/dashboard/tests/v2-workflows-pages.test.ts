@@ -75,7 +75,6 @@ describe("editing a workflow's prompt is STAFF-only, and says who it affects", (
 
 describe("the Actual cost basis is STAFF-only", () => {
   const page = read("src/components/v2/workflow-page.tsx");
-  const over = page.slice(page.indexOf("function OverTime("), page.indexOf("function ChartCard("));
 
   it("the toggle renders in staff mode only, untagged, and defaults to User cost", () => {
     // ONE switch for every cost page, in the top bar (components/v2/cost-basis-switch.tsx).
@@ -89,14 +88,10 @@ describe("the Actual cost basis is STAFF-only", () => {
     expect(page).toContain("<CostBasisSwitch />\n            <StatBasisSwitch />");
   });
 
-  it("the actual read fires only for staff on the actual basis", () => {
-    expect(over).toContain("const { actual } = useCostBasis();");
-    expect(over).toContain("enabled: actual");
-  });
-
-  it("a day with no known vendor cost is left out, never filled with the billed figure", () => {
-    expect(over).toContain("points.filter((p) => p.spend != null)");
-    expect(read("src/lib/api.ts")).toContain("cumulativeSpendUsd: z.coerce.number().nullable()");
+  it("the workflow page draws no Over time return or cost curve (ROI-CONSISTENCY-1103)", () => {
+    expect(page).not.toContain("function OverTime(");
+    expect(page).not.toContain("getFleetWorkflowReturnHistory");
+    expect(page).not.toContain("getFleetWorkflowActualCostHistory");
   });
 });
 

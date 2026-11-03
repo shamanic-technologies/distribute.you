@@ -21,8 +21,8 @@ describe("the audience table model", () => {
  * The retired brand goal never reaches features-service from a brand-level read.
  *
  * features-service v0.129.0 made "name NEITHER a funnel NOR a goal" a first-class
- * request: it prices every audience through the best-returning funnel the brand
- * declared and sorts on return descending.
+ * request. The return it once sorted on is retired (ROI-CONSISTENCY-1103): the
+ * sort metric is read as the producer names it, never pinned to a return.
  */
 describe("the audience-stats reader can name neither a leg nor a goal", () => {
   const api = read("lib/api.ts");
@@ -36,8 +36,9 @@ describe("the audience-stats reader can name neither a leg nor a goal", () => {
     expect(api).toContain('else if (params.goal) query.set("goal", params.goal);');
   });
 
-  it("reads the brand-level answer shape: null goal, return-sorted", () => {
-    expect(api).toContain('z.literal("returnPerDollar")');
+  it("reads the brand-level answer shape: null goal, no return sort", () => {
+    expect(api).not.toContain('z.literal("returnPerDollar")');
+    expect(api).toContain("sortMetric: z.string(),");
     // `goal` is null on the brand read — a strict union would throw on every one.
     expect(api).toContain('z.literal("formSubmission"),\n  ]).nullable(),');
   });

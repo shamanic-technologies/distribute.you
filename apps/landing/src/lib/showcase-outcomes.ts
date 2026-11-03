@@ -1,5 +1,5 @@
 import { formatCostUsd } from "@/lib/landing-format";
-import { hasDrawnOutcome, hasHeroOutcome, podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
+import { hasHeroOutcome, renderShowcaseCard } from "@/lib/showcase-cards";
 
 /**
  * The homepage's named clients state outcome counts we READ, not counts we pasted in.
@@ -17,8 +17,8 @@ import { hasDrawnOutcome, hasHeroOutcome, podium, renderProofCard, renderShowcas
  * then climbs from a real base instead of a stale one.
  *
  * The read is `/public/stats/showcase-outcomes`: per client, one entry per STEP its
- * legs reach (`contacted` for the outreach base), merged across everything it ran,
- * plus the client's own realized return. No field names a sales funnel.
+ * legs reach (`contacted` for the outreach base), merged across everything it ran.
+ * No field names a sales funnel, and none states a return (ROI-CONSISTENCY-1103).
  *
  * ⚠️ Cells are joined to outcomes by the producer's own step KEY, never by position.
  * A card draws a subset of a client's outcomes, so an index join would put one
@@ -52,15 +52,6 @@ export interface ShowcaseBrand {
   brand: { id: string; name: string; domain: string };
   /** In the producer's order: `contacted` first, then every step the client's legs reach. */
   outcomes: ShowcaseOutcome[];
-  /**
-   * What the client got back on the budget they paid, across everything they ran.
-   *
-   * The REALIZED return their own dashboard states — expected pipeline over
-   * committed spend — never the forward projection published elsewhere under the
-   * identical word. Production has had the two an order apart; relabelling one as
-   * the other would put a number on the homepage no client ever saw.
-   */
-  returnPerDollar?: number | null;
   measured: boolean;
   unmeasuredReason: string | null;
 }
@@ -68,26 +59,16 @@ export interface ShowcaseBrand {
 export interface ShowcaseOutcomes {
   brands: ShowcaseBrand[];
   /**
-   * THE PRODUCER'S TWO PICKS.
+   * THE PRODUCER'S PICK for the hero row.
    *
-   * Absent means the producer served figures and no pick, and the page then keeps the three
+   * Absent means the producer served figures and no pick, and the hero then keeps the three
    * clients it ships with and reseeds only their figures. That fallback is the SHIPPED page,
    * not a fabricated one.
    */
   groups?: {
     /** Most recently begun clients carrying at least one outcome, newest first. */
     recentlyStarted?: ShowcaseGroup;
-    /** Best measured return on what they paid, past `minSpendUsd`, best first. */
-    highestReturn?: ShowcaseGroup;
   };
-  /**
-   * The spend floor the return ranking was taken over, in dollars.
-   *
-   * Read for the record rather than applied: the floor is the PRODUCER's and is load-bearing —
-   * measured in prod, an unfloored ranking tops out at 21.5x on $4.12 of spend. Applying one here
-   * would be this page ranking clients, which it does not do.
-   */
-  minSpendUsd?: number;
 }
 
 /**
@@ -268,29 +249,17 @@ export function reseedShowcaseCards(html: string, data: ShowcaseOutcomes): strin
   );
 }
 
-
 /**
- * THE CLIENTS OF ONE PICK, OR NOTHING.
+ * THE CLIENTS OF THE PICK, OR NOTHING.
  *
- * A group answers its OWN question and carries its OWN verdict, so the two are read independently:
- * "who started most recently and has produced something" and "who returns best on what they paid"
- * were never meant to name the same clients, and the producer says outright that a client may be in
- * both groups or in neither.
- *
- * So one group going unanswered does NOT hold the other back. An earlier cut of this required both
- * or neither, on a worry about coherence — a dynamically-picked client in the hero beside a frozen
- * one in the proof section. That worry was wrong about the surfaces and would have been expensive:
- * the recent group answers `no_qualifying_clients` in production today, so "both or nothing" would
- * have shipped the return podium as dead code.
- *
- * `measured: false` is the producer declining to answer and is honoured — the page keeps its shipped
- * clients for that section rather than rendering a short or empty row. A SHORT group is a different
+ * `measured: false` is the producer declining to answer and is honoured: the hero keeps its
+ * shipped clients rather than rendering a short or empty row. A SHORT group is a different
  * thing and IS rendered: the producer states how many qualified, so fewer than three is an answer.
  */
 export function pickedBrands(
   group: ShowcaseGroup | undefined,
   label: string,
-  drawable: (brand: ShowcaseBrand) => boolean = hasDrawnOutcome
+  drawable: (brand: ShowcaseBrand) => boolean = hasHeroOutcome
 ): ShowcaseBrand[] | null {
   if (!group) return null;
   if (!group.measured) {
@@ -339,27 +308,5 @@ export function renderShowcaseSelection(html: string, brands: ShowcaseBrand[]): 
   return html.replace(
     /(<div class="showcase-grid" id="live-cards">\s*)[\s\S]*?(\s*<a class="show-card yours")/,
     (whole, open: string, tail: string) => `${open}${cards.join("\n        ")}${tail}`
-  );
-}
-
-/**
- * Replace the proof section's cards with the producer's pick, laid out best-left,
- * third-middle, second-right.
- *
- * The ORDER on the wire is the ranking and is untouched; {@link podium} only decides where
- * each of the three sits on the row.
- */
-export function renderProofSelection(html: string, brands: ShowcaseBrand[]): string {
-  const cards = podium(brands.filter(hasDrawnOutcome))
-    .map(renderProofCard)
-    .filter((card): card is string => card !== null);
-  // A proof card leads with a return, so a pick carrying none renders nothing — and the
-  // shipped three, whose returns are reseeded, are a better answer than an empty section.
-  if (cards.length === 0) return html;
-  // Bounded to the proof grid's OWN cards: an unbounded `[\s\S]*</article>` runs to the LAST
-  // article on the page and deletes every section in between (quotes, pricing, FAQ).
-  return html.replace(
-    /(<div class="proof-grid">\s*)(?:<article class="proof-card rv"[\s\S]*?<\/article>\s*)+/,
-    (_whole, open: string) => `${open}${cards.join("\n      ")}\n`
   );
 }

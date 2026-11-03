@@ -2,7 +2,6 @@
 
 import { useState, type ReactNode } from "react";
 import { SectionTitle, Shimmer, EmptyNote } from "@/components/v2/ui";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { salesPathAvatarSrc } from "@/lib/sales-path-avatars";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
@@ -14,9 +13,7 @@ import {
   pathLinks,
   costSourceLabel,
   EXPECTED_COST_PER_CLIENT_TIP,
-  EXPECTED_ROI_TIP,
   rateSourceLabel,
-  roiUnavailableLabel,
   salesPathsEmptyReason,
   type OfferSalesPaths,
   type SalesPathLeg,
@@ -133,7 +130,7 @@ function PathsTable({
   const shown = showAll ? paths : paths.slice(0, TABLE_SHOWN);
   // A phone reads the path and its return: the cost column waits for a wider screen
   // (it stays in the detail a row opens), and the path wraps instead of scrolling.
-  const cols = gainHeadline ? 3 : 4;
+  const cols = gainHeadline ? 2 : 3;
   return (
     <div className="k-card overflow-hidden">
       <div className="k-scroll overflow-x-auto">
@@ -149,16 +146,12 @@ function PathsTable({
                   <ExpectedLabel tip={EXPECTED_COST_PER_CLIENT_TIP}>Cost per paying client</ExpectedLabel>
                 </th>
               )}
-              <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">
-                <ExpectedLabel tip={EXPECTED_ROI_TIP}>{gainHeadline ? "Expected return" : "Expected ROI"}</ExpectedLabel>
-              </th>
             </tr>
           </thead>
           <tbody>
             {shown.map((p) => {
               const isOpen = open === p.combinationKey;
               const on = selected?.has(p.combinationKey) ?? false;
-              const unavailable = roiUnavailableLabel(p.roiUnavailableReason);
               return [
                 <tr
                   key={p.combinationKey}
@@ -192,12 +185,6 @@ function PathsTable({
                   {!gainHeadline && (
                     <td className="k-fg2 hidden px-3 py-2 text-right tabular-nums sm:table-cell">{usd(p.costPerPayingClientUsd)}</td>
                   )}
-                  <td
-                    className={`whitespace-nowrap px-3 py-2 pr-4 text-right align-top font-semibold tabular-nums ${roiIsGood(p.roi) ? "text-[var(--run)]" : ""}`}
-                    title={unavailable ?? undefined}
-                  >
-                    {formatRoi(p.roi)}
-                  </td>
                 </tr>,
                 isOpen ? (
                   <tr key={`${p.combinationKey}-detail`} className="k-line-subtle border-b">
@@ -305,7 +292,6 @@ export function PathBreakdown({
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
-  const unavailable = roiUnavailableLabel(path.roiUnavailableReason);
   return (
     <div className="k-inset space-y-3 px-4 pb-4 pt-1">
       <div className="overflow-x-auto">
@@ -346,10 +332,6 @@ export function PathBreakdown({
         <div>
           <dt className="k-fg3">Cost per paying client</dt>
           <dd className="tabular-nums">{usd(path.costPerPayingClientUsd)}</dd>
-        </div>
-        <div>
-          <dt className="k-fg3">Expected ROI</dt>
-          <dd className="tabular-nums">{unavailable ?? formatRoi(path.roi)}</dd>
         </div>
       </dl>
     </div>

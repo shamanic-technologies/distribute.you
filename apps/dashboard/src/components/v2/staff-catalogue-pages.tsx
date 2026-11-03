@@ -53,14 +53,13 @@ export function OngoingDot() {
 }
 
 /** The row a detail read becomes in a table (same fields as a list row). */
-function rowOf(d: { id: string; name: string; line: string; costUsd: number | null; roi: number | null; status: string } & Record<string, unknown>): CatalogueRow {
+function rowOf(d: { id: string; name: string; line: string; costUsd: number | null; status: string } & Record<string, unknown>): CatalogueRow {
   const face = d.face as { svgPath?: string } | string | undefined;
   return {
     id: d.id,
     name: d.name,
     line: d.line,
     costUsd: d.costUsd,
-    roi: d.roi,
     status: d.status,
     icon: typeof d.icon === "string" ? d.icon : undefined,
     color: typeof d.color === "string" ? d.color : undefined,
@@ -772,7 +771,7 @@ function FunnelBody({ d, href, ongoing }: { d: Record<string, unknown>; href: Hr
       legKey: string;
       ratePct: number | null;
       outcomesNeededPerPayingClient: number | null;
-      pipe: { id: string; name: string | null; line: string; costUsd: number | null; roi: number | null; status: string } | null;
+      pipe: { id: string; name: string | null; line: string; costUsd: number | null; status: string } | null;
     }>) ?? [];
   const toPipe = href("pipes");
   const router = useRouter();

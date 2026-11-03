@@ -1232,9 +1232,9 @@ export async function getFeatureRevenue(
 
 // ─── Per-campaign revenue ROI (grouped) ──────────────────────────────────────
 // GET /features/:slug/revenue?groupBy=campaignId → one lean group per campaign
-// that has runs for the brand+feature: { campaignId, totalPipelineUsd, roiMultiple }.
-// A single call returns every campaign's ROI (no per-campaign fan-out). ROI =
-// expected pipeline ÷ run cost (features-service is the single source). safeParse
+// that has runs for the brand+feature: { campaignId, committedCostUsd, realizedReturn }.
+// A single call returns every campaign's realized return (no per-campaign fan-out;
+// features-service is the single source). safeParse
 // → shape rot becomes a caught fetch-error, never a render crash (CLAUDE.md #1213).
 const FeatureRevenueByCampaignSchema = z.object({
   featureSlug: z.string(),
@@ -1242,17 +1242,14 @@ const FeatureRevenueByCampaignSchema = z.object({
   groups: z.array(
     z.object({
       campaignId: z.string(),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: z.object({
-        // COMMITTED spend (billed + open holds) — features-service's single basis and
-        // what `roiMultiple` divides by. `.nullish()` for rollout tolerance only.
+        // COMMITTED spend (billed + open holds) — features-service's single basis.
+        // `.nullish()` for rollout tolerance only.
         //
         // This reader carried the pre-#402 `totalCostUsd` as a REQUIRED field long
         // after the producer dropped it, so every parse here threw. Admin tests are
         // not a CI gate, which is exactly how that rots unseen.
         committedCostUsd: z.number().nullish(),
-        costOfAcquisitionPct: z.number().nullable(),
-        roiMultiple: z.number().nullable(),
         // The campaign's REALIZED return (ROI-CONSISTENCY-1103). Nullish as served.
         realizedReturn: RealizedReturnSchema.nullish(),
       }),
@@ -1262,11 +1259,8 @@ const FeatureRevenueByCampaignSchema = z.object({
 
 export interface CampaignRevenueGroup {
   campaignId: string;
-  totalPipelineUsd: number | null;
   /** COMMITTED spend for this campaign. Null is "no figure", never "cost nothing". */
   committedCostUsd: number | null;
-  /** totalPipelineUsd / committedCostUsd. RETIRED from every screen (ROI-CONSISTENCY-1103). */
-  roiMultiple: number | null;
   /** The campaign's REALIZED return: Paid clients over money spent. Null when not served. */
   realizedReturn: RealizedReturn | null;
 }
@@ -1288,9 +1282,7 @@ export async function getFeatureRevenueByCampaign(
   }
   return parsed.data.groups.map((g) => ({
     campaignId: g.campaignId,
-    totalPipelineUsd: g.headline.totalPipelineUsd,
     committedCostUsd: g.costEconomics.committedCostUsd ?? null,
-    roiMultiple: g.costEconomics.roiMultiple,
     realizedReturn: g.costEconomics.realizedReturn ?? null,
   }));
 }
@@ -1326,19 +1318,14 @@ const FeatureRevenueByWorkflowSchema = z.object({
       workflowSlug: z.string().nullish(),
       workflowDynastyName: z.string().nullish(),
       workflowName: z.string().nullish(),
-      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: z.object({
         // COMMITTED spend (billed + open holds) — the one basis features-service
-        // serves, and the number `roiMultiple` / `costOfAcquisitionPct` /
-        // `costPerAcquisitionUsd` all divide by. `.nullish()` for rollout tolerance.
+        // serves. `.nullish()` for rollout tolerance.
         //
         // The billed-only sibling is deliberately absent from this reader: rendering
         // it as "$ Invested" beside a committed-basis ROI is the contradiction
         // features-service#779 removed.
         committedCostUsd: z.number().nullish(),
-        costOfAcquisitionPct: z.number().nullable(),
-        costPerAcquisitionUsd: z.number().nullish(),
-        roiMultiple: z.number().nullable(),
       }),
       // What the return was made of: how many people the workflow reached and
       // what each outcome cost, per dynasty, for THIS brand (features-service
@@ -2339,10 +2326,6 @@ const WorkflowProjectionItemSchema = z.object({
   costPerFormSubmissionUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable().optional(),
-  // Lifetime ROI multiple = LTR / costPerCloseUsd (= 100 / cacPct), budget-
-  // independent — rendered VERBATIM instead of inverting cacPct client-side
-  // (features-service#396). `.optional()` decouples the backend rollout.
-  roiMultiple: z.number().nullable().optional(),
   // null when budgetUsd is absent/≤0 or the workflow has no usable data.
   projection: WorkflowFunnelProjectionSchema.nullable(),
 });
@@ -2420,7 +2403,6 @@ function ladderRowToWorkflowItem(row: WorkflowProjectionRow): WorkflowProjection
     costPerFormSubmissionUsd: null,
     costPerCloseUsd: row.resolved.costPerPaidClientUsd,
     costPerMeetingBookedUsd: row.resolved.costPerMeetingBookedUsd,
-    roiMultiple: row.resolved.roiMultiple,
     projection: {
       contactedLeads: null,
       replies: null,
@@ -2501,7 +2483,6 @@ const WorkflowGrainProjectedSchema = z.object({
   costPerSignupUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable(),
-  roiMultiple: z.number().nullable(),
   cacPct: z.number().nullable(),
 });
 
@@ -2520,7 +2501,6 @@ const WorkflowResolvedSchema = z.object({
   costPerOutcomeUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable(),
-  roiMultiple: z.number().nullable(),
   cacPct: z.number().nullable(),
 });
 
@@ -5076,12 +5056,10 @@ export interface CustomerEconomics {
 
 export interface CustomerCurrentEconomics {
   /** COMMITTED spend (billed + open holds) — the single basis, and the number
-   *  `currentCacUsd`, `roiMultiple` and `cacPct` below all divide by. The billed-only
+   *  `currentCacUsd` and `cacPct` below divide by. The billed-only
    *  sibling the producer still serves is deliberately not read here. */
   committedSpendUsd: number | null;
-  expectedPipelineUsd: number | null;
   currentCacUsd: number | null;
-  roiMultiple: number | null; // LTR / CAC = pipeline / spend; ≥ 1 ⟺ below breakeven
   cacPct: number | null; // CAC as a share of LTR, percent
 }
 
@@ -5115,8 +5093,6 @@ export interface CustomerHealth {
   inputs: {
     active: boolean;
     hasBudget: boolean;
-    roiMultiple: number | null;
-    roiHealthy: boolean;
     audiencePctUsed: number | null;
     audienceNearExhausted: boolean;
     audienceNearExhaustedThresholdPct: number;
@@ -6109,10 +6085,6 @@ const PublicChannelOutcomeEconomicsEntrySchema = z.object({
   channelSlug: z.string(),
   channelName: z.string(),
   outcomes: z.array(PublicChannelOutcomeSchema),
-  /** PROJECTED return per dollar on the channel's best-returning path. Null when none is priced. */
-  returnPerDollar: z.coerce.number().nullable(),
-  /** The legs of that best path, in order. */
-  returnPathLegKeys: z.array(z.string()).nullable(),
 });
 const PublicChannelOutcomeEconomicsSchema = z.object({
   channelSlug: z.string().nullable(),

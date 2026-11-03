@@ -121,8 +121,6 @@ export interface WorkflowLadderRow {
   /** Which half of every grain's pair the sentence quotes. Mature unless a staff reader
    *  flipped the page to flash. */
   basis?: "mature" | "flash";
-  /** The resolved return, served. Null on an unmeasured row and where economics are absent. */
-  roiMultiple: number | null;
   estimatesByGrain: {
     crossOrg?: WorkflowLadderGrainBlock;
     brand?: WorkflowLadderGrainBlock;

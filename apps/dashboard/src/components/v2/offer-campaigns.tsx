@@ -86,7 +86,7 @@ export function OfferCampaigns({
   const running = (c: OfferCampaign) => campaignByKey.get(campaignKey(c.featureSlug, c.legKey))?.running ?? false;
   // No per-pipe return is shown (ROI-CONSISTENCY-1103): the order is on, then proactive first.
   const sorted = useMemo(
-    () => sortCampaigns(campaigns, running, () => null),
+    () => sortCampaigns(campaigns, running),
     [campaigns, campaignByKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
   // A campaign the offer ran that features-service no longer lists (its channel or leg

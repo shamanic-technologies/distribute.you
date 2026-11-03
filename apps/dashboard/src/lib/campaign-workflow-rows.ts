@@ -51,7 +51,7 @@
 
 import type { LegColumnPair } from "./campaign-leg-columns";
 import { pairIsLearning, shownFigure, type MaturityPair, type ShownFigure, type StatBasis } from "./maturity";
-import type { EconomicsFigures, OutcomeFigures } from "./revenue-view";
+import type { OutcomeFigures } from "./revenue-view";
 
 /** A dynasty the channel currently offers, as the catalogue states it. */
 export interface WorkflowCatalogueRow {
@@ -80,18 +80,12 @@ export interface WorkflowRevenueGroup {
   workflowDynastySlug: string;
   workflowDynastyName: string | null;
   workflowSlugs: readonly string[];
-  totalPipelineUsd: number | null;
   committedCostUsd: number | null;
-  roiMultiple: number | null;
-  costOfAcquisitionPct: number | null;
   recipientsContacted: number | null;
   recipientsClicked: number | null;
   recipientsRepliesPositive: number | null;
   cpprCents: number | null;
   cpcCents: number | null;
-  /** ROI, % CAC and $ CAC served twice with this group's maturity verdict (lib/maturity.ts).
-   *  Null when the body carried no pair (a cached or degraded read): the row states `—`. */
-  economicsMaturity: MaturityPair<EconomicsFigures> | null;
   /** Cost per visit and per positive reply served twice. Null = no outcomes block served. */
   outcomesMaturity: MaturityPair<OutcomeFigures> | null;
 }
@@ -143,13 +137,11 @@ export interface CampaignWorkflowRow {
   outreach: number | null;
   websiteClicks: number | null;
   cpcCents: number | null;
-  roiMultiple: number | null;
   /** Which of the two served outcomes this row is counted and priced by. */
   outcomePair: WorkflowOutcomePair;
   /** The producer said this scope is not mature (`isMature: false`). Never a count read here. */
   learning: boolean;
-  /** The row's ratios served twice. Null when this scope has never run the workflow. */
-  economicsMaturity: MaturityPair<EconomicsFigures> | null;
+  /** The row's costs served twice. Null when this scope has never run the workflow. */
   outcomesMaturity: MaturityPair<OutcomeFigures> | null;
   channel: string | null;
   audienceType: string | null;
@@ -205,11 +197,6 @@ export function workflowOutcomeCount(row: CampaignWorkflowRow): number | null {
  */
 export function workflowOutcomeCost(row: CampaignWorkflowRow, basis: StatBasis): ShownFigure {
   return shownFigure(row.outcomesMaturity, (h) => (row.outcomePair === "visit" ? h.cpcCents : h.cpprCents), basis);
-}
-
-/** The row's return on the reader's basis, with the producer's Learning verdict. */
-export function workflowRoi(row: CampaignWorkflowRow, basis: StatBasis): ShownFigure {
-  return shownFigure(row.economicsMaturity, (h) => h.roiMultiple, basis);
 }
 
 /**
@@ -390,12 +377,10 @@ export function buildCampaignWorkflowRows({
       outreach: group?.recipientsContacted ?? null,
       websiteClicks,
       cpcCents: group?.cpcCents ?? null,
-      roiMultiple: group?.roiMultiple ?? null,
       outcomePair: pair,
       // A row this scope has never run is not "learning" — there is nothing to be
       // thin. It has no price at all, which the null already says.
-      learning: pairIsLearning(group?.economicsMaturity),
-      economicsMaturity: group?.economicsMaturity ?? null,
+      learning: pairIsLearning(group?.outcomesMaturity),
       outcomesMaturity: group?.outcomesMaturity ?? null,
       channel: entry.channel ?? null,
       audienceType: entry.audienceType ?? null,
@@ -415,10 +400,8 @@ export function buildCampaignWorkflowRows({
       outreach: group?.recipientsContacted ?? null,
       websiteClicks,
       cpcCents: group?.cpcCents ?? null,
-      roiMultiple: group?.roiMultiple ?? null,
       outcomePair: pair,
-      learning: pairIsLearning(group?.economicsMaturity),
-      economicsMaturity: group?.economicsMaturity ?? null,
+      learning: pairIsLearning(group?.outcomesMaturity),
       outcomesMaturity: group?.outcomesMaturity ?? null,
       name: group?.workflowDynastyName ?? null,
     };

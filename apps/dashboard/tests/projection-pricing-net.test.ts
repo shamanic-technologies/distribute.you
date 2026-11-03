@@ -37,10 +37,6 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(readerBody("getWorkflowProjectionLadder")).toContain('query.set("pricing", "net")');
   });
 
-  it("getCampaignRoiHistory requests net pricing", () => {
-    expect(readerBody("getCampaignRoiHistory")).toContain('pricing: "net"');
-  });
-
   it("listFunnelCampaignRows requests net pricing (Campaigns table ROI and $ Invested)", () => {
     expect(readerBody("listFunnelCampaignRows")).toContain('pricing: "net"');
   });

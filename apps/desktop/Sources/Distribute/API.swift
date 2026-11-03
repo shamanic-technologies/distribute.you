@@ -118,9 +118,7 @@ struct RevenueOrg: Decodable, Identifiable {
 }
 
 struct OfferRevenue: Decodable {
-    struct Headline: Decodable { let totalPipelineUsd: Double? }
     struct Cost: Decodable { let realizedReturn: RealizedReturn? }
-    let headline: Headline?
     let costEconomics: Cost?
     let expectedReturn: ExpectedReturn?
     let organizations: [RevenueOrg]

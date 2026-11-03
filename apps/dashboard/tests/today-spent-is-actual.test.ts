@@ -61,7 +61,6 @@ describe("the window reader", () => {
     },
     recipientsRepliesPositive: { total: 0, daily: [] },
     recipientsClicked: { total: 0, daily: [] },
-    expectedPipeline: { totalPipelineUsd: 243, undatedPipelineUsd: 0, daily: [{ date: "2026-10-03", cumulativePipelineUsd: 243 }] },
   };
 
   it("parses the served block", () => {
@@ -69,7 +68,7 @@ describe("the window reader", () => {
   });
 
   it("keeps a failed email read as null, never a zero", () => {
-    const parsed = RevenueWindowResponseSchema.parse({ window: { ...window, emails: null, spend: null, expectedPipeline: null } });
+    const parsed = RevenueWindowResponseSchema.parse({ window: { ...window, emails: null, spend: null } });
     expect(parsed.window.emails).toBeNull();
   });
 });

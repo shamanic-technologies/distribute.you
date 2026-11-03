@@ -86,7 +86,6 @@ export interface FleetRankingRow {
   conversionRatePct: number | null;
   outcomes: number;
   spentUsd: number;
-  roiMultiple: number | null;
   goesFirst: boolean;
   moneyGoesHere: boolean;
   executable?: boolean;
@@ -111,7 +110,6 @@ export interface ServedFigure {
 
 /** A ranking row's `figures`, on the read's pricing (net): the ONE set the list, drawer and page print. */
 export interface WorkflowFigures {
-  roi: ServedFigure;
   costPerOutcomeUsd: ServedFigure;
   conversionRatePct: ServedFigure;
   spentUsd: { value: number | null; unavailableReason: string | null };

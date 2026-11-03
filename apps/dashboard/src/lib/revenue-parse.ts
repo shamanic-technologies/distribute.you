@@ -12,21 +12,6 @@ import type { RevenueOverview, RevenueOverviewWithLeads } from "./revenue-view";
 import { ExpectedReturnSchema } from "./expected-return";
 import { RealizedReturnSchema } from "./realized-return";
 
-/**
- * The ratios of a cost-economics block, served twice (features-service#1196, lib/maturity.ts).
- * OPTIONAL as the producer declares it: a body cached before the pair shipped, or a read
- * whose maturity cut degraded, carries none. A surface then states `—` with no tag
- * (`shownFigure` on no pair), never the legacy figure: measured in prod on the deploy that
- * shipped the pairs, the first reads of four scopes came back from pre-deploy snapshots
- * without them, and a required pair turned each of those pages into an error.
- */
-export const EconomicsMaturitySchema = maturityPairSchema(
-  z.object({
-    roiMultiple: z.number().nullable(),
-    costOfAcquisitionPct: z.number().nullable(),
-    costPerAcquisitionUsd: z.number().nullable(),
-  }),
-);
 /** The cost-per-outcome ratios of a spend block, served twice. `*Cents` coerce like the block's own. */
 const SpendMaturitySchema = maturityPairSchema(
   z.object({
@@ -186,24 +171,14 @@ const CostEconomicsSchema = z.object({
   // means actual, committed means committed; putting one under the other's label is
   // exactly what made a brand's Overview and its campaigns table disagree.
   committedCostUsd: z.number().optional(),
-  costOfAcquisitionPct: z.number().nullable(),
-  roiMultiple: z.number().nullable(),
-  // The dollar cost of winning one customer, answered on EVERY response including
-  // the default un-lensed brand read (features-service v0.127.0). `.nullish()` for
-  // rollout tolerance only — it is required on the wire today.
-  costPerAcquisitionUsd: z.number().nullish(),
   // Lens-only (Signups / Booked Meetings / Sales). `.nullish()` so the un-lensed
   // overview + grouped responses (which omit the field) still parse.
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
-  maturity: EconomicsMaturitySchema.nullish(),
   // The REALIZED return (ROI-CONSISTENCY-1103), the only measured return a screen shows.
   // Nullish: null where no closed-deal source was read, absent on an older cached body.
   realizedReturn: RealizedReturnSchema.nullish(),
 });
-// Return on spend across the brand's whole life. Both legs CUMULATIVE and REALIZED:
-// spend dated by runs' own cost buckets, pipeline by the per-lead event timestamps.
-// The last point's `roiMultiple` IS `costEconomics.roiMultiple`, by construction.
 /**
  * WHAT ONE OUTCOME HAS COST, PER DAY (features-service#980).
  *
@@ -287,35 +262,6 @@ const ConversionRateHistorySchema = z.object({
   ).optional(),
 });
 
-export const RoiHistorySchema = z.object({
-  daily: z.array(
-    z.object({
-      date: z.string(),
-      cumulativeSpendUsd: z.coerce.number(),
-      cumulativePipelineUsd: z.coerce.number(),
-      roiMultiple: z.coerce.number().nullable(),
-    }),
-  ),
-  datedPipelineUsd: z.coerce.number(),
-  undatedPipelineUsd: z.coerce.number(),
-  // The flash twin (features-service v0.179.81): the same fold over every dollar and every
-  // dated lead, no maturity cut. Its last point is the flash return, so a page whose
-  // headline shows the flash return draws this curve under it.
-  flash: z
-    .object({
-      daily: z.array(
-        z.object({
-          date: z.string(),
-          cumulativeSpendUsd: z.coerce.number(),
-          cumulativePipelineUsd: z.coerce.number(),
-          roiMultiple: z.coerce.number().nullable(),
-        }),
-      ),
-      datedPipelineUsd: z.coerce.number(),
-      undatedPipelineUsd: z.coerce.number(),
-    })
-    .optional(),
-});
 // Server-computed signal aggregate. `.optional()` on the response fields decouples
 // backend rollout; `z.coerce.number()` because Postgres numeric/bigint can
 // serialize as a string on the wire.
@@ -565,13 +511,9 @@ const FeatureRevenueResponseSchema = z.object({
   // (the lensed body, the lean groups, the cold path), and `.optional()` would parse every body EXCEPT the one the null was
   // written for. It also tolerates a cached pre-v0.165.0 body.
   learningPhase: LearningPhaseSchema.nullish(),
-  headline: z.object({ totalPipelineUsd: z.number().nullable() }),
   costEconomics: CostEconomicsSchema,
-  // Overview-only (null on `?lens=`, absent on grouped) and fail-soft server-side,
-  // so the reader must tolerate both absent and null.
-  roiHistory: RoiHistorySchema.nullish(),
-  // Overview-only and null wherever the producer cannot build a curve, exactly like
-  // `roiHistory` above — so the reader tolerates both absent and null for the same reason.
+  // Overview-only and null wherever the producer cannot build a curve, fail-soft server-side,
+  // so the reader tolerates both absent and null.
   costPerOutcomeHistory: CostPerOutcomeHistorySchema.nullish(),
   // Same gate, same two absences, same reason as the two curves above it.
   conversionRateHistory: ConversionRateHistorySchema.nullish(),
@@ -582,7 +524,6 @@ const FeatureRevenueResponseSchema = z.object({
   // The scope's EXPECTED return (features-service EXPECTED-ROI-1011): never empty, read where the
   // measured one is Learning or null. Optional until every grain serves it.
   expectedReturn: ExpectedReturnSchema.nullish(),
-  timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   events: z.array(RevenueEventSchema),
   /**
@@ -690,18 +631,12 @@ function leadReachedSomething(lead: z.infer<typeof LeadOutcomeSchema>): boolean 
 function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): RevenueOverview {
   return {
     featureSlug: d.featureSlug,
-    totalPipelineUsd: d.headline.totalPipelineUsd,
     costEconomics: {
       committedCostUsd: d.costEconomics.committedCostUsd ?? null,
-      costOfAcquisitionPct: d.costEconomics.costOfAcquisitionPct,
-      roiMultiple: d.costEconomics.roiMultiple,
-      costPerAcquisitionUsd: d.costEconomics.costPerAcquisitionUsd ?? null,
       expectedConversions: d.costEconomics.expectedConversions,
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
-      maturity: d.costEconomics.maturity ?? null,
       realizedReturn: d.costEconomics.realizedReturn ?? null,
     },
-    roiHistory: d.roiHistory ?? null,
     // Whole, verbatim. The card renders the served points and the served counts; the one
     // thing it must never do is divide a spend by a count itself, which is what this block
     // exists to make unnecessary.
@@ -734,7 +669,6 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     repliedPositive: d.recipientsRepliesPositive ?? d.repliedPositive,
     meetingsBooked: d.meetingsBooked,
     purchased: d.purchased,
-    timeSeries: d.timeSeries,
     organizations: d.organizations,
     events: d.events,
     // NARROWED, and the presence answer is taken BEFORE the narrowing — see

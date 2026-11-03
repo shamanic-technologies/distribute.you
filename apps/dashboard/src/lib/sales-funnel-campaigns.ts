@@ -398,7 +398,6 @@ export const FunnelCampaignRowSchema = z
     shortDescription: z.string().nullish(),
     shortDescriptionUnavailableReason: z.string().nullish(),
     investedUsd: z.coerce.number().nullable(),
-    roiMultiple: z.coerce.number().nullable(),
     moneyUnavailableReason: z.string().nullish(),
     // `realizedReturn` (ROI-CONSISTENCY-1103): Paid clients over money actually spent, when the row serves it.
     costEconomics: z.object({ unmeasuredReason: z.string().nullish(), realizedReturn: RealizedReturnSchema.nullish() }).passthrough().nullable(),
