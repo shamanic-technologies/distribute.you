@@ -56,13 +56,14 @@ describe("sidebar", () => {
   it("reads the sketch in order", () => {
     const order = [
       'label="Today"',
-      '<Group title="Outcomes">',
       ">Records</span>",
       'label="Companies"',
       'label="People"',
       'label="Deals"',
       'label="Unibox"',
       '<Group title="Campaigns">',
+      // Under Campaigns since 2026-11-03 (owner: « mets la section outcomes sous la section campaign »).
+      '<Group title="Outcomes">',
       '<Group title="Setup">',
       'label="Offer"',
       'label="Brand"',
@@ -88,7 +89,7 @@ describe("sidebar", () => {
     expect(block).not.toContain("indent");
   });
   it("Outcomes: its Overview, then one entry per step the ON campaigns produce or the brand's tools state", () => {
-    const block = shell.slice(at('<Group title="Outcomes">'), at(">Records</span>"));
+    const block = shell.slice(at('<Group title="Outcomes">'), at('<Group title="Production">'));
     expect(block).toContain("v2OutcomeHref(orgId, brandId)");
     expect(block).toContain("outcomes.map(({ outcome, all })");
     expect(block).not.toContain("indent");
