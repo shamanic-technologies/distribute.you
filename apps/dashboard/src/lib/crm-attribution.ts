@@ -100,6 +100,10 @@ export function ruleReasonLabel(reason: string | null | undefined): string | nul
       return "Their CRM does not say when it happened, so we do not claim it.";
     case "never_delivered":
       return "None of our emails reached them, so we do not claim it.";
+    case "after_step_not_ours":
+      return "An earlier step with them was not ours, so we do not claim it.";
+    case "undated_after_our_step":
+      return "Their CRM does not say when it happened, but every step before it was ours.";
     case null:
     case undefined:
       return null;

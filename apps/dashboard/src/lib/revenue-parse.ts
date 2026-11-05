@@ -75,6 +75,8 @@ const RevenueOrgSchema = z.object({
   expectedRevenueUsd: z.number(),
   mostAdvancedDate: z.string().nullable(),
 });
+const OutcomeCauseSchema = z.enum(["outreach", "other", "unstated"]);
+
 const RevenueLeadSchema = z.object({
   leadId: z.string(),
   firstName: z.string().nullable(),
@@ -120,6 +122,18 @@ const RevenueLeadSchema = z.object({
   meetingBookedAt: z.string().nullish(),
   purchased: z.boolean().optional(),
   purchasedAt: z.string().nullish(),
+  // WHOSE WIN each reached outcome was, as lead-service judged it (features-service
+  // #2258, DIGEST-SALES-ATTRIB-1105): `outreach` = ours, `other` = the client's own
+  // deal, `unstated` = undecided. One key per reached outcome; absent when none.
+  causeByOutcome: z
+    .object({
+      meetingBooked: OutcomeCauseSchema.optional(),
+      meetingAttended: OutcomeCauseSchema.optional(),
+      purchased: OutcomeCauseSchema.optional(),
+      signup: OutcomeCauseSchema.optional(),
+      formSubmission: OutcomeCauseSchema.optional(),
+    })
+    .optional(),
   // Per-lead firmographics (features-service#441). Additive `.nullish()` so the
   // parse succeeds before + after that producer reaches prod; each is null when the
   // upstream enrichment never resolved a value (no synthesis). `orgEmployeeCount` is
