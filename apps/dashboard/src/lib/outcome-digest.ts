@@ -302,12 +302,22 @@ interface OutcomeKind {
   singular: string;
   plural: string;
   at: (lead: ConversionLead) => string | null | undefined;
+  /**
+   * The row's whose-win key for this outcome, when the outcome is a DEAL someone could own
+   * (a sale, a signup, a form). The email tells the client what WE brought them, so such an
+   * outcome counts only when lead-service judged it ours (`outreach`): a sale the client's
+   * own pipeline made (`other`), or one nobody could decide (`unstated`), is not our news.
+   * Doc Dinners 2026-11-04: "3 sales yesterday" counted old clients the client moved in
+   * their CRM, one of them booked a year before our first email (DIGEST-SALES-ATTRIB-1105).
+   * A reply or a visit is a delivery fact of our own emails and carries no key.
+   */
+  causeKey?: keyof NonNullable<ConversionLead["causeByOutcome"]>;
 }
 
 const OUTCOME_KINDS: readonly OutcomeKind[] = [
-  { singular: "sale", plural: "sales", at: (l) => l.purchasedAt },
-  { singular: "signup", plural: "signups", at: (l) => l.signupAt },
-  { singular: "form submission", plural: "form submissions", at: (l) => l.formSubmissionAt },
+  { singular: "sale", plural: "sales", at: (l) => l.purchasedAt, causeKey: "purchased" },
+  { singular: "signup", plural: "signups", at: (l) => l.signupAt, causeKey: "signup" },
+  { singular: "form submission", plural: "form submissions", at: (l) => l.formSubmissionAt, causeKey: "formSubmission" },
   { singular: "positive reply", plural: "positive replies", at: (l) => l.repliedPositiveAt },
   { singular: "website visit", plural: "website visits", at: (l) => l.clickedAt },
 ];
@@ -325,6 +335,7 @@ function leadOutcomeOnDay(
   day: string,
 ): { kind: OutcomeKind; at: string } | null {
   for (const kind of OUTCOME_KINDS) {
+    if (kind.causeKey && lead.causeByOutcome?.[kind.causeKey] !== "outreach") continue;
     const at = kind.at(lead);
     if (at && utcDayOf(at) === day) return { kind, at };
   }

@@ -88,6 +88,12 @@ describe("daily outcome digest", () => {
       orgCity: rich ? "Austin" : null,
       orgCountry: rich ? "United States" : null,
       date: null,
+      // Every reached deal is OURS unless the case states otherwise (DIGEST-SALES-ATTRIB-1105).
+      causeByOutcome: {
+        ...(outcome.purchased ? { purchased: "outreach" } : {}),
+        ...(outcome.signup ? { signup: "outreach" } : {}),
+        ...(outcome.formSubmission ? { formSubmission: "outreach" } : {}),
+      },
       ...outcome,
     };
   }
@@ -645,6 +651,32 @@ describe("daily outcome digest", () => {
   it("sends nothing on a day of replies with no sale: the realized return did not move", async () => {
     const at = outcomeAtOnDay(previousUtcDay());
     const revenue = revenueWithLeads([lead(0, { repliedPositiveAt: at }), lead(1, { repliedPositiveAt: at })]);
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
+    expect(result.preparedSends).toHaveLength(0);
+  });
+
+  it("counts only the sales OUR outreach caused (DIGEST-SALES-ATTRIB-1105)", async () => {
+    // Doc Dinners 2026-11-04: three people moved in the client's CRM the day before, one
+    // of them (Thomas Keogh) booked a year before our first email. His sale is the
+    // client's own (`other`); an undecided one is not our news either.
+    const at = outcomeAtOnDay(previousUtcDay());
+    const revenue = revenueWithLeads([
+      lead(0, { purchased: true, purchasedAt: at }),
+      lead(1, { purchased: true, purchasedAt: at, causeByOutcome: { purchased: "other" } }),
+      lead(2, { purchased: true, purchasedAt: at, causeByOutcome: { purchased: "unstated" } }),
+    ]);
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
+    expect(result.preparedSends).toHaveLength(1);
+    expect(result.preparedSends[0].metadata).toMatchObject({ newOutcomes: "1 sale" });
+  });
+
+  it("sends nothing when every sale of the day was the client's own, or undated", async () => {
+    const at = outcomeAtOnDay(previousUtcDay());
+    const revenue = revenueWithLeads([
+      lead(0, { purchased: true, purchasedAt: at, causeByOutcome: { purchased: "other" } }),
+      lead(1, { purchased: true, purchasedAt: null }),
+      lead(2, { repliedPositiveAt: at }),
+    ]);
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
     expect(result.preparedSends).toHaveLength(0);
   });

@@ -181,6 +181,15 @@ export interface ConversionLead {
   meetingBookedAt?: string | null;
   purchased?: boolean;
   purchasedAt?: string | null;
+  /** WHOSE WIN each reached outcome was, as lead-service judged it (features-service
+   *  #2258): `outreach` = ours, `other` = the client's own deal, `unstated` = undecided.
+   *  A report of what WE caused counts an outcome only when its key reads `outreach`. */
+  causeByOutcome?: Partial<
+    Record<
+      "meetingBooked" | "meetingAttended" | "purchased" | "signup" | "formSubmission",
+      "outreach" | "other" | "unstated"
+    >
+  >;
   /** Firmographics (features-service#441), null when upstream enrichment had no
    *  value. `orgEmployeeCount` is a RAW headcount — the consumer bands it. */
   title?: string | null;
