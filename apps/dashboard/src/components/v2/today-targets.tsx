@@ -1,0 +1,120 @@
+"use client";
+
+import Link from "next/link";
+import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { friendlyDate } from "@/lib/friendly-datetime";
+import { v2CampaignHref } from "@/lib/v2/routes";
+import { nextExpectedWords, reasonWords, targetsOfOffer, type CampaignTargetRow } from "@/lib/campaign-targets";
+import { StepMark } from "@/components/marks/step-mark";
+import { RoiLabel } from "@/components/v2/roi-label";
+import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
+import { useCampaignTargets } from "@/components/v2/data";
+
+/**
+ * Today, one row of cards per campaign Target (owner 2026-11-06, LEAD-GENERIC-1106): how many so far,
+ * $ each, the measured return when features-service says it means something, and the count over time
+ * with its projection. The Target's NAME is served: no outcome word is written here. The past never
+ * moves with the Plan; the dotted part is the current Plan's projection.
+ */
+export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string | null }) {
+  const q = useCampaignTargets(brandId);
+  const rows = q.data ? targetsOfOffer(q.data.targets, offerId) : [];
+  return (
+    <section>
+      <SectionTitle count={q.data ? rows.length : null}>Targets</SectionTitle>
+      {!q.answered ? (
+        <Shimmer className="h-40 w-full rounded-xl" />
+      ) : q.data === undefined ? (
+        <div className="k-card">
+          <EmptyNote>Could not read your targets right now.</EmptyNote>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="k-card">
+          <EmptyNote>No campaign is on. Each campaign&apos;s target shows here once it runs.</EmptyNote>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {rows.map((r) => (
+            <TargetRow key={r.salesFunnelCampaignId} orgId={orgId} brandId={brandId} row={r} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function TargetRow({ orgId, brandId, row }: { orgId: string; brandId: string; row: CampaignTargetRow }) {
+  const label = row.target?.label ?? null;
+  const roi = row.measuredReturn.roiMultiple;
+  const next = nextExpectedWords(row.projection.nextExpectedInHours);
+  return (
+    <div>
+      <div className="mb-2 flex min-w-0 items-center gap-2">
+        {row.target && <StepMark stepKey={row.target.key} />}
+        <span className="truncate text-[14px] font-medium">{label ?? "No target yet"}</span>
+        <Link href={v2CampaignHref(orgId, brandId, row.salesFunnelCampaignId)} className="k-fg3 truncate text-[12px] hover:text-[var(--fg-1)]">
+          {row.name}
+        </Link>
+      </div>
+      <div className="grid grid-cols-3 gap-3 md:grid-cols-5">
+        <StatTile label="So far">
+          <Figure value={row.outcomesToDate != null ? formatCount(row.outcomesToDate) : "—"} />
+          {row.outcomesToDate == null && <p className="k-fg3 mt-1 text-[12px]">{reasonWords(row.outcomesUnavailableReason)}</p>}
+        </StatTile>
+        <StatTile label="$ each">
+          {row.costPerOutcomeUsd != null ? (
+            <Figure value={formatUsdAdaptive(row.costPerOutcomeUsd)} />
+          ) : (
+            <p className="k-fg3 text-[13px]">{reasonWords(row.costPerOutcomeUnavailableReason)}</p>
+          )}
+          {row.spentUsd != null && <p className="k-fg3 mt-auto pt-2 text-[12px] tabular-nums">{formatUsdAdaptive(row.spentUsd)} spent</p>}
+        </StatTile>
+        <StatTile label={<RoiLabel />} note="Measured">
+          {roi != null ? (
+            <span className={`text-[22px] font-medium leading-7 tabular-nums ${roiIsGood(roi) ? "text-[var(--run)]" : ""}`}>{formatRoi(roi)}</span>
+          ) : (
+            <p className="k-fg3 text-[13px]">{reasonWords(row.measuredReturn.unavailableReason)}</p>
+          )}
+        </StatTile>
+        <StatTile className="col-span-3 md:col-span-2" label="Over time" note={planWords(row.projection.planComputedAt)}>
+          <TargetCurve past={row.past.map((p) => p.cumulativeOutcomes)} ahead={row.projection.daily.map((d) => d.cumulativeExpectedOutcomes)} />
+          <p className="k-fg2 mt-2 text-[12px]">{next ?? reasonWords(row.projection.unavailableReason)}</p>
+        </StatTile>
+      </div>
+    </div>
+  );
+}
+
+/** When the projection's Plan was computed: the dotted part reads it, the past never does. */
+function planWords(at: string | null): string | undefined {
+  if (!at) return undefined;
+  const d = friendlyDate(at);
+  return d === "Today" ? "Plan updated today" : `Plan updated ${d}`;
+}
+
+/** The served running total, then the served projection dotted after it. Draws what it is handed. */
+function TargetCurve({ past, ahead }: { past: number[]; ahead: number[] }) {
+  const all = [...past, ...ahead];
+  if (all.length < 2) return <div className="h-12" />;
+  const w = 300;
+  const h = 48;
+  const max = Math.max(...all, 1);
+  const x = (i: number) => (i / (all.length - 1)) * w;
+  const y = (v: number) => h - 4 - (v / max) * (h - 8);
+  const path = (from: number, to: number) =>
+    all
+      .slice(from, to)
+      .map((v, k) => `${k ? "L" : "M"}${x(from + k).toFixed(1)},${y(v).toFixed(1)}`)
+      .join(" ");
+  // The dotted part starts on the last measured point, so the two read as one line.
+  const split = Math.max(0, past.length - 1);
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-12 w-full text-[var(--accent)]" aria-hidden="true">
+      {past.length > 1 && <path d={path(0, past.length)} fill="none" stroke="currentColor" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
+      {ahead.length > 0 && (
+        <path d={path(split, all.length)} fill="none" stroke="currentColor" strokeWidth={1.5} strokeDasharray="3 3" opacity={0.6} vectorEffect="non-scaling-stroke" />
+      )}
+    </svg>
+  );
+}

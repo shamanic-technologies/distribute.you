@@ -32,6 +32,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { leadBucketCountsQuery, type LeadBucket } from "@/lib/leads-server-page";
 import { filtersKey, type UniboxFilters } from "@/lib/unibox-leads";
+import { getBrandCampaignTargets } from "@/lib/api";
 
 /**
  * The reads every v2 page shares. Each is about the ONE offer the sidebar's switcher
@@ -98,6 +99,15 @@ export function useOfferOutcomes(brandId: string) {
     ...pollOptions,
   });
   return { ...q, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
+}
+
+/**
+ * Today's Target rows (LEAD-GENERIC-1106): one per ongoing campaign of the brand, on its Target,
+ * served by features-service; the page keeps the selected offer's rows.
+ */
+export function useCampaignTargets(brandId: string) {
+  const q = useAuthQuery(["campaignTargets", brandId], () => getBrandCampaignTargets(brandId), pollOptions);
+  return { ...q, answered: q.data !== undefined || (q.isFetchedAfterMount && q.isError) };
 }
 
 /**

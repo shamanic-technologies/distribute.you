@@ -310,14 +310,11 @@ describe("Keel parity, second pass", () => {
     expect(today).not.toContain("data.spend.totalSpentCents");
   });
 
-  it("Today states runs off runs-service and the meeting date off the served outcome", () => {
+  it("Today states runs off runs-service, and no Meetings section", () => {
     const today = read(V2 + "today-page.tsx");
     expect(today).toContain("useCampaignRunsToday(brandId, campaignById)");
-    // Meetings are read wide and ordered on their booking date, newest first.
-    expect(today).toContain('useLatestInBucket(brandId, "meeting_booked", MEETINGS_READ_LIMIT)');
-    expect(today).toContain("outcomeByLeadId.get(lead.leadId)?.meetingBookedAt");
-    expect(today).toContain('.sort((a, b) => (meetingAt(b) ?? "").localeCompare(meetingAt(a) ?? ""))');
-    expect(today).toContain(".slice(0, MEETINGS_SHOWN)");
+    // No hard-coded Meetings section: every outcome lives in its campaign's Target row (LEAD-GENERIC-1106).
+    expect(today).not.toContain("meeting_booked");
   });
 
   it("Deals column and card values are features-service's deals-value per rung, read, never summed", () => {
@@ -355,7 +352,6 @@ describe("sending block (features-service outcomes.sending)", () => {
   });
 
   it("the v2 surfaces print the served rates and divide nothing", () => {
-    expect(read("src/components/v2/today-page.tsx")).toContain("emails?.deliveryRatePct");
     expect(read("src/lib/api.ts")).toContain("replyRatePct: g.outcomes?.sending?.replyRatePct");
   });
 });

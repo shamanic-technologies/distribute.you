@@ -116,6 +116,12 @@ describe("every Overview money reader asks for net pricing", () => {
  * The v2 dashboard reads ONE offer (owner 2026-10-03), so its money comes from the
  * offer grain: the revenue body, and the Deals board's two values beside it.
  */
+describe("Today's Target rows ask for net pricing (LEAD-GENERIC-1106)", () => {
+  it("getBrandCampaignTargets requests net pricing", () => {
+    expect(readerBody("getBrandCampaignTargets")).toContain("/campaign-targets?pricing=net");
+  });
+});
+
 describe("every v2 offer-grain money reader asks for net pricing", () => {
   for (const reader of ["getOfferRevenue", "getOfferContactedValue", "getOfferOutcomes"]) {
     it(`${reader} requests net pricing`, () => {
