@@ -82,6 +82,20 @@ export function useOpsAddresses() {
 }
 
 export const RED = "var(--data-rose)";
+
+/**
+ * An outgoing email the producer did not send (served `outcome` other than "sent", e.g. an SMTP
+ * login refusal served as "permanent") is never read as sent: its kind cell says "Not sent" in red.
+ */
+export function NotSent({ m }: { m: { direction: string; outcome: string | null } }) {
+  if (m.direction !== "out" || m.outcome === "sent") return null;
+  return (
+    <span className="ml-2 inline-flex items-center gap-1.5 whitespace-nowrap text-[12px]" title={m.outcome ? `Served outcome: ${m.outcome}` : undefined}>
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: RED }} />
+      Not sent
+    </span>
+  );
+}
 export const OK = "var(--run)";
 export const n = (v: number) => v.toLocaleString("en-US");
 export const pct = (v: number | null) => (v == null ? null : `${v.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`);
@@ -929,7 +943,10 @@ export function LatestEmails() {
           <td className={`${TD} k-mono k-fg2 whitespace-nowrap text-[12px]`}>
             {new Date(m.occurredAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
           </td>
-          <td className={`${TD} whitespace-nowrap`}>{MESSAGE_KIND_WORD[m.kind] ?? m.kind}</td>
+          <td className={`${TD} whitespace-nowrap`}>
+            {MESSAGE_KIND_WORD[m.kind] ?? m.kind}
+            <NotSent m={m} />
+          </td>
           <td className={`${TD} k-mono text-[12px]`}>{m.direction === "in" ? (m.counterparty ?? <Dash />) : (m.mailboxLogin ?? m.accountEmail ?? <Dash />)}</td>
           <td className={`${TD} k-mono text-[12px]`}>{m.direction === "in" ? (m.mailboxLogin ?? m.accountEmail ?? <Dash />) : (m.counterparty ?? <Dash />)}</td>
           <td className={`${TD} k-fg2 max-w-[360px] truncate`} title={m.subject ?? undefined}>
