@@ -67,7 +67,51 @@ export const ScriptOutcomeSchema = z
   .passthrough();
 export type ScriptOutcome = z.infer<typeof ScriptOutcomeSchema>;
 
-export const ScriptsMonitoringSchema = z.object({ since: z.string(), outcomes: z.array(ScriptOutcomeSchema) }).passthrough();
+/**
+ * Campaign Engines (MIGRATE-1105 S2b): per outcome a campaign's leg reaches, its runs by stored script (no workflow) vs by
+ * workflow, per UTC day and per client, read from workflow-service's own run rows; spend = each client's runs x its
+ * sampled cost per run (runs-service). `red` = the script fails more than the workflow did; `onWorkflow` = some campaign
+ * still ran it on a workflow today (a normal "not yet", never red).
+ */
+const EnginePathSchema = z
+  .object({
+    runs: num,
+    completed: num,
+    failed: num,
+    errorRate: numOrNull,
+    spendCents: numOrNull,
+    costPerRunCents: numOrNull,
+    sampledRuns: num,
+  })
+  .passthrough()
+  .nullable();
+export type EnginePath = z.infer<typeof EnginePathSchema>;
+
+export const EngineOutcomeSchema = z
+  .object({
+    outcome: z.string(),
+    red: z.boolean(),
+    verdict: z.object({ scriptErrorRate: numOrNull, scriptFinishedRuns: num, workflowErrorRate: numOrNull, thresholdErrorRate: num }).passthrough(),
+    onWorkflow: z.boolean(),
+    lastWorkflowDay: z.string().nullable(),
+    window: z.object({ script: EnginePathSchema, workflow: EnginePathSchema }).passthrough(),
+    days: z.array(z.object({ day: z.string(), script: EnginePathSchema, workflow: EnginePathSchema }).passthrough()),
+    orgs: z.array(z.object({ orgId: z.string(), script: EnginePathSchema, workflow: EnginePathSchema, lastWorkflowDay: z.string().nullable() }).passthrough()),
+  })
+  .passthrough();
+export type EngineOutcome = z.infer<typeof EngineOutcomeSchema>;
+
+export const EngineMonitoringSchema = z.object({ since: z.string(), minRunsForRed: num, outcomes: z.array(EngineOutcomeSchema) }).passthrough();
+export type EngineMonitoring = z.infer<typeof EngineMonitoringSchema>;
+
+export const ScriptsMonitoringSchema = z
+  .object({
+    since: z.string(),
+    outcomes: z.array(ScriptOutcomeSchema),
+    // Absent until workflow-service serves campaign Engines.
+    engines: EngineMonitoringSchema.optional(),
+  })
+  .passthrough();
 export type ScriptsMonitoring = z.infer<typeof ScriptsMonitoringSchema>;
 
 /** Each outcome in plain words, and what one case of it is (display lookup); an unknown one reads as served. */
@@ -136,4 +180,22 @@ export function dollarsPerRun(cents: number | null | undefined): string | null {
   if (usd === 0) return "$0";
   if (Math.abs(usd) >= 1) return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return `$${usd.toLocaleString("en-US", { maximumSignificantDigits: 2 })}`;
+}
+
+/** Campaign Engines whose script fails more than the workflow did (the only red). */
+export function brokenEngines(e: EngineMonitoring | undefined): EngineOutcome[] {
+  return (e?.outcomes ?? []).filter((o) => o.red);
+}
+
+/** Outcomes some campaign still ran on a workflow today (a normal "not yet"). */
+export function enginesOnWorkflow(e: EngineMonitoring | undefined): EngineOutcome[] {
+  return (e?.outcomes ?? []).filter((o) => o.onWorkflow);
+}
+
+/** Red first, then still on a workflow (most workflow runs first), then script only (most script runs first). */
+export function enginesInOrder(e: EngineMonitoring): EngineOutcome[] {
+  const rank = (o: EngineOutcome) => (o.red ? 0 : o.onWorkflow ? 1 : 2);
+  return [...e.outcomes].sort(
+    (a, b) => rank(a) - rank(b) || (b.window.workflow?.runs ?? 0) - (a.window.workflow?.runs ?? 0) || (b.window.script?.runs ?? 0) - (a.window.script?.runs ?? 0),
+  );
 }

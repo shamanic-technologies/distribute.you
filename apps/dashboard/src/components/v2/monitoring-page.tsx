@@ -61,7 +61,8 @@ import { FactoryShadowPage, FactoryShadowTile, PlanFollowingPage, PlanFollowingT
 import { planStateWords } from "@/lib/plan-following";
 import { CodeIcon } from "@phosphor-icons/react/dist/csr/Code";
 import { ScriptsPage, ScriptsTile, useScriptsMonitoring } from "@/components/v2/monitoring-scripts";
-import { brokenOutcomes, guardStateWords, outcomeName } from "@/lib/monitoring/scripts-monitoring";
+import { CampaignEnginesPage, CampaignEnginesTile, useEngineNames } from "@/components/v2/monitoring-campaign-engines";
+import { brokenEngines, brokenOutcomes, enginesOnWorkflow, guardStateWords, outcomeName } from "@/lib/monitoring/scripts-monitoring";
 import { engineReasonWords, regretPct, verdictReasonWords } from "@/lib/factory-shadow";
 import { EnginePage, EngineTile } from "@/components/v2/monitoring-engine";
 import { loadLabel, memLabel } from "@/lib/monitoring/box-health";
@@ -194,6 +195,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "factory/following": { section: "factory", title: "Following its plan", question: "Does every campaign switched to its plan actually run it?" },
   "factory/engine": { section: "factory", title: "Engine pick", question: "Does the Engine pick the workflow of every result our live campaigns use?" },
   "scripts/engines": { section: "scripts", title: "Engines", question: "Does each script work as well as the code it replaced?" },
+  "scripts/campaigns": { section: "scripts", title: "Campaigns", question: "Which outcomes do our campaigns still make with a workflow?" },
   "ai/credit": { section: "ai", title: "Credit", question: "Does every AI vendor we call still have credit?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
@@ -359,6 +361,7 @@ export function V2Monitoring() {
         {view.page === "factory/following" && <PlanFollowingPage />}
         {view.page === "factory/engine" && <EnginePage />}
         {view.page === "scripts/engines" && <ScriptsPage />}
+        {view.page === "scripts/campaigns" && <CampaignEnginesPage />}
         {view.page === "ai/credit" && <VendorCreditPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
@@ -470,6 +473,9 @@ function Hub({ base }: { base: string }) {
   const vendorsOut = vendors.data ? outOfCreditVendors(vendors.data) : undefined;
   const scriptsBroken = scripts.data ? brokenOutcomes(scripts.data) : undefined;
   const scriptGuards = scripts.data?.outcomes.flatMap((o) => (o.guard ? [o.guard.state] : [])) ?? [];
+  const enginesBroken = scripts.data ? brokenEngines(scripts.data.engines) : undefined;
+  const engineName = useEngineNames();
+  const enginesOnWf = scripts.data?.engines ? enginesOnWorkflow(scripts.data.engines) : scripts.data ? null : undefined;
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
@@ -524,6 +530,8 @@ function Hub({ base }: { base: string }) {
         <EngineTile href={href("factory/engine")} />
         {/* A stored script that fails more often than the code it replaced, or whose guard rolled the fleet back (FACTORY-P3): red here IS the alert, never an email. */}
         <ScriptsTile href={href("scripts/engines")} />
+        {/* A campaign outcome whose script fails more often than the workflow it replaces (MIGRATE-1105 S2b): red here IS the alert; still on a workflow is a normal "not yet". */}
+        <CampaignEnginesTile href={href("scripts/campaigns")} />
         {/* An AI vendor that refused a call for lack of credit and has not served one since (VENDOR-CREDIT-1030, DeepSeek 2026-10-29): red here IS the alert, never an email. */}
         <VendorCreditTile href={href("ai/credit")} />
         {/* A mailbox vendor refusing our API, its mailboxes out of the send pool (SEND-PRIMEFORGE-402-1030, Primeforge 402 on 2026-10-29): shown only while one refuses, red here IS the alert, never an email. */}
@@ -1002,10 +1010,11 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={1}>Scripts</SectionTitle>
-      <Section section="scripts" count={1} grid={false}>
+      <SectionTitle count={2}>Scripts</SectionTitle>
+      <Section section="scripts" count={2} grid={false}>
         <HubChips>
           <HubChip href={href("scripts/engines")} color={scriptsBroken?.length ? "var(--data-rose)" : "var(--data-teal)"} label="Engines" />
+          <HubChip href={href("scripts/campaigns")} color={enginesBroken?.length ? "var(--data-rose)" : "var(--data-teal)"} label="Campaigns" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -1032,6 +1041,23 @@ function Hub({ base }: { base: string }) {
                 )
               ),
               note: "rolls back on too many errors",
+            },
+          ]}
+        />
+        <Card
+          href={href("scripts/campaigns")}
+          page="scripts/campaigns"
+          error={scripts.isError && !scripts.data}
+          cells={[
+            {
+              label: "On a workflow today",
+              value: enginesOnWf === undefined ? undefined : enginesOnWf === null ? null : enginesOnWf.length,
+              note: enginesOnWf?.length ? enginesOnWf.map((o) => engineName(o.outcome)).join(", ") : enginesOnWf ? "every outcome runs on a script" : undefined,
+            },
+            {
+              label: "Red now",
+              value: enginesBroken && <span style={{ color: enginesBroken.length ? "var(--data-rose)" : undefined }}>{enginesBroken.length}</span>,
+              note: enginesBroken?.length ? enginesBroken.map((o) => engineName(o.outcome)).join(", ") : "no script fails more than its workflow",
             },
           ]}
         />
