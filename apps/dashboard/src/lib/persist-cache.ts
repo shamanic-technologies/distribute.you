@@ -277,6 +277,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "threadsAccounts",
   // X accounts of a brand, the same card beside Threads (X-ACCOUNTS-1030).
   "xAccounts",
+  // LinkedIn accounts of a brand, the same card beside X (LINKEDIN-ACCOUNTS-1106).
+  "linkedinAccounts",
   // Free credits committed but not yet granted, on the Billing page.
   "freeCreditPromises",
   // Brand metadata + config + small summaries.
@@ -296,6 +298,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "spendCharts",
   // $ / outcome per month and since inception, every outcome step of the offer (features-service).
   "outcomeCostSeries",
+  // A published outcome's Units (posts, newsletter emails) with their served totals (OUTCOME-FINEST-1106).
+  "publishedUnits",
   // Their copy only (name, Type label, path), the fast read that paints a new campaign at once.
   "funnelCampaignCopies",
   // The sales funnels fitted to one offer (features-service), the Campaigns page's Suggested cards.
