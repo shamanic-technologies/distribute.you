@@ -83,7 +83,12 @@ export function reasonWords(reason: string | null): string {
     nothing_spent_yet: "Nothing spent yet",
     plan_not_computed_yet: "Plan not computed yet",
     no_outcome_yet: "No outcome yet",
+    no_target_outcome_yet: "None yet",
+    no_daily_budget_and_no_recent_spend: "No budget or recent spend to project from",
+    target_not_dated_for_this_campaign: "No dates for this outcome yet",
   };
+  // `pipe_unpriced:<pipe>` names the step with no price yet; the customer reads the fact, not the id.
+  if (reason.startsWith("pipe_unpriced")) return "Not priced yet";
   const known = KNOWN[reason];
   if (known) return known;
   const words = reason.replace(/_/g, " ");

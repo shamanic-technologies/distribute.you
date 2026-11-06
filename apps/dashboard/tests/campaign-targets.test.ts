@@ -44,5 +44,6 @@ describe("campaign targets (LEAD-GENERIC-1106)", () => {
   it("reads a served reason as words", () => {
     expect(reasonWords("target_has_no_value")).toBe("No value set for this outcome");
     expect(reasonWords("some_new_reason")).toBe("Some new reason");
+    expect(reasonWords("pipe_unpriced:threads-post|start_to_post_published")).toBe("Not priced yet");
   });
 });

@@ -70,7 +70,7 @@ export function TargetRow({ orgId, brandId, row }: { orgId: string; brandId: str
           )}
           {row.spentUsd != null && <p className="k-fg3 mt-auto pt-2 text-[12px] tabular-nums">{formatUsdAdaptive(row.spentUsd)} spent</p>}
         </StatTile>
-        <StatTile label={<RoiLabel />}>
+        <StatTile label={<RoiLabel />} note="Measured">
           {roi != null ? (
             <span className={`text-[22px] font-medium leading-7 tabular-nums ${roiIsGood(roi) ? "text-[var(--run)]" : ""}`}>{formatRoi(roi)}</span>
           ) : (
