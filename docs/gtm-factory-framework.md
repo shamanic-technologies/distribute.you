@@ -45,7 +45,10 @@ flowchart LR
 | **Campaign** | Orders production: a Target, a start, a budget and a strategy written as a brief. |
 | **Plan** | The tree a campaign runs, recomputed at every tick: each outcome, its Engine, the script that Engine picks now, and the Plan of each outcome that script calls. It is shown as what actually ran this week: at each Engine every script that made Units is a branch, with its share and cost, the pick of this tick highlighted. Nothing about it is frozen. |
 | **Connected account** | A mailbox, a WhatsApp number, a LinkedIn profile the brand connected, kept as a Unit of the brand. It names its channel and the role the brand gave it: Personal, Pro or AI agent. Several accounts may share a role on a channel. |
-| **Track** | An ordered ladder of states. The CRM lifecycle track holds Lead interested, Meeting booked, Meeting attended, Paid client. The Conversation track holds Reply received. The Website visits track holds Lead visited. A state of a track is a **milestone**. Tracks are never added together. |
+| **Lead** | A person, for one brand. The one business concept the factory hard-codes, because it makes revenue: every outcome whose subject is a person moves a lead. A post, a template or a Rating has no lead. |
+| **Lifecycle** | The one ladder a lead climbs, the same for every campaign, brand and channel: Lead found, Contacted, Engaged, Signed up, Meeting booked, Meeting attended, Paid client. Each outcome states in the catalogue the rung it puts its lead on, or none. A lead's Lifecycle is the highest rung of any outcome it reached. An outcome that states a rung is a **milestone**. |
+
+**The lead is fixed; the work is generic.** Besides its Lifecycle, a lead carries a few fixed attributes: Reachable (contactable, unsubscribed, bounced, do not contact), Conversation (waiting on us, waiting on them, no reply yet, closed), Fit, Interest, Client status (prospect, customer, churned) and one next follow-up date. Three business words are defined once: **Hot** is interested and not yet a Paid client, **Won** is a Paid client, **Lost** is not reachable, a wrong fit or not interested, always shown with its reason. Where a lead came from is never a lead attribute: it is the traceability of its Units, kept by outcome in the ledger. Everything that moves a lead (outcomes, Engines, scripts, channels) stays generic, and no code tests an outcome's name to decide a rung.
 
 **Every API call output is an outcome.** A cold email is several outcomes: the writer makes a Message written; our send call makes a Message queued; the mailbox reports a Message sent and reads each Reply received. Each can be measured, priced and consumed.
 
@@ -67,7 +70,7 @@ flowchart LR
 2. **No written manifest.** A script is code: it calls its Providers at run time. The outcomes it needs (its **materials**, for the Plan, costs and return) are read from its code: each `ctx.get("...")` names one, always a literal, and a test enforces it. They form its **bill of materials (BOM)**: the inputs a script consumes and the quantity of each per Unit produced, loss included. Then the ledger measures what each run consumed, and an unexpected call joins the list. No judge is needed.
 3. **Provider and Engine.** A Provider offers one function, `get()`, with no argument: it returns the most recent Unit of its outcome this caller has not received yet, for the caller's context (the run's subject, its company, its brand, or the run itself), from the stock, else by ordering one from the Engine. "Already received" is the ledger's record of consumption. One exception: when the brand holds several competing versions of an input (ICPs, templates), the Provider puts them against each other and the Rating picks one per run. That is how a new version proves itself against the old ones. An Engine offers `pull()` and `push(unit)`, and always makes a new piece. `pull()` makes one piece for a context, down from the Target. `push(unit)` makes the next outcome from a Unit that landed, up toward the Target.
 4. **Freshness is the script's job.** A script unhappy with what it got calls `get()` again, and a new piece is made, as long as the run's budget lasts.
-5. **The names.** Engine, Provider, Plan, Track.
+5. **The names.** Engine, Provider, Plan, Lead, Lifecycle.
 6. **"Performed by" is a tactic of scripts.** Who runs a script is data on the script, never an object of its own.
 
 ## 4. Scripts are code
@@ -183,7 +186,7 @@ A candidate with little data has wide beliefs: sometimes it draws high and gets 
 
 ### Credit through traceability
 
-Every Unit carries its **traceability**: the picks that led to it, its own included, and those carried by the Units it consumed. When the next milestone lands, every pick on its traceability is credited. A template is scored on the replies of the messages it served, never on whether the writer wrote. Reply received is a milestone of the Conversation track, so the picks of a cold email are credited at the reply, days before an interested lead.
+Every Unit carries its **traceability**: the picks that led to it, its own included, and those carried by the Units it consumed. When the next milestone lands, every pick on its traceability is credited. A template is scored on the replies of the messages it served, never on whether the writer wrote. Reply received puts its lead on the Engaged rung, so the picks of a cold email are credited at the reply, days before an interested lead.
 
 ### A branch is rated with its own picks at their best
 
