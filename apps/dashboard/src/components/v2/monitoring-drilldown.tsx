@@ -39,6 +39,7 @@ import {
   useOpsMailboxes,
   vendorName,
 } from "@/components/v2/monitoring-sending";
+import { useOpsInfra } from "@/components/v2/monitoring-capacity";
 import {
   ENTITY_WORD,
   MESSAGE_KIND_WORD,
@@ -50,7 +51,6 @@ import {
   windowSince,
   type EntityKind,
   type EntityScope,
-  backlogVerdict,
   capacityVsPlanned,
   type ProviderCounts,
   type ScheduleDay,
@@ -318,6 +318,23 @@ export function ScheduleChart({ scope, series = PLAN_SERIES }: { scope: EntitySc
  * keys as the capacity and planned charts, so nothing is fetched twice); only the running totals are
  * added up here (`capacityVsPlanned`).
  */
+/**
+ * The fleet's capacity verdict as instantly-service serves it (SENDING-INFRA-AUDIT-1106): its own
+ * sentences, red only when `broken`, amber when `behind`. Never judged here from the curves (the old
+ * browser verdict said "covers every planned send" over 1,783 late follow-ups).
+ */
+function FleetCapacityVerdict() {
+  const infra = useOpsInfra();
+  const v = infra.data?.fleet.capacityVerdict;
+  if (!v) return null;
+  const color = v.status === "broken" ? RED : v.status === "behind" ? AMBER : undefined;
+  return (
+    <div className="text-[13px]" style={{ color }}>
+      {v.reasons.length === 0 ? <p>Capacity covers every planned send.</p> : v.reasons.map((r) => <p key={r}>{r}</p>)}
+    </div>
+  );
+}
+
 export function CapacityPlanChart({ scope, lifecycle }: { scope: EntityScope; lifecycle?: "in_production" }) {
   const cap = useAuthQuery(["staffCapacityDaily", scopeQuery(scope), HORIZON_DAYS], () => getStaffCapacityDaily(scope, HORIZON_DAYS), ONCE);
   // `lifecycle` keeps the planned sends of addresses in production only (capacity already counts only those).
@@ -341,7 +358,6 @@ export function CapacityPlanChart({ scope, lifecycle }: { scope: EntityScope; li
       </div>
     );
   }
-  const verdict = backlogVerdict(days);
   const H = 140;
   // Bar and line height only, never a figure shown. The scale follows the planned line (x1.6), so the
   // crossing stays readable when capacity cumulates far beyond the plan; taller bars stop at the top.
@@ -355,15 +371,7 @@ export function CapacityPlanChart({ scope, lifecycle }: { scope: EntityScope; li
   const fig = (v: number | null) => (v == null ? <Dash /> : n(v));
   return (
     <div className="k-card p-4">
-      {verdict && (
-        <p className="text-[13px]" style={{ color: verdict.kind === "overflow" ? RED : undefined }}>
-          {verdict.kind === "covered"
-            ? "Capacity covers every planned send."
-            : verdict.kind === "absorbed"
-              ? `Backlog absorbed by ${shortDay(verdict.date)}.`
-              : `Planned sends still run ahead of capacity on ${shortDay(verdict.date)}.`}
-        </p>
-      )}
+      {lifecycle === "in_production" && <FleetCapacityVerdict />}
       <div className="k-fg2 mt-2 text-[12px]">{shortDay(shown.date)}{shown.date === days[0].date && " · today"}</div>
       <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[12px] tabular-nums">
         <div className="flex justify-between gap-2">

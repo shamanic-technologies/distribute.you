@@ -209,6 +209,10 @@ export const lifecycleWord = (s: string | null) => (s == null ? null : (LIFECYCL
 
 // ─── Per-entity rows ───────────────────────────────────────────────────────
 
+/** The domain policy on a row (instantly-service v0.84.10): `retiring` reads `cancelled`, removed at `removedAt`. */
+export const ExclusionSchema = z.object({ reason: z.string(), note: z.string().nullable(), state: z.string(), removedAt: z.string().nullable() });
+export type Exclusion = z.infer<typeof ExclusionSchema>;
+
 const VolumeSchema = z.object({
   outreach: z.number(),
   warmup: z.number(),
@@ -314,7 +318,10 @@ export const OpsDomainsSchema = z.object({
       domain: z.string(),
       provider: z.string().nullable(),
       role: z.string().nullable(),
+      // Registrar codes, raw (e.g. clientTransferProhibited); `state` is what a person reads.
       status: z.string().nullable(),
+      state: z.string().optional(),
+      exclusion: ExclusionSchema.nullable().optional(),
       expiresAt: z.string().nullable(),
       absentSince: z.string().nullable(),
       mailboxes: z.number(),
@@ -374,6 +381,9 @@ export const OpsMailboxesSchema = z.object({
       addressesByLifecycle: z.record(z.string(), z.number()).optional(),
       volume30d: VolumeSchema.optional(),
       cost: MailboxCostSchema.nullable().optional(),
+      // Picker order (1 = next new sequence); the rows come in that order.
+      fillRank: z.number().nullable().optional(),
+      exclusion: ExclusionSchema.nullable().optional(),
     }),
   ),
 });
@@ -405,6 +415,7 @@ export const OpsAddressesSchema = z.object({
       lifecycleUpdatedAt: z.string().nullable().optional(),
       accountType: z.string().nullable().optional(),
       fillRank: z.number().nullable().optional(),
+      exclusion: ExclusionSchema.nullable().optional(),
       sendTransport: z.string().nullable().optional(),
       evidenceExpiresAt: z.string().nullable().optional(),
       rampProjection: z.array(RampPointSchema).optional(),
@@ -768,20 +779,5 @@ export function capacityVsPlanned(
   });
 }
 
-/**
- * The verdict of the cumulated curves: capacity covers every planned send, the backlog is absorbed on
- * a day (the first day after the last one where planned runs ahead of capacity), or it still runs ahead
- * on the last day shown. Null when nothing is planned or capacity is unknown.
- */
-export function backlogVerdict(days: CapacityPlanDay[]): { kind: "covered" } | { kind: "absorbed"; date: string } | { kind: "overflow"; date: string } | null {
-  if (!days.length || days[days.length - 1].cumulativePlanned === 0) return null;
-  let last = -1;
-  for (let i = 0; i < days.length; i++) {
-    const c = days[i].cumulativeCapacity;
-    if (c == null) return null;
-    if (days[i].cumulativePlanned > c) last = i;
-  }
-  if (last < 0) return { kind: "covered" };
-  if (last === days.length - 1) return { kind: "overflow", date: days[last].date };
-  return { kind: "absorbed", date: days[last + 1].date };
-}
+/** The served domain `state`, capitalised for display (never renamed). */
+export const domainStateWord = (state: string) => state.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
