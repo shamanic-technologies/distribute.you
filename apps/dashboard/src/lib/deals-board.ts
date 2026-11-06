@@ -1,12 +1,12 @@
 import { z } from "zod";
 import type { TimelineTag } from "./timeline-tags";
-import { dimensionValueLabel, uniboxValueTag, type LifecycleRung, type UniboxDimension, type UniboxRow } from "./unibox-leads";
+import { leadVerdictTag, type LifecycleRung, type UniboxDimension, type UniboxRow } from "./unibox-leads";
 
 /**
  * The Deals board (owner 2026-10-21, DEALS-LIFECYCLE-1021): one column per rung of THE lifecycle
  * ladder (features-service, read through lead-service: Contacted, Engaged, Signed up, Meeting
- * booked, Meeting attended, Paid client), never lead-service's old standings. Interest, fit and
- * reachability are chips on the card and filters above the board, never columns. This module only
+ * booked, Meeting attended, Paid client). A card's chip is lead-service's verdict (Won / Hot /
+ * Lost and why); interest, fit and reachability are filters above the board, never columns. This module only
  * picks the served rungs and names served values; it decides nothing. Alias-free (real unit tests).
  */
 
@@ -18,24 +18,23 @@ export function dealsBoardRungs(ladder: LifecycleRung[]): LifecycleRung[] {
   return [...ladder].filter((r) => !NOT_A_COLUMN.has(r.key)).sort((a, b) => a.rank - b.rank);
 }
 
+/** Cards per column page; "Show more" asks for a wider page. */
+export const DEALS_PAGE_SIZE = 20;
+
 /** The filters the board offers above the columns (lifecycle IS the columns, so not one of them). */
 export const DEALS_FILTER_DIMENSIONS: UniboxDimension[] = ["interest", "fit", "contactability", "conversation"];
 
 /**
- * A card's chips: what is TRUE of the person beside the rung, only the values that change a
- * decision (Interested / Not interested, Wrong person / Not our target, Unsubscribed / Bounced /
- * Do not contact). The default (not asked, good fit, reachable) shows nothing.
+ * A card's chip (owner 2026-11-06, LEAD-GENERIC-1106): lead-service's verdict beside the rung,
+ * Won / Hot / Lost with its reason. An open lead shows nothing. Read, never re-derived.
  */
-export function dealCardChips(row: Pick<UniboxRow, "interest" | "fit" | "contactability">): TimelineTag[] {
-  const out: TimelineTag[] = [];
-  if (row.interest === "interested" || row.interest === "not_interested") {
-    out.push(uniboxValueTag("interest", row.interest, dimensionValueLabel("interest", row.interest)));
+export function dealCardChips(row: Pick<UniboxRow, "leadState">): TimelineTag[] {
+  if (!row.leadState) {
+    console.error("[deals] card without leadState: lead-service did not serve the lead vocabulary");
+    return [];
   }
-  if (row.fit !== "fit") out.push(uniboxValueTag("fit", row.fit, dimensionValueLabel("fit", row.fit)));
-  if (row.contactability !== "contactable") {
-    out.push(uniboxValueTag("contactability", row.contactability, dimensionValueLabel("contactability", row.contactability)));
-  }
-  return out;
+  const tag = leadVerdictTag(row.leadState);
+  return tag ? [tag] : [];
 }
 
 /**

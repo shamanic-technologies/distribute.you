@@ -15,7 +15,6 @@ import { friendlyDate, friendlyDateTime, timeAgo } from "@/lib/friendly-datetime
 import {
   personLeadRowId,
   personName,
-  personStatusLabel,
   possibleLeadName,
   possibleLeadRuledLine,
   type PossibleLead,
@@ -34,7 +33,7 @@ import { useBrandInfo } from "@/components/v2/data";
 import { RecordsToolbar } from "@/components/v2/records";
 import { THREAD_SCROLL_STEP, uniboxKeyAction, type UniboxPane } from "@/lib/unibox-keys";
 import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
-import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, standingTag, type ConversationItem, type ConversationTimeline } from "@/lib/conversation-timeline";
+import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, type ConversationItem, type ConversationTimeline } from "@/lib/conversation-timeline";
 import { DisqualifiedTag } from "@/components/v2/conversation-timeline";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
@@ -43,7 +42,7 @@ import { writtenMessageId, type WrittenBy } from "@/lib/written-by";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
-import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxRowPreview, uniboxRowSubtitle, uniboxThreadRef, uniboxWaitsOnUs, type LifecycleRung, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
+import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, leadStateTag, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxRowPreview, uniboxRowSubtitle, uniboxThreadRef, uniboxWaitsOnUs, type LifecycleRung, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
 import { UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -524,7 +523,7 @@ function Thread({
       query.state.data?.pages.some((p) => p.sources.some((s) => s.refreshing)) ? TIMELINE_REFRESHING_POLL : TIMELINE_POLL,
   });
   // The conversation at the selected offer: lead-service's labelled facts and its tags, keyed
-  // on the lead row whose standing decided this person's state (none = not one of our leads).
+  // on crm-service's lead row for this person (none = not one of our leads).
   const selected = useSelectedOfferIfAny();
   const offerId = selected?.offerId ?? null;
   const offerSettled = selected ? selected.settled : true;
@@ -598,7 +597,9 @@ function Thread({
   const notes = sources.map(timelineSourceNote).filter((n): n is string => n !== null);
   // lead-service names the relation; crm-service's person only when the row is not loaded.
   const name = lead ? uniboxLeadName(lead) : personName(person);
-  const status = personStatusLabel(person);
+  // ONE status (LEAD-GENERIC-1106): lead-service's verdict (Won / Hot / Lost and why), else the served lifecycle rung.
+  const state = lead?.leadState ?? null;
+  const headTag = state ? leadStateTag(state) : null;
   const target = replyTarget(person, items);
   const subline = [lead?.title?.trim(), lead?.company?.name || lead?.company?.domain, ...person.emails, ...person.phones].filter(Boolean).join(" · ");
   const rows = threadRows(items, facts ? liveItems(facts) : []);
@@ -621,12 +622,12 @@ function Thread({
             <p className="k-fg3 truncate text-[12px]">{subline || "—"}</p>
           </MarkLines>
           {/* ONE status (owner 2026-10-21): the last word and furthest step sit in the thread and the card. */}
-          {(status || listed?.relationship || facts?.disqualification) && (
+          {(headTag || listed?.relationship || facts?.disqualification) && (
             <span className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">
               {listed?.relationship && (
                 <RelationshipChips tags={listed.relationship.tags} unsureTags={listed.relationship.unsureTags} />
               )}
-              {status && <PersonTag label={status} state={person.state} />}
+              {headTag && <TagChip tag={headTag} />}
               {facts?.disqualification ? <DisqualifiedTag mark={facts.disqualification} /> : null}
               {listed?.relationship?.merges && listed.relationship.merges.length > 0 && (
                 <UnmergeMenu brandId={brandId} name={name} merges={listed.relationship.merges} />
@@ -921,11 +922,6 @@ function ThreadItem({
       }
     />
   );
-}
-
-/** A person's tag: their standing, coloured like the same fact in the thread (owner 2026-10-10). */
-function PersonTag({ label, state }: { label: string; state: string }) {
-  return <TagChip tag={standingTag(state, label)} />;
 }
 
 function Message({

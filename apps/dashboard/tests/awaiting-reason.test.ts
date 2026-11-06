@@ -26,7 +26,7 @@ describe("Needs your call reads lead-service's waiting-on-us set", () => {
   const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
   it("the hook counts and lists getAwaitingReply, never a bucket or a standing", () => {
     const data = read("src/components/v2/data.ts");
-    const body = data.slice(data.indexOf("export function useNeedsYourCall"), data.indexOf("export function useInterestedReplies"));
+    const body = data.slice(data.indexOf("export function useNeedsYourCall"), data.indexOf("export function useLatestInBucket"));
     expect(body).toContain("getAwaitingReply(brandId)");
     expect(body).toContain("total: awaiting.total");
     expect(body).not.toContain("bucket:");

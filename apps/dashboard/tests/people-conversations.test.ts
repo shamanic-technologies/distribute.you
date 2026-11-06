@@ -9,10 +9,8 @@ import {
   sourceLabel,
   channelLabel,
   sourceLine,
-  personStatusLabel,
   possibleLeadHint,
   possibleLeadRuledLine,
-  stateLabel,
   timelineSourceNote,
   setupRecord,
   isAutomatedSend,
@@ -89,17 +87,6 @@ describe("source lines keep absent, empty and failed apart", () => {
 });
 
 describe("labels only re-case the producer's words", () => {
-  it("re-cases the served state", () => {
-    expect(stateLabel("sales_interest")).toBe("Sales interest");
-    expect(stateLabel("deal_won")).toBe("Deal won");
-  });
-  it("shows a status only when lead-service decided it (owner 2026-10-08: no Deal open)", () => {
-    expect(personStatusLabel({ state: "sales_interest", stateSource: "lead_service" })).toBe("Sales interest");
-    expect(personStatusLabel({ state: "deal_open", stateSource: "gohighlevel" })).toBeNull();
-    expect(personStatusLabel({ state: "paid", stateSource: "stripe" })).toBeNull();
-    expect(personStatusLabel({ state: "replied", stateSource: "instantly" })).toBeNull();
-    expect(personStatusLabel({ state: "in_conversation", stateSource: "none" })).toBeNull();
-  });
   it("reads an unknown source as its own id", () => {
     expect(sourceLabel("hubspot")).toBe("Hubspot");
     expect(sourceLabel("copilot")).toBe("AI Copilot");

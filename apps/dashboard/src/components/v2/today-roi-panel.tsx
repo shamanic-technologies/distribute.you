@@ -162,7 +162,6 @@ function StepBody({
   onOpenPerson: (p: OpenPerson) => void;
 }) {
   if (!step) return <EmptyNote>This step is not readable right now.</EmptyNote>;
-  const cold = step.wentCold;
   // One row per person: the people whose furthest step is this one, never the ones who went further.
   const people = slice?.people ?? step.people ?? null;
   return (
@@ -216,14 +215,6 @@ function StepBody({
             </PeopleGroup>
           )}
         </>
-      ) : cold && cold.count > 0 ? (
-        <section>
-          <p className="k-label mb-2">Considered lost</p>
-          <p className="k-fg2 text-[13px]">
-            {formatCount(cold.count)} reached this step thanks to us, then went quiet for too long
-            {cold.valueUsd != null ? `. Worth ${formatUsdAdaptive(cold.valueUsd)} now.` : "."}
-          </p>
-        </section>
       ) : null}
     </>
   );

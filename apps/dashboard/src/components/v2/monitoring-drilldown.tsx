@@ -22,6 +22,7 @@ import {
   Failed,
   Loading,
   OK,
+  NotSent,
   RED,
   StatusWord,
   TD,
@@ -559,7 +560,7 @@ function MessageRow({
   onToggle,
   ours,
 }: {
-  m: { id: string; direction: string; kind: string; accountEmail: string | null; mailboxLogin: string | null; counterparty: string | null; subject: string | null; placement: string | null; occurredAt: string };
+  m: { id: string; direction: string; kind: string; accountEmail: string | null; mailboxLogin: string | null; counterparty: string | null; subject: string | null; outcome: string | null; placement: string | null; occurredAt: string };
   open: boolean;
   onToggle: () => void;
   ours: React.ReactNode;
@@ -569,7 +570,10 @@ function MessageRow({
     <>
       <tr className={`k-row cursor-pointer ${open ? "k-selected" : ""}`} onClick={onToggle} aria-expanded={open}>
         <td className={`${TD} k-mono k-fg2 whitespace-nowrap text-[12px]`}>{when(m.occurredAt)}</td>
-        <td className={`${TD} whitespace-nowrap`}>{MESSAGE_KIND_WORD[m.kind] ?? m.kind}</td>
+        <td className={`${TD} whitespace-nowrap`}>
+          {MESSAGE_KIND_WORD[m.kind] ?? m.kind}
+          <NotSent m={m} />
+        </td>
         <td className={`${TD} k-mono text-[12px]`}>{m.direction === "in" ? them : ours}</td>
         <td className={`${TD} k-mono text-[12px]`}>{m.direction === "in" ? ours : them}</td>
         <td className={`${TD} k-fg2 max-w-[320px] truncate`} title={m.subject ?? undefined}>
