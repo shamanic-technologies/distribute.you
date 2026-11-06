@@ -25,6 +25,39 @@ const ProjectionSchema = z
   })
   .passthrough();
 
+const SeriesSchema = z.array(z.object({ date: z.string(), outcomes: z.number(), cumulativeOutcomes: z.number() }).passthrough());
+
+/** One milestone of a campaign, Start to its Target, counted from the Units its runs PRODUCED (features-service #2279). */
+const MilestoneCardSchema = z
+  .object({
+    step: z.string(),
+    label: z.string(),
+    lifecycleRung: z.string().nullable(),
+    isTarget: z.boolean(),
+    count: num,
+    countSource: z.string().nullable(),
+    countUnavailableReason: z.string().nullable(),
+    past: SeriesSchema,
+    pastUnavailableReason: z.string().nullable(),
+    costPerUnitUsd: num,
+    costPerUnitUnavailableReason: z.string().nullable(),
+    costFromStartUsd: num,
+    costFromStartUnavailableReason: z.string().nullable(),
+    conversionToNextPct: num,
+    conversionToNextUnavailableReason: z.string().nullable(),
+    projection: z
+      .object({
+        outcomesPerDay: num,
+        daily: z.array(z.object({ date: z.string(), expectedOutcomes: z.number(), cumulativeExpectedOutcomes: z.number() }).passthrough()),
+        nextExpectedAt: z.string().nullable(),
+        nextExpectedInHours: num,
+        unavailableReason: z.string().nullable(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+export type MilestoneCard = z.infer<typeof MilestoneCardSchema>;
+
 const CampaignTargetRowSchema = z
   .object({
     salesFunnelCampaignId: z.string(),
@@ -42,6 +75,9 @@ const CampaignTargetRowSchema = z
     past: z.array(z.object({ date: z.string(), outcomes: z.number(), cumulativeOutcomes: z.number() }).passthrough()),
     pastUnavailableReason: z.string().nullable(),
     projection: ProjectionSchema,
+    // Additive (features-service #2279): the campaign page's cards, Start to Target, last = the Target.
+    milestones: z.array(MilestoneCardSchema).optional(),
+    milestonesUnavailableReason: z.string().nullish(),
   })
   .passthrough();
 export type CampaignTargetRow = z.infer<typeof CampaignTargetRowSchema>;
@@ -86,6 +122,9 @@ export function reasonWords(reason: string | null): string {
     no_target_outcome_yet: "None yet",
     no_daily_budget_and_no_recent_spend: "No budget or recent spend to project from",
     target_not_dated_for_this_campaign: "No dates for this outcome yet",
+    target: "Target",
+    no_spend_on_this_milestone: "Nothing spent on this step",
+    no_unit_yet: "None yet",
   };
   // `pipe_unpriced:<pipe>` names the step with no price yet; the customer reads the fact, not the id.
   if (reason.startsWith("pipe_unpriced")) return "Not priced yet";

@@ -2387,7 +2387,7 @@ import {
 } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
-import { CampaignMilestonesSchema, PeopleJourneysSchema, type CampaignMilestones, type PeopleJourneys } from "./factory-campaign";
+import { PeopleJourneysSchema, type PeopleJourneys } from "./factory-campaign";
 import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
 /**
@@ -2413,18 +2413,17 @@ export async function getOfferEnginePicks(brandId: string, offerId: string): Pro
   return parseStaff("getOfferEnginePicks", EnginePicksSchema, raw);
 }
 
-/** A funnel campaign's milestones, Start to its Target, each figure measured or expected (FACTORY-USER-DASHBOARD-1102). */
-export async function getFunnelCampaignMilestones(brandId: string, salesFunnelCampaignId: string): Promise<CampaignMilestones> {
-  const raw = await apiCall<unknown>(
-    `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/milestones?pricing=net`,
-  );
-  return parseStaff("getFunnelCampaignMilestones", CampaignMilestonesSchema, raw);
-}
-
 /** Today: one row per ongoing campaign of the brand, on its Target (features-service campaign-targets, LEAD-GENERIC-1106). */
 export async function getBrandCampaignTargets(brandId: string): Promise<CampaignTargets> {
   const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/campaign-targets?pricing=net`);
   return parseStaff("getBrandCampaignTargets", CampaignTargetsSchema, raw);
+}
+/** The campaign page: the same row for ONE campaign, any status, with its milestone cards (features-service #2279). */
+export async function getCampaignTargetRow(brandId: string, salesFunnelCampaignId: string): Promise<CampaignTargets> {
+  const raw = await apiCall<unknown>(
+    `/features/brands/${encodeURIComponent(brandId)}/campaign-targets?pricing=net&salesFunnelCampaignId=${encodeURIComponent(salesFunnelCampaignId)}`,
+  );
+  return parseStaff("getCampaignTargetRow", CampaignTargetsSchema, raw);
 }
 import { CampaignTargetsSchema, type CampaignTargets } from "./campaign-targets";
 

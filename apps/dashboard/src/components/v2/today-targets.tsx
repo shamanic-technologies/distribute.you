@@ -5,11 +5,12 @@ import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { friendlyDate } from "@/lib/friendly-datetime";
 import { v2CampaignHref } from "@/lib/v2/routes";
-import { nextExpectedWords, reasonWords, targetsOfOffer, type CampaignTargetRow } from "@/lib/campaign-targets";
+import { nextExpectedWords, reasonWords, targetsOfOffer, type CampaignTargetRow, type MilestoneCard } from "@/lib/campaign-targets";
+import { formatRatePct } from "@/lib/pipe-stats";
 import { StepMark } from "@/components/marks/step-mark";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
-import { useCampaignTargets } from "@/components/v2/data";
+import { useCampaignTargetRow, useCampaignTargets } from "@/components/v2/data";
 
 /**
  * Today, one row of cards per campaign Target (owner 2026-11-06, LEAD-GENERIC-1106): how many so far,
@@ -82,6 +83,78 @@ export function TargetRow({ orgId, brandId, row }: { orgId: string; brandId: str
           <p className="k-fg2 mt-2 text-[12px]">{next ?? reasonWords(row.projection.unavailableReason)}</p>
         </StatTile>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The campaign page (owner 2026-11-06 via tallinn-v9: the same block as Today, any outcome, posts included): one card
+ * per milestone Start to Target, counted from the Units the campaign's runs produced, never the Plan line. The Target
+ * card carries the measured return. Every figure is served (features-service campaign-targets, one campaign).
+ */
+export function CampaignMilestoneCards({ brandId, campaignId }: { brandId: string; campaignId: string }) {
+  const q = useCampaignTargetRow(brandId, campaignId);
+  const row = q.data?.targets.find((t) => t.salesFunnelCampaignId === campaignId) ?? null;
+  const cards = row?.milestones ?? [];
+  return (
+    <section>
+      <SectionTitle right={<span>Since it started</span>}>Milestones</SectionTitle>
+      {!q.answered ? (
+        <Shimmer className="h-40 w-full rounded-xl" />
+      ) : !row ? (
+        <div className="k-card">
+          <EmptyNote>Could not read this campaign&apos;s milestones right now.</EmptyNote>
+        </div>
+      ) : cards.length === 0 ? (
+        <div className="k-card">
+          <EmptyNote>{reasonWords(row.milestonesUnavailableReason ?? null)}</EmptyNote>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {cards.map((c) => (
+            <MilestoneCardView key={c.step} card={c} row={row} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MilestoneCardView({ card, row }: { card: MilestoneCard; row: CampaignTargetRow }) {
+  const roi = card.isTarget ? row.measuredReturn.roiMultiple : null;
+  const next = nextExpectedWords(card.projection.nextExpectedInHours);
+  return (
+    <div className="k-card flex min-w-0 flex-col p-4">
+      <div className="flex min-w-0 items-center gap-2">
+        <StepMark stepKey={card.step} />
+        <span className="truncate text-[14px] font-medium">{card.label}</span>
+        {card.isTarget && <span className="k-chip ml-auto">Target</span>}
+      </div>
+      <div className="mt-3 flex items-baseline gap-3">
+        <Figure value={card.count != null ? formatCount(card.count) : "—"} />
+        {card.isTarget && roi != null && (
+          <span className={`text-[13px] tabular-nums ${roiIsGood(roi) ? "text-[var(--run)]" : "k-fg2"}`}>ROI {formatRoi(roi)}</span>
+        )}
+      </div>
+      {card.count == null && <p className="k-fg3 text-[12px]">{reasonWords(card.countUnavailableReason)}</p>}
+      <dl className="k-fg2 mt-2 grid grid-cols-3 gap-2 text-[12px] tabular-nums">
+        <div className="min-w-0">
+          <dt className="k-label">$ each</dt>
+          <dd className="truncate">{card.costPerUnitUsd != null ? formatUsdAdaptive(card.costPerUnitUsd) : <span className="k-fg4">—</span>}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="k-label">From start</dt>
+          <dd className="truncate">{card.costFromStartUsd != null ? formatUsdAdaptive(card.costFromStartUsd) : <span className="k-fg4">—</span>}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="k-label">To next</dt>
+          <dd className="truncate">{card.isTarget ? <span className="k-fg4">—</span> : card.conversionToNextPct != null ? formatRatePct(card.conversionToNextPct) : <span className="k-fg4">—</span>}</dd>
+        </div>
+      </dl>
+      <div className="mt-3">
+        <TargetCurve past={card.past.map((p) => p.cumulativeOutcomes)} ahead={card.projection.daily.map((d) => d.cumulativeExpectedOutcomes)} />
+      </div>
+      <p className="k-fg3 mt-1 text-[12px]">{next ?? reasonWords(card.projection.unavailableReason)}</p>
     </div>
   );
 }

@@ -291,6 +291,12 @@ you run; we run the campaign.
 - [vs Waalaxy](https://distribute.you/compare/waalaxy)
 - [vs Chili Piper](https://distribute.you/compare/chili-piper)
 - [vs Frontrunner](https://distribute.you/compare/frontrunner)
+- [vs Topo](https://distribute.you/compare/topo): Topo pricing, checked and dated
+- [vs Persana](https://distribute.you/compare/persana): Persana pricing, and Persana's own note that its platform is being retired
+- [Explee alternatives](https://distribute.you/alternatives/explee)
+- [AiSDR alternatives](https://distribute.you/alternatives/aisdr)
+- [Topo alternatives](https://distribute.you/alternatives/topo)
+- [Persana alternatives](https://distribute.you/alternatives/persana)
 
 ## Rankings by audience
 
