@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 import { MONITORING_PAGES, parseMonitoringPath } from "../src/lib/monitoring/monitoring";
 import {
   ScriptsMonitoringSchema,
+  brokenEngines,
   brokenOutcomes,
+  enginesInOrder,
+  enginesOnWorkflow,
   dollarsPerRun,
   guardStateWords,
   isBroken,
@@ -133,7 +136,7 @@ describe("Monitoring > Scripts: page and hub", () => {
     const hub = page.slice(page.indexOf("function Hub("), page.indexOf("function Section("));
     expect(hub.indexOf('<ScriptsTile href={href("scripts/engines")} />')).toBeGreaterThan(-1);
     expect(hub.indexOf("<ScriptsTile")).toBeLessThan(hub.indexOf("<Section "));
-    expect(hub).toContain('<Section section="scripts" count={1} grid={false}>');
+    expect(hub).toContain('<Section section="scripts" count={2} grid={false}>');
     expect(hub).toContain('page="scripts/engines"');
   });
 
@@ -146,5 +149,79 @@ describe("Monitoring > Scripts: page and hub", () => {
     expect(src).toContain("problemsFirst(data).map");
     expect(src).not.toMatch(/\.reduce\(/);
     expect(src).not.toMatch(/\.sort\(/);
+  });
+});
+
+const enginePath = (runs: number, failed: number, spendCents: number | null) => ({
+  runs,
+  completed: runs - failed,
+  failed,
+  errorRate: runs ? failed / runs : null,
+  spendCents,
+  costPerRunCents: spendCents == null ? null : spendCents / runs,
+  sampledRuns: 10,
+});
+
+const ENGINES = {
+  since: "2026-10-08",
+  minRunsForRed: 20,
+  outcomes: [
+    {
+      outcome: "lead_found",
+      red: false,
+      verdict: { scriptErrorRate: 0, scriptFinishedRuns: 345, workflowErrorRate: 0.01, thresholdErrorRate: 0.02 },
+      onWorkflow: false,
+      lastWorkflowDay: "2026-11-05",
+      window: { script: enginePath(345, 0, 120), workflow: enginePath(645, 8, 900) },
+      days: [{ day: "2026-11-06", script: enginePath(345, 0, null), workflow: null }],
+      orgs: [{ orgId: "o1", script: enginePath(345, 0, 120), workflow: null, lastWorkflowDay: null }],
+    },
+    {
+      outcome: "meeting_booked",
+      red: false,
+      verdict: { scriptErrorRate: null, scriptFinishedRuns: 0, workflowErrorRate: 0.6, thresholdErrorRate: 0.61 },
+      onWorkflow: true,
+      lastWorkflowDay: "2026-11-06",
+      window: { script: null, workflow: enginePath(20, 12, 40) },
+      days: [{ day: "2026-11-06", script: null, workflow: enginePath(20, 12, null) }],
+      orgs: [],
+    },
+    {
+      outcome: "conversation",
+      red: true,
+      verdict: { scriptErrorRate: 0.2, scriptFinishedRuns: 50, workflowErrorRate: 0.01, thresholdErrorRate: 0.02 },
+      onWorkflow: false,
+      lastWorkflowDay: null,
+      window: { script: enginePath(50, 10, 30), workflow: null },
+      days: [],
+      orgs: [],
+    },
+  ],
+};
+
+describe("Monitoring > Scripts > Campaigns: campaign Engines, script vs workflow", () => {
+  it("parses a body without engines (before workflow-service serves them), and one with them", () => {
+    expect(ScriptsMonitoringSchema.parse(BODY).engines).toBeUndefined();
+    const d = ScriptsMonitoringSchema.parse({ ...BODY, engines: ENGINES });
+    expect(d.engines?.outcomes).toHaveLength(3);
+  });
+
+  it("is red only on the served verdict; still on a workflow is a normal not-yet; red first, then on a workflow", () => {
+    const e = ScriptsMonitoringSchema.parse({ ...BODY, engines: ENGINES }).engines!;
+    expect(brokenEngines(e).map((o) => o.outcome)).toEqual(["conversation"]);
+    expect(enginesOnWorkflow(e).map((o) => o.outcome)).toEqual(["meeting_booked"]);
+    expect(enginesInOrder(e).map((o) => o.outcome)).toEqual(["conversation", "meeting_booked", "lead_found"]);
+    expect(brokenEngines(undefined)).toEqual([]);
+  });
+
+  it("is a Monitoring page, mounted, with its tile and its card in the Scripts section", () => {
+    expect(parseMonitoringPath("/scripts/campaigns")).toEqual({ view: "page", page: "scripts/campaigns" });
+    const page = read("components/v2/monitoring-page.tsx");
+    expect(page).toContain('view.page === "scripts/campaigns" && <CampaignEnginesPage />');
+    const hub = page.slice(page.indexOf("function Hub("), page.indexOf("function Section("));
+    expect(hub.indexOf("<CampaignEnginesTile")).toBeLessThan(hub.indexOf("<Section "));
+    expect(hub).toContain('page="scripts/campaigns"');
+    const src = read("components/v2/monitoring-campaign-engines.tsx");
+    for (const t of ["<ClientsTable o={o} names={names} />", "lines={runsPair}", "pair((p) => toPct(p.errorRate))", "pair((p) => p.costPerRunCents)", "enginesInOrder(data).map"]) expect(src).toContain(t);
   });
 });
