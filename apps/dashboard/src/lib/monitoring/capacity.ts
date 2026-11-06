@@ -36,7 +36,22 @@ export const OpsInfraSchema = z.object({
     totalAccountCount: z.number(),
     blockedDomainCount: z.number(),
     queuedSteps: z.number(),
+    // Over PRESENT addresses since instantly-service v0.84.10 (gone ones in goneByLifecycle).
     byLifecycle: z.record(z.string(), z.number()),
+    goneByLifecycle: z.record(z.string(), z.number()).optional(),
+    blockedAddressCount: z.number().optional(),
+    // The producer's capacity verdict (SENDING-INFRA-AUDIT-1106): rendered as is, red only when `broken`.
+    capacityVerdict: z
+      .object({
+        status: z.enum(["ok", "behind", "broken"]).or(z.string()),
+        reasons: z.array(z.string()),
+        overdueFollowUps: z.number(),
+        followUpsLateOverOneDay: z.number(),
+        oldestOverdueFollowUpAt: z.string().nullable(),
+        strandedSteps: z.number(),
+        queuedOnNonProduction: z.number(),
+      })
+      .optional(),
   }),
   pools: z.array(
     z.object({

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ADDRESS_TABS, addressTab, backlogVerdict, bucketQueued, capacityVsPlanned, MAILBOX_TABS, mailboxInProduction, mailboxStatus, mailboxTab } from "../src/lib/monitoring/sending";
+import { ADDRESS_TABS, addressTab, bucketQueued, capacityVsPlanned, MAILBOX_TABS, mailboxInProduction, mailboxStatus, mailboxTab } from "../src/lib/monitoring/sending";
 
 const read = (rel: string) => readFileSync(join(__dirname, "../src", rel), "utf8");
 
@@ -62,15 +62,10 @@ describe("Accounts page (ACCOUNTS-PROD-TABS-1021)", () => {
       { date: "2026-10-22", capacity: 915, planned: 474, cumulativeCapacity: 1596, cumulativePlanned: 1724 },
       { date: "2026-10-23", capacity: 1146, planned: 265, cumulativeCapacity: 2742, cumulativePlanned: 1989 },
     ]);
-    expect(backlogVerdict(days)).toEqual({ kind: "absorbed", date: "2026-10-23" });
-    expect(backlogVerdict(capacityVsPlanned(cap, plan, 0))).toEqual({ kind: "covered" });
-    expect(backlogVerdict(capacityVsPlanned(cap, plan, 9999))).toEqual({ kind: "overflow", date: "2026-10-23" });
-    expect(backlogVerdict(capacityVsPlanned(cap, plan.map((p) => ({ ...p, queuedSteps: 0 })), 0))).toBeNull();
     // a day the capacity read does not cover: unknown, never zero
     const gap = capacityVsPlanned(cap.slice(0, 2), plan, 0);
     expect(gap[1].capacity).toBeNull();
     expect(gap[1].cumulativeCapacity).toBeNull();
-    expect(backlogVerdict(gap)).toBeNull();
   });
 
   it("the page wires it: tabs over the table, charts in the right third, the cumulated chart on every entity page", () => {
@@ -103,5 +98,21 @@ describe("Mailboxes page: one tab per status, closest to production first", () =
     const page = src.slice(src.indexOf("export function MailboxesPage("), src.indexOf("export function AccountsPage("));
     expect(page).toContain("mailboxTab(m) === tab");
     expect(page).toContain("count={all.length}");
+  });
+
+  it("the fleet verdict is the producer's (SENDING-INFRA-AUDIT-1106), never judged from the curves", () => {
+    const drill = read("components/v2/monitoring-drilldown.tsx");
+    expect(drill).toContain("infra.data?.fleet.capacityVerdict");
+    expect(drill).toContain('{lifecycle === "in_production" && <FleetCapacityVerdict />}');
+    expect(read("lib/monitoring/sending.ts")).not.toContain("export function backlogVerdict");
+  });
+
+  it("rows show the served domain policy and a domain's served state, lists stay in served (picker) order", () => {
+    const sending = read("components/v2/monitoring-sending.tsx");
+    expect(sending).toContain("<ExclusionChip exclusion={d.exclusion} />");
+    expect(sending).toContain("<ExclusionChip exclusion={m.exclusion} />");
+    expect(sending).toContain("<ExclusionChip exclusion={a.exclusion} />");
+    expect(sending).toContain("d.state ? domainStateWord(d.state)");
+    expect(sending).not.toMatch(/accounts \?\? \[\]\)\.filter\([^)]*\)\.sort\(/);
   });
 });
