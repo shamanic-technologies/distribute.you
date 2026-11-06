@@ -28,6 +28,8 @@ import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
 import { AudienceLists } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
+import { PublishedOutcomeCard, PublishedOutcomePage, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
+import { isPublishedOutcomeKey } from "@/lib/v2/published-units";
 import { BarSpark, EmptyNote, Shimmer, SparkLine, TopBar } from "@/components/v2/ui";
 import { OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
@@ -136,22 +138,27 @@ export function OutcomesOverviewPage() {
   const costAnswered = costQ.data !== undefined || (costQ.isFetchedAfterMount && costQ.isError) || !offerId;
   const stepIcons = useStepIcons();
   const ordered = inServedOrder(outcomes, costQ.data);
+  // The published outcomes (posts, newsletter emails): one card each once the brand has a row (OUTCOME-FINEST-1106).
+  const published = usePublishedOutcomes(brandId);
+  const ready = settled && published.settled;
+  const count = outcomes.length + published.withRows.length;
   return (
     <div>
       <TopBar crumbs={[{ label: "Outcomes" }, { label: "Overview" }]} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <h1 className="text-[28px] font-semibold leading-[34px] tracking-[-0.01em]">
-          {!settled ? <Shimmer className="h-8 w-72" /> : outcomes.length === 0 ? "No outcome yet" : `${outcomes.length} outcome${outcomes.length === 1 ? "" : "s"}`}
+          {!ready ? <Shimmer className="h-8 w-72" /> : count === 0 ? "No outcome yet" : `${count} outcome${count === 1 ? "" : "s"}`}
         </h1>
         <p className="k-fg2 mb-6 mt-1 text-[14px]">What you got since you started, and what each one cost.</p>
         {allError && <p className="mb-3 text-[13px] text-[var(--data-rose)]">We could not read your own tools right now. Only your campaigns show.</p>}
-        {!settled ? (
+        {published.failed.length > 0 && <p className="mb-3 text-[13px] text-[var(--data-rose)]">We could not read some of your posts or newsletters right now. Retrying.</p>}
+        {!ready ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {[0, 1, 2].map((i) => (
               <Shimmer key={i} className="h-[212px] rounded-[12px]" />
             ))}
           </div>
-        ) : outcomes.length === 0 ? (
+        ) : count === 0 ? (
           <div className="k-card">
             <EmptyNote>Turn a campaign on, or connect PostHog, Clerk or Stripe, and what you get shows here.</EmptyNote>
           </div>
@@ -168,6 +175,9 @@ export function OutcomesOverviewPage() {
                 costAnswered={costAnswered}
                 icon={stepIcons?.get(o.outcome.key) ?? null}
               />
+            ))}
+            {published.withRows.map((p) => (
+              <PublishedOutcomeCard key={p.key} outcomeKey={p.key} data={p.data} icon={stepIcons?.get(p.key) ?? null} />
             ))}
           </div>
         )}
@@ -368,6 +378,8 @@ export function OutcomePage() {
   const listed = outcomes.find((o) => o.outcome.key === stepKey) ?? null;
   // A step nothing produces today still opens (an old link): its items are read the same way.
   const outcome = listed?.outcome ?? (stepKey ? outcomeOf(catalogue, null, stepKey) : null);
+  // A published outcome (posts, newsletter emails) has its own page, every customer (OUTCOME-FINEST-1106).
+  if (isPublishedOutcomeKey(stepKey)) return <PublishedOutcomePage outcomeKey={stepKey} />;
   if (!outcome) return null;
   // The posts are a staff read today (social-service behind the gateway's staff gate).
   if (outcome.items.kind === "posts" && staffMode) return <PostsPage />;

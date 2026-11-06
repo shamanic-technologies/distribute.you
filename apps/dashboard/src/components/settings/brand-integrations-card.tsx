@@ -27,6 +27,7 @@ import { CompanyLogo } from "@/components/company-logo";
 import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
 import { ThreadsAccountsCard } from "@/components/v2/threads-accounts-card";
 import { XAccountsCard } from "@/components/v2/x-accounts-card";
+import { LinkedinAccountsCard } from "@/components/v2/linkedin-accounts-card";
 import {
   INTEGRATIONS,
   isStripeProvider,
@@ -162,6 +163,8 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
   // X accounts beside Threads, same card (owner 2026-10-30 « Ajoute l'intégration X ici »): a dead login
   // is a Reconnect button here, never a script on a Mac.
   rows.push(<XAccountsCard key="x" bare />);
+  // LinkedIn accounts beside X, same card (LINKEDIN-ACCOUNTS-1106): every post of the connected page comes in, hand posts included.
+  rows.push(<LinkedinAccountsCard key="linkedin" bare />);
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
   return (

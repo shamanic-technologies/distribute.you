@@ -40,6 +40,7 @@ import {
   type OfferSpendCharts,
 } from "./spend-charts";
 import { OfferOutcomeCostSeriesSchema, type OfferOutcomeCostSeries } from "./v2/outcome-cost-series";
+import { PublishedUnitsSchema, type PublishedOutcomeKey, type PublishedUnits } from "./v2/published-units";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -1427,6 +1428,84 @@ export async function disconnectXAccount(accountId: string, token?: string): Pro
   return apiCall<unknown>(`/orgs/x/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
 }
 
+// ==================== LINKEDIN ACCOUNTS (social-service, LINKEDIN-ACCOUNTS-1106) ====================
+//
+// The X accounts model plus the page whose posts are imported (`profileUrl`, a profile or a company
+// page: LinkedIn's login never names it, so the member types it). `accountTypeLabel`, `health`,
+// `reconnectBy` and the history `import` are served: never re-derived here. Login round trip:
+// `lib/linkedin-connect.ts`.
+
+const LinkedinAccountSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  name: z.string().nullable(),
+  pictureUrl: z.string().nullable(),
+  profileUrl: z.string(),
+  pageKind: z.enum(["profile", "company"]),
+  accountType: XAccountTypeSchema,
+  accountTypeLabel: z.string(),
+  health: z.enum(["connected", "needs_reconnect"]),
+  healthReason: z.string().nullable(),
+  reconnectBy: z.string().nullable(),
+  createdAt: z.string(),
+  import: z
+    .object({ historyComplete: z.boolean(), pagesRead: z.number(), postsImported: z.number(), lastReadAt: z.string().nullable() })
+    .nullable(),
+});
+export type LinkedinAccount = z.infer<typeof LinkedinAccountSchema>;
+
+export async function listLinkedinAccounts(brandId: string, token?: string): Promise<LinkedinAccount[]> {
+  const raw = await apiCall<unknown>(`/orgs/linkedin/accounts?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = z.object({ accounts: z.array(LinkedinAccountSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listLinkedinAccounts response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("listLinkedinAccounts returned an unexpected shape");
+  }
+  return parsed.data.accounts;
+}
+
+export async function startLinkedinConnect(
+  input: { brandId: string; accountType: z.infer<typeof XAccountTypeSchema>; profileUrl: string; redirectUri: string },
+  token?: string,
+): Promise<XConnectStart> {
+  // brandId in the query too: identity values reach downstream services from headers/query only.
+  const raw = await apiCall<unknown>(`/orgs/linkedin/auth/start?brandId=${encodeURIComponent(input.brandId)}`, { token, method: "POST", body: input });
+  const parsed = XConnectStartResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] startLinkedinConnect response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("startLinkedinConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function finishLinkedinConnect(input: { code: string; state: string }, token?: string): Promise<{ account: LinkedinAccount; created: boolean }> {
+  const raw = await apiCall<unknown>(`/orgs/linkedin/auth/callback`, { token, method: "POST", body: input });
+  const parsed = z.object({ account: LinkedinAccountSchema, created: z.boolean() }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] finishLinkedinConnect response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("finishLinkedinConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function updateLinkedinAccount(
+  accountId: string,
+  patch: { accountType?: z.infer<typeof XAccountTypeSchema>; profileUrl?: string },
+  token?: string,
+): Promise<LinkedinAccount> {
+  const raw = await apiCall<unknown>(`/orgs/linkedin/accounts/${encodeURIComponent(accountId)}`, { token, method: "PATCH", body: patch });
+  const parsed = z.object({ account: LinkedinAccountSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] updateLinkedinAccount response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("updateLinkedinAccount returned an unexpected shape");
+  }
+  return parsed.data.account;
+}
+
+export async function disconnectLinkedinAccount(accountId: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(`/orgs/linkedin/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
+}
+
 // ==================== POSTHOG + STRIPE + CLERK, read-only sources of Conversations ====================
 //
 // Same two-write connect as GoHighLevel: the credential goes to key-service under the
@@ -2374,6 +2453,16 @@ export async function getOfferOutcomeCostSeries(offerId: string, brandId: string
     if (err instanceof ApiError && err.status === 404 && err.body?.reason === "offer_has_no_campaigns") return null;
     throw err;
   }
+}
+
+/**
+ * Every Unit of one published outcome of a brand (Threads / X / LinkedIn posts, newsletter emails), with what each led
+ * to, the totals and $ per signup (features-service OUTCOME-FINEST-1106), net of discount. Shapes: lib/v2/published-units.ts.
+ */
+export async function getBrandPublishedUnits(brandId: string, outcomeKey: PublishedOutcomeKey): Promise<PublishedUnits> {
+  const qs = new URLSearchParams({ pricing: "net" });
+  const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/published-units/${encodeURIComponent(outcomeKey)}?${qs.toString()}`);
+  return parseStaff("getBrandPublishedUnits", PublishedUnitsSchema, raw);
 }
 
 // ─── GTM Factory shadow (features-service #2123, api-service #1406; FACTORY-P1-DASH), staff surfaces only ───
