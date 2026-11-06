@@ -32,7 +32,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { leadBucketCountsQuery, type LeadBucket } from "@/lib/leads-server-page";
 import { filtersKey, type UniboxFilters } from "@/lib/unibox-leads";
-import { getBrandCampaignTargets } from "@/lib/api";
+import { getBrandCampaignTargets, getCampaignTargetRow } from "@/lib/api";
 
 /**
  * The reads every v2 page shares. Each is about the ONE offer the sidebar's switcher
@@ -107,6 +107,12 @@ export function useOfferOutcomes(brandId: string) {
  */
 export function useCampaignTargets(brandId: string) {
   const q = useAuthQuery(["campaignTargets", brandId], () => getBrandCampaignTargets(brandId), pollOptions);
+  return { ...q, answered: q.data !== undefined || (q.isFetchedAfterMount && q.isError) };
+}
+
+/** One campaign's row with its milestone cards (campaign page), served by features-service. */
+export function useCampaignTargetRow(brandId: string, salesFunnelCampaignId: string) {
+  const q = useAuthQuery(["campaignTargets", brandId, salesFunnelCampaignId], () => getCampaignTargetRow(brandId, salesFunnelCampaignId), pollOptions);
   return { ...q, answered: q.data !== undefined || (q.isFetchedAfterMount && q.isError) };
 }
 
