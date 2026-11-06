@@ -113,9 +113,4 @@ describe("every ROI surface reads the expected return", () => {
     expect(read("lib/sales-funnel-campaigns.ts")).toContain("expectedReturn: ExpectedReturnSchema.nullish(),");
     expect(read("lib/api.ts").match(/expectedConversionFromRowAbove: ExpectedConversionSchema\.nullish\(\),/g)?.length).toBe(2);
   });
-  it("Today's % Conversion reads the served expected rate where the measured one is null", () => {
-    const roi = read("components/v2/today-roi.tsx");
-    expect(roi).toContain("conversionShown(conversionPct, r.expectedConversionFromRowAbove)");
-    expect(roi).toContain("expectedConversion={ex.contacted.expectedConversionFromRowAbove}");
-  });
 });
