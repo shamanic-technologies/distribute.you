@@ -8,6 +8,7 @@ import {
   DIMENSION_VALUES,
   UNIBOX_DIMENSIONS,
   dimensionValueLabel,
+  leadVerdictTag,
   lifecycleOptions,
   uniboxRowTag,
   uniboxValueTag,
@@ -201,6 +202,9 @@ export function UniboxLeadCardPanel({
   inline?: boolean;
 }) {
   const lead = card?.lead ?? listed;
+  // THE lead vocabulary (lead-service LEAD-GENERIC-1106): every tag below reads it, never the old fields.
+  const state = card?.leadState ?? listed?.leadState ?? null;
+  const verdict = state ? leadVerdictTag(state, "all") : null;
   return (
     <aside
       className={inline ? "pt-3" : "k-card k-scroll hidden h-fit max-h-full w-[300px] shrink-0 overflow-y-auto p-4 @6xl:block"}
@@ -209,14 +213,18 @@ export function UniboxLeadCardPanel({
       {lead ? (
         <>
           {/* Who it is lives in the thread header beside it: the card starts on the tags. */}
-          {!inline && <p className="k-label">Lead</p>}
-          <dl className={`${inline ? "" : "mt-3 "}grid grid-cols-[96px_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5`}>
+          {(!inline || verdict) && (
+            <div className="flex items-center gap-2">
+              {!inline && <p className="k-label">Lead</p>}
+              {verdict && <TagChip tag={verdict} />}
+            </div>
+          )}
+          {!state ? (
+            <EmptyNote>We could not read where this lead stands. Retrying.</EmptyNote>
+          ) : (
+          <dl className={`${inline && !verdict ? "" : "mt-3 "}grid grid-cols-[96px_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5`}>
             <Field label={DIMENSION_LABEL.status}>
-              {lead.status ? (
-                <TagChip tag={uniboxValueTag("status", lead.status, dimensionValueLabel("status", lead.status))} />
-              ) : (
-                <span className="k-fg4">—</span>
-              )}
+              <TagChip tag={uniboxValueTag("status", state.clientStatus, dimensionValueLabel("status", state.clientStatus))} />
             </Field>
             <Field label={DIMENSION_LABEL.role}>
               {lead.roles && lead.roles.length > 0 ? (
@@ -230,19 +238,23 @@ export function UniboxLeadCardPanel({
               )}
             </Field>
             <Field label={DIMENSION_LABEL.lifecycle}>
-              {lead.lifecycle ? (
-                <TagChip tag={uniboxValueTag("lifecycle", lead.lifecycle.key, lead.lifecycle.label)} />
+              {state.lifecycle ? (
+                <TagChip tag={uniboxValueTag("lifecycle", state.lifecycle.key, state.lifecycle.label)} />
               ) : (
                 <span className="k-fg3">No stage yet</span>
               )}
             </Field>
-            {(["interest", "conversation", "contactability", "fit"] as const).map((d) => (
-              <Field key={d} label={DIMENSION_LABEL[d]}>
-                <TagChip tag={uniboxValueTag(d, lead[d], dimensionValueLabel(d, lead[d]))} />
-                {d === "fit" && lead.fitNote ? <p className="k-fg2 mt-1 text-[12px] leading-[18px]">{lead.fitNote}</p> : null}
-              </Field>
-            ))}
+            {(["interest", "conversation", "contactability", "fit"] as const).map((d) => {
+              const value = d === "contactability" ? state.reachable : state[d];
+              return (
+                <Field key={d} label={DIMENSION_LABEL[d]}>
+                  <TagChip tag={uniboxValueTag(d, value, dimensionValueLabel(d, value))} />
+                  {d === "fit" && state.fitNote ? <p className="k-fg2 mt-1 text-[12px] leading-[18px]">{state.fitNote}</p> : null}
+                </Field>
+              );
+            })}
           </dl>
+          )}
           <p className="k-label mt-5">Campaigns</p>
           {card ? (
             card.campaigns.length > 0 ? (
