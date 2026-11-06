@@ -2424,6 +2424,13 @@ export async function getFunnelCampaignMilestones(brandId: string, salesFunnelCa
   return parseStaff("getFunnelCampaignMilestones", CampaignMilestonesSchema, raw);
 }
 
+/** Today: one row per ongoing campaign of the brand, on its Target (features-service campaign-targets, LEAD-GENERIC-1106). */
+export async function getBrandCampaignTargets(brandId: string): Promise<CampaignTargets> {
+  const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/campaign-targets?pricing=net`);
+  return parseStaff("getBrandCampaignTargets", CampaignTargetsSchema, raw);
+}
+import { CampaignTargetsSchema, type CampaignTargets } from "./campaign-targets";
+
 /** What a funnel campaign's people went through: per step to step, how many, and the share each script made (FACTORY-USER-DASHBOARD-1102). */
 export async function getFunnelCampaignPeopleJourneys(brandId: string, salesFunnelCampaignId: string): Promise<PeopleJourneys> {
   const raw = await apiCall<unknown>(

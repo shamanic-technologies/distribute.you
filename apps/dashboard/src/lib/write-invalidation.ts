@@ -45,6 +45,7 @@ export const LEAD_OUTCOME_ROOTS = [
   "brandOfferMoney",
   // Today's pipeline by step, its explanation and its people (features-service outcomes).
   "offerStepOutcomes",
+  "campaignTargets",
   // A lead that converts leaves the contacted population v2 Deals prices.
   "contactedValue",
   "dealsValue",
