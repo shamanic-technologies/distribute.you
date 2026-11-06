@@ -26,9 +26,11 @@ import {
   clusterAlternativesPath,
   clusterCompetitors,
   clusterOf,
+  competitorAlternativesPath,
   competitorBySlug,
   competitorLogo,
   competitorPath,
+  pricingAnsweredCompetitors,
   isAiLeadGenCluster,
   isGtmAutomationCluster,
   isColdEmailAutomationCluster,
@@ -109,10 +111,21 @@ function featureRow(label: string, ours: string, theirs: string): string {
  * actually read: that one is a fact about the data, this one is the page's freshness.
  */
 export function comparePageTitle(c: Competitor, now: Date = new Date()): string {
+  // A competitor whose pricing search brings us signups gets a title that leads with that query;
+  // its "alternatives" query has its own page (`/alternatives/<slug>`), so the two do not compete.
+  if (c.pricingAnswer) return `${c.name} pricing (${monthLabel(now)}): real cost and plans vs distribute.you`;
   return `${c.name} alternative: distribute.you vs ${c.name} pricing (${monthLabel(now)})`;
 }
 
+/** "November 6, 2026", in UTC so the date never depends on the server's zone. */
+export function dayLabel(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+}
+
 export function comparePageDescription(c: Competitor): string {
+  if (c.pricingAnswer) {
+    return `${c.name} pricing, checked ${dayLabel(c.verifiedOn)}: ${c.entryPrice}. What ${c.pricingAnswer.typicalCost.volume} really cost, the extras, and how we compare.`;
+  }
   if (isAiSdrCluster(c)) {
     return `Looking at ${c.name} alternatives? distribute.you is the AI SDR that books your meetings, free. Compare price, contract and channels.`;
   }
@@ -148,11 +161,9 @@ function ourLine(c: Competitor): string {
 export function renderComparePage(c: Competitor): string {
   const path = competitorPath(c);
   const cluster = clusterOf(c);
-  const verified = new Date(c.verifiedOn).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const verified = dayLabel(c.verifiedOn);
+  const pa = c.pricingAnswer;
+  const faq = pa ? [...c.faq, ...pa.faq] : c.faq;
 
   const table = `<table class="cmp-table">
     <thead><tr><th scope="col">What you are comparing</th><th scope="col" class="us">distribute.you</th><th scope="col">${esc(c.name)}</th></tr></thead>
@@ -180,26 +191,7 @@ export function renderComparePage(c: Competitor): string {
   </table>
   <p class="cmp-source">Read from <a href="${esc(c.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(c.sourceUrl.replace(/^https?:\/\//, ""))}</a> on ${verified}. Prices change; the link is the authority.</p>`;
 
-  const body = `<section class="hero cmp-hero">
-  <div class="hero-glow" aria-hidden="true"></div>
-  <div class="wrap hero-inner">
-    <span class="eyebrow">${esc(CATEGORY_LABEL[c.category])} · Verified ${COMPARE_VERIFIED_LABEL}</span>
-    <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${competitorLogo(c)}</span></div>
-    <h1>distribute.you <span class="accent">vs</span> ${esc(c.name)}</h1>
-    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} ${ourLine(c)}</p>
-    ${whyLine()}
-    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
-  </div>
-</section>
-
-<section class="framed tint" id="table">
-  <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Side by side</span><h2>distribute.you vs ${esc(c.name)}, row by row</h2><p>The rows a founder actually decides on. Our column is the same on every comparison page; theirs is read from their own site.</p></div>
-    <div class="cmp-table-wrap rv">${table}</div>
-  </div>
-</section>
-
-<section class="framed" id="pricing">
+  const pricingSection = `<section class="framed" id="pricing">
   <div class="wrap">
     <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(c.name)} pricing: what they charge, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. Our AI agent is free: every action is at the vendor's API price with 0% markup, and we show what each positive reply cost.</p></div>
     <div class="cmp-cols">
@@ -215,7 +207,29 @@ export function renderComparePage(c: Competitor): string {
       </div>
     </div>
   </div>
+</section>`;
+
+  const body = `<section class="hero cmp-hero">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <span class="eyebrow">${esc(CATEGORY_LABEL[c.category])} · Verified ${COMPARE_VERIFIED_LABEL}</span>
+    <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${competitorLogo(c)}</span></div>
+    <h1>distribute.you <span class="accent">vs</span> ${esc(c.name)}</h1>
+    ${pa ? `<p class="hero-sub cmp-answer"><b>${esc(c.name)} pricing, checked ${esc(verified)}.</b> ${esc(pa.answer)}</p>` : ""}
+    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} ${ourLine(c)}</p>
+    ${whyLine()}
+    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="${pa ? "#pricing" : "#table"}">${pa ? `See ${esc(c.name)}'s prices` : "See the table"}</a></div>
+  </div>
 </section>
+${pa ? `${pricingSection}\n${realCostSection(c, pa, verified)}` : ""}
+<section class="framed tint" id="table">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Side by side</span><h2>distribute.you vs ${esc(c.name)}, row by row</h2><p>The rows a founder actually decides on. Our column is the same on every comparison page; theirs is read from their own site.</p></div>
+    <div class="cmp-table-wrap rv">${table}</div>
+  </div>
+</section>
+
+${pa ? "" : pricingSection}
 
 <section class="framed" id="wins">
   <div class="wrap">
@@ -242,8 +256,8 @@ ${liveBand()}
 <section class="framed" id="faq">
   <div class="wrap">
     <div class="section-head center rv"><h2>Questions people ask about ${esc(c.name)} and distribute.you</h2></div>
-    <div class="faq-list rv">${faqList(c.faq)}</div>
-    <p class="cmp-more rv">More comparisons: ${COMPETITORS.filter((o) => o.slug !== c.slug)
+    <div class="faq-list rv">${faqList(faq)}</div>
+    <p class="cmp-more rv">${pa ? `<a href="${competitorAlternativesPath(c)}">${esc(c.name)} alternatives</a> · ` : ""}More comparisons: ${COMPETITORS.filter((o) => o.slug !== c.slug)
       .map((o) => `<a href="${competitorPath(o)}">distribute.you vs ${esc(o.name)}</a>`)
       .join(" · ")} · ${cluster ? `<a href="${clusterAlternativesPath(cluster)}">${esc(cluster.name)} alternatives</a> · <a href="/compare">every comparison</a> · ` : ""}<a href="/alternatives">all alternatives</a></p>
   </div>
@@ -266,9 +280,29 @@ ${liveBand()}
               { name: `distribute.you vs ${c.name}`, path },
             ],
       ),
-      faqJsonLd(c.faq),
+      faqJsonLd(faq),
     ],
   });
+}
+
+/** What a typical volume really costs, the extras, who it fits: the body of a "<name> pricing" answer. */
+function realCostSection(c: Competitor, pa: NonNullable<Competitor["pricingAnswer"]>, verified: string): string {
+  const notice = pa.notice
+    ? `<p class="cmp-source"><b>Before you pay:</b> ${esc(pa.notice.text)} <a href="${esc(pa.notice.sourceUrl)}" rel="nofollow noopener" target="_blank">Read it on ${esc(c.domain)}</a>, checked ${esc(dayLabel(pa.notice.readOn))}.</p>`
+    : "";
+  const clash = pa.nameClash ? `<p class="cmp-source">${esc(pa.nameClash)}</p>` : "";
+  return `<section class="framed tint" id="real-cost">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Real cost</span><h2>What ${esc(pa.typicalCost.volume)} cost on ${esc(c.name)}: ${esc(pa.typicalCost.cost)}</h2><p>${esc(pa.typicalCost.how)}</p></div>
+    ${notice}
+    <div class="fit">
+      <div class="fit-card no rv"><h3>What the headline price leaves out</h3>${bullets(pa.hiddenCosts, "no")}</div>
+      <div class="fit-card yes rv"><h3>Who ${esc(c.name)}'s pricing suits</h3>${bullets(pa.fitsWho, "yes")}</div>
+    </div>
+    <p class="cmp-source">Worked out from the prices on <a href="${esc(c.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(c.sourceUrl.replace(/^https?:\/\//, ""))}</a>, checked ${esc(verified)}. Weighing a switch? See the <a href="${competitorAlternativesPath(c)}">${esc(c.name)} alternatives</a>, prices side by side.</p>
+    ${clash}
+  </div>
+</section>`;
 }
 
 function categoryGroups(): { category: Category; items: Competitor[] }[] {
@@ -297,6 +331,25 @@ function competitorCard(c: Competitor, verb: "vs" | "alternative"): string {
   </a>`;
 }
 
+/** The "<name> pricing" and "<name> alternatives" pages, linked in raw HTML from both hubs. */
+function pricingAnswerLinks(): string {
+  const list = pricingAnsweredCompetitors();
+  if (!list.length) return "";
+  return `<section class="framed" id="pricing-pages">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Most searched</span><h2>Pricing and alternatives, checked this month</h2><p>The tools people ask us about most: what each really costs, and what to use instead.</p></div>
+    <div class="cmp-grid">${list
+      .map(
+        (c) => `<div class="cmp-card rv">
+    <div class="cmp-card-top">${competitorLogo(c, 32)}<div><b>${esc(c.name)}</b><small>${esc(c.entryPrice)}</small></div></div>
+    <p><a href="${competitorPath(c)}">${esc(c.name)} pricing</a> · <a href="${competitorAlternativesPath(c)}">${esc(c.name)} alternatives</a></p>
+  </div>`,
+      )
+      .join("")}</div>
+  </div>
+</section>`;
+}
+
 export function renderCompareHub(): string {
   const groups = categoryGroups()
     .map(
@@ -312,6 +365,7 @@ export function renderCompareHub(): string {
     ${whyLine()}
   </div>
 </section>
+${pricingAnswerLinks()}
 <section class="framed tint">
   <div class="wrap cmp-hub">${groups}</div>
 </section>
@@ -347,6 +401,7 @@ export function renderAlternativesPage(): string {
     <div class="cmp-hub">${groups}</div>
   </div>
 </section>
+${pricingAnswerLinks()}
 ${liveBand()}`;
   return shell({
     title: `Alternatives to ${COMPETITORS.slice(0, 4).map((c) => c.name).join(", ")} and ${COMPETITORS.length - 4} more (${monthLabel(new Date())})`,
@@ -354,6 +409,117 @@ ${liveBand()}`;
     path: "/alternatives",
     body,
     jsonLd: [breadcrumb([{ name: "Alternatives", path: "/alternatives" }])],
+  });
+}
+
+/** The FAQ of `/alternatives/<slug>`, built from the catalogue so no price is typed twice. */
+export function competitorAlternativesFaq(c: Competitor): { q: string; a: string }[] {
+  const pa = c.pricingAnswer!;
+  const alts = pa.alternatives.map((slug) => competitorBySlug(slug)).filter((o): o is Competitor => !!o);
+  const published = alts.filter((o) => o.entryPrice !== "On request");
+  const onRequest = alts.filter((o) => o.entryPrice === "On request");
+  return [
+    {
+      q: `What is the best ${c.name} alternative?`,
+      a: "distribute.you, if you want the outreach run for you: our AI agent finds your buyers, writes from domains we own, answers the replies and books the meeting. It is free, and every action is at the vendor's API price with 0% markup.",
+    },
+    { q: `How much does ${c.name} cost?`, a: pa.answer },
+    {
+      q: `Which ${c.name} alternatives publish their price?`,
+      a: `${published.map((o) => `${o.name} (${o.entryPrice})`).join(", ")}${onRequest.length ? `. ${onRequest.map((o) => o.name).join(" and ")} ask for a demo first` : ""}. distribute.you prints every action's price on its catalog.`,
+    },
+  ];
+}
+
+/** `/alternatives/<slug>`: the "<name> alternatives" answer, every price read from each tool's own site. */
+export function renderCompetitorAlternativesPage(c: Competitor): string {
+  const pa = c.pricingAnswer!;
+  const path = competitorAlternativesPath(c);
+  const alts = pa.alternatives.map((slug) => competitorBySlug(slug)).filter((o): o is Competitor => !!o);
+  const verified = dayLabel(c.verifiedOn);
+  const faq = competitorAlternativesFaq(c);
+  const runBy = (o: Competitor) => (o.operatedBy === "you" ? "You, in their software" : o.operatedBy === "their AI agent" ? "Their AI agent, steered by you" : "Their team");
+  const row = (o: Competitor) =>
+    `<tr><th scope="row"><a href="${competitorPath(o)}">${esc(o.name)}</a></th><td>${esc(o.entryPrice)}</td><td>${esc(o.pricingModel)}</td><td>${esc(runBy(o))}</td><td><a href="${esc(o.sourceUrl)}" rel="nofollow noopener" target="_blank">${esc(o.domain)}</a>, ${esc(dayLabel(o.verifiedOn))}</td></tr>`;
+  const table = `<table class="cmp-table cmp-alt-table">
+    <thead><tr><th scope="col">Tool</th><th scope="col">Entry price</th><th scope="col">Pricing model</th><th scope="col">Who runs it</th><th scope="col">Price read on</th></tr></thead>
+    <tbody>
+      <tr class="us-row"><th scope="row"><a href="/">distribute.you</a></th><td class="us">${esc(DISTRIBUTE_ROW.entryPrice)}</td><td class="us">${esc(DISTRIBUTE_ROW.pricingModel)}</td><td class="us">${esc(DISTRIBUTE_ROW.operatedBy)}</td><td class="us"><a href="/catalog">Our catalog</a></td></tr>
+      ${row(c)}
+      ${alts.map((o) => row(o)).join("\n      ")}
+    </tbody>
+  </table>`;
+  const names = ["distribute.you", ...alts.map((o) => o.name)];
+  const notice = pa.notice
+    ? `<p class="hero-sub cmp-answer"><b>Before you pay:</b> ${esc(pa.notice.text)} <a href="${esc(pa.notice.sourceUrl)}" rel="nofollow noopener" target="_blank">Read it on ${esc(c.domain)}</a>.</p>`
+    : "";
+  const body = `<section class="hero cmp-hero">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <span class="eyebrow">${esc(c.name)} alternatives · Checked ${esc(verified)}</span>
+    <h1>${esc(c.name)} alternatives, <span class="accent">compared on price</span></h1>
+    <p class="hero-sub cmp-answer"><b>The ${names.length} best ${esc(c.name)} alternatives:</b> ${esc(names.join(", "))}. ${esc(c.name)}&#39;s entry price is ${esc(c.entryPrice)}. Below, what each alternative charges, read from its own site.</p>
+    ${notice}
+    ${pa.nameClash ? `<p class="hero-sub">${esc(pa.nameClash)}</p>` : ""}
+    ${whyLine()}
+    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="${competitorPath(c)}">${esc(c.name)} pricing</a></div>
+  </div>
+</section>
+<section class="framed tint" id="table">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Side by side</span><h2>${esc(c.name)} and ${alts.length + 1} alternatives, price by price</h2><p>Ours is first, then ${esc(c.name)}. Each row links the page its price was read on, with the date.</p></div>
+    <div class="cmp-table-wrap rv">${table}</div>
+    <p class="cmp-source">Prices change; each link is the authority.</p>
+  </div>
+</section>
+<section class="framed" id="why">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Why switch</span><h2>Why people look for a ${esc(c.name)} alternative</h2></div>
+    <div class="fit">
+      <div class="fit-card no rv"><h3>What they tell us</h3>${bullets(pa.whyLeave, "no")}</div>
+      <div class="fit-card yes rv"><h3>Choose distribute.you if</h3>${bullets(c.chooseUsIf, "yes")}</div>
+    </div>
+  </div>
+</section>
+<section class="framed">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">One page each</span><h2>Compare each alternative with distribute.you</h2></div>
+    <div class="cmp-grid">${[c, ...alts].map((o) => competitorCard(o, "vs")).join("")}</div>
+  </div>
+</section>
+${liveBand()}
+<section class="framed" id="faq">
+  <div class="wrap">
+    <div class="section-head center rv"><h2>Questions about ${esc(c.name)} alternatives</h2></div>
+    <div class="faq-list rv">${faqList(faq)}</div>
+    <p class="cmp-more rv">More: <a href="${competitorPath(c)}">distribute.you vs ${esc(c.name)}</a> · ${pricingAnsweredCompetitors()
+      .filter((o) => o.slug !== c.slug)
+      .map((o) => `<a href="${competitorAlternativesPath(o)}">${esc(o.name)} alternatives</a>`)
+      .join(" · ")} · <a href="/compare">every comparison</a> · <a href="/alternatives">all alternatives</a></p>
+  </div>
+</section>`;
+  return shell({
+    title: `${c.name} alternatives (${monthLabel(new Date())}): ${alts.length + 1} tools compared on price`,
+    description: `The best ${c.name} alternatives, checked ${verified}: ${names.slice(0, 4).join(", ")} and more, each price read from its own site.`,
+    path,
+    body,
+    jsonLd: [
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: `${c.name} alternatives`,
+        url: `${SITE}${path}`,
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "distribute.you", url: `${SITE}/` },
+          ...alts.map((o, i) => ({ "@type": "ListItem", position: i + 2, name: o.name, url: `${SITE}${competitorPath(o)}` })),
+        ],
+      },
+      faqJsonLd(faq),
+      breadcrumb([
+        { name: "Alternatives", path: "/alternatives" },
+        { name: `${c.name} alternatives`, path },
+      ]),
+    ],
   });
 }
 
