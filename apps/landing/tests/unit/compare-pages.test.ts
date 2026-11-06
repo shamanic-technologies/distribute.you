@@ -33,10 +33,10 @@ const prose = (html: string) =>
   html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
 
 describe("the competitor catalogue", () => {
-  it("names the competitors the owner picked, the clones and the 2026-10-16 search-demand set, and not Amplemarket", () => {
+  it("names the competitors the owner picked, the clones, the 2026-10-16 search-demand set and the 2026-11-06 pricing searches, and not Amplemarket", () => {
     expect(COMPETITORS.map((c) => c.slug).sort()).toEqual(
       [
-        "11x", "aisdr", "apollo", "artisan", "chili-piper", "clay", "common-room", "default", "explee", "frontrunner", "gojiberry", "heyreach", "hunter", "instantly", "leadrebel", "lemlist", "lusha", "mailshake", "outreach", "parcellab", "postbeyond", "qualified", "rb2b", "reply-io", "salesforge", "saleshandy", "salesloft", "seamless-ai", "smartlead", "snov-io", "unify", "waalaxy", "warmly", "woodpecker", "zoominfo",
+        "11x", "aisdr", "apollo", "artisan", "chili-piper", "clay", "common-room", "default", "explee", "frontrunner", "gojiberry", "heyreach", "hunter", "instantly", "leadrebel", "lemlist", "lusha", "mailshake", "outreach", "parcellab", "persana", "postbeyond", "qualified", "rb2b", "reply-io", "salesforge", "saleshandy", "salesloft", "seamless-ai", "smartlead", "snov-io", "topo", "unify", "waalaxy", "warmly", "woodpecker", "zoominfo",
       ],
     );
     expect(COMPETITORS.some((c) => /amplemarket/i.test(c.name))).toBe(false);
@@ -46,7 +46,7 @@ describe("the competitor catalogue", () => {
     for (const c of COMPETITORS) {
       expect(c.sourceUrl, c.slug).toMatch(/^https:\/\//);
       expect(new URL(c.sourceUrl).hostname.replace(/^www\./, ""), c.slug).toBe(c.domain);
-      expect(c.verifiedOn, c.slug).toMatch(/^2026-(09|10)-\d\d$/);
+      expect(c.verifiedOn, c.slug).toMatch(/^2026-(09|10|11)-\d\d$/);
       expect(c.prices.length, c.slug).toBeGreaterThan(0);
       for (const p of c.prices) expect(p.price, `${c.slug} ${p.plan}`).toMatch(/\$|€|On request/);
     }
@@ -137,7 +137,7 @@ describe("a comparison page", () => {
         expect(types).toContain("FAQPage");
         expect(types).toContain("BreadcrumbList");
         const faq = blocks.find((b) => b["@type"] === "FAQPage");
-        expect(faq.mainEntity).toHaveLength(3);
+        expect(faq.mainEntity).toHaveLength(3 + (c.pricingAnswer?.faq.length ?? 0));
       });
 
       it("links the whole cluster in raw HTML, so a crawler sees the graph", () => {
@@ -268,7 +268,10 @@ describe("the month a compare title shows", () => {
     );
     expect(comparePageTitle(artisan, new Date("2027-01-15T09:00:00Z"))).toContain("(January 2027)");
     const thisMonth = monthLabel(new Date());
-    for (const c of COMPETITORS) expect(renderComparePage(c), c.slug).toContain(`pricing (${thisMonth})</title>`);
+    for (const c of COMPETITORS) {
+      if (c.pricingAnswer) expect(renderComparePage(c), c.slug).toContain(`<title>${c.name} pricing (${thisMonth}):`);
+      else expect(renderComparePage(c), c.slug).toContain(`pricing (${thisMonth})</title>`);
+    }
     expect(renderCompareHub()).toContain(`AI SDRs (${thisMonth})</title>`);
     expect(renderAlternativesPage()).toContain(`more (${thisMonth})</title>`);
   });
