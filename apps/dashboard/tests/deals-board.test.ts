@@ -18,20 +18,23 @@ describe("Deals board columns = the served lifecycle ladder (owner 2026-10-21)",
   });
 });
 
-describe("a card's chips", () => {
-  const base = { interest: "not_asked", fit: "fit", contactability: "contactable" };
-  it("the default shows nothing", () => {
-    expect(dealCardChips(base)).toEqual([]);
+describe("a card's chip = lead-service's verdict (LEAD-GENERIC-1106)", () => {
+  const open = {
+    lifecycle: null, won: false, hot: false, lost: null, reachable: "contactable", conversation: "no_reply_yet",
+    fit: "fit", fitNote: null, interest: "not_asked", clientStatus: "prospect", nextFollowupAt: null, nextFollowupBasis: null,
+  };
+  it("an open lead shows nothing", () => {
+    expect(dealCardChips({ leadState: open })).toEqual([]);
   });
-  it("Interested, Not our target and Unsubscribed each show, in their served words", () => {
-    expect(dealCardChips({ interest: "interested", fit: "not_our_target", contactability: "unsubscribed" }).map((t) => t.label)).toEqual([
-      "Interested",
-      "Not our target",
-      "Unsubscribed",
-    ]);
+  it("Won, Hot and Lost read as served, Lost with its reason", () => {
+    expect(dealCardChips({ leadState: { ...open, won: true } }).map((t) => t.label)).toEqual(["Won"]);
+    expect(dealCardChips({ leadState: { ...open, hot: true } }).map((t) => t.label)).toEqual(["Hot"]);
+    expect(
+      dealCardChips({ leadState: { ...open, lost: { reasons: ["not_reachable"], reachable: "unsubscribed", fit: null } } }).map((t) => t.label),
+    ).toEqual(["Lost · Unsubscribed"]);
   });
-  it("Unsure is not a chip", () => {
-    expect(dealCardChips({ ...base, interest: "unsure" })).toEqual([]);
+  it("no served state shows nothing, never a chip derived from the old fields", () => {
+    expect(dealCardChips({ leadState: undefined })).toEqual([]);
   });
 });
 

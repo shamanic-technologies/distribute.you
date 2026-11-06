@@ -394,6 +394,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Who wrote each message we sent to a person (model + tactic lines): small, read on open.
   "leadWrittenBy",
   "leadDetail",
+  // Where one lead stands (lead-service leadState: Won / Hot / Lost, lifecycle): small, the person page paints it from disk.
+  "leadUniboxState",
   // When we may email one lead (instantly-service): small and stable, so the person
   // page paints it from disk.
   "leadSendingSchedule",

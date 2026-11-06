@@ -43,7 +43,7 @@ import { OfferOutcomeCostSeriesSchema, type OfferOutcomeCostSeries } from "./v2/
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
-import { UniboxLeadCardSchema, UniboxLifecycleCountsSchema, UniboxPageSchema, uniboxCardQuery, uniboxCountsQuery, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxLifecycleCounts, type UniboxPage, type UniboxScope, type UniboxSort } from "./unibox-leads";
+import { UniboxLeadCardSchema, UniboxLeadStateSchema, UniboxLifecycleCountsSchema, UniboxPageSchema, uniboxCardQuery, uniboxCountsQuery, uniboxQuery, type LeadState, type UniboxFilters, type UniboxLeadCard, type UniboxLifecycleCounts, type UniboxPage, type UniboxScope, type UniboxSort } from "./unibox-leads";
 import { CompanyLifecycleSchema, DealsLifecycleSchema, companyLifecycleQuery, dealsLifecycleQuery, type CompanyLifecycle, type DealsLifecycle } from "./deals-board";
 import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-schedule";
 import {
@@ -137,10 +137,8 @@ import {
 } from "./monitoring/sending";
 import {
   LeadBucketCountsSchema,
-  LeadStandingCountsSchema,
   LeadsPageEnvelopeSchema,
   type LeadBucketCounts,
-  type LeadStandingCounts,
 } from "./leads-server-page";
 import type { PublishedChannelTerms } from "./channel-minimums";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
@@ -153,7 +151,6 @@ import type {
   WorkflowRevenueGroup,
   FleetRead,
 } from "./campaign-workflow-rows";
-import type { LeadStanding } from "./lead-standing";
 import type { LeadConversation } from "./lead-conversation";
 import { ScopeMaturitySchema, parseFeatureRevenue } from "./revenue-parse";
 import { maturityPairSchema, type MaturityPair } from "./maturity";
@@ -6552,7 +6549,6 @@ const OfferPipelineSchema = z.object({
       valuePerOutcomeUsd: z.coerce.number().nullable(),
       valueExplanation: StepValueExplanationSchema.nullable(),
       conversionFromPrevious: StepConversionSchema.nullable(),
-      wentCold: z.object({ count: z.coerce.number(), valueUsd: z.coerce.number().nullable() }).nullable(),
       // Conversion measured on the people WE brought, beside the priced People count (#1404).
       pricedConversionFromPrevious: StepConversionSchema.nullish(),
       // Who stands on the step, three disjoint groups (#1404): ours alive, ours lost, not ours.
@@ -6593,7 +6589,6 @@ const OfferPipelineSchema = z.object({
     .object({
       count: z.coerce.number(),
       valueUsd: z.coerce.number().nullable(),
-      wentColdCount: z.coerce.number(),
       ruledOutCount: z.coerce.number(),
       leads: z.array(
         PipelineLeadSchema.extend({
@@ -6664,65 +6659,6 @@ export async function getContactedValue(brandId: string, leadIds: string[]): Pro
   if (!parsed.success) {
     console.error("[getContactedValue] response shape mismatch", parsed.error.issues, raw);
     throw new Error("getContactedValue: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/**
- * What each Deals-board column holds — features-service `GET /brands/:brandId/deals-value`.
- * A SEPARATE figure (in no pipeline, ROI or cost total). A column is lead-service's standing;
- * Interested is priced at each person's expected value, Won at the stated sale else the
- * brand's client value, company-deduped for the column total. `valueUsd: null` always comes
- * with the producer's `unvaluedReason`, never a zero. Vocabularies are read as plain strings:
- * the producer owns them and may widen them.
- */
-const DealsValueSchema = z.object({
-  brandId: z.string(),
-  lifetimeRevenueUsd: z.number().nullable(),
-  columns: z.array(
-    z.object({
-      standing: z.string(),
-      valueUsd: z.number().nullable(),
-      unvaluedReason: z.string().nullable(),
-      basis: z.string().nullable(),
-      leadCount: z.number().nullable(),
-      organizationCount: z.number().nullable(),
-      unpricedLeadCount: z.number().nullable(),
-      leads: z.array(
-        z.object({
-          leadId: z.string(),
-          valueUsd: z.number().nullable(),
-          valueSource: z.string().nullable().optional(),
-          zeroValueReason: z.string().nullable().optional(),
-        }),
-      ),
-    }),
-  ),
-});
-export type DealsValue = z.infer<typeof DealsValueSchema>;
-
-export async function getDealsValue(brandId: string): Promise<DealsValue> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/deals-value`);
-  const parsed = DealsValueSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[getDealsValue] response shape mismatch", parsed.error.issues, raw);
-    throw new Error("getDealsValue: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/**
- * The SAME columns for ONE offer — features-service `GET /offers/:offerId/deals-value`
- * (#1264): the brand body plus `offerId`, over the leads served on the offer's campaigns.
- * People do not add across offers (a lead served under two counts on both boards).
- */
-export async function getOfferDealsValue(offerId: string, brandId: string): Promise<DealsValue> {
-  const query = new URLSearchParams({ brandId, pricing: "net" });
-  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/deals-value?${query.toString()}`);
-  const parsed = DealsValueSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[getOfferDealsValue] response shape mismatch", parsed.error.issues, raw);
-    throw new Error("getOfferDealsValue: invalid response shape");
   }
   return parsed.data;
 }
@@ -8171,22 +8107,6 @@ export interface Lead {
    */
   sources?: LeadSource[];
   /**
-   * WHERE THIS PERSON STANDS on the campaign they were served under, decided by
-   * lead-service (v0.64.0) and by nobody else.
-   *
-   * The leads board renders `standing.state` instead of deriving one from the reply
-   * signals below. Those signals stay on the wire and stay read — they are what the
-   * table's status badge and the lead panel's timeline are about — but "is this
-   * person still a live prospect" is commercial policy, it is leg-aware, and it
-   * has ONE owner now. See `lib/lead-standing.ts` for why.
-   *
-   * OPTIONAL, and only that: a payload written before v0.64.0 carries none, which in
-   * practice is a snapshot restored from the local-first cache for the second before
-   * the poll lands. Its FIELDS are required-and-nullable, so they are `T | null` and
-   * never `.optional()` — the producer means to send those nulls.
-   */
-  standing?: LeadStanding | null;
-  /**
    * The CLOSED DEAL on this row, or null when nobody has stated one (lead-service
    * v0.76.0, on every scope of both list paths).
    *
@@ -8266,7 +8186,6 @@ export interface LeadCampaignEvidence {
    */
   audienceId: string | null;
   offer: { id: string; name: string | null } | null;
-  standing: LeadStanding;
   /** Null = the provider reports no evidence for this campaign. Not "nothing happened". */
   delivery: LeadCampaignDelivery | null;
 }
@@ -8391,24 +8310,6 @@ const LeadDeliverySchema = z
     bounced: z.boolean(),
     unsubscribed: z.boolean(),
     replied: z.boolean(),
-    // The two fields the BOARD dereferences, validated for the same reason the
-    // booleans above are: a 200 whose standing is the wrong shape must fail loudly
-    // rather than place every card in "Not placed".
-    //
-    // `z.string()`, never `z.enum`: lead-service owns this vocabulary and can widen it
-    // before this app ships, and closing the set here would turn a state it ADDS into
-    // a thrown parse — which reveal-on-settle paints as headings with nothing under
-    // them. `leadBoardColumnFor` renders a word it does not know as "we cannot place
-    // this", which is the honest read and costs nobody the page.
-    //
-    // `.optional()` on the OBJECT (a payload written before lead-service v0.64.0
-    // carries none) but never on its fields, which the producer marks required — most
-    // of them nullable, so `.nullable()` is what those need, and they ride the
-    // passthrough rather than being restated.
-    standing: z
-      .object({ state: z.string(), signal: z.string() })
-      .passthrough()
-      .nullish(),
     // Declared rather than left to the envelope's passthrough: the Close won column
     // renders off it, and a field nothing validates is one nobody notices going away.
     // `.nullish()` because the object is the producer's required-and-NULLABLE (null is
@@ -8688,37 +8589,6 @@ export async function getConversationCounts(campaignId: string, token?: string):
 }
 
 /**
- * Every STANDING's population for a scope, without a single lead row.
- *
- * This is what lets the board's columns state their true size. A standing is a
- * partition — one per lead — so a column holding two of them adds two served numbers
- * (`boardColumnTotals`) rather than counting whatever rows a page happened to return,
- * which is what made the whole screen describe three different populations.
- *
- * Same scope and same search as the list, so a column's stated size and what the column
- * shows cannot disagree.
- */
-export async function getLeadStandingCounts(
-  scope: LeadScope,
-  query: Record<string, string>,
-  token?: string,
-): Promise<LeadStandingCounts> {
-  const raw = await apiCall<unknown>(
-    `/leads/standing-counts?${leadQueryString(scope, query)}`,
-    { token },
-  );
-  const parsed = LeadStandingCountsSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getLeadStandingCounts: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getLeadStandingCounts: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/**
  * Everything that happened to ONE person, in order, in one place.
  *
  * lead-service assembles it (`GET /orgs/leads/{id}/history`, sales-lead-service #508):
@@ -8871,6 +8741,28 @@ export async function getUniboxLead(brandId: string, id: string, token?: string)
     throw new Error("[dashboard] getUniboxLead: invalid response shape");
   }
   return parsed.data;
+}
+
+/**
+ * Where ONE lead stands at the brand (lead-service `GET /orgs/leads/unibox-state?leadId=&brandId=`,
+ * LEAD-GENERIC-1106, through the gateway's `/v1/leads/:id` passthrough): its `leadState`, the one lead
+ * vocabulary (Won / Hot / Lost and why, lifecycle, reachable, fit, interest). Null = this person is
+ * not in the brand's Unibox (404 `not_in_unibox`): no state to show, never a guessed one.
+ */
+export async function getLeadUniboxState(leadId: string, brandId: string): Promise<LeadState | null> {
+  const qs = new URLSearchParams({ leadId, brandId });
+  try {
+    const raw = await apiCall<unknown>(`/leads/unibox-state?${qs.toString()}`);
+    const parsed = UniboxLeadStateSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error("[dashboard] getLeadUniboxState: response shape mismatch", { leadId, issues: parsed.error.issues });
+      throw new Error("[dashboard] getLeadUniboxState: invalid response shape");
+    }
+    return parsed.data.leadState;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && err.body?.code === "not_in_unibox") return null;
+    throw err;
+  }
 }
 
 /**

@@ -50,7 +50,7 @@ function ConversionCell({ c }: { c: { pct: number | null; expected: boolean } })
 export function EarnedStrip({ pipeline, answered }: { pipeline: OfferPipeline | null; answered: boolean }) {
   const won = pipeline?.customersWon ?? null;
   const hot = pipeline?.hotLeads ?? null;
-  // Lost = went cold or ruled out (owner 2026-10-08, one verdict with the lead families).
+  // Lost = stalled or ruled out (owner 2026-10-08, one verdict with the lead families).
   const cold = pipeline?.lostLeads ?? null;
   const coldApplies = pipeline?.coldRule?.applies ?? null;
   const cell = (label: string, figure: React.ReactNode, note: React.ReactNode) => (
@@ -276,7 +276,7 @@ function SliceLine({ r, onOpen }: { r: ExclusiveRow; onOpen: () => void }) {
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.pricedPeople != null ? formatCount(r.pricedPeople) : dash}</td>
       {/* Of the row's people, the hot leads (features-service, per row). */}
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.hot ? formatCount(r.hot.count) : dash}</td>
-      {/* Of the row's people, those who went cold or were ruled out (features-service, per row). */}
+      {/* Of the row's people, those who stalled or were ruled out (features-service, per row). */}
       <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{r.people ? formatCount(r.people.lost.count) : dash}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3"><ConversionCell c={conversion} /></td>
       <td className="px-2 py-2 pr-4 text-right tabular-nums sm:px-3">{r.valuePerOutcomeUsd != null ? formatUsdAdaptive(r.valuePerOutcomeUsd) : dash}</td>
@@ -410,7 +410,7 @@ export function HotLeads({
 }
 
 /**
- * Leads that showed interest and went cold (lead-service's rule, CRM brands only), priced
+ * Leads that showed interest and then stalled (lead-service's rule, CRM brands only), priced
  * as the pipeline prices them now (owner 2026-10-08: "back to base conversion rate").
  */
 export function LostLeads({
@@ -436,9 +436,9 @@ export function LostLeads({
         ) : applies === false && !cold?.count ? (
           <EmptyNote>Connect your CRM and we spot the meetings that never happened.</EmptyNote>
         ) : !cold ? (
-          <EmptyNote>Could not read who went cold. Retrying.</EmptyNote>
+          <EmptyNote>Could not read the lost leads. Retrying.</EmptyNote>
         ) : cold.leads.length === 0 ? (
-          <EmptyNote>Nobody went cold. A meeting that never happens lands here.</EmptyNote>
+          <EmptyNote>No lost leads. A meeting that never happens lands here.</EmptyNote>
         ) : (
           <>
             <table className="w-full table-fixed text-[13px]">

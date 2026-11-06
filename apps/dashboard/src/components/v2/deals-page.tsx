@@ -9,9 +9,8 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
-import { LEAD_BOARD_PAGE_SIZE } from "@/lib/lead-board";
 import { filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxValueTone, type LifecycleRung, type UniboxDimension, type UniboxFilters, type UniboxRow } from "@/lib/unibox-leads";
-import { DEALS_FILTER_DIMENSIONS, dealCardChips, dealsBoardRungs, servedRungValues, type ServedRungValue } from "@/lib/deals-board";
+import { DEALS_FILTER_DIMENSIONS, DEALS_PAGE_SIZE, dealCardChips, dealsBoardRungs, servedRungValues, type ServedRungValue } from "@/lib/deals-board";
 import { useLeadCampaigns } from "@/components/v2/lead-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
@@ -29,7 +28,8 @@ const MAX_ROWS = 200;
  * one column per served rung (Contacted, Engaged, Signed up, Meeting booked, Meeting attended,
  * Paid client), each person on the highest rung they reached. Column sizes are lead-service's
  * per-rung counts, a column's cards its Unibox page filtered on that rung, values features-service's
- * deals value per rung. Interest, fit and reachability are chips and filters, never columns. A card
+ * deals value per rung. A card's chip is lead-service's verdict (Won / Hot / Lost and why); interest,
+ * fit and reachability are filters, never columns. A card
  * opens the person in the Unibox (thread + lead card).
  */
 export function DealsPage() {
@@ -52,9 +52,8 @@ export function DealsPage() {
   );
   const served = useMemo(() => servedRungValues(dealsValue.data), [dealsValue.data]);
   const pipeline = dealsValue.data?.expectedPipelineUsd ?? null;
-  const contacted = count("contacted");
-  const engaged = count("engaged");
-  const paid = count("paid_client");
+  // Hot / Won / Lost: lead-service's verdict counts (LEAD-GENERIC-1106), never a rung key read here.
+  const verdicts = counts.data?.byVerdict ?? null;
   return (
     <>
       <TopBar crumbs={[{ label: "Records" }, { label: "Deals" }]} />
@@ -64,12 +63,12 @@ export function DealsPage() {
             {pipeline != null ? `${formatUsdAdaptive(pipeline)} pipeline forecast` : "Deals"}
           </h1>
           <p className="k-fg2 mt-1 text-[14px]">
-            {contacted != null && engaged != null && paid != null ? (
+            {verdicts ? (
               <>
-                <span className="k-fg font-medium tabular-nums">{formatCount(contacted)}</span> contacted,{" "}
-                <span className="k-fg font-medium tabular-nums">{formatCount(engaged)}</span> engaged.{" "}
-                <span className="inline-block h-2 w-2 rounded-[2px] align-middle" style={{ background: TONE_COLOR[uniboxValueTone("lifecycle", "paid_client")] }} />{" "}
-                <span className="k-fg font-medium tabular-nums">{formatCount(paid)}</span> {paid === 1 ? "paid client" : "paid clients"}.
+                <span className="k-fg font-medium tabular-nums">{formatCount(verdicts.hot)}</span> hot,{" "}
+                <span className="inline-block h-2 w-2 rounded-[2px] align-middle" style={{ background: TONE_COLOR.won }} />{" "}
+                <span className="k-fg font-medium tabular-nums">{formatCount(verdicts.won)}</span> won,{" "}
+                <span className="k-fg font-medium tabular-nums">{formatCount(verdicts.lost)}</span> lost.
               </>
             ) : (
               " "
@@ -154,7 +153,7 @@ function DealColumn({
   share: number;
   served: ServedRungValue | null;
 }) {
-  const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
+  const [shown, setShown] = useState(DEALS_PAGE_SIZE);
   const limit = Math.min(shown, MAX_ROWS);
   const q = useAuthQuery(
     ["dealsLifecycleRows", brandId, offerId ?? "", campaignId ?? "", filtersKey(filters), rung.key, limit],
@@ -199,7 +198,7 @@ function DealColumn({
         )}
         {rows && total != null && rows.length < total ? (
           shown < MAX_ROWS ? (
-            <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + LEAD_BOARD_PAGE_SIZE)}>
+            <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + DEALS_PAGE_SIZE)}>
               Show more
             </button>
           ) : (
