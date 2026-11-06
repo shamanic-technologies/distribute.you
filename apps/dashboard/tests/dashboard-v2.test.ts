@@ -188,7 +188,6 @@ describe("v2 wiring", () => {
     const data = read("src/components/v2/data.ts");
     expect(data).toContain('["brandRevenue", brandId, "offer", offerId]');
     expect(data).toContain('["leadBucketCounts", lead.key, ""]');
-    expect(data).toContain('["leadStandingCounts", lead.key, ""]');
     expect(data).toContain("key: brandLeadScopeKey(brandId, offerId)");
     expect(read("src/components/v2/use-campaigns.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
   });
@@ -242,13 +241,6 @@ describe("v2 wiring", () => {
 describe("v2 step 3: honest counts, green running, modals outside the bar", () => {
   const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
 
-  it("Deals' replied count is the positive-reply bucket inside the sales-interest standing", () => {
-    const data = read("src/components/v2/data.ts");
-    const body = data.slice(data.indexOf("export function useInterestedReplies"), data.indexOf("export function useLatestInBucket"));
-    expect(body).toContain('bucket: "positive_reply"');
-    expect(body).toContain('standing: "sales_interest"');
-  });
-
   it("no surface counts the sales_interest standing as people who want to talk", () => {
     for (const f of ["today-page.tsx", "v2-shell.tsx"]) {
       const src = read(`src/components/v2/${f}`);
@@ -274,12 +266,13 @@ describe("v2 step 3: honest counts, green running, modals outside the bar", () =
   });
 });
 
-describe("v2 Deals states who we contacted", () => {
+describe("v2 Deals states its leads in lead-service's words (LEAD-GENERIC-1106)", () => {
   const src = read("src/components/v2/deals-page.tsx");
-  it("names each column by the served rung label and counts Contacted in the heading", () => {
+  it("names each column by the served rung label and reads hot / won / lost off the served verdict counts", () => {
     expect(src).toContain("{rung.label}");
-    expect(src).toContain('const contacted = count("contacted");');
-    expect(src).toContain("{formatCount(contacted)}</span> contacted");
+    expect(src).toContain("const verdicts = counts.data?.byVerdict ?? null;");
+    expect(src).toContain("{formatCount(verdicts.hot)}</span> hot");
+    expect(src).not.toContain('count("contacted")');
   });
 });
 

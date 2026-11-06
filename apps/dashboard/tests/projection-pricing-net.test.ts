@@ -123,7 +123,7 @@ describe("Today's Target rows ask for net pricing (LEAD-GENERIC-1106)", () => {
 });
 
 describe("every v2 offer-grain money reader asks for net pricing", () => {
-  for (const reader of ["getOfferRevenue", "getOfferDealsValue", "getOfferContactedValue", "getOfferOutcomes"]) {
+  for (const reader of ["getOfferRevenue", "getOfferContactedValue", "getOfferOutcomes"]) {
     it(`${reader} requests net pricing`, () => {
       expect(readerBody(reader)).toContain('new URLSearchParams({ brandId, pricing: "net" })');
     });

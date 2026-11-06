@@ -11,6 +11,8 @@ import {
   uniboxLeadName,
   uniboxRowPreview,
   uniboxRowSubtitle,
+  leadStateTag,
+  leadVerdictTag,
   uniboxRowTag,
   uniboxValueTag,
   uniboxWaitsOnUs,
@@ -124,33 +126,45 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     expect(leadRow).toContain("after={preview ? ");
   });
 
-  it("a row carries ONE tag, the hottest true fact, nothing for the default (owner 2026-10-21)", () => {
+  it("a row carries ONE tag: lead-service's verdict, Lost with its reason, else the served rung (LEAD-GENERIC-1106)", () => {
     const L = [
       { key: "lead_found", rank: 1, label: "Lead found" },
       { key: "contacted", rank: 2, label: "Contacted" },
       { key: "engaged", rank: 3, label: "Engaged" },
-      { key: "signup_or_form", rank: 4, label: "Signup / Form submitted" },
       { key: "meeting_booked", rank: 5, label: "Meeting booked" },
       { key: "paid_client", rank: 7, label: "Paid client" },
     ];
     const at = (key: string) => L.find((r) => r.key === key)!;
-    const quiet = { ...row, conversation: "no_reply_yet", roles: [], lifecycle: at("contacted"), interest: "not_asked" };
-    const tag = (over: object) => uniboxRowTag({ ...quiet, ...over }, L);
+    const open = {
+      lifecycle: at("contacted"), won: false, hot: false, lost: null, reachable: "contactable", conversation: "no_reply_yet",
+      fit: "fit", fitNote: null, interest: "not_asked", clientStatus: "prospect", nextFollowupAt: null, nextFollowupBasis: null,
+    };
+    const tag = (over: object) => uniboxRowTag({ leadState: { ...open, ...over } }, L);
     expect(tag({})).toBeNull();
     expect(tag({ lifecycle: null })).toBeNull();
-    // Engaged is teal, Interested beats it in amber, a signup beats both, a meeting too.
     expect(tag({ lifecycle: at("engaged") })).toMatchObject({ label: "Engaged", tone: "reply" });
-    expect(tag({ lifecycle: at("engaged"), interest: "interested" })).toMatchObject({ label: "Interested", tone: "hot" });
-    expect(tag({ lifecycle: at("signup_or_form"), interest: "interested" })).toMatchObject({ label: "Signup / Form submitted", tone: "hot" });
-    expect(tag({ lifecycle: at("meeting_booked") })).toMatchObject({ label: "Meeting booked", tone: "hot" });
-    // A customer reads green; a closed door ends the conversation and reads rose.
-    expect(tag({ status: "customer", lifecycle: at("paid_client") })).toMatchObject({ label: "Paid client", tone: "won" });
-    expect(tag({ status: "customer", lifecycle: null })).toMatchObject({ label: "Customer", tone: "won" });
-    expect(tag({ lifecycle: at("signup_or_form"), interest: "not_interested" })).toMatchObject({ label: "Not interested", tone: "lost" });
-    expect(tag({ contactability: "bounced" })).toMatchObject({ label: "Bounced", tone: "lost" });
-    // Waiting on us is the row's dot, not a stage.
-    expect(tag({ conversation: "waiting_on_us" })).toBeNull();
+    expect(tag({ won: true, lifecycle: at("paid_client") })).toMatchObject({ label: "Won", tone: "won" });
+    expect(tag({ hot: true, lifecycle: at("engaged") })).toMatchObject({ label: "Hot", tone: "hot" });
+    expect(tag({ lost: { reasons: ["not_reachable"], reachable: "bounced", fit: null } })).toMatchObject({ label: "Lost · Bounced", tone: "lost" });
+    // A row names the strongest reason (served first); the card names every one.
+    const twoReasons = { lost: { reasons: ["wrong_fit", "not_interested"], reachable: null, fit: "not_our_target" } };
+    expect(tag(twoReasons)).toMatchObject({ label: "Lost · Not our target" });
+    expect(leadVerdictTag({ ...open, ...twoReasons }, "all")).toMatchObject({ label: "Lost · Not our target, Not interested" });
+    // No served state = no tag, never one derived from the old fields.
+    expect(uniboxRowTag({ leadState: undefined }, L)).toBeNull();
     expect(uniboxWaitsOnUs({ conversation: "waiting_on_us" })).toBe(true);
+  });
+
+  it("the card and the thread header read leadState, never the old standing", () => {
+    expect(leadStateTag({
+      lifecycle: { key: "engaged", rank: 3, label: "Engaged" }, won: false, hot: false, lost: null, reachable: "contactable",
+      conversation: "closed", fit: "fit", fitNote: null, interest: "unsure", clientStatus: "prospect", nextFollowupAt: null, nextFollowupBasis: null,
+    })).toMatchObject({ label: "Engaged" });
+    expect(read("components/v2/unibox-lead-card.tsx")).toContain("card?.leadState ?? listed?.leadState");
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("leadStateTag(state)");
+    expect(view).not.toContain("personStatusLabel");
+    expect(read("components/v2/person-page.tsx")).toContain("getLeadUniboxState(");
   });
 
   it("one look per value on every surface: the card, the row and the filters agree", () => {
