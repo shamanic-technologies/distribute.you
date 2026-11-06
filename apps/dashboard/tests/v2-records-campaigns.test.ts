@@ -17,9 +17,15 @@ describe("v2 Records read campaigns, never crews", () => {
     expect(src).not.toMatch(/useCampaigns|campaignById/);
   });
 
-  it.each(["company-page.tsx", "people-page.tsx", "deals-page.tsx"])("%s names a person's campaign by face + name", (f) => {
+  it.each(["company-page.tsx", "deals-page.tsx"])("%s names a person's campaign by face + name", (f) => {
     const src = v2(f);
     expect(src).toContain("useLeadCampaigns(orgId, brandId)");
+    expect(src).toContain("<FunnelFace name={campaign.name}");
+  });
+
+  it("people-page.tsx names a person's campaign as lead-service serves it on the Unibox row, by face + name", () => {
+    const src = v2("people-page.tsx");
+    expect(src).toContain("const campaign = row.campaigns?.[0] ?? null;");
     expect(src).toContain("<FunnelFace name={campaign.name}");
   });
 

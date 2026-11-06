@@ -22,10 +22,28 @@ const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 type Opp = { state: string | null; stateRaw?: string | null };
 
+function leadState(v: "won" | "lost" | "open"): NonNullable<CrmPairingRow["leadState"]> {
+  return {
+    lifecycle: { key: "contacted", rank: 2, label: "Contacted" },
+    won: v === "won",
+    hot: false,
+    lost: v === "lost" ? { reasons: ["not_interested"], reachable: null, fit: null } : null,
+    reachable: "reachable",
+    conversation: "none",
+    fit: "unknown",
+    fitNote: null,
+    interest: v === "lost" ? "not_interested" : "unknown",
+    clientStatus: v === "won" ? "client" : "none",
+    nextFollowupAt: null,
+    nextFollowupBasis: null,
+  };
+}
+
 function row(opts: {
   id?: string;
   state?: string;
-  ours?: string | null;
+  /** Our side, lead-service's verdict: won / lost / open (no verdict); null = no lead state served. */
+  ours?: "won" | "lost" | "open" | null;
   opps?: Opp[];
   name?: string | null;
   ruling?: boolean;
@@ -64,7 +82,8 @@ function row(opts: {
       judgment: { status: "not_needed", unavailableReason: null, samePersonProbability: null, model: null, judgedAt: null },
       ruling: opts.ruling ? { ruling: "accepted", note: null, statedByUserId: null, statedAt: "2026-09-24T10:00:00Z" } : null,
     },
-    ourStanding: opts.ours === null ? null : { state: opts.ours ?? "contacted", signal: "contacted" },
+    leadState: opts.ours === null ? null : leadState(opts.ours ?? "open"),
+    leadStateReason: opts.ours === null ? "not_in_unibox" : null,
     theirStatus: {
       opportunities: opps,
       states: [...new Set(opps.map((o) => o.state).filter((s): s is string => Boolean(s)))],
@@ -81,25 +100,24 @@ describe("alignmentFor — compares fixed-meaning states only", () => {
     }
   });
   it("closed-won there and no sale here is BEHIND — the point of the page", () => {
-    expect(alignmentFor(row({ ours: "sales_interest", opps: [{ state: "won" }] }))).toBe("behind");
-    expect(alignmentFor(row({ ours: "contacted", opps: [{ state: "won" }, { state: "open" }] }))).toBe("behind");
+    expect(alignmentFor(row({ ours: "open", opps: [{ state: "won" }] }))).toBe("behind");
+    expect(alignmentFor(row({ ours: "open", opps: [{ state: "won" }, { state: "open" }] }))).toBe("behind");
   });
   it("won on both sides is aligned; a sale only we record is ahead", () => {
-    expect(alignmentFor(row({ ours: "customer", opps: [{ state: "won" }] }))).toBe("aligned");
-    expect(alignmentFor(row({ ours: "customer", opps: [{ state: "open" }] }))).toBe("ahead");
+    expect(alignmentFor(row({ ours: "won", opps: [{ state: "won" }] }))).toBe("aligned");
+    expect(alignmentFor(row({ ours: "won", opps: [{ state: "open" }] }))).toBe("ahead");
   });
   it("several deals in states that disagree read as a conflict", () => {
-    expect(alignmentFor(row({ ours: "customer", opps: [{ state: "won" }, { state: "lost" }] }))).toBe("conflict");
-    expect(alignmentFor(row({ ours: "engaged", opps: [{ state: "open" }, { state: "abandoned" }] }))).toBe("conflict");
+    expect(alignmentFor(row({ ours: "won", opps: [{ state: "won" }, { state: "lost" }] }))).toBe("conflict");
+    expect(alignmentFor(row({ ours: "open", opps: [{ state: "open" }, { state: "abandoned" }] }))).toBe("conflict");
   });
   it("lost there while we are in play; aligned once we closed them out too", () => {
-    expect(alignmentFor(row({ ours: "engaged", opps: [{ state: "lost" }] }))).toBe("lost_there");
-    expect(alignmentFor(row({ ours: "disqualified", opps: [{ state: "abandoned" }] }))).toBe("aligned");
+    expect(alignmentFor(row({ ours: "open", opps: [{ state: "lost" }] }))).toBe("lost_there");
+    expect(alignmentFor(row({ ours: "lost", opps: [{ state: "abandoned" }] }))).toBe("aligned");
   });
   it("no deal, no standing, or only unrecognised words: never guessed", () => {
     expect(alignmentFor(row({ opps: [] }))).toBe("no_deal");
     expect(alignmentFor(row({ ours: null, opps: [{ state: "won" }] }))).toBe("not_comparable");
-    expect(alignmentFor(row({ ours: "unresolved", opps: [{ state: "open" }] }))).toBe("not_comparable");
     expect(alignmentFor(row({ opps: [{ state: null, stateRaw: "BOOKED - NO BUY" }] }))).toBe("not_comparable");
   });
 });
@@ -126,8 +144,8 @@ describe("helpers", () => {
   it("filters and orders the page, needs-attention first", () => {
     const rows = [
       row({ id: "a", state: "unpaired", name: "Zed" }),
-      row({ id: "b", ours: "customer", opps: [{ state: "won" }], name: "Bea" }),
-      row({ id: "c", ours: "contacted", opps: [{ state: "won" }], name: "Cy" }),
+      row({ id: "b", ours: "won", opps: [{ state: "won" }], name: "Bea" }),
+      row({ id: "c", ours: "open", opps: [{ state: "won" }], name: "Cy" }),
     ];
     expect(filterAndSortRows(rows, { state: "all", alignment: "all", sort: "attention" }).map((r) => r.crmContact.id)).toEqual(["c", "b", "a"]);
     expect(filterAndSortRows(rows, { state: "paired", alignment: "all", sort: "name" }).map((r) => r.crmContact.id)).toEqual(["b", "c"]);
@@ -144,7 +162,7 @@ describe("schemas parse the deployed shapes", () => {
     const body = {
       crmConnected: true,
       connection: { id: "x", brandId: "b", locationId: "l", status: "active", synced: true, lastSyncedAt: null, lastError: null },
-      pairings: [{ ...row({}), ourStanding: null }, { ...row({ state: "unpaired" }), pairing: { ...row({}).pairing, state: "unpaired", decidedBy: null, lead: null } }],
+      pairings: [{ ...row({}), leadState: null, leadStateReason: "not_in_unibox" }, { ...row({ state: "unpaired" }), pairing: { ...row({}).pairing, state: "unpaired", decidedBy: null, lead: null } }],
       nextOffset: null,
       judgmentThresholds: { pairAt: 0.85, rejectAt: 0.15 },
     };
@@ -244,7 +262,7 @@ describe("to confirm — doubt counts as ours, and a person settles it", () => {
     expect(CrmPairingCountsSchema.parse(body).counts.pairedToConfirm).toBe(31);
   });
   it("'Needs attention first' puts the pairings to confirm above every alignment", () => {
-    const behind = row({ id: "behind", ours: "contacted", opps: [{ state: "won" }], name: "A" });
+    const behind = row({ id: "behind", ours: "open", opps: [{ state: "won" }], name: "A" });
     const toConfirm = row({ id: "tc", toConfirm: true, name: "Z" });
     const out = filterAndSortRows([behind, toConfirm], { state: "all", alignment: "all", sort: "attention" });
     expect(out.map((r) => r.crmContact.id)).toEqual(["tc", "behind"]);

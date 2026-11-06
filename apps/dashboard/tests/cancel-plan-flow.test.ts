@@ -117,8 +117,11 @@ describe("the cancel-plan flow", () => {
   });
 
   it("shows the customer's own served counts, never a computed figure", () => {
-    expect(FLOW).toContain("useBucketCounts(brandId)");
-    for (const f of ["counts?.contacted", "counts?.positive_reply", "counts?.meeting_booked"]) expect(FLOW).toContain(f);
+    // LEAD-FOLLOWUPS-1106: the people emailed, then the brand's own outcomes, named as served (never "Positive replies").
+    expect(FLOW).toContain("useReachedCounts(brandId, [EMAIL_SENT_STEP, ...shownOutcomes.map((o) => o.step)])");
+    expect(FLOW).toContain("useBrandOutcomeList(orgId, brandId, offerId)");
+    expect(FLOW).toContain("<LossFigure key={o.step} label={o.label} value={counts?.[o.step]} />");
+    expect(FLOW).not.toContain('label="Positive replies"');
   });
 
   // billing#589: a cancel stops every send at once, and the read says so.

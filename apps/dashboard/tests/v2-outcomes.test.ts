@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { byDepth, outcomeOf, outcomeOfBucket, outcomesOf } from "../src/lib/v2/outcomes";
+import { byDepth, outcomeOf, outcomeOfCrmStep, outcomesOf } from "../src/lib/v2/outcomes";
 import { SERVED_STEPS } from "./fixtures/served-steps";
 import { BrandOutcomesSchema, OutcomePeopleSchema, reachedBuckets, stepStatOf } from "../src/lib/v2/outcome-people";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
 describe("outcomes (owner 2026-10-10): one per step a running campaign lands on", () => {
-  it("reads a step's people from lead-service's bucket for it", () => {
+  it("reads a step's people as the people who reached it (lead-service reachedStep), crm-service's token beside it", () => {
     expect(outcomeOf(SERVED_STEPS, "sales-cold-email-outreach", "conversation")).toEqual({
       key: "conversation",
       label: "Positive replies",
-      items: { kind: "people", bucket: "positive_reply" },
+      items: { kind: "people", step: "conversation", crmStep: "positive_reply" },
     });
-    expect(outcomeOf(SERVED_STEPS, "sales-cold-email-outreach", "website_visit")?.items).toEqual({ kind: "people", bucket: "website_visit" });
-    expect(outcomeOf(SERVED_STEPS, "ai-meeting-booking", "meeting_booked")?.items).toEqual({ kind: "people", bucket: "meeting_booked" });
-    expect(outcomeOf(SERVED_STEPS, null, "paid_client")?.items).toEqual({ kind: "people", bucket: "sale" });
+    expect(outcomeOf(SERVED_STEPS, "sales-cold-email-outreach", "website_visit")?.items).toEqual({ kind: "people", step: "website_visit", crmStep: "website_visit" });
+    expect(outcomeOf(SERVED_STEPS, "ai-meeting-booking", "meeting_booked")?.items).toEqual({ kind: "people", step: "meeting_booked", crmStep: "meeting_booked" });
+    expect(outcomeOf(SERVED_STEPS, null, "paid_client")?.items).toEqual({ kind: "people", step: "paid_client", crmStep: "sale" });
     // A retired form spelling is the one form step.
-    expect(outcomeOf(SERVED_STEPS, null, "form_filled")).toMatchObject({ key: "form_submitted", items: { kind: "people", bucket: "form_submission" } });
+    expect(outcomeOf(SERVED_STEPS, null, "form_filled")).toMatchObject({ key: "form_submitted", items: { kind: "people", step: "form_submitted", crmStep: "form_submission" } });
   });
 
   it("a source finds leads, a publishing channel posts, anything else is not listed yet", () => {
@@ -28,7 +28,7 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     expect(outcomeOf(SERVED_STEPS, "ai-instant-call", "booking_call", "Booking call")).toEqual({
       key: "booking_call",
       label: "Booking calls",
-      items: { kind: "people", bucket: "booking_call" },
+      items: { kind: "people", step: "booking_call", crmStep: "booking_call" },
     });
     // A step no service lists people for: named with its served label, never guessed.
     expect(outcomeOf(SERVED_STEPS, "x", "some_new_step", "Some new step")).toEqual({ key: "some_new_step", label: "Some new step", items: { kind: "unavailable" } });
@@ -73,19 +73,19 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
 
   it("each outcome page lists served items: people table, source lists, or says not available", () => {
     const page = read("src/components/v2/outcomes-page.tsx");
-    expect(page).toContain("<PeoplePage bucket={outcome.items.bucket} />");
+    expect(page).toContain("<PeoplePage step={outcome.items.step} />");
     expect(page).toContain("<AudienceLists />");
     expect(page).toContain("Not available yet.");
     // Counts are lead-service's, never added up here.
-    expect(page).toContain("useBucketCounts(brandId)");
+    expect(page).toContain("useReachedCounts(brandId, outcomes.flatMap((o) => reachedStepOf(o.outcome) ?? []))");
     expect(page).not.toMatch(/\.reduce\(/);
   });
 
   it("every outcome of the brand, campaigns or not (owner 2026-10-11): crm-service's steps map onto outcomes", () => {
-    expect(outcomeOfBucket(SERVED_STEPS, "website_visit")?.key).toBe("website_visit");
-    expect(outcomeOfBucket(SERVED_STEPS, "sale")).toMatchObject({ key: "paid_client", label: "Paid clients", items: { kind: "people", bucket: "sale" } });
-    expect(outcomeOfBucket(SERVED_STEPS, "form_submission")?.key).toBe("form_submitted");
-    expect(outcomeOfBucket(SERVED_STEPS, "nope")).toBeNull();
+    expect(outcomeOfCrmStep(SERVED_STEPS, "website_visit")?.key).toBe("website_visit");
+    expect(outcomeOfCrmStep(SERVED_STEPS, "sale")).toMatchObject({ key: "paid_client", label: "Paid clients", items: { kind: "people", step: "paid_client", crmStep: "sale" } });
+    expect(outcomeOfCrmStep(SERVED_STEPS, "form_submission")?.key).toBe("form_submitted");
+    expect(outcomeOfCrmStep(SERVED_STEPS, "nope")).toBeNull();
     const served = BrandOutcomesSchema.parse({
       brandId: "b",
       scope: { status: "ready", lastBuiltAt: null, lastError: null },
@@ -132,15 +132,15 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     expect(shell).toContain("useBrandOutcomeList(orgId, brandId, offerId)");
     // Everyone first, then the ones we contacted (lead-service's bucket, the column's figure).
     expect(page).toContain('{ key: "all", label: "Everyone", count: listed.all.people }');
-    expect(page).toContain("<EveryoneTable bucket={outcome.items.bucket} />");
+    expect(page).toContain("<EveryoneTable crmStep={outcome.items.crmStep} />");
   });
   it("the Overview's Leads row states its figures, never a dash (owner 2026-10-21: 72 leads read as none)", () => {
     const page = read("src/components/v2/outcomes-page.tsx");
     // People = the lists' held people, the same key and figure as the sidebar entry.
     expect(page).toContain("useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held");
     expect(page).toContain('if (o.outcome.items.kind === "leads-found") return peopleHeld == null');
-    // Contacted by us = lead-service's contacted bucket.
-    expect(page).toContain('kind !== "people" && kind !== "leads-found"');
-    expect(page).toContain(': "contacted"]');
+    // Contacted by us = the leads lead-service saw reach their first email (`reachedStepOf`).
+    expect(page).toContain("const step = reachedStepOf(o.outcome);");
+    expect(read("src/lib/v2/outcomes.ts")).toContain('if (outcome.items.kind === "leads-found") return EMAIL_SENT_STEP;');
   });
 });

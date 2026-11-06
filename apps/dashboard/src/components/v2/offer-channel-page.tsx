@@ -5,16 +5,18 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getCampaignRevenueWindow, getLeadBucketCounts, getOfferUserFields, listCampaignsByBrand } from "@/lib/api";
+import { getCampaignRevenueWindow, getOfferUserFields, listCampaignsByBrand } from "@/lib/api";
 import { legCampaignId } from "@/lib/v2/leg-campaign";
 import { formatCount } from "@/lib/format-number";
 import { SINCE_INCEPTION, type RevenueWindow } from "@/lib/revenue-window";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
-import { OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "@/lib/outbound-leg-key";
+import { CONVERSATION_STEP, EMAIL_SENT_STEP, OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT, WEBSITE_VISIT_STEP } from "@/lib/outbound-leg-key";
+import { stepWords } from "@/lib/legs";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2Href, v2OfferChannelHref, v2OfferHref, type V2ChannelTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
-import { useBrandRevenueWindow, useBucketCounts } from "@/components/v2/data";
+import { useBrandRevenueWindow, useReachedCounts } from "@/components/v2/data";
 import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
 import { giveListsFrom } from "@/components/v2/offer-give-lists";
 import { PeoplePage } from "@/components/v2/people-page";
@@ -85,11 +87,11 @@ export function V2OfferChannelPage() {
         />
       ) : tab === "inbox" ? (
         <div className="k-card overflow-hidden">
-          <PeoplePage bucket="positive_reply" />
+          <PeoplePage step={CONVERSATION_STEP} />
         </div>
       ) : tab === "sent" ? (
         <div className="k-card overflow-hidden">
-          <PeoplePage bucket="contacted" />
+          <PeoplePage step={EMAIL_SENT_STEP} />
         </div>
       ) : tab === "targeting" ? (
         <V2AudiencesTable offerId={offerId} />
@@ -100,16 +102,16 @@ export function V2OfferChannelPage() {
   );
 }
 
-/** The two legs cold email works, each drawn as its own steps, stopping at its outcome. */
+/** The two legs cold email works, each drawn as its own steps, stopping at its outcome (named by the catalogue). */
 export const LEG_STEPS = [
-  { legKey: OUTBOUND_LEG_TO_WEBSITE_VISIT, title: "Website visits", outcome: "Website visit", bucket: "website_visit" },
-  { legKey: OUTBOUND_LEG_TO_CONVERSATION, title: "Positive replies", outcome: "Positive reply", bucket: "positive_reply" },
+  { legKey: OUTBOUND_LEG_TO_WEBSITE_VISIT, step: WEBSITE_VISIT_STEP },
+  { legKey: OUTBOUND_LEG_TO_CONVERSATION, step: CONVERSATION_STEP },
 ] as const;
 
 /**
  * What cold email did: its sending since inception (features-service, the same figures as
- * Today) and, per leg, where the people it reached stand (lead-service's served bucket
- * counts, read on the leg's campaign). Every figure is served; a bar's length is only the
+ * Today) and, per leg, how many people reached its outcome (lead-service's Unibox count of
+ * the people who reached the step, read on the leg's campaign). Every figure is served; a bar's length is only the
  * count drawn against Queued. People and Queued come first because one person gets
  * several emails: People counts persons, Queued and Sent count emails (every step).
  */
@@ -132,9 +134,10 @@ export function ColdEmailOverview({
   useEffect(() => {
     if (win.data?.queuedEmails === null) console.error("[cold-email overview] queued emails unreadable", { reason: win.data.queuedEmailsUnavailableReason });
   }, [win.data?.queuedEmails, win.data?.queuedEmailsUnavailableReason]);
-  const buckets = useBucketCounts(brandId);
-  const counts = buckets.data?.counts ?? null;
-  const countsSettled = buckets.isFetchedAfterMount || buckets.data !== undefined;
+  const reached = useReachedCounts(brandId, [EMAIL_SENT_STEP, CONVERSATION_STEP]);
+  const counts = reached.data ?? null;
+  const countsSettled = reached.isFetchedAfterMount || reached.data !== undefined;
+  const catalogue = useLegCatalogue();
   const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId), { enabled: !!brandId });
   const campaigns = campaignsQ.data?.campaigns ?? null;
   const shownLegs = campaigns
@@ -150,7 +153,7 @@ export function ColdEmailOverview({
         <SectionTitle right={<span>Since you started</span>}>Sending</SectionTitle>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <StatTile label="People">
-            {!countsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={counts ? formatCount(counts.contacted) : "—"} unit="people" />}
+            {!countsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={counts ? formatCount(counts[EMAIL_SENT_STEP]) : "—"} unit="people" />}
           </StatTile>
           {/* Emails waiting to go out right now, served by features-service (a snapshot, not a window figure). */}
           <StatTile label="Queued">
@@ -183,9 +186,8 @@ export function ColdEmailOverview({
                 key={leg.legKey}
                 brandId={brandId}
                 featureSlug={channelSlug}
-                title={leg.title}
-                outcome={leg.outcome}
-                bucket={leg.bucket}
+                title={stepWords(catalogue, leg.step).many}
+                step={leg.step}
                 campaignId={leg.campaignId}
               />
             ))}
@@ -196,7 +198,8 @@ export function ColdEmailOverview({
           offerId={offerId}
           sent={emails?.sent ?? null}
           sentPending={win.pending}
-          replies={counts?.positive_reply ?? null}
+          replies={counts?.[CONVERSATION_STEP] ?? null}
+          repliesWords={stepWords(catalogue, CONVERSATION_STEP)}
           countsSettled={countsSettled}
           tabHref={tabHref}
           offerHref={offerHref}
@@ -233,26 +236,25 @@ export function LegSteps({
   brandId,
   featureSlug,
   title,
-  outcome,
-  bucket,
+  step,
   campaignId,
 }: {
   brandId: string;
   featureSlug: string | null;
   title: string;
-  /** Null on a leg whose outcome lead-service counts no bucket for: the steps stop at Delivered. */
-  outcome: string | null;
-  bucket: "website_visit" | "positive_reply" | null;
+  /** The catalogue step the leg lands on; null = a leg with no known outcome: the steps stop at Delivered. */
+  step: string | null;
   campaignId: string;
 }) {
-  const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId }, {}), pollOptions);
-  const counts = q.data?.counts ?? null;
-  const settled = q.isFetchedAfterMount || q.data !== undefined;
+  const q = useReachedCounts(brandId, step ? [step] : [], campaignId);
+  const counts = q.data ?? null;
+  const settled = !step || q.isFetchedAfterMount || q.data !== undefined;
+  const catalogue = useLegCatalogue();
   const win = useCampaignWindow(brandId, campaignId, featureSlug);
   const queued = win.data?.queuedEmails ?? null;
   const sent = win.data?.emails?.sent ?? null;
   const delivered = win.data?.emails?.delivered ?? null;
-  const outcomes = outcome && bucket && counts ? counts[bucket] : null;
+  const outcomes = step && counts ? (counts[step] ?? null) : null;
   const scale = Math.max(queued ?? 0, sent ?? 0, delivered ?? 0, outcomes ?? 0);
 
   return (
@@ -268,7 +270,7 @@ export function LegSteps({
             <StepBar label="Queued" count={queued} of={scale} />
             <StepBar label="Sent" count={sent} of={scale} />
             <StepBar label="Delivered" count={delivered} of={scale} />
-            {outcome && bucket && <StepBar label={outcome} count={outcomes} of={scale} />}
+            {step && <StepBar label={stepWords(catalogue, step)[outcomes === 1 ? "one" : "many"]} count={outcomes} of={scale} />}
           </div>
         )}
       </div>
@@ -286,6 +288,7 @@ function TabSummaries({
   sent,
   sentPending,
   replies,
+  repliesWords,
   countsSettled,
   tabHref,
   offerHref,
@@ -295,6 +298,7 @@ function TabSummaries({
   sent: number | null;
   sentPending: boolean;
   replies: number | null;
+  repliesWords: { one: string; many: string };
   countsSettled: boolean;
   tabHref: (tab: V2ChannelTab) => string;
   offerHref: string;
@@ -311,7 +315,7 @@ function TabSummaries({
     <section>
       <SectionTitle>At a glance</SectionTitle>
       <div className="flex flex-col gap-3">
-        <SummaryCard label="Inbox" href={tabHref("inbox")} loading={!countsSettled} value={replies} unit={replies === 1 ? "positive reply" : "positive replies"} />
+        <SummaryCard label="Inbox" href={tabHref("inbox")} loading={!countsSettled} value={replies} unit={(replies === 1 ? repliesWords.one : repliesWords.many).toLowerCase()} />
         <SummaryCard label="Sent" href={tabHref("sent")} loading={sentPending} value={sent} unit={sent === 1 ? "email sent" : "emails sent"} />
         <SummaryCard
           label="Targeting"

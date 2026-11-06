@@ -10,6 +10,7 @@
  * Alias-free (its only import is zod) so it carries REAL unit tests. Keep it so.
  */
 import { z } from "zod";
+import { LeadStateSchema } from "./unibox-leads";
 
 // ─── Wire ────────────────────────────────────────────────────────────────────
 
@@ -102,14 +103,14 @@ const PairingSchema = z.object({
   ruling: RulingSchema.nullish(),
 });
 
-const OurStandingSchema = z
-  .object({ state: str.nullish(), signal: str.nullish() })
-  .passthrough();
-
 export const CrmPairingRowSchema = z.object({
   crmContact: CrmSideSchema,
   pairing: PairingSchema,
-  ourStanding: OurStandingSchema.nullish(),
+  // Our side, in THE lead vocabulary (lead-service LEAD-GENERIC-1106): Won / Hot / Lost and why,
+  // else the lifecycle rung. Null with `leadStateReason` ("not_in_unibox") when the lead has no
+  // Unibox row; absent on an unpaired row. Optional until every cached body carries it.
+  leadState: LeadStateSchema.nullish(),
+  leadStateReason: z.string().nullish(),
   theirStatus: z.object({
     opportunities: z.array(OpportunitySchema),
     states: z.array(str),
@@ -190,18 +191,6 @@ export const MATCH_METHOD_LABEL: Record<string, string> = {
   none: "No match",
 };
 
-/** Our standing, in the words the Leads pages use. Unknown states read verbatim. */
-export const OUR_STATE_LABEL: Record<string, string> = {
-  unresolved: "Cannot place",
-  not_contacted: "Not contacted",
-  contacted: "Contacted",
-  engaged: "Engaged",
-  sales_interest: "Positive reply",
-  customer: "Close won",
-  opted_out: "Opted out",
-  disqualified: "Disqualified",
-};
-
 export const THEIR_STATE_LABEL: Record<string, string> = {
   open: "Open",
   won: "Won",
@@ -233,7 +222,7 @@ export function labelOf(map: Record<string, string>, key: string | null | undefi
  *  - `lost_there`    — they closed it lost or abandoned while we still treat the
  *                      person as in play.
  *  - `aligned`       — both say the same thing.
- *  - `not_comparable`— we hold no standing for the person, or their deal state is
+ *  - `not_comparable`— lead-service holds no lead state for the person, or their deal state is
  *                      a word nobody recognised.
  */
 export type Alignment =
@@ -269,9 +258,7 @@ export const ATTENTION_ORDER: Alignment[] = [
   "not_in_common",
 ];
 
-const CLOSED_OURS = new Set(["customer", "disqualified", "opted_out"]);
-
-export function alignmentFor(row: Pick<CrmPairingRow, "pairing" | "ourStanding" | "theirStatus">): Alignment {
+export function alignmentFor(row: Pick<CrmPairingRow, "pairing" | "leadState" | "theirStatus">): Alignment {
   if (row.pairing.state !== "paired") return "not_in_common";
   const opps = row.theirStatus.opportunities;
   if (opps.length === 0) return "no_deal";
@@ -279,19 +266,22 @@ export function alignmentFor(row: Pick<CrmPairingRow, "pairing" | "ourStanding" 
   // disagree with anything.
   const states = new Set(row.theirStatus.states.filter((s) => s in THEIR_STATE_LABEL));
   if (states.size === 0) return "not_comparable";
-  const ours = row.ourStanding?.state ?? null;
-  if (!ours || ours === "unresolved") return "not_comparable";
+  // Our side is lead-service's verdict, read (won / lost), never re-graded here.
+  const ours = row.leadState ?? null;
+  if (!ours) return "not_comparable";
+  const oursWon = ours.won;
+  const oursClosed = ours.lost !== null;
 
   const won = states.has("won");
   const closedLost = states.has("lost") || states.has("abandoned");
-  if (won && ours !== "customer") return "behind";
+  if (won && !oursWon) return "behind";
   if (won && closedLost) return "conflict";
   if (won) return "aligned";
-  if (ours === "customer") return "ahead";
+  if (oursWon) return "ahead";
   if (closedLost && states.has("open")) return "conflict";
-  if (closedLost) return CLOSED_OURS.has(ours) ? "aligned" : "lost_there";
+  if (closedLost) return oursClosed ? "aligned" : "lost_there";
   // Only open deals: both say still in play unless we closed the person out.
-  return CLOSED_OURS.has(ours) ? "conflict" : "aligned";
+  return oursClosed ? "conflict" : "aligned";
 }
 
 /**

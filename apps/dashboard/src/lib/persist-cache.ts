@@ -379,7 +379,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "leadsPage",
   // Needs your call: the people waiting on our answer (lead-service), a handful of rows.
   "awaitingReply",
-  "leadBucketCounts",
+  // The people who reached one step (lead-service Unibox, LEAD-REACHED-STEP-1106): the per-step
+  // counts (a few numbers) and one 50-row page of an outcome's people.
+  "reachedCounts",
+  "reachedRows",
   // Every outcome of the brand from any source (crm-service): six step counts, and one page
   // of one step's people (50 rows), so Outcomes paints from disk.
   "brandOutcomes",

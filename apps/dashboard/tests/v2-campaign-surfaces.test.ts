@@ -46,12 +46,12 @@ describe("Campaign page (owner 2026-10-05)", () => {
   const page = read("components/v2/campaign-page.tsx");
   it("is the channel page's anatomy narrowed to one campaign", () => {
     expect(page).toContain("<LegSteps");
-    expect(page).toContain('<PeoplePage bucket="positive_reply" campaignId={id} />');
-    expect(page).toContain('<PeoplePage bucket="contacted" campaignId={id} />');
+    expect(page).toContain("<PeoplePage step={CONVERSATION_STEP} campaignId={id} />");
+    expect(page).toContain("<PeoplePage step={EMAIL_SENT_STEP} campaignId={id} />");
     expect(page).toContain("<V2AudiencesTable campaignId={id} offerId={offerId} />");
   });
   it("reads where people stand on the campaign, never the brand", () => {
-    expect(page).toContain("getLeadBucketCounts({ campaignId }, {})");
+    expect(page).toContain("useReachedCounts(brandId, [EMAIL_SENT_STEP, CONVERSATION_STEP, ...(leg ? [leg.step] : [])], campaignId)");
   });
   it("Settings is the channel page's settings; the money is the funnel campaign's caps (owner 2026-10-10)", () => {
     expect(page).toContain("<ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={c.featureSlug} />");

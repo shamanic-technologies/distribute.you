@@ -8,14 +8,16 @@
  * Alias-free so it carries real unit tests.
  */
 import { canonicalStepKey } from "../step-marks";
-import { LEAD_FOUND_STEP } from "../outbound-leg-key";
+import { EMAIL_SENT_STEP, LEAD_FOUND_STEP } from "../outbound-leg-key";
 import { stepPluralLabel, type LegCatalogue } from "../legs";
-import type { LeadBucket } from "../leads-server-page";
 
 /** Where an outcome's items are served. */
 export type OutcomeItems =
-  /** The people in one of lead-service's engagement buckets. */
-  | { kind: "people"; bucket: LeadBucket }
+  /**
+   * The people who reached the step: lead-service's Unibox filtered on `reachedStep` = `step` (the
+   * catalogue key, never mapped), and crm-service's every-source list keyed on its own `crmStep` token.
+   */
+  | { kind: "people"; step: string; crmStep: string }
   /** The people a source found, per list (human-service lists, the Targeting Lists tab). */
   | { kind: "leads-found" }
   /** The brand's LinkedIn posts (social-service, a staff read today). */
@@ -31,8 +33,8 @@ export interface Outcome {
   items: OutcomeItems;
 }
 
-/** lead-service's bucket for each step it files people under. */
-const BUCKET_FOR_STEP: Record<string, LeadBucket> = {
+/** crm-service's outcome token for each step it states people for (`/orgs/people/outcomes`). */
+const CRM_STEP_FOR_STEP: Record<string, string> = {
   conversation: "positive_reply",
   website_visit: "website_visit",
   meeting_booked: "meeting_booked",
@@ -96,9 +98,9 @@ export function outcomeOf(
   if (isPublishingChannel(featureSlug)) return { key: POSTS_STEP, label: POSTS_LABEL, items: { kind: "posts" } };
   if (!toKey) return null;
   const key = canonicalStepKey(toKey);
-  const bucket = BUCKET_FOR_STEP[key];
-  const items: OutcomeItems = bucket
-    ? { kind: "people", bucket }
+  const crmStep = CRM_STEP_FOR_STEP[key];
+  const items: OutcomeItems = crmStep
+    ? { kind: "people", step: key, crmStep }
     : key === LEAD_FOUND_STEP
       ? { kind: "leads-found" }
       : { kind: "unavailable" };
@@ -106,9 +108,9 @@ export function outcomeOf(
   return { key, label: stepPluralLabel(catalogue, key, singular), items };
 }
 
-/** The outcome a lead-service bucket token names (crm-service keys its outcome steps on them). Null for a bucket no step maps to. */
-export function outcomeOfBucket(catalogue: OutcomeSteps, bucket: string): Outcome | null {
-  const key = Object.keys(BUCKET_FOR_STEP).find((k) => BUCKET_FOR_STEP[k] === bucket);
+/** The outcome a crm-service outcome token names. Null for a token no step maps to. */
+export function outcomeOfCrmStep(catalogue: OutcomeSteps, crmStep: string): Outcome | null {
+  const key = Object.keys(CRM_STEP_FOR_STEP).find((k) => CRM_STEP_FOR_STEP[k] === crmStep);
   return key ? outcomeOf(catalogue, null, key) : null;
 }
 
@@ -123,4 +125,14 @@ export function outcomesOf(
     if (o && !seen.has(o.key)) seen.set(o.key, o);
   }
   return [...seen.values()];
+}
+
+/**
+ * The catalogue step whose reached-people count says "contacted by us" for an outcome: its own step
+ * for a people outcome, the first email for Leads (a lead found we wrote to). Null = nobody to count.
+ */
+export function reachedStepOf(outcome: Outcome): string | null {
+  if (outcome.items.kind === "people") return outcome.items.step;
+  if (outcome.items.kind === "leads-found") return EMAIL_SENT_STEP;
+  return null;
 }

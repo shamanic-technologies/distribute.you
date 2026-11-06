@@ -6,7 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getAudienceSnapshot, getPublicCatalogueSteps } from "@/lib/api";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { useOngoingCampaigns, type OngoingOutcome } from "@/components/v2/ongoing-campaigns";
-import { byDepth, outcomeOfBucket } from "@/lib/v2/outcomes";
+import { byDepth, outcomeOfCrmStep } from "@/lib/v2/outcomes";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { reachedBuckets, stepStatOf, type OutcomeStepStat } from "@/lib/v2/outcome-people";
 
@@ -30,10 +30,10 @@ export function useBrandOutcomeList(orgId: string, brandId: string, offerId: str
   const outcomes = useMemo<BrandOutcome[]>(() => {
     const out: BrandOutcome[] = ongoing.outcomes.map((o) => ({
       ...o,
-      all: o.outcome.items.kind === "people" ? stepStatOf(allQ.data, o.outcome.items.bucket) : null,
+      all: o.outcome.items.kind === "people" ? stepStatOf(allQ.data, o.outcome.items.crmStep) : null,
     }));
     for (const bucket of reachedBuckets(allQ.data)) {
-      const outcome = outcomeOfBucket(catalogue, bucket);
+      const outcome = outcomeOfCrmStep(catalogue, bucket);
       if (!outcome) {
         console.error("[v2] crm-service serves an outcome step no outcome maps to", { bucket });
         continue;

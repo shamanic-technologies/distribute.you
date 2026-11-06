@@ -15,10 +15,10 @@ import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons, type BrandOutco
 import { RecordsTabs } from "@/components/v2/records";
 import { formatCount } from "@/lib/format-number";
 import { v2Href, v2OutcomeHref } from "@/lib/v2/routes";
-import { outcomeOf, type Outcome } from "@/lib/v2/outcomes";
+import { outcomeOf, reachedStepOf, type Outcome } from "@/lib/v2/outcomes";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useStaffMode } from "@/lib/use-staff-mode";
-import { useBucketCounts } from "@/components/v2/data";
+import { useReachedCounts } from "@/components/v2/data";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import type { OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
@@ -55,7 +55,7 @@ function CampaignFace({ c }: { c: OngoingCampaign }) {
   return <ServedPipeMark pipeId={c.m.pipe.id} size={16} />;
 }
 
-/** crm-service's source for the people OUR campaigns brought to a step (lead-service's buckets). */
+/** crm-service's source for the people OUR campaigns brought to a step (lead-service's Unibox people). */
 const OUR_CAMPAIGNS_SOURCE = "campaigns";
 
 /** One of the brand's own tools (PostHog, Clerk, Stripe…), or our campaigns, with its logo. */
@@ -106,18 +106,17 @@ function AllCount({ o, counts, peopleHeld }: { o: BrandOutcome; counts: Record<s
   if (o.all) return <Num n={o.all.people} />;
   // Leads found = the people the brand's lists hold, the figure its sidebar entry and People tab state.
   if (o.outcome.items.kind === "leads-found") return peopleHeld == null ? <Shimmer className="ml-auto h-4 w-10" /> : <Num n={peopleHeld} />;
-  if (o.outcome.items.kind !== "people" || o.outcome.items.bucket === "booking_call") return <Num n={null} />;
+  if (o.outcome.items.kind !== "people") return <Num n={null} />;
   if (!counts) return <Shimmer className="ml-auto h-4 w-10" />;
-  return <Num n={counts[o.outcome.items.bucket]} />;
+  return <Num n={counts[o.outcome.items.step]} />;
 }
 
-/** The ones we contacted: lead-service's bucket, the same figure the Contacted by us tab states. */
+/** The ones we contacted: lead-service's people who reached the step, the same figure the Contacted by us tab states. */
 function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, number> | null }) {
-  const kind = o.outcome.items.kind;
-  if (kind !== "people" && kind !== "leads-found") return <Num n={null} />;
+  const step = reachedStepOf(o.outcome);
+  if (!step) return <Num n={null} />;
   if (!counts) return <Shimmer className="ml-auto h-4 w-10" />;
-  // A lead found that we contacted = lead-service's contacted bucket.
-  return <Num n={counts[o.outcome.items.kind === "people" ? o.outcome.items.bucket : "contacted"]} />;
+  return <Num n={counts[step]} />;
 }
 
 /**
@@ -126,13 +125,13 @@ function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, numb
  * (features-service's outcome-cost-series `steps[]`, the brand's path from Paid client down to Lead
  * found). Anatomy = the Research hub card: mark + name, an inset of two cells (how many, with its
  * months as bars; $ per outcome, with its running curve), then a footer line with the ROI. Every
- * figure is served (crm-service people, lead-service buckets, features-service cost and ROI).
+ * figure is served (crm-service people, lead-service reached-step counts, features-service cost and ROI).
  */
 export function OutcomesOverviewPage() {
   const { orgId, brandId } = useIds();
   const { offerId } = useSelectedOffer();
   const { outcomes, settled, allError } = useBrandOutcomeList(orgId, brandId, offerId);
-  const counts = useBucketCounts(brandId).data?.counts ?? null;
+  const counts = useReachedCounts(brandId, outcomes.flatMap((o) => reachedStepOf(o.outcome) ?? [])).data ?? null;
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held ?? null;
   const costQ = useOutcomeCostSeries(brandId, offerId);
@@ -281,12 +280,12 @@ function OutcomeCostFigure({ answered, cost }: { answered: boolean; cost: Outcom
 }
 
 /** Everyone who reached one step, any source, earliest first; a row opens the person in the Unibox. */
-function EveryoneTable({ bucket }: { bucket: string }) {
+function EveryoneTable({ crmStep }: { crmStep: string }) {
   const { orgId, brandId } = useIds();
   const [offset, setOffset] = useState(0);
   const q = useAuthQuery(
-    ["outcomePeople", brandId, bucket, offset],
-    () => listOutcomePeople(brandId, bucket, { limit: OUTCOME_PEOPLE_PAGE_SIZE, offset }),
+    ["outcomePeople", brandId, crmStep, offset],
+    () => listOutcomePeople(brandId, crmStep, { limit: OUTCOME_PEOPLE_PAGE_SIZE, offset }),
     { ...pollOptions, enabled: !!brandId, placeholderData: keepPreviousData },
   );
   if (!q.data) {
@@ -371,8 +370,9 @@ export function OutcomePage() {
   const { orgId, brandId, stepKey } = useIds();
   const { offerId } = useSelectedOffer();
   const { outcomes, settled } = useBrandOutcomeList(orgId, brandId, offerId);
-  const counts = useBucketCounts(brandId).data?.counts ?? null;
   const catalogue = useLegCatalogue();
+  const shownStep = (outcomes.find((o) => o.outcome.key === stepKey)?.outcome ?? (stepKey ? outcomeOf(catalogue, null, stepKey) : null))?.key ?? null;
+  const counts = useReachedCounts(brandId, shownStep ? [shownStep] : []).data ?? null;
   const { staffMode } = useStaffMode();
   const [tab, setTab] = useState<"all" | "ours">("all");
   const listed = outcomes.find((o) => o.outcome.key === stepKey) ?? null;
@@ -416,16 +416,16 @@ export function OutcomePage() {
             <RecordsTabs
               tabs={[
                 { key: "all", label: "Everyone", count: listed.all.people },
-                { key: "ours", label: "Contacted by us", count: counts?.[outcome.items.bucket] ?? null },
+                { key: "ours", label: "Contacted by us", count: counts?.[outcome.items.step] ?? null },
               ]}
               active={tab}
               onPick={(k) => setTab(k === "ours" ? "ours" : "all")}
             />
-            {tab === "all" ? <EveryoneTable bucket={outcome.items.bucket} /> : <PeoplePage bucket={outcome.items.bucket} />}
+            {tab === "all" ? <EveryoneTable crmStep={outcome.items.crmStep} /> : <PeoplePage step={outcome.items.step} />}
           </div>
         ) : outcome.items.kind === "people" ? (
           <div className="k-card overflow-hidden">
-            <PeoplePage bucket={outcome.items.bucket} />
+            <PeoplePage step={outcome.items.step} />
           </div>
         ) : outcome.items.kind === "leads-found" ? (
           <AudienceLists />

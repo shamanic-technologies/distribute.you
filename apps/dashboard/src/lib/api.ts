@@ -137,9 +137,7 @@ import {
   type SenderHealth,
 } from "./monitoring/sending";
 import {
-  LeadBucketCountsSchema,
   LeadsPageEnvelopeSchema,
-  type LeadBucketCounts,
 } from "./leads-server-page";
 import type { PublishedChannelTerms } from "./channel-minimums";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
@@ -8630,33 +8628,6 @@ export async function listLeadsPage(
 }
 
 /**
- * Every engagement bucket's size for a scope, without a single lead row.
- *
- * This is what lets the tabs state their counts once the page stops holding the
- * population. It takes the SAME search the list takes, so the counts follow the search
- * box rather than describing a different set from the rows underneath them.
- */
-export async function getLeadBucketCounts(
-  scope: LeadScope,
-  query: Record<string, string>,
-  token?: string,
-): Promise<LeadBucketCounts> {
-  const raw = await apiCall<unknown>(
-    `/leads/bucket-counts?${leadQueryString(scope, query)}`,
-    { token },
-  );
-  const parsed = LeadBucketCountsSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getLeadBucketCounts: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getLeadBucketCounts: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/**
  * What a campaign performing a CONVERSATION leg (AI Meeting Booking) did with the people
  * handed to it, in PEOPLE, since inception (lead-service `GET /orgs/leads/conversation-counts`,
  * sales-lead-service #680). Such a campaign holds nobody, so the campaign-scoped bucket counts
@@ -8792,6 +8763,22 @@ export async function getUniboxLifecycleCounts(brandId: string, filters: UniboxF
     throw new Error("[dashboard] getUniboxLifecycleCounts: invalid response shape");
   }
   return parsed.data;
+}
+
+/**
+ * How many people of one scope REACHED each step (lead-service LEAD-REACHED-STEP-1106): the served
+ * `total` of the Unibox counts read filtered on `reachedStep`, one read per step (a person who
+ * reached two steps counts under both, so one read cannot answer them all). Nothing is added up here.
+ */
+export async function getReachedCounts(
+  brandId: string,
+  steps: readonly string[],
+  scope: Pick<UniboxScope, "offerId" | "campaignId">,
+): Promise<Record<string, number>> {
+  const totals = await Promise.all(
+    steps.map(async (step) => [step, (await getUniboxLifecycleCounts(brandId, {}, { ...scope, reachedStep: step })).total] as const),
+  );
+  return Object.fromEntries(totals);
 }
 
 /**

@@ -15,9 +15,9 @@ describe("campaign page stat cards", () => {
       'label="Queued"',
       'label="Sent"',
       'label="Delivered"',
-      "leg.outcome",
+      "outcomeWords.one : outcomeWords.many",
       "<SpentTile ",
-      '"Cost / reply"',
+      "`Cost / ${outcomeWords.one.toLowerCase()}`",
     ].map((t) => overview.indexOf(t));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);

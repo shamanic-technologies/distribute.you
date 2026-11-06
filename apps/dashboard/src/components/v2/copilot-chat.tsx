@@ -1,5 +1,8 @@
 "use client";
 
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { stepWords } from "@/lib/legs";
+import { CONVERSATION_STEP } from "@/lib/outbound-leg-key";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import Link from "next/link";
@@ -115,6 +118,8 @@ function AccountCard({
   revPending: boolean;
   winPending: boolean;
 }) {
+  // The figure counts positive replies: its label is the catalogue's served name for that step.
+  const replyWords = stepWords(useLegCatalogue(), CONVERSATION_STEP);
   const cells: { label: string; pending: boolean; value: string; sub?: string; good?: boolean; muted?: boolean }[] = [
     {
       label: "ROI",
@@ -133,7 +138,7 @@ function AccountCard({
         .join(" · ") || undefined,
     },
     {
-      label: "Positive replies",
+      label: replyWords.many,
       pending: winPending,
       value: figures.positiveReplies != null ? formatCount(figures.positiveReplies) : "—",
       sub: figures.needYourCall ? `${formatCount(figures.needYourCall)} need your call` : undefined,

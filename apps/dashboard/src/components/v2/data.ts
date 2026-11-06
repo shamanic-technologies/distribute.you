@@ -11,14 +11,13 @@ import {
   getOfferOutcomes,
   getOfferContactedValue,
   getAwaitingReply,
-  getLeadBucketCounts,
+  getReachedCounts,
   getLeadDetail,
   getLeadHistory,
   getOrgUsage,
   getUniboxLifecycleCounts,
   getOfferCompanyLifecycle,
   keepLastGoodFeatureRevenue,
-  listLeadsPage,
   type AwaitingReplyPerson,
   type LeadScope,
 } from "@/lib/api";
@@ -30,7 +29,6 @@ import type { RevenueWindowDays } from "@/lib/revenue-window";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import { leadBucketCountsQuery, type LeadBucket } from "@/lib/leads-server-page";
 import { filtersKey, type UniboxFilters } from "@/lib/unibox-leads";
 import { getBrandCampaignTargets, getCampaignTargetRow } from "@/lib/api";
 
@@ -155,12 +153,19 @@ export function useBrandOutcomes(brandId: string) {
   return useAuthQuery(["brandOutcomes", brandId], () => getBrandOutcomes(brandId), { ...pollOptions, enabled: !!brandId });
 }
 
-export function useBucketCounts(brandId: string) {
-  const lead = useLeadScope(brandId);
+/**
+ * How many people of the selected offer (one campaign when named) REACHED each step, by catalogue
+ * step key: lead-service's Unibox `total` filtered on `reachedStep` (LEAD-REACHED-STEP-1106), the
+ * same rows the outcome's people list shows, so a count and its list agree.
+ */
+export function useReachedCounts(brandId: string, steps: readonly string[], campaignId: string | null = null) {
+  const { offerId } = useSelectedOffer();
+  const list = [...new Set(steps)].sort();
+  const scope = campaignId ? { campaignId } : { offerId };
   return useAuthQuery(
-    ["leadBucketCounts", lead.key, ""],
-    () => getLeadBucketCounts(lead.scope, leadBucketCountsQuery("")),
-    { ...pollOptions, enabled: lead.ready },
+    ["reachedCounts", brandId, campaignId ? "" : (offerId ?? ""), campaignId ?? "", list.join(",")],
+    () => getReachedCounts(brandId, list, scope),
+    { ...pollOptions, enabled: !!brandId && (!!campaignId || !!offerId) && list.length > 0 },
   );
 }
 
@@ -232,31 +237,6 @@ export function useNeedsYourCall(brandId: string, limit: number) {
       return { total: awaiting.total, leads, waiting };
     },
     { refetchInterval: POLL_INTERVAL, enabled: !!brandId },
-  );
-}
-
-/**
- * The latest leads in one bucket, newest first on lead-service's own activity order.
- * `limit` rides the key so two surfaces asking different sizes never share an entry.
- */
-export function useLatestInBucket(
-  brandId: string,
-  bucket: LeadBucket,
-  limit: number,
-  campaignId?: string,
-) {
-  const lead = useLeadScope(brandId);
-  const scopeKey = campaignId ? `campaign:${campaignId}` : lead.key;
-  return useAuthQuery(
-    ["leadsPage", scopeKey, "v2-latest", bucket, limit],
-    () =>
-      listLeadsPage(
-        campaignId ? { campaignId } : lead.scope,
-        { view: "basic", bucket, sort: "activity", limit: String(limit) },
-        undefined,
-        { includeCampaigns: false },
-      ),
-    { refetchInterval: POLL_INTERVAL, enabled: !!campaignId || lead.ready },
   );
 }
 
