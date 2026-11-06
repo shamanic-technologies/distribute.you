@@ -28,7 +28,7 @@ describe("sales-funnel campaign page: the GTM Factory anatomy", () => {
     const at = factory.indexOf("export function FactoryCampaignSections(");
     const fn = factory.slice(at, factory.indexOf("// ─── Milestones"));
     expect(fn).toContain("useFactoryShadow(campaign.brandId, campaign.id, true)");
-    const order = ["<FactoryJourneys", "<FactoryMilestones", "<FactoryPlan", "<FactoryStrategies", "<FactoryScripts"].map((m) => fn.indexOf(m));
+    const order = ["<FactoryJourneys", "<CampaignMilestoneCards", "<FactoryPlan", "<FactoryStrategies", "<FactoryScripts"].map((m) => fn.indexOf(m));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((x, y) => x - y)).toEqual(order);
   });
@@ -112,7 +112,8 @@ describe("milestones and people journeys (features-service, served measured-or-e
   });
   it("the page reads both through the gateway on net pricing, and never shows the planner's internal ROI", () => {
     const api = read("lib/api.ts");
-    expect(api).toContain("/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/milestones?pricing=net");
+    // Milestones: the campaign-targets row of ONE campaign, counted from produced Units (LEAD-GENERIC-1106).
+    expect(api).toContain("/campaign-targets?pricing=net&salesFunnelCampaignId=${encodeURIComponent(salesFunnelCampaignId)}");
     expect(api).toContain("/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/people-journeys?pricing=net");
     const code = read("components/v2/factory-campaign.tsx");
     expect(code).not.toContain("figures.roi");

@@ -219,7 +219,6 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
  */
 export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The campaign page's Milestones and What its people went through (FACTORY-USER-DASHBOARD-1102).
-  "funnelCampaignMilestones",
   "funnelCampaignPeopleJourneys",
   // Today > Why each one was picked (FACTORY-USER-DASHBOARD-1102).
   "offerEnginePicks",

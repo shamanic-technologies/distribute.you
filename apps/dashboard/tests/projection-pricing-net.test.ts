@@ -53,8 +53,8 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(readerBody("getOfferOutcomeCostSeries")).toContain('pricing: "net"');
   });
 
-  it("getFunnelCampaignMilestones requests net pricing (campaign page Milestones)", () => {
-    expect(readerBody("getFunnelCampaignMilestones")).toContain("?pricing=net");
+  it("getCampaignTargetRow requests net pricing (campaign page Milestones)", () => {
+    expect(readerBody("getCampaignTargetRow")).toContain("?pricing=net");
   });
 
   it("getFunnelCampaignPeopleJourneys requests net pricing (What its people went through)", () => {
