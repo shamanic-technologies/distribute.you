@@ -251,7 +251,7 @@ function DayBars({ days, bars }: { days: PublishedDay[]; bars: Array<[DayField, 
           minTickGap={32}
           tickFormatter={(t: number) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}
         />
-        <YAxis tick={TICK} tickLine={false} axisLine={false} width={40} tickCount={4} allowDecimals={false} tickFormatter={(v: number) => formatCount(v)} />
+        <YAxis tick={TICK} tickLine={false} axisLine={false} width={52} tickCount={4} allowDecimals={false} tickFormatter={(v: number) => formatCount(v)} />
         <Tooltip
           cursor={{ fill: "var(--data-track)" }}
           content={({ active, payload }) => {
