@@ -11,10 +11,10 @@ import {
   type FactoryShadowPlan,
   type PipeVerdict,
 } from "@/lib/factory-shadow";
-import { milestoneReasonWords, planLegsFromTarget, strategyOfPlace, type MilestoneValue, type PlanNode } from "@/lib/factory-campaign";
+import { milestoneReasonWords, planLegsFromTarget, strategyOfPlace, type PlanNode } from "@/lib/factory-campaign";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getFunnelCampaignMilestones, getFunnelCampaignPeopleJourneys } from "@/lib/api";
+import { getFunnelCampaignPeopleJourneys } from "@/lib/api";
 import { StepMark } from "@/components/marks/step-mark";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { CatalogueName } from "@/components/v2/catalogue-name";
@@ -22,6 +22,7 @@ import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, ShareBar, Shimmer } from "@/components/v2/ui";
 import { useFactoryShadow } from "@/components/v2/factory-plan-card";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
+import { CampaignMilestoneCards } from "@/components/v2/today-targets";
 
 /**
  * THE GTM FACTORY CAMPAIGN PAGE, for EVERY client (FACTORY-USER-DASHBOARD-1102, owner 2026-11-02: « migre depuis
@@ -53,7 +54,7 @@ export function FactoryCampaignSections({ campaign }: { campaign: SalesFunnelCam
   return (
     <>
       <FactoryJourneys brandId={campaign.brandId} campaignId={campaign.id} />
-      <FactoryMilestones brandId={campaign.brandId} campaignId={campaign.id} />
+      <CampaignMilestoneCards brandId={campaign.brandId} campaignId={campaign.id} />
       <FactoryPlan shadow={shadow} settled={settled} />
       <FactoryStrategies shadow={shadow} />
       <FactoryScripts shadow={shadow} />
@@ -122,102 +123,6 @@ function ScriptSplit({ shares }: { shares: Array<number | null> }) {
         <span key={i} className="h-full border-r border-[var(--bg)] last:border-0" style={{ width: `${Math.max(0, v ?? 0)}%`, background: "var(--accent)", opacity: Math.max(0.25, 1 - i * 0.25) }} />
       ))}
     </span>
-  );
-}
-
-// ─── Milestones ───────────────────────────────────────────────────────────────────────────────
-
-/** A milestone figure: measured in the ordinary colour, expected greyed with its word, none = its reason or "—". */
-function MilestoneCell({ v, format }: { v: MilestoneValue; format: (n: number) => string }) {
-  if (v.value === null) return DASH;
-  if (v.basis === "expected") return <span className="k-fg3" title="Expected, from the plan">{format(v.value)}<span className="ml-1 text-[11px]">exp.</span></span>;
-  return <>{format(v.value)}</>;
-}
-
-export function FactoryMilestones({ brandId, campaignId }: { brandId: string; campaignId: string }) {
-  const q = useAuthQuery(["funnelCampaignMilestones", brandId, campaignId], () => getFunnelCampaignMilestones(brandId, campaignId), pollOptions);
-  const settled = q.data !== undefined || q.isFetchedAfterMount;
-  const rows = q.data?.milestones ?? [];
-  const target = rows.find((r) => r.isTarget)?.label ?? "Target";
-  // The widest milestone scales the outcome bars: the funnel narrowing, drawn (display only).
-  const outcomesMax = Math.max(0, ...rows.map((r) => r.outcomes ?? 0));
-  return (
-    <section>
-      <SectionTitle count={rows.length > 0 ? rows.length : null} right={<span>Measured since it started, else expected</span>}>
-        Milestones
-      </SectionTitle>
-      <div className="k-card overflow-hidden">
-        {!settled ? (
-          <div className="space-y-2 p-4">
-            <Shimmer className="h-6 w-full" />
-            <Shimmer className="h-6 w-full" />
-            <Shimmer className="h-6 w-full" />
-          </div>
-        ) : q.isError && !q.data ? (
-          <EmptyNote>Could not read this campaign&apos;s milestones. Retrying.</EmptyNote>
-        ) : rows.length === 0 ? (
-          <EmptyNote>{milestoneReasonWords(q.data?.milestonesUnavailableReason ?? null) ?? "No milestone to show yet."}</EmptyNote>
-        ) : (
-          <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[760px] text-[13px]">
-              <thead>
-                <tr className="k-line-subtle border-b">
-                  <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Milestone</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal"># Outcomes</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">
-                    <span className="inline-flex justify-end">
-                      <ExpectedLabel tip={EXPECTED_TIP}>$ / Outcome</ExpectedLabel>
-                    </span>
-                  </th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">$ From Start</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">% Conversion</th>
-                  <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">Needed per {target}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.step} className="k-line-subtle border-b last:border-b-0">
-                    <td className="px-3 py-2 pl-4">
-                      <span className={`inline-flex items-center gap-2 ${r.step === "start" ? "" : "font-medium"}`}>
-                        {r.step === "start" ? <PlayIcon size={14} weight="duotone" className="k-fg3" aria-hidden /> : <StepMark stepKey={r.step} size="xs" />}
-                        {r.label}
-                        {r.isTarget && <span className="k-chip">Target</span>}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      <span className="inline-flex items-center justify-end gap-2.5">
-                        {r.outcomes !== null && <ShareBar value={r.outcomes} max={outcomesMax} color="var(--data-teal)" className="hidden w-16 md:block" />}
-                        {r.outcomes !== null ? formatCount(r.outcomes) : DASH}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      <MilestoneCell v={r.costPerOutcomeUsd} format={formatUsdAdaptive} />
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      <MilestoneCell v={r.costFromStartUsd} format={formatUsdAdaptive} />
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      <span className="inline-flex items-center justify-end gap-2.5">
-                        {r.conversionFromAbovePct.value !== null && (
-                          <ShareBar value={r.conversionFromAbovePct.value} max={100} color={r.conversionFromAbovePct.basis === "expected" ? "var(--fg-4)" : "var(--accent)"} className="hidden w-12 md:block" />
-                        )}
-                        <MilestoneCell v={r.conversionFromAbovePct} format={formatRatePct} />
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 pr-4 text-right tabular-nums">
-                      <MilestoneCell v={r.attemptsPerTarget} format={formatAbout} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
-          Measured on your campaign&apos;s own people and spend; a greyed figure is expected from its plan until the campaign measures it.
-        </p>
-      </div>
-    </section>
   );
 }
 

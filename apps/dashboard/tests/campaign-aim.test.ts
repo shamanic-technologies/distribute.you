@@ -82,7 +82,9 @@ describe("an outcome named as a label wears its icon (owner 2026-11-03: « alway
   it("the Campaigns list row, Milestones, Plan, Strategy and Scripts headings draw it too", () => {
     expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<StepMark stepKey={campaign.target}");
     const factory = read("components/v2/factory-campaign.tsx");
-    for (const key of ["r.step", "node.outcome", "p.outcome", "stepKey"]) expect(factory).toContain(`<StepMark stepKey={${key}}`);
+    for (const key of ["node.outcome", "p.outcome", "stepKey"]) expect(factory).toContain(`<StepMark stepKey={${key}}`);
+    // Milestones are cards now (LEAD-GENERIC-1106), one shared component with Today.
+    expect(read("components/v2/today-targets.tsx")).toContain("<StepMark stepKey={card.step} />");
   });
 });
 

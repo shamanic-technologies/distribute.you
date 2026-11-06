@@ -74,6 +74,33 @@ export type Competitor = {
   readonly chooseThemIf: readonly string[];
   readonly chooseUsIf: readonly string[];
   readonly faq: readonly { readonly q: string; readonly a: string }[];
+  /**
+   * The "<name> pricing" answer (SEO-COMPETITOR-PRICING-PAGES-1106): set only for the
+   * competitors whose pricing and alternatives searches bring us signups. Present = the
+   * comparison page opens on a direct pricing answer and `/alternatives/<slug>` is served.
+   */
+  readonly pricingAnswer?: PricingAnswer;
+};
+
+export type PricingAnswer = {
+  /** The direct answer, first sentence of the page: price, billing model, minimum commitment. */
+  readonly answer: string;
+  /** What a typical volume really costs at their published prices, worked out in words. */
+  readonly typicalCost: { readonly volume: string; readonly cost: string; readonly how: string };
+  /** What the headline price leaves out. */
+  readonly hiddenCosts: readonly string[];
+  /** Who their pricing suits. */
+  readonly fitsWho: readonly string[];
+  /** One line telling them apart from a namesake, when directories mix the two up. */
+  readonly nameClash?: string;
+  /** A status the buyer must know before paying (a product being retired), read from their own site. */
+  readonly notice?: { readonly text: string; readonly sourceUrl: string; readonly readOn: string };
+  /** Pricing questions beyond the comparison FAQ ("Is X worth it?"). */
+  readonly faq: readonly { readonly q: string; readonly a: string }[];
+  /** Why people search for an alternative, the opening of `/alternatives/<slug>`. */
+  readonly whyLeave: readonly string[];
+  /** The other catalogue entries set side by side on `/alternatives/<slug>`, in that order. */
+  readonly alternatives: readonly string[];
 };
 
 
@@ -200,7 +227,7 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "ai-sdr",
     oneLiner: "AI agents that research a market, find prospects, write the emails and book demos, priced per email sent.",
     sourceUrl: "https://explee.com/pricing",
-    verifiedOn: "2026-10-04",
+    verifiedOn: "2026-11-06",
     pricingModel: "Pay as you go, no subscription: per email for the outreach agent, per 1,000 records for the database.",
     entryPrice: "$30 for 750 emails",
     prices: [
@@ -210,7 +237,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     operatedBy: "their AI agent",
     sendingDomains: "Pre-warmed domains they provide.",
-    leads: "Found by the agent from their 536M-profile database.",
+    leads: "Found by the agent from their database of up to 105M companies and 80M+ decision makers.",
     replies: "Warm leads and booked demos surfaced to you.",
     channels: "Email.",
     costPerMeetingPublished: false,
@@ -239,6 +266,34 @@ export const COMPETITORS: readonly Competitor[] = [
       { q: "Explee sends from pre-warmed domains too. What differs?", a: "Who runs it. Explee hands the agent to you. distribute.you runs the campaign for you and answers the interested replies until a meeting is booked." },
       { q: "Is $30 for 750 emails cheaper than distribute.you?", a: "Per email, yes. distribute.you is free: you choose your outreach budget. Per meeting, the honest answer is on your dashboard after the first weeks. We publish our clients' cost per positive reply so you can judge before you start." },
     ],
+    pricingAnswer: {
+      answer: "Explee costs $30 for 750 emails on its Outreach Agent, pay as you go. There is no subscription and no minimum commitment. Its B2B database is sold apart, from $5 per 1,000 records for deep research and from $10 per 1,000 for emails.",
+      typicalCost: {
+        volume: "1,000 prospects",
+        cost: "$40 to $120",
+        how: "One email to each of 1,000 prospects is 1,000 emails: $40 at $30 per 750. A three-email sequence is 3,000 emails, $120, if each follow-up counts as an email. Buying the 1,000 emails from their database adds from $10.",
+      },
+      hiddenCosts: [
+        "Database records are billed apart from the agent, per 1,000.",
+        "The price counts emails sent. Explee's own estimate is about 1 meeting per $30, and your result can be higher or lower.",
+      ],
+      fitsWho: [
+        "Founders who want to test outbound for $30 with no subscription.",
+        "Teams that think in emails sent and want a low price per thousand.",
+      ],
+      nameClash: "This is Explee the AI outbound agent at explee.com, formerly AutoGTM. Some software directories mix it up with an older explainer-video tool of the same name.",
+      faq: [
+        { q: "Is Explee worth it?", a: "For a cheap test, yes: $30 buys 750 emails with no subscription. If you want the replies answered and the meeting booked for you, compare it with an agent that runs the whole campaign and shows what each meeting cost." },
+        { q: "Does Explee have a free trial?", a: "New accounts get $30 to try the Outreach Agent." },
+        { q: "Does Explee charge a monthly fee?", a: "No. The Outreach Agent is pay as you go, and the database is billed per 1,000 records." },
+      ],
+      whyLeave: [
+        "You want the interested replies answered until the meeting is booked.",
+        "You want to know what a meeting costs, measured on your own account.",
+        "You want the code open source and your data in your hands.",
+      ],
+      alternatives: ["aisdr", "topo", "smartlead", "apollo", "clay", "11x"],
+    },
   },
   // The AI lead generation tools (PAGE-AI-LEAD-GEN-1029). Their comparison pages live under
   // the AI lead generation page's own cluster, `/ai-lead-generation/vs/<slug>`;
@@ -583,12 +638,12 @@ export const COMPETITORS: readonly Competitor[] = [
     category: "ai-sdr",
     oneLiner: "An AI SDR platform that prospects, personalises and runs multichannel sequences, with an AI strategist named Ami.",
     sourceUrl: "https://aisdr.com/pricing",
-    verifiedOn: "2026-10-29",
+    verifiedOn: "2026-11-06",
     pricingModel: "Pay as you go at $1.50 per person prospected, charged daily. Team plans are priced on volume, billed monthly on quarterly contracts.",
     entryPrice: "$1.50 per person prospected",
     prices: [
       { plan: "Pay as you go", price: "$1.50 per person prospected", note: "Charged daily, cancel anytime; Ami, prospecting, sequences, warmup and a unified inbox" },
-      { plan: "Teams", price: "On request", note: "For teams contacting 1,000+ people a month; quarterly contracts, 20% off annual" },
+      { plan: "Teams", price: "On request", note: "For teams contacting 1,000+ people a month, up to 40% lower price per contact; quarterly contracts, 20% off annual" },
       { plan: "Warmed-up mailbox", price: "$33", note: "Add-on, any plan" },
       { plan: "Fully managed service", price: "$2,500/month", note: "Add-on; a single managed campaign is $149" },
     ],
@@ -623,6 +678,34 @@ export const COMPETITORS: readonly Competitor[] = [
       { q: "Do both send from warmed domains?", a: "Yes. AiSDR sets up lookalike domains with warmup. distribute.you sends from domains we own and warm, so nothing is set up in your name." },
       { q: "Is there a commitment with distribute.you?", a: "No. You start with a $10 balance and can pause or cancel anytime." },
     ],
+    pricingAnswer: {
+      answer: "AiSDR costs $1.50 per person prospected on its pay as you go plan, charged daily, with no contract. Team plans for 1,000+ people a month are priced on volume and billed monthly on quarterly contracts. Research, lists and writing are included.",
+      typicalCost: {
+        volume: "1,000 prospects",
+        cost: "$1,500",
+        how: "1,000 people at $1.50 each on pay as you go. Past 1,000 a month, AiSDR moves you to a Teams quote on a quarterly contract, up to 40% lower per contact.",
+      },
+      hiddenCosts: [
+        "A warmed-up mailbox is a $33 add-on.",
+        "Their team running it for you costs $2,500 a month, or $149 for a single campaign.",
+        "Teams pricing is a quote, on a quarterly contract.",
+      ],
+      fitsWho: [
+        "Sales teams on HubSpot who want an AI SDR priced per person.",
+        "Teams ready for a quarterly contract at 1,000+ people a month.",
+      ],
+      faq: [
+        { q: "Is AiSDR worth it?", a: "If you want an AI SDR inside HubSpot and pay per person, it is one of the few that prints a price. At $1.50 a person, 1,000 prospects cost $1,500 before mailboxes. Weigh that against what a meeting costs you, measured on your account." },
+        { q: "Does AiSDR have a free trial?", a: "You can sign up without a card. Payment starts when you launch a campaign." },
+        { q: "What is the minimum contract on AiSDR?", a: "None on pay as you go. Team plans are quarterly, with 20% off on an annual plan." },
+      ],
+      whyLeave: [
+        "$1.50 a person adds up fast: 1,000 prospects is $1,500.",
+        "Teams pricing means a sales call and a quarterly contract.",
+        "You want every action at the vendor's API price, with the code open source.",
+      ],
+      alternatives: ["explee", "topo", "11x", "artisan", "qualified", "apollo"],
+    },
   },
   {
     slug: "qualified",
@@ -1762,6 +1845,162 @@ export const COMPETITORS: readonly Competitor[] = [
       { q: "Is distribute.you a Common Room alternative?", a: "For outbound, yes. Common Room finds and scores buyers for your reps to work in their own tools. distribute.you does the work: we find the buyers, write and send from our own domains, and answer the interested replies until the meeting is booked." },
       { q: "Can I use Common Room and distribute.you together?", a: "Yes. Common Room keeps reading the signals your website and community send. distribute.you reaches the buyers who have not shown up yet, and books the interested ones." },
     ],
+  },  // The pricing and alternatives searches that bring signups (SEO-COMPETITOR-PRICING-PAGES-1106).
+  // Every figure read on each site on 2026-11-06.
+  {
+    slug: "topo",
+    name: "Topo",
+    domain: "topo.io",
+    category: "ai-sdr",
+    oneLiner: "An AI outbound platform sold as one subscription: buying signals, a contact database, email and LinkedIn sequences, an AI agent and human support.",
+    sourceUrl: "https://www.topo.io/pricing",
+    verifiedOn: "2026-11-06",
+    pricingModel: "Subscription per seat per month, with monthly credits per seat that the agent spends on emails, phone numbers and qualified leads.",
+    entryPrice: "$89/seat/month",
+    prices: [
+      { plan: "Solo", price: "$89/seat/month", note: "Up to 2 seats, 1,000 credits per seat a month (a verified work email is 1 credit), 3 signals at once, email and LinkedIn sequences" },
+      { plan: "Team", price: "$129/seat/month", note: "From 3 seats, 1,600 credits per seat a month, unlimited signals, HubSpot and Pipedrive" },
+      { plan: "Enterprise", price: "On request", note: "From 10 seats, 2,000 credits per seat a month, Salesforce, SSO, workshops" },
+    ],
+    operatedBy: "their AI agent",
+    sendingDomains: "Email infrastructure managed by them.",
+    leads: "Found by the agent from 15+ buying signal sources and their contact database.",
+    replies: "Land in their unified inbox for you to answer, with a reason to call pushed to your reps.",
+    channels: "Email and LinkedIn, plus call tasks.",
+    costPerMeetingPublished: false,
+    freeTier: "Free trial on Solo.",
+    contract: "Not stated on the pricing page. Team and Enterprise start with a call.",
+    whereTheyWin: [
+      "Email and LinkedIn in one sequence, with call tasks for your reps.",
+      "15+ buying signal sources watched for you.",
+      "Workshops and a Slack channel with their team.",
+    ],
+    whereWeWin: [
+      "No seat to pay: the AI agent is free and every action is at the API price with 0% markup.",
+      "We answer the interested replies until the meeting is booked.",
+      "What each meeting cost you is measured on your dashboard.",
+    ],
+    chooseThemIf: [
+      "You have reps who work email, LinkedIn and calls from one tool.",
+      "You want buying signals and a coach for your team.",
+    ],
+    chooseUsIf: [
+      "You have no sales team and want meetings booked for you.",
+      "You would rather pay per action than per seat.",
+    ],
+    faq: [
+      { q: "How much does Topo cost?", a: "Topo Solo is $89 per seat a month for up to 2 seats, with 1,000 credits per seat. Team is $129 per seat a month from 3 seats, with 1,600 credits. Enterprise starts at 10 seats, on request." },
+      { q: "Is distribute.you a Topo alternative?", a: "Yes, for a founder without a sales team. Topo gives your reps an AI outbound platform. distribute.you runs the campaign for you and answers the replies until the meeting is booked." },
+      { q: "Does distribute.you charge per seat?", a: "No. The AI agent is free. You pay each action at the vendor's API price, from a prepaid balance you can pause anytime." },
+    ],
+    pricingAnswer: {
+      answer: "Topo costs $89 per seat a month on Solo, for up to 2 seats, and $129 per seat a month on Team, from 3 seats. Enterprise starts at 10 seats and is priced on request. Each seat comes with monthly credits the AI agent spends on emails, phone numbers and qualified leads.",
+      typicalCost: {
+        volume: "1,000 prospects",
+        cost: "From $89 a month",
+        how: "A verified work email is 1 credit, so 1,000 prospects use one Solo seat's 1,000 monthly credits: $89. Qualify each one by deep research and the same 1,000 need 6,000 credits. Topo does not publish a price for extra credits.",
+      },
+      hiddenCosts: [
+        "Credits run out per seat: a direct dial or a signal lead costs 10 credits.",
+        "Team and Enterprise prices go through a sales call.",
+      ],
+      fitsWho: [
+        "Small sales teams who want signals, sequences and coaching in one tool.",
+        "Teams who work LinkedIn and calls beside email.",
+      ],
+      faq: [
+        { q: "Is Topo worth it?", a: "For a sales team that wants signals, sequences and coaching in one subscription, it can be. For a founder alone, $89 a seat a month buys the tool, and the replies are still yours to answer." },
+        { q: "Does Topo publish its prices?", a: "Yes, since its pricing page lists Solo at $89 and Team at $129 per seat a month. Its FAQ still says the exact price depends on your usage and market, and asks you to book a demo." },
+        { q: "Does Topo have a free trial?", a: "Solo has a Start free trial button. Team and Enterprise start with a call." },
+      ],
+      whyLeave: [
+        "You pay per seat, even in a month you send nothing.",
+        "Replies land in an inbox for you to answer.",
+        "You want every action at the vendor's API price, with the code open source.",
+      ],
+      alternatives: ["aisdr", "explee", "apollo", "lemlist", "reply-io", "11x"],
+    },
+  },
+  {
+    slug: "persana",
+    name: "Persana",
+    domain: "persana.ai",
+    category: "data-platform",
+    oneLiner: "An AI prospecting platform: 100+ data providers, email and phone waterfalls, web scrapers and AI research agents, all on credits.",
+    sourceUrl: "https://persana.ai/pricing",
+    verifiedOn: "2026-11-06",
+    pricingModel: "Credit plans billed annually, with a free plan. An email found is 1 credit, a phone number 10.",
+    entryPrice: "Free plan, then $68/month (annual)",
+    prices: [
+      { plan: "Free", price: "$0/month", note: "50 credits" },
+      { plan: "Starter", price: "$68/month, billed annually", note: "24,000 credits a year" },
+      { plan: "Growth", price: "$151/month, billed annually", note: "60,000 credits a year, sequencer integrations, your own API key" },
+      { plan: "Pro", price: "$400/month, billed annually", note: "216,000 credits a year, CRM integration, intent data" },
+      { plan: "Unlimited", price: "$600/month, billed annually", note: "600,000 credits a year, autopilot AI agents, email sending" },
+      { plan: "Enterprise", price: "On request", note: "AI SDR (full service), a dedicated account team" },
+    ],
+    operatedBy: "you",
+    sendingDomains: "Your own sequencer on most plans; email sending only on Unlimited.",
+    leads: "Found and enriched from 100+ data providers, with email and phone waterfalls.",
+    replies: "Handled in your own sequencer and inbox.",
+    channels: "Data and research; email through a connected sequencer.",
+    costPerMeetingPublished: false,
+    freeTier: "Free plan with 50 credits.",
+    contract: "Prices shown billed annually; annual saves 20% on monthly.",
+    whereTheyWin: [
+      "100+ data providers behind one credit.",
+      "Email and phone waterfalls to find a contact.",
+      "A free plan to try it.",
+    ],
+    whereWeWin: [
+      "A product with a future: Persana says it is sunsetting its platform as its team joins Rox.",
+      "We write, send from our own domains, answer and book the meeting.",
+      "The AI agent is free and every action is at the API price with 0% markup.",
+    ],
+    chooseThemIf: [
+      "You are already a Persana customer moving to Rox with their team.",
+      "You want data enrichment only, for your own sequencer.",
+    ],
+    chooseUsIf: [
+      "You want the outreach run for you, from finding the lead to the meeting.",
+      "You need a tool that stays: start free, pay as you go.",
+    ],
+    faq: [
+      { q: "How much does Persana cost?", a: "Persana's pricing page lists a free plan with 50 credits, then Starter at $68 a month, Growth at $151, Pro at $400 and Unlimited at $600, all billed annually. An email found is 1 credit and a phone number 10." },
+      { q: "Is Persana shutting down?", a: "Persana wrote on its blog, dated March 30, 2026, that it is sunsetting the Persana platform over the coming weeks and that its team is joining Rox. Its pricing page still listed plans on November 6, 2026." },
+      { q: "Is distribute.you a Persana alternative?", a: "Yes. Persana finds and enriches leads for you to contact. distribute.you finds them, writes to them from our own domains and answers the interested replies until the meeting is booked." },
+    ],
+    pricingAnswer: {
+      answer: "Persana's pricing page lists a free plan with 50 credits, then Starter at $68 a month, Growth at $151, Pro at $400 and Unlimited at $600, all billed annually. Persana also says it is retiring its platform as its team joins Rox.",
+      typicalCost: {
+        volume: "1,000 prospects",
+        cost: "1,000 to 11,000 credits",
+        how: "An email found is 1 credit and a phone number 10. Emails for 1,000 prospects use 1,000 credits; add phone numbers and it is 11,000. Starter's 24,000 credits a year cost $816, billed annually.",
+      },
+      hiddenCosts: [
+        "Plans are shown billed annually.",
+        "Finding contacts is not sending: outreach runs in a sequencer you pay apart, except on Unlimited.",
+      ],
+      fitsWho: [
+        "Teams who need contact data for a sequencer they already run.",
+      ],
+      notice: {
+        text: "Persana wrote on March 30, 2026 that it is sunsetting the Persana platform over the coming weeks, as its team joins Rox.",
+        sourceUrl: "https://persana.ai/blogs/exciting-news-our-next-chapter",
+        readOn: "2026-11-06",
+      },
+      faq: [
+        { q: "Is Persana worth it?", a: "Persana says its platform is being retired as its team joins Rox. Before a yearly plan, check the transition terms on its blog, or pick a tool that will stay." },
+        { q: "What should Persana customers move to?", a: "Persana points its customers to Rox. If what you used Persana for was outbound, distribute.you finds the leads, writes and sends, and answers the replies for you, free to start." },
+        { q: "Does Persana have a free plan?", a: "Its pricing page lists a free plan with 50 credits." },
+      ],
+      whyLeave: [
+        "Persana says it is sunsetting its platform as its team joins Rox.",
+        "Plans are billed annually, a long bet on a product being retired.",
+        "Finding leads is half the job: someone still has to write, send and answer.",
+      ],
+      alternatives: ["clay", "apollo", "lusha", "seamless-ai", "explee", "topo"],
+    },
   },
 ];
 
@@ -1930,9 +2169,25 @@ export function gtmAutomationCompareLinks(): { label: string; href: string }[] {
   return clusterCompareLinks(GTM_AUTOMATION_CLUSTER);
 }
 
+/** The competitors whose "<name> pricing" and "<name> alternatives" searches we answer, in catalogue order. */
+export function pricingAnsweredCompetitors(): Competitor[] {
+  return COMPETITORS.filter((c) => !!c.pricingAnswer);
+}
+
+/** `/alternatives/<slug>`: the "<name> alternatives" page, served only for a competitor with a pricing answer. */
+export function competitorAlternativesPath(c: Pick<Competitor, "slug">): string {
+  return `/alternatives/${c.slug}`;
+}
+
 /** Every path the cluster serves, for the sitemap and llms.txt. */
 export function comparePaths(): string[] {
-  return ["/compare", "/alternatives", ...COMPARE_CLUSTERS.map(clusterAlternativesPath), ...COMPETITORS.map(competitorPath)];
+  return [
+    "/compare",
+    "/alternatives",
+    ...COMPARE_CLUSTERS.map(clusterAlternativesPath),
+    ...COMPETITORS.map(competitorPath),
+    ...pricingAnsweredCompetitors().map(competitorAlternativesPath),
+  ];
 }
 
 /**

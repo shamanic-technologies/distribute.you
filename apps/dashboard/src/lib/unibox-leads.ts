@@ -11,6 +11,37 @@ import type { TimelineIcon, TimelineTag, TimelineTone } from "./timeline-tags";
 export const LifecycleRungSchema = z.object({ key: z.string(), rank: z.number(), label: z.string() }).passthrough();
 export type LifecycleRung = z.infer<typeof LifecycleRungSchema>;
 
+/**
+ * THE lead vocabulary (lead-service LEAD-GENERIC-1106, owner 2026-11-06: "on parle encore de Lead.
+ * Lead won, lead lost"): ONE description of a lead, served on every Unibox read. won / hot / lost are
+ * lead-service's verdicts, disjoint (none = open); this app READS them and never re-derives one.
+ * Optional on the row until every cached body carries it.
+ */
+export const LeadStateSchema = z
+  .object({
+    lifecycle: LifecycleRungSchema.nullable(),
+    won: z.boolean(),
+    hot: z.boolean(),
+    lost: z
+      .object({
+        reasons: z.array(z.string()),
+        reachable: z.string().nullable(),
+        fit: z.string().nullable(),
+      })
+      .passthrough()
+      .nullable(),
+    reachable: z.string(),
+    conversation: z.string(),
+    fit: z.string(),
+    fitNote: z.string().nullable(),
+    interest: z.string(),
+    clientStatus: z.string(),
+    nextFollowupAt: z.string().nullable(),
+    nextFollowupBasis: z.string().nullable(),
+  })
+  .passthrough();
+export type LeadState = z.infer<typeof LeadStateSchema>;
+
 const StepSchema = z.object({ step: z.string(), at: z.string().nullable() }).passthrough();
 
 export const UniboxRowSchema = z
@@ -74,6 +105,7 @@ export const UniboxRowSchema = z
       .array(z.object({ campaignId: z.string(), name: z.string(), pipeCampaignIds: z.array(z.string()), servedAt: z.string().nullable() }).passthrough())
       .nullish(),
     campaignsReason: z.string().nullish(),
+    leadState: LeadStateSchema.optional(),
   })
   .passthrough();
 export type UniboxRow = z.infer<typeof UniboxRowSchema>;
@@ -94,6 +126,8 @@ export const UniboxLeadCardSchema = z
   .object({
     brandId: z.string(),
     lead: UniboxRowSchema,
+    // The ONE lead vocabulary (top level on the card, beside `lead`). Optional until every cached body carries it.
+    leadState: LeadStateSchema.optional(),
     campaigns: z.array(
       z
         .object({
@@ -280,6 +314,8 @@ export const UniboxLifecycleCountsSchema = z
     lifecycleLadder: z.array(LifecycleRungSchema),
     total: z.number(),
     byLifecycle: z.record(z.string(), z.number()),
+    // People won / hot / lost (LEAD-GENERIC-1106), disjoint: the rest are open. Optional until cached bodies carry it.
+    byVerdict: z.object({ won: z.number(), hot: z.number(), lost: z.number() }).passthrough().optional(),
     builtAt: z.string().nullable(),
   })
   .passthrough();
@@ -379,26 +415,62 @@ export function uniboxValueTone(dim: UniboxDimension, value: string): TimelineTo
   return VALUE_LOOK[`${dim}:${value}`]?.tone ?? "neutral";
 }
 
+/** The words for each reason lead-service serves for a lost lead (its value first: "Bounced", "Wrong person"). */
+export function lostReasonWords(lost: NonNullable<LeadState["lost"]>): string[] {
+  return lost.reasons.map((r) => {
+    if (r === "not_reachable") return lost.reachable ? dimensionValueLabel("contactability", lost.reachable) : "Not reachable";
+    if (r === "wrong_fit") return lost.fit ? dimensionValueLabel("fit", lost.fit) : "Wrong fit";
+    if (r === "not_interested") return dimensionValueLabel("interest", "not_interested");
+    console.error("[unibox] lost reason lead-service serves that the dashboard does not name", { reason: r });
+    return r.replace(/_/g, " ");
+  });
+}
+
 /**
- * The ONE tag a list row carries (owner 2026-10-21): where the lead stands, the hottest true fact
- * first, nothing for the default (lead found or contacted, no answer, prospect). A customer first;
- * then a closed door (unreachable, not interested, churned: it ends the conversation); then a stage
- * past Engaged (signup, meeting, paid); then Interested (hotter than Engaged); then Engaged. Whether
- * they wait on US is not a stage: the row says it apart (`uniboxWaitsOnUs`).
+ * Won / Hot / Lost, each lead-service's verdict, read as one tag; Lost always says why. Null = open.
+ * A row or a card chip names the strongest reason (served first); the lead card names them all.
  */
-export function uniboxRowTag(row: Pick<UniboxRow, "lifecycle" | "interest" | "status" | "contactability">, ladder: LifecycleRung[]): TimelineTag | null {
-  const rank = (key: string) => ladder.find((r) => r.key === key)?.rank ?? null;
-  const engaged = rank("engaged") ?? rank("contacted") ?? 0;
-  const stage = row.lifecycle;
-  const past = (n: number) => stage !== null && stage.rank > n;
-  if (row.status === "customer") return past(engaged) ? uniboxValueTag("lifecycle", stage!.key, stage!.label) : uniboxValueTag("status", "customer", dimensionValueLabel("status", "customer"));
-  if (row.contactability !== "contactable") return uniboxValueTag("contactability", row.contactability, dimensionValueLabel("contactability", row.contactability));
-  if (row.interest === "not_interested") return uniboxValueTag("interest", row.interest, dimensionValueLabel("interest", row.interest));
-  if (row.status === "churned") return uniboxValueTag("status", "churned", dimensionValueLabel("status", "churned"));
-  if (past(engaged)) return uniboxValueTag("lifecycle", stage!.key, stage!.label);
-  if (row.interest === "interested") return uniboxValueTag("interest", row.interest, dimensionValueLabel("interest", row.interest));
-  if (past(rank("contacted") ?? engaged)) return uniboxValueTag("lifecycle", stage!.key, stage!.label);
+export function leadVerdictTag(state: LeadState, reasons: "strongest" | "all" = "strongest"): TimelineTag | null {
+  if (state.won) return { label: "Won", tone: "won", icon: "money" };
+  if (state.lost) {
+    const words = lostReasonWords(state.lost);
+    return { label: `Lost · ${(reasons === "all" ? words : words.slice(0, 1)).join(", ")}`, tone: "lost", icon: "lost" };
+  }
+  if (state.hot) return { label: "Hot", tone: "hot", icon: "flame" };
   return null;
+}
+
+/** A lead's ONE tag on a header: the verdict (Won / Lost and why / Hot), else its served lifecycle rung. */
+export function leadStateTag(state: LeadState): TimelineTag | null {
+  return leadVerdictTag(state) ?? (state.lifecycle ? uniboxValueTag("lifecycle", state.lifecycle.key, state.lifecycle.label) : null);
+}
+
+/**
+ * lead-service `GET /orgs/leads/unibox-state` (AGENT-READS-LEAD-1105 + LEAD-GENERIC-1106): one lead's
+ * Unibox row and its `leadState`. Only what this app reads is typed; the rest rides the passthrough.
+ */
+export const UniboxLeadStateSchema = z
+  .object({ brandId: z.string(), leadId: z.string().nullable(), leadState: LeadStateSchema })
+  .passthrough();
+export type UniboxLeadState = z.infer<typeof UniboxLeadStateSchema>;
+
+/**
+ * The ONE tag a list row carries (owner 2026-11-06, LEAD-GENERIC-1106): lead-service's verdict
+ * (Won / Lost with its reason / Hot), else the served lifecycle rung once past the ladder's first
+ * two rungs (found, contacted: nothing happened yet, nothing shown). Never re-derived here.
+ */
+export function uniboxRowTag(row: Pick<UniboxRow, "leadState">, ladder: LifecycleRung[]): TimelineTag | null {
+  const state = row.leadState;
+  if (!state) {
+    console.error("[unibox] row without leadState: lead-service did not serve the lead vocabulary");
+    return null;
+  }
+  const verdict = leadVerdictTag(state);
+  if (verdict) return verdict;
+  const stage = state.lifecycle;
+  if (!stage) return null;
+  const quiet = [...ladder].sort((a, b) => a.rank - b.rank).slice(0, 2).map((r) => r.key);
+  return quiet.includes(stage.key) ? null : uniboxValueTag("lifecycle", stage.key, stage.label);
 }
 
 /** They wrote and wait on us: the row's amber dot, like an unread mark. */

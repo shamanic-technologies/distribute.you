@@ -25,36 +25,34 @@ describe("campaign ROI tile (ROI-CONSISTENCY-1103)", () => {
  * `roiHistory` with the same card as the campaign page, and the offer's pipeline by step
  * from features-service `/offers/:offerId/outcomes` (never summed or divided here).
  */
-describe("Today's return and pipeline by step", () => {
+describe("Today: one row of cards per campaign Target (LEAD-GENERIC-1106)", () => {
   const today = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-page.tsx"), "utf-8");
-  const roi = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi.tsx"), "utf-8");
+  const targets = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-targets.tsx"), "utf-8");
 
   it("draws no pipeline-based return curve (ROI-CONSISTENCY-1103)", () => {
     expect(today).not.toContain("<RoiHistoryCard");
     expect(today).not.toContain("roiHistory");
   });
 
-  it("states customers won on our outreach, hot and lost leads, from the served pipeline", () => {
-    expect(today).toContain("const pipeline = outcomesQ.data?.pipeline ?? null;");
-    expect(today).toContain("<EarnedStrip pipeline={pipeline}");
-    expect(today).toContain("<HotLeads pipeline={pipeline}");
-    expect(today).toContain("<LostLeads pipeline={pipeline}");
-    expect(roi).toContain("pipeline?.customersWon");
-    expect(roi).toContain("pipeline?.hotLeads");
-    // Lost = went cold or ruled out (owner 2026-10-08), the same list as Unibox's Lost filter.
-    expect(roi).toContain("pipeline?.lostLeads");
-    expect(roi).not.toContain("pipeline?.coldLeads");
+  it("names no sales-funnel outcome in JSX: the Target rows wear the served label (owner 2026-11-06)", () => {
+    expect(today).toContain("<TodayTargets orgId={orgId} brandId={brandId} offerId={selectedOfferId} />");
+    for (const word of ["Hot leads", "Lost leads", "Customers won", "Positive replies", "Website visits", ">Meetings<"]) {
+      expect(today).not.toContain(word);
+      expect(targets).not.toContain(word);
+    }
+    expect(targets).toContain("row.target?.label");
+    expect(targets).toContain("<StepMark stepKey={row.target.key} />");
   });
 
-  it("states only the people we brought, and opens each row in the right panel (owner 2026-10-08)", () => {
-    expect(roi).toContain("s.pricedRecipientsReached");
-    // No $ pipeline per step: a forecast that lives on Deals only (ROI-CONSISTENCY-1103).
-    expect(roi).not.toContain("s.pricedValueUsd");
-    expect(roi).toContain("onOpen={() => onOpenStep(s.step.key)}");
-    expect(roi).toContain("{...openable(() => onOpenLead(l), leadName(l))}");
-    // The calculation left the table for the panel.
-    expect(roi).not.toContain("valueExplanation");
-    expect(today).toContain("<TodayPanel brandId={brandId} pipeline={pipeline} target={panel}");
+  it("prints served figures only: count, $ each, measured return, past then projection", () => {
+    expect(targets).toContain("row.outcomesToDate");
+    expect(targets).toContain("row.costPerOutcomeUsd");
+    expect(targets).toContain("row.measuredReturn.roiMultiple");
+    expect(targets).toContain("row.past.map((p) => p.cumulativeOutcomes)");
+    expect(targets).toContain("row.projection.daily.map((d) => d.cumulativeExpectedOutcomes)");
+    expect(targets).toContain("nextExpectedWords(row.projection.nextExpectedInHours)");
+    expect(targets).not.toContain("reduce(");
+    expect(targets).not.toMatch(/spentUsd\s*\/|\/\s*row\.outcomesToDate/);
   });
 
   it("the panel explains the served legs and edits each rate at brand level", () => {
@@ -65,20 +63,6 @@ describe("Today's return and pipeline by step", () => {
     expect(panel).toContain("await stateBrandLegRates(brandId,");
     expect(panel).toContain("invalidateConversionRates(qc);");
     expect(panel).not.toMatch(/probabilityPct\s*\*|lifetimeRevenueUsd\s*\*|recipientsReached\s*-/);
-  });
-
-  it("reads the offer's outcomes and prints the served figures only", () => {
-    expect(today).toContain("const outcomesQ = useOfferOutcomes(brandId);");
-    expect(today).toContain("<OfferOutcomesTable");
-    expect(roi).toContain("s.valuePerOutcomeUsd");
-    expect(roi).not.toMatch(/recipientsReached\s*\*|valueUsd\s*\//);
-    expect(roi).not.toContain("reduce(");
-  });
-
-  it("links the rates to where the customer changes them: the Offer page, never the staff Sales path page", () => {
-    expect(roi).toContain("v2OfferHref(orgId, brandId, offerId)}");
-    expect(roi).not.toContain('"sales-path"');
-    expect(roi).toContain("Wrong number? Change it");
   });
 });
 
@@ -99,7 +83,6 @@ describe("Today's Campaigns state each campaign's caps, no retired per-campaign 
  */
 describe("Today panel: people by group and the lead status change", () => {
   const panel = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi-panel.tsx"), "utf-8");
-  const roi = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi.tsx"), "utf-8");
   it("renders the three served groups, the ours ones as the big cards", () => {
     const ours = panel.slice(panel.indexOf("{people.ours.leads.map("), panel.indexOf("{people.lost.count > 0"));
     expect(ours.length).toBeGreaterThan(0);
@@ -112,49 +95,6 @@ describe("Today panel: people by group and the lead status change", () => {
     expect(panel).toContain("useSetAnyLeadStepStatement()");
     expect(panel).toContain("<StageStatementForm");
     expect(panel).toContain("<CloseWonForm");
-  });
-  it("reads conversion on the priced basis, beside the priced People count", () => {
-    expect(roi).toContain("s.pricedConversionFromPrevious?.ratePct");
-    expect(roi).not.toContain("conversionFromPrevious?.ratePct != null ? pct(conv");
-  });
-});
-
-/**
- * Owner 2026-10-08: "il faut les exclure, pour que la somme des lignes fasse le total
- * pipeline", plus a Total row and a People contacted panel. Every figure is served by
- * features-service's exclusive ladder; the browser sums nothing.
- */
-describe("Pipeline by step: one row per person, a served Total", () => {
-  const roi = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi.tsx"), "utf-8");
-  const panel = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi-panel.tsx"), "utf-8");
-  it("reads the exclusive rows; no $ pipeline column or total (ROI-CONSISTENCY-1103: Deals only)", () => {
-    expect(roi).toContain("const ex = pipeline?.exclusiveLadder ?? null;");
-    expect(roi).not.toContain("r.pipelineUsd");
-    expect(roi).not.toContain("ex.total.pipelineUsd");
-    expect(roi).not.toContain('font-normal">Pipeline</th>');
-    expect(panel).not.toContain('k-label">Pipeline</p>');
-    expect(roi).not.toMatch(/pipelineUsd\s*\+|\.reduce\(/);
-    expect(roi).not.toContain('label="Companies contacted"');
-  });
-  it("the contacted row opens its own panel, priced as served", () => {
-    expect(roi).toContain("onOpen={onOpenContacted}");
-    expect(panel).toContain("why.routes.map(");
-    expect(panel).toContain("r.entryRatePct");
-    expect(panel).toContain("const people = slice?.people ?? step.people ?? null;");
-  });  it("All, then Lost per row, served by the row (owner 2026-10-08)", () => {
-    expect(roi).toContain('font-normal">All</th>');
-    expect(roi).not.toContain('font-normal">People</th>');
-    expect(roi).toContain("r.people ? formatCount(r.people.lost.count) : dash");
-    expect(roi).toContain('font-normal">Hot</th>');
-    expect(roi).toContain("r.hot ? formatCount(r.hot.count) : dash");
-    expect(roi).toContain("ex.total.hot ? formatCount(ex.total.hot.count) : dash");
-  });
-  it("% Conversion = the row above / (row + row above), served per row (owner 2026-10-08)", () => {
-    // The header carries the expected (i) (owner 2026-10-11: a rate is never empty).
-    expect(roi).toContain("<ExpectedLabel tip={CONVERSION_TIP}>% Conversion</ExpectedLabel>");
-    expect(roi).toContain("r.conversionFromRowAbove?.ratePct ?? null");
-    expect(roi).toContain("conversionPct={ex.contacted.conversionFromRowAbove?.ratePct ?? null}");
-    expect(roi).not.toContain("const conversionOf");
   });
 });
 

@@ -5,12 +5,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { leadSourceTags } from "@/lib/source-overlap";
 import { ownQueryData } from "@/lib/own-query-data";
-import { getLeadDetail, getLeadHistory, getLeadTimeline, getLeadConsolidatedStatus, leadDateForStatus, type Lead } from "@/lib/api";
+import { getLeadDetail, getLeadHistory, getLeadTimeline, getLeadUniboxState, getLeadConsolidatedStatus, leadDateForStatus, type Lead } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { friendlyDate, timeAgo } from "@/lib/friendly-datetime";
-import { standingTagLabel } from "@/lib/lead-standing";
-import { leadWentCold, wentColdReason, WENT_COLD_LABEL } from "@/lib/lead-cold";
+import { leadStateTag } from "@/lib/unibox-leads";
 import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
 import { v2Href, v2RunHref } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -31,7 +30,6 @@ import {
   companyLevelMark,
   disqualificationNoteBody,
   disqualificationSourceWord,
-  humanOptedOut,
   leadLevelMark,
   type DisqualificationLevel,
   type LeadDisqualification,
@@ -39,11 +37,6 @@ import {
 import { useRemoveLeadDisqualification, useSetLeadDisqualification } from "@/lib/use-lead-disqualification";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle } from "@/components/v2/people-bits";
-
-function standingState(lead: Lead): string | null {
-  const s = (lead as unknown as { standing?: { state?: unknown } }).standing;
-  return typeof s?.state === "string" ? s.state : null;
-}
 
 /**
  * One person, laid out as Keel lays out one record: who they are on top, what
@@ -61,6 +54,11 @@ export function PersonPage() {
   // The Checks read the selected offer's criteria: wait for the offers, never a brand-wide read first.
   const { offerId, settled: offerSettled } = useSelectedOffer();
   const leadQ = useAuthQuery(["leadDetail", leadRowId, brandId], () => getLeadDetail(leadRowId, brandId), pollOptions);
+  const stateLeadId = ownQueryData(leadQ)?.leadId ?? null;
+  const stateQ = useAuthQuery(["leadUniboxState", stateLeadId, brandId], () => getLeadUniboxState(stateLeadId!, brandId), {
+    ...pollOptions,
+    enabled: Boolean(stateLeadId) && Boolean(brandId),
+  });
   // Everything this person went through at the brand: a person in several campaigns (cold email,
   // then the reply campaign their answer opened) has one row per campaign, and the row this page
   // opens on can be the newest one, which holds only "Added to the campaign".
@@ -94,10 +92,10 @@ export function PersonPage() {
   const company = lead ? leadCompany(lead) : null;
   const domain = lead ? leadCompanyDomain(lead) : null;
   const title = lead ? leadTitle(lead) : null;
-  const state = lead ? standingState(lead) : null;
-  // The conversation's label is lead-service's TAG (a no reads "Not interested"), never the state.
-  const tagLabel = lead ? standingTagLabel((lead as unknown as { standing?: unknown }).standing) : null;
-  const cold = lead ? leadWentCold((lead as unknown as { standing?: unknown }).standing) : null;
+  // THE lead vocabulary (lead-service LEAD-GENERIC-1106): Won / Hot / Lost and why, else the served
+  // lifecycle rung. Read, never derived here; null = not in the brand's Unibox.
+  const leadState = ownQueryData(stateQ) ?? null;
+  const stateTag = leadState ? leadStateTag(leadState) : null;
   const lastAt = lead ? leadDateForStatus(lead, getLeadConsolidatedStatus(lead)) : null;
   const linkedin = lead?.lead?.linkedinUrl ?? null;
   // Tags at THEIR level (LEAD-REFONTE-1013), each read off its own served field, never mixed:
@@ -108,7 +106,8 @@ export function PersonPage() {
   const leadMark = leadLevelMark(answering);
   const companyBlock = lead?.company ?? null;
   const companyMark = companyLevelMark(companyBlock, answering);
-  const optedOut = lead ? humanOptedOut((lead as unknown as { standing?: unknown }).standing) : false;
+  // They asked us to stop (or nobody may write to them): lead-service's reachability, wherever they work.
+  const optedOut = leadState?.reachable === "unsubscribed" || leadState?.reachable === "do_not_contact";
   // A level already marked is undone in its row, never marked twice; a lead with no known
   // company can only be disqualified as a contact.
   const freeLevels: DisqualificationLevel[] = [
@@ -154,7 +153,7 @@ export function PersonPage() {
                     Disqualify
                   </button>
                 ) : null}
-                {state !== "customer" ? (
+                {!leadState?.won ? (
                   <button type="button" className="k-btn-strong" onClick={() => setClosing((v) => !v)} aria-expanded={closing}>
                     Mark as won
                   </button>
@@ -243,14 +242,14 @@ export function PersonPage() {
                 {optedOut ? <TagChip tag={OPTED_OUT_TAG} /> : <span className="k-fg4">{"—"}</span>}
               </LevelRow>
               <LevelRow label={company ? `At ${company}` : "This contact"} sub="This person, at this company">
-                {tagLabel ? <span className="k-chip">{tagLabel}</span> : null}
+                {stateTag ? <TagChip tag={stateTag} /> : null}
                 {leadMark ? (
                   <MarkLine
                     mark={leadMark}
                     busy={undoDisqualify.isPending}
                     onUndo={() => undoDisqualify.mutate({ leadRowId, brandId, offerId: leadMark.offerId, level: "lead" })}
                   />
-                ) : !tagLabel ? (
+                ) : !stateTag ? (
                   <span className="k-fg4">{"—"}</span>
                 ) : null}
               </LevelRow>
@@ -271,13 +270,6 @@ export function PersonPage() {
               ) : null}
               {undoDisqualify.isError ? <p className="px-4 py-2 text-[12px] text-[var(--data-rose)]">We could not undo this. Try again.</p> : null}
             </div>
-
-            {cold ? (
-              <div className="k-card mt-4 p-4">
-                <p className="text-[13px] font-medium">{WENT_COLD_LABEL}</p>
-                <p className="k-fg2 mt-0.5 text-[13px]">{wentColdReason(cold)}</p>
-              </div>
-            ) : null}
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0 space-y-6">

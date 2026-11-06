@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import type { AwaitingReplyPerson, Lead } from "@/lib/api";
-import type { LeadOutcome } from "@/lib/revenue-view";
 import { formatCount, formatUsdAdaptive, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyTime } from "@/lib/friendly-datetime";
@@ -47,14 +46,9 @@ import {
   useBrandInfo,
   useBrandRevenue,
   useBrandRevenueWindow,
-  useBucketCounts,
-  useLatestInBucket,
   useTheirLastWords,
-  useOfferOutcomes,
-  useOfferContactedValue,
 } from "@/components/v2/data";
-import { EarnedStrip, HotLeads, LostLeads, OfferOutcomesTable } from "@/components/v2/today-roi";
-import { TodayPanel, type TodayPanelTarget } from "@/components/v2/today-roi-panel";
+import { TodayTargets } from "@/components/v2/today-targets";
 import { OfferSpendChartsSection } from "@/components/v2/spend-charts";
 import {
   CompanyMark,
@@ -69,38 +63,20 @@ import { RoiLabel } from "@/components/v2/roi-label";
 import { expectedReasonWords } from "@/lib/expected-return";
 import { expectedBasisWord } from "@/lib/realized-return";
 import { RealizedReturnLine } from "@/components/v2/return-figures";
-import { formatRatePct } from "@/lib/pipe-stats";
 
 /** Bars for a short window, a line for a long one (30 bars do not fit a tile). */
 function Trend({ values, line = false, className = "" }: { values: number[] | null; line?: boolean; className?: string }) {
   if (line || (values && values.length > 14)) return <SparkLine className={`h-8 ${className}`} values={values} />;
   return <BarSpark className={className} values={values} />;
 }
-/**
- * The outcome tiles draw the served running total (owner 2026-10-07: "compounded over time"),
- * so the curve ends on the printed figure. A day missing it is a producer gap: no curve, logged.
- */
-function cumulative(daily: { date: string; cumulativeCount?: number }[]): number[] | null {
-  const out = daily.map((d) => d.cumulativeCount);
-  if (out.some((v) => v == null)) {
-    console.error("[dashboard] today-page: window series without cumulativeCount", { days: daily.length });
-    return null;
-  }
-  return out as number[];
-}
-// A rate that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
-// Owner rule (#4756): a whole percent, a decimal only below 1%. One shared formatter.
-const pct = formatRatePct;
 /** One column per stat tile on a wide screen, so the row always spans the full width. */
 const STAT_GRID_COLS = {
+  2: "md:grid-cols-2",
   3: "md:grid-cols-3",
   4: "md:grid-cols-4",
   5: "md:grid-cols-3 xl:grid-cols-5",
   6: "md:grid-cols-3 xl:grid-cols-6",
 } as const;
-/** Meetings shown on Today, and how many are read to pick them by booking date. */
-const MEETINGS_SHOWN = 3;
-const MEETINGS_READ_LIMIT = 100;
 
 function greeting(now: Date): string {
   const h = now.getHours();
@@ -127,14 +103,6 @@ export function TodayPage() {
   const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
   const w = win.data ?? null;
   const data = rev.data;
-  const outcomesQ = useOfferOutcomes(brandId);
-  const outcomesAnswered = outcomesQ.data !== undefined;
-  // Not served before features-service v0.179.81: the sections then say they cannot read it.
-  const pipeline = outcomesQ.data?.pipeline ?? null;
-  const contactedQ = useOfferContactedValue(brandId);
-  // The right panel: one step, or one lead (owner 2026-10-08).
-  const [panel, setPanel] = useState<TodayPanelTarget | null>(null);
-  const buckets = useBucketCounts(brandId).data;
   const { campaignById } = useCampaigns(orgId, brandId);
   // Runs today: runs-service's own roll-up, kept to the selected offer's campaigns.
   const { runsToday, settled: runsSettled } = useCampaignRunsToday(brandId, campaignById);
@@ -145,15 +113,9 @@ export function TodayPage() {
   // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
   // that nothing aims at.
   const ongoing = useOngoingCampaigns(orgId, brandId, selectedOfferId);
-  const works = (stage: string) => ongoing.settled && ongoing.steps.has(STEP_KEY_FOR_LEAD_STAGE[stage]);
-  const showReplies = works("positive_reply");
-  const showVisits = works("website_visit");
-  const showMeetings = works("meeting_booked");
-  // Return, Delivered and Spent always; the two step tiles only when worked. No Pipeline tile:
-  // "$ pipeline" is a forecast that lives on the Deals board only (owner 2026-11-03).
-  const statTiles = (3 + (showReplies ? 1 : 0) + (showVisits ? 1 : 0)) as 3 | 4 | 5;
+  // ROI and Spent: every outcome lives in its campaign's Target row below (owner 2026-11-06, LEAD-GENERIC-1106).
+  const statTiles = 2 as const;
 
-  const emails = w?.emails ?? null;
   const winSpend = w?.spend ?? null;
   // The only two returns a screen shows (owner 2026-11-03, ROI-CONSISTENCY-1103): the
   // EXPECTED return (the offer's Target value over the cost to make one from Start) and the
@@ -167,23 +129,6 @@ export function TodayPage() {
   const needsCall = callQ.data?.total ?? null;
   const callLeads = callQ.data?.leads ?? [];
   const [cursor, setCursor] = useState(0);
-  // lead-service orders a bucket by activity only, so the meetings are read wide
-  // and ordered here on the date each meeting was booked, newest first.
-  const meetingsQ = useLatestInBucket(brandId, "meeting_booked", MEETINGS_READ_LIMIT);
-  const outcomeByLeadId = useMemo(() => {
-    const m = new Map<string, LeadOutcome>();
-    for (const l of data?.leadOutcomes ?? []) m.set(l.leadId, l);
-    return m;
-  }, [data]);
-  const meetingAt = (lead: Lead) => (lead.leadId ? outcomeByLeadId.get(lead.leadId)?.meetingBookedAt ?? null : null);
-  const latestMeetings = useMemo(() => {
-    // Wait for the dates too, or the list paints in activity order and then reshuffles.
-    if (!meetingsQ.data || (data === undefined && !rev.isError)) return undefined;
-    return [...meetingsQ.data.leads]
-      .sort((a, b) => (meetingAt(b) ?? "").localeCompare(meetingAt(a) ?? ""))
-      .slice(0, MEETINGS_SHOWN);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meetingsQ.data, outcomeByLeadId, data, rev.isError]);
 
   // Keel's J / K / Enter on the cards that need a call.
   useEffect(() => {
@@ -278,24 +223,6 @@ export function TodayPage() {
                   </div>
                 )}
               </StatTile>
-              {showReplies && (
-                <StatTile label="Positive replies" href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}>
-                  {win.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={w ? formatCount(w.recipientsRepliesPositive.total) : "—"} />}
-                  <Trend className="mt-auto pt-2" line values={w ? cumulative(w.recipientsRepliesPositive.daily) : null} />
-                </StatTile>
-              )}
-              {showVisits && (
-                <StatTile label="Website visits" href={`${v2Href(orgId, brandId, "people")}?tab=website-visits`}>
-                  {win.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={w ? formatCount(w.recipientsClicked.total) : "—"} />}
-                  <Trend className="mt-auto pt-2" line values={w ? cumulative(w.recipientsClicked.daily) : null} />
-                </StatTile>
-              )}
-              <StatTile label="Delivered" note={emails ? `${formatCount(emails.bounced)} bounced` : undefined}>
-                {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={emails?.deliveryRatePct != null ? pct(emails.deliveryRatePct) : "—"} />}
-                <p className="k-fg3 mt-auto pt-2 text-[12px] tabular-nums">
-                  {emails ? `${formatCount(emails.delivered)} of ${formatCount(emails.sent)} emails` : "\u00a0"}
-                </p>
-              </StatTile>
               {/* Spent = billed, setup included. The total with follow-ups reserved and not sent yet
                   stands under it on its own line, never under the Spent label (2026-10-06, Legistai). */}
               <StatTile label="Spent" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
@@ -307,34 +234,14 @@ export function TodayPage() {
               </StatTile>
             </div>
 
-            {/* What working with us earned: customers won, hot and lost leads, the pipeline
-                step by step and why, the return to date (owner 2026-10-08). */}
+            {/* One row of cards per campaign Target (owner 2026-11-06, LEAD-GENERIC-1106): names served. */}
             <div className="mt-8">
-              <EarnedStrip pipeline={pipeline} answered={outcomesAnswered} />
-            </div>
-            <div className="mt-6">
-              <OfferOutcomesTable
-                orgId={orgId}
-                brandId={brandId}
-                offerId={selectedOfferId}
-                rows={outcomesQ.data?.outcomes ?? null}
-                pipeline={pipeline}
-                contacted={contactedQ.data ? { perLeadUsd: contactedQ.data.perLeadExpectedValueUsd, totalUsd: contactedQ.data.totalExpectedValueUsd } : null}
-                answered={outcomesAnswered}
-                failed={outcomesQ.data === undefined && outcomesQ.isFetchedAfterMount && outcomesQ.isError}
-                onOpenStep={(stepKey) => setPanel({ kind: "step", stepKey })}
-                onOpenContacted={() => setPanel({ kind: "contacted" })}
-              />
+              <TodayTargets orgId={orgId} brandId={brandId} offerId={selectedOfferId} />
             </div>
             {/* Why each day costs what it costs, and where the cost is heading (owner 2026-10-19). */}
             <div className="mt-6">
               <OfferSpendChartsSection brandId={brandId} offerId={selectedOfferId} />
             </div>
-            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <HotLeads pipeline={pipeline} answered={outcomesAnswered} onOpenLead={(lead) => setPanel({ kind: "lead", lead, group: "hot" })} />
-              <LostLeads pipeline={pipeline} answered={outcomesAnswered} onOpenLead={(lead) => setPanel({ kind: "lead", lead, group: "lost" })} />
-            </div>
-
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <section>
                 <SectionTitle
@@ -390,39 +297,6 @@ export function TodayPage() {
               </section>
 
               <aside className="space-y-6">
-                {showMeetings && (
-                  <section>
-                    <SectionTitle
-                      count={buckets ? buckets.counts.meeting_booked : null}
-                      right={
-                        <Link href={`${v2Href(orgId, brandId, "people")}?tab=meetings`} className="hover:text-[var(--fg-1)]">
-                          All meetings →
-                        </Link>
-                      }
-                    >
-                      Meetings
-                    </SectionTitle>
-                    <div className="k-card">
-                      {latestMeetings === undefined ? (
-                        <div className="p-4"><Shimmer className="h-16 w-full" /></div>
-                      ) : latestMeetings.length === 0 ? (
-                        <EmptyNote>No meeting booked yet. Booked meetings land here.</EmptyNote>
-                      ) : (
-                        <ul className="divide-y divide-[var(--line-subtle)]">
-                          {latestMeetings.map((lead) => (
-                            <MeetingLine
-                              key={lead.id}
-                              lead={lead}
-                              at={meetingAt(lead)}
-                              campaign={campaignById.get(lead.campaignId) ?? null}
-                              href={personHref(orgId, brandId, lead)}
-                            />
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </section>
-                )}
                 {/* The offer's ON campaigns, named and ordered as the sidebar. Budgets opens the
                     campaign's own page (its max budget and volume, owner 2026-10-10), or the
                     Campaigns overview when the offer runs several. */}
@@ -465,7 +339,6 @@ export function TodayPage() {
           </>
         )}
       </div>
-      {panel && <TodayPanel brandId={brandId} pipeline={pipeline} target={panel} onClose={() => setPanel(null)} />}
     </>
   );
 }
@@ -567,30 +440,6 @@ function CallCard({
         )}
       </Link>
     </div>
-  );
-}
-
-function MeetingLine({ lead, at, campaign, href }: { lead: Lead; at: string | null; campaign: V2Campaign | null; href: string }) {
-  const company = leadCompany(lead);
-  return (
-    <li>
-      <Link href={href} className="k-hover flex items-start gap-3 px-4 py-3">
-        <div className="w-[52px] shrink-0">
-          <p className="text-[13px] font-medium tabular-nums">{at ? friendlyTime(at) : "—"}</p>
-          <p className="k-fg3 text-[11px]">{at ? friendlyDate(at) : "booked"}</p>
-        </div>
-        <MarkLines
-          className="flex-1"
-          gap="gap-2"
-          mark={(px) => (company ? <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={px} /> : <PersonAvatar lead={lead} size={px} />)}
-        >
-          <span className="truncate text-[13px] font-medium">{company ?? leadName(lead)}</span>
-          <span className="k-fg3 truncate text-[12px]">
-            {[company ? leadName(lead) : null, campaign?.pipe.name ? `booked by ${campaign.pipe.name}` : null].filter(Boolean).join(" · ")}
-          </span>
-        </MarkLines>
-      </Link>
-    </li>
   );
 }
 

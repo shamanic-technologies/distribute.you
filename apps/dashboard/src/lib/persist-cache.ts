@@ -219,7 +219,6 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
  */
 export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The campaign page's Milestones and What its people went through (FACTORY-USER-DASHBOARD-1102).
-  "funnelCampaignMilestones",
   "funnelCampaignPeopleJourneys",
   // Today > Why each one was picked (FACTORY-USER-DASHBOARD-1102).
   "offerEnginePicks",
@@ -398,6 +397,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Who wrote each message we sent to a person (model + tactic lines): small, read on open.
   "leadWrittenBy",
   "leadDetail",
+  // Where one lead stands (lead-service leadState: Won / Hot / Lost, lifecycle): small, the person page paints it from disk.
+  "leadUniboxState",
   // When we may email one lead (instantly-service): small and stable, so the person
   // page paints it from disk.
   "leadSendingSchedule",
@@ -417,6 +418,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // One offer's outcomes, step by step (Today). Not v1's dead "offerOutcomes" root:
   // a snapshot of that old shape may still sit on disk and skips Zod when restored.
   "offerStepOutcomes",
+  "campaignTargets",
   // The same read over Today's chosen window (`?windowDays=`), its own answer.
   "brandRevenueWindow",
   // One campaign's window (its email counts and provisioned follow-ups), the campaign page's cards.

@@ -35,7 +35,9 @@ import {
   mailboxTab,
   optOutName,
   optOutView,
+  domainStateWord,
   type AddressTabKey,
+  type Exclusion,
   type MailboxTabKey,
   type InboxProvider,
   type SeedPlacementCell,
@@ -82,6 +84,35 @@ export function useOpsAddresses() {
 }
 
 export const RED = "var(--data-rose)";
+
+/**
+ * An outgoing email the producer did not send (served `outcome` other than "sent", e.g. an SMTP
+ * login refusal served as "permanent") is never read as sent: its kind cell says "Not sent" in red.
+ */
+export function NotSent({ m }: { m: { direction: string; outcome: string | null } }) {
+  if (m.direction !== "out" || m.outcome === "sent") return null;
+  return (
+    <span className="ml-2 inline-flex items-center gap-1.5 whitespace-nowrap text-[12px]" title={m.outcome ? `Served outcome: ${m.outcome}` : undefined}>
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: RED }} />
+      Not sent
+    </span>
+  );
+}
+
+/**
+ * The domain policy served on a row (instantly-service v0.84.10): a cancelled domain reads
+ * "Cancelled · removed <day>", any other policy its served state; the stored note on hover.
+ */
+export function ExclusionChip({ exclusion }: { exclusion: Exclusion | null | undefined }) {
+  if (!exclusion) return null;
+  const word = domainStateWord(exclusion.state);
+  return (
+    <span className="k-chip ml-2 whitespace-nowrap font-sans" title={exclusion.note ?? undefined}>
+      {word}
+      {exclusion.removedAt && ` · removed ${shortDay(exclusion.removedAt)}`}
+    </span>
+  );
+}
 export const OK = "var(--run)";
 export const n = (v: number) => v.toLocaleString("en-US");
 export const pct = (v: number | null) => (v == null ? null : `${v.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`);
@@ -619,9 +650,10 @@ export function DomainsPage({ base }: { base: string }) {
               <Link href={`${base}/${entityPath("domain", d.domain)}`} className="hover:underline">
                 {d.domain}
               </Link>
+              <ExclusionChip exclusion={d.exclusion} />
             </td>
             <td className={TD}>{d.provider ? vendorName(d.provider) : <Dash />}</td>
-            <td className={`${TD} text-[12px]`}>{d.absentSince ? `Gone since ${shortDay(d.absentSince)}` : d.status ? vendorName(d.status) : <Dash />}</td>
+            <td className={`${TD} text-[12px]`}>{d.absentSince ? `Gone since ${shortDay(d.absentSince)}` : d.state ? domainStateWord(d.state) : d.status ? vendorName(d.status) : <Dash />}</td>
             <td className={TDR}>{n(d.mailboxes)}</td>
             <td className={TDR}>{n(d.addresses.total)}</td>
             <td className={TDR}>{n(d.addresses.byLifecycle.in_production ?? 0)}</td>
@@ -711,6 +743,7 @@ export function MailboxesPage({ base }: { base: string }) {
                         <Link href={`${base}/${entityPath("mailbox", m.login)}`} className="hover:underline">
                           {m.login}
                         </Link>
+              <ExclusionChip exclusion={m.exclusion} />
                       </td>
                       <td className={TD}>{m.provider ? vendorName(m.provider) : <Dash />}</td>
                       {showStatus && (
@@ -811,6 +844,7 @@ export function AccountsPage({ base, aside }: { base: string; aside?: React.Reac
                           <Link href={`${base}/${entityPath("account", a.email)}`} className="hover:underline">
                             {a.email}
                           </Link>
+              <ExclusionChip exclusion={a.exclusion} />
                         </td>
                         {showStatus && (
                           <td className={TD}>
@@ -929,7 +963,10 @@ export function LatestEmails() {
           <td className={`${TD} k-mono k-fg2 whitespace-nowrap text-[12px]`}>
             {new Date(m.occurredAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
           </td>
-          <td className={`${TD} whitespace-nowrap`}>{MESSAGE_KIND_WORD[m.kind] ?? m.kind}</td>
+          <td className={`${TD} whitespace-nowrap`}>
+            {MESSAGE_KIND_WORD[m.kind] ?? m.kind}
+            <NotSent m={m} />
+          </td>
           <td className={`${TD} k-mono text-[12px]`}>{m.direction === "in" ? (m.counterparty ?? <Dash />) : (m.mailboxLogin ?? m.accountEmail ?? <Dash />)}</td>
           <td className={`${TD} k-mono text-[12px]`}>{m.direction === "in" ? (m.mailboxLogin ?? m.accountEmail ?? <Dash />) : (m.counterparty ?? <Dash />)}</td>
           <td className={`${TD} k-fg2 max-w-[360px] truncate`} title={m.subject ?? undefined}>
