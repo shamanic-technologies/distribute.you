@@ -2,8 +2,7 @@
  * "Disqualified", its OWN mark beside the step tags (owner 2026-10-13, lead-service v0.83.59).
  *
  * A person reads "Positive reply" AND "Disqualified" at the same time: the mark never replaces
- * a step tag and never moves a standing (lead-service stopped producing the `disqualified`
- * standing). It is a yes/no + an OPTIONAL free note, set by a person (`manual`) or from a reply
+ * a step tag. It is a yes/no + an OPTIONAL free note, set by a person (`manual`) or from a reply
  * judged not our target (`reply`). There is NO list of reasons: never add one here.
  *
  * lead-service owns it end to end:
@@ -14,7 +13,7 @@
  *
  * Tags sit at THEIR level (LEAD-REFONTE-1013, lead-service v0.83.65), each read off its own
  * served field, never re-derived here:
- *   - HUMAN (wherever they work): opted out, the standing's `signal: "human_opt_out"`.
+ *   - HUMAN (wherever they work): opted out, lead-service's `leadState.reachable` (unsubscribed / do not contact).
  *   - LEAD (this person at this company): the steps, and the lead's own Disqualified mark
  *     (`level: "lead"`, "not the right contact", "left the role").
  *   - COMPANY: the row's `company` block: client, signed up, and its Disqualified mark
@@ -79,11 +78,6 @@ export function companyLevelMark(
 ): LeadDisqualification | null {
   if (company?.disqualification) return company.disqualification;
   return answering && disqualificationLevel(answering) === "company" ? answering : null;
-}
-
-/** HUMAN level: lead-service decided the standing on an opt-out carried by the person. */
-export function humanOptedOut(standing: unknown): boolean {
-  return (standing as { signal?: unknown } | null | undefined)?.signal === "human_opt_out";
 }
 
 export const BrandDisqualificationsSchema = z.object({

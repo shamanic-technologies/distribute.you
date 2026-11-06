@@ -14,7 +14,6 @@ import {
   getLeadBucketCounts,
   getLeadDetail,
   getLeadHistory,
-  getLeadStandingCounts,
   getOrgUsage,
   getUniboxLifecycleCounts,
   getOfferCompanyLifecycle,
@@ -31,8 +30,9 @@ import type { RevenueWindowDays } from "@/lib/revenue-window";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import { leadBucketCountsQuery, standingCountsQuery, type LeadBucket } from "@/lib/leads-server-page";
+import { leadBucketCountsQuery, type LeadBucket } from "@/lib/leads-server-page";
 import { filtersKey, type UniboxFilters } from "@/lib/unibox-leads";
+import { getBrandCampaignTargets } from "@/lib/api";
 
 /**
  * The reads every v2 page shares. Each is about the ONE offer the sidebar's switcher
@@ -102,6 +102,15 @@ export function useOfferOutcomes(brandId: string) {
 }
 
 /**
+ * Today's Target rows (LEAD-GENERIC-1106): one per ongoing campaign of the brand, on its Target,
+ * served by features-service; the page keeps the selected offer's rows.
+ */
+export function useCampaignTargets(brandId: string) {
+  const q = useAuthQuery(["campaignTargets", brandId], () => getBrandCampaignTargets(brandId), pollOptions);
+  return { ...q, answered: q.data !== undefined || (q.isFetchedAfterMount && q.isError) };
+}
+
+/**
  * What the selected offer's contacted people are worth (features-service contacted-value,
  * the Deals board's Contacted column read without lead ids): per person and in all.
  */
@@ -149,15 +158,6 @@ export function useBucketCounts(brandId: string) {
   );
 }
 
-export function useStandingCounts(brandId: string) {
-  const lead = useLeadScope(brandId);
-  return useAuthQuery(
-    ["leadStandingCounts", lead.key, ""],
-    () => getLeadStandingCounts(lead.scope, standingCountsQuery("")),
-    { ...pollOptions, enabled: lead.ready },
-  );
-}
-
 /**
  * How many of the selected offer's people stand on each lifecycle rung (lead-service), one
  * campaign when named: the Deals board's column sizes and the sidebar's Deals count read the SAME
@@ -188,8 +188,7 @@ export function useCompanyLifecycle(brandId: string) {
 /**
  * The people marked Disqualified for the selected offer (its own mark or a brand-wide one),
  * with their notes: lead-service's list, its `total` the length of the same list. The mark is
- * its own tag beside the standing, so this is the Deals board's Disqualified column, never
- * `standing=disqualified` (lead-service no longer produces that standing).
+ * its own tag beside the step tags.
  */
 export function useLeadDisqualifications(brandId: string) {
   const { offerId } = useSelectedOffer();
@@ -227,26 +226,6 @@ export function useNeedsYourCall(brandId: string, limit: number) {
       return { total: awaiting.total, leads, waiting };
     },
     { refetchInterval: POLL_INTERVAL, enabled: !!brandId },
-  );
-}
-
-/**
- * The people who REPLIED with interest and whom nobody has closed: the `positive_reply`
- * bucket inside the `sales_interest` standing. Deals' "N of them replied", answered or not.
- * Never "Needs your call" (that is `useNeedsYourCall`, the ones still waiting on us).
- */
-export function useInterestedReplies(brandId: string) {
-  const lead = useLeadScope(brandId);
-  return useAuthQuery(
-    ["leadsPage", lead.key, "v2-interested-replies"],
-    () =>
-      listLeadsPage(
-        lead.scope,
-        { view: "basic", bucket: "positive_reply", standing: "sales_interest", sort: "activity", limit: "1" },
-        undefined,
-        { includeCampaigns: false },
-      ),
-    { refetchInterval: POLL_INTERVAL, enabled: lead.ready },
   );
 }
 

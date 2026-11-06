@@ -11,7 +11,6 @@ import {
   readDisqualification,
   companyLevelMark,
   disqualificationLevel,
-  humanOptedOut,
   leadLevelMark,
   markTag,
 } from "../src/lib/lead-disqualification";
@@ -93,7 +92,8 @@ describe("where the mark is drawn", () => {
     const page = src("components", "v2", "deals-page.tsx");
     const board = src("lib", "deals-board.ts");
     expect(page).toContain("dealCardChips(row)");
-    expect(board).toContain('if (row.fit !== "fit") out.push(uniboxValueTag("fit"');
+    // The card's chip is lead-service's verdict: a wrong fit reads "Lost · Not our target".
+    expect(board).toContain("leadVerdictTag(row.leadState)");
     expect(board).toContain('"fit"');
     expect(page).not.toContain("DisqualifiedColumn");
     expect(src("components", "v2", "data.ts")).toContain("getBrandDisqualifications({ brandId, offerId })");
@@ -103,7 +103,7 @@ describe("where the mark is drawn", () => {
     const page = src("components", "v2", "person-page.tsx");
     expect(page).toContain("useSetLeadDisqualification()");
     expect(page).toContain("useRemoveLeadDisqualification()");
-    expect(page).toContain("{tagLabel ? <span");
+    expect(page).toContain("{stateTag ? <TagChip tag={stateTag} /> : null}");
     expect(page).toContain("<TagChip tag={DISQUALIFIED_TAG} />");
   });
 
@@ -153,12 +153,6 @@ describe("tags at their level", () => {
     expect(markTag(LEAD_MARK).label).toBe("Disqualified");
   });
 
-  it("reads the person's opt-out off the served signal only", () => {
-    expect(humanOptedOut({ state: "opted_out", signal: "human_opt_out" })).toBe(true);
-    expect(humanOptedOut({ state: "opted_out", signal: "unsubscribed" })).toBe(false);
-    expect(humanOptedOut(null)).toBe(false);
-  });
-
   it("parses the brand list's companies beside its leads", () => {
     const parsed = BrandDisqualificationsSchema.parse({
       brandId: "b",
@@ -176,7 +170,7 @@ describe("tags at their level", () => {
     expect(page).toContain("level: formLevel");
     expect(page).toContain('level: "lead" })');
     expect(page).toContain('level: "company" })');
-    expect(page).toContain("humanOptedOut(");
+    expect(page).toContain("leadState?.reachable");
     expect(page).toContain("companyBlock.isClient");
     expect(page).toContain("companyBlock.signedUp");
   });

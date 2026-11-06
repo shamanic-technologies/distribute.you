@@ -238,7 +238,7 @@ export function V2WorkflowPage() {
                 <Row k="Objective" v={spec.campaign.leg?.label ?? null} />
                 <Row k="Model" v={model ? <CatalogueName kind="llm" name={model.label} /> : null} />
                 <Row k="Invested" v={row.committedCostUsd == null ? null : formatUsdAdaptive(row.committedCostUsd)} />
-                <Row k="Leads emailed" v={row.outreach == null ? null : fmtCount(row.outreach)} />
+                <Row k="Leads reached" v={row.outreach == null ? null : fmtCount(row.outreach)} />
               </dl>
             </aside>
             <PromptCard

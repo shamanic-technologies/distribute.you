@@ -58,7 +58,7 @@ const MODE_COPY: Record<BillingMode, { title: string; line: string; detail: stri
   subscription: {
     title: "Monthly plan",
     line: "Your plan's monthly payment becomes credit, and your campaigns spend it.",
-    detail: "Sending stops when the month's credit runs out. Add more to your plan to reach more leads.",
+    detail: "Sending stops when the month's credit runs out. Add more to your plan to keep growing.",
   },
 };
 
@@ -298,7 +298,7 @@ export function V2BillingPage() {
           <Section
             id="plan"
             title="Plan"
-            description="What you pay each month becomes credit for your outreach. Pick a bigger amount to reach more leads."
+            description="What you pay each month becomes credit for your outreach. Pick a bigger amount to grow faster."
           >
             <SubscriptionPlan />
           </Section>

@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { STANDINGS_BY_COLUMN, leadBoardColumnFor } from "../src/lib/lead-board";
 import {
-  LEAD_STANDINGS,
-  LeadStandingCountsSchema,
-  boardColumnTotals,
-  standingCountsQuery,
   LeadBucketCountsSchema,
   LeadsPageEnvelopeSchema,
   leadBucketCountsQuery,
@@ -122,79 +117,5 @@ describe("envelope", () => {
 
   it("refuses a body with no nextCursor key at all", () => {
     expect(LeadsPageEnvelopeSchema.safeParse({ total: 3 }).success).toBe(false);
-  });
-});
-
-describe("the standing dimension the board's columns are drawn from", () => {
-  const counts = {
-    total: 2059,
-    counts: {
-      unresolved: 0,
-      not_contacted: 3,
-      contacted: 1965,
-      engaged: 1,
-      sales_interest: 86,
-      customer: 4,
-      opted_out: 0,
-      disqualified: 0,
-    },
-  };
-
-  it("sizes a column by ADDING the standings it holds, never by counting fetched rows", () => {
-    // A standing is a partition, so the counts are disjoint and their sum is a count of
-    // the same kind at the grain this surface renders — a display lookup, not a metric.
-    // Sizing a column from whatever a bounded page returned is what made the page state
-    // its own cap as a population.
-    const totals = boardColumnTotals(counts);
-    expect(totals).not.toBeNull();
-    expect(totals?.contacted).toBe(1969); // not_contacted + contacted + engaged
-    expect(totals?.sales_interest).toBe(86);
-    // Its own column since the board grew one — a closed deal is not a warm one, and
-    // adding it into the column above stated one fact under another's name.
-    expect(totals?.won).toBe(4);
-    expect(totals?.opt_out).toBe(0);
-    expect(totals?.unresolved).toBe(0);
-  });
-
-  it("draws every lead the producer counts, found-only leads included", () => {
-    // Owner 2026-10-12: one board for every campaign. A lead found and not yet contacted
-    // sits in Leads, so the columns now add up to the producer's whole population.
-    const totals = boardColumnTotals(counts);
-    const drawn = Object.values(totals ?? {}).reduce((a, b) => a + b, 0);
-    expect(drawn).toBe(counts.total);
-    expect(STANDINGS_BY_COLUMN.contacted).toContain("not_contacted");
-  });
-
-  it("is unsettled, never zero, when the counts have not landed", () => {
-    // A column whose size we have not been told is not a column with nobody in it.
-    expect(boardColumnTotals(undefined)).toBeNull();
-  });
-
-  it("holds the SAME standing→column mapping the cards are placed by", () => {
-    // Two tables for one statement is how a column head and the cards under it come to
-    // disagree. Every standing goes through both and has to land in the same place.
-    for (const state of LEAD_STANDINGS) {
-      const viaCard = leadBoardColumnFor({ state, signal: "none" });
-      const viaTable =
-        (Object.entries(STANDINGS_BY_COLUMN) as [string, readonly string[]][]).find(
-          ([, states]) => states.includes(state),
-        )?.[0] ?? null;
-      expect(viaTable).toBe(viaCard);
-    }
-  });
-
-  it("carries the search onto the counts, and nothing else", () => {
-    expect(standingCountsQuery("")).toEqual({});
-    expect(standingCountsQuery("  ")).toEqual({});
-    expect(standingCountsQuery("jane acme")).toEqual({ q: "jane acme" });
-    // A search the producer would refuse is not sent at all, exactly as on the list.
-    expect(standingCountsQuery("a b c d e f g h i")).toEqual({});
-  });
-
-  it("parses the counts with every state required — an absent key is a wrong number", () => {
-    expect(LeadStandingCountsSchema.safeParse(counts).success).toBe(true);
-    const missing = { total: 1, counts: { ...counts.counts } } as Record<string, unknown>;
-    delete (missing.counts as Record<string, unknown>).opted_out;
-    expect(LeadStandingCountsSchema.safeParse(missing).success).toBe(false);
   });
 });

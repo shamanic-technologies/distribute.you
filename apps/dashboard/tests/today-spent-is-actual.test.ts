@@ -14,9 +14,8 @@ describe("Today: one window for the whole stat row", () => {
     expect(src).toContain("const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);");
     // Owner 2026-10-04: since inception, no 7 / 30 day toggle.
     expect(src).not.toContain("TODAY_WINDOWS");
-    expect(src).toContain("w.recipientsRepliesPositive.total");
-    expect(src).toContain("w.recipientsClicked.total");
-    expect(src).toContain("pct(emails.deliveryRatePct)");
+    // Replies / visits / delivered tiles left Today: each outcome is its campaign's Target row (LEAD-GENERIC-1106).
+    expect(src).not.toContain("recipientsRepliesPositive");
     // 2026-10-06 (Legistai read "$67 spent" over 185 emails): "Spent" is the BILLED figure;
     // the total with follow-ups reserved and not sent yet is served beside it on its own
     // line. Supersedes 2026-10-03 "spent il faut mettre le total" under the Spent label.
