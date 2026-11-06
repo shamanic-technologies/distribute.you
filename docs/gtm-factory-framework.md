@@ -35,7 +35,7 @@ flowchart LR
 
 | Object | What it is |
 |---|---|
-| **Outcome** | A part reference: Lead interested, Message sent, Template, Rating. It says what a piece is about (its subject): a lead, a company, the brand, or the run that asked for it. |
+| **Outcome** | A part reference, always the finest one: LinkedIn post published, Email sent, Template, Rating. It says WHAT a piece is and what it is about (its subject): a lead, a company, the brand, or the run that asked for it. |
 | **Unit** | One physical piece of an outcome: Marie, interested on day 24. Every Unit lands in the ledger, names who performed it and carries its traceability. |
 | **Engine** | One per outcome. It makes new Units of its outcome, and only of its outcome. Competing scripts perform it. |
 | **Script** | Code that makes one Unit of its Engine's outcome, or none. Scripts of one Engine compete; each belongs to a **dynasty** of versions. |
@@ -52,7 +52,13 @@ flowchart LR
 
 **Every API call output is an outcome.** A cold email is several outcomes: the writer makes a Message written; our send call makes a Message queued; the mailbox reports a Message sent and reads each Reply received. Each can be measured, priced and consumed.
 
-**A channel is a tactic.** Cold email and LinkedIn are two scripts of the Reply received Engine; each carries the value of the tactic "Channel". A client who wants only some channels says so in the brief.
+**The outcome is the WHAT, as fine as possible; a tactic is the HOW, by whom and when** (owner 2026-11-06). The network or channel is part of the WHAT: a LinkedIn post and an X post are two outcomes (LinkedIn post published, X post published), each with its Engine, and so are its steps (LinkedIn post drafted, validated, published). The account it went out from, who performed it, the template, the LLM and the hour are tactics, values carried by the Unit. Two networks compete at the Plan: it prices each path to the Target (LinkedIn post, visit, signup against X post, visit, signup) and keeps the cheaper. A client who wants only some networks says so in the brief.
+
+**Families come later.** A family groups outcomes to read them together (Post published holds LinkedIn, X and Threads post published). None exists yet; when a figure per family is wanted, Jev assigns every outcome, existing or new, to its family. A Unit always belongs to exactly one outcome, so nothing is counted twice. Outcomes still named by their family (Message sent, Reply received) are split per channel by the migration of our production.
+
+**A connected account brings all its Units, ours or not.** Connecting a LinkedIn, X or Threads account imports every post it published, hand posts included, as Units of that network's outcome with "Performed by" Ours or Client's team; budget and return read only Ours, every chart reads all. The import and any AI reading of it run on the connecting org's runs and bill that org at cost. A website visit is credited to a post only through a click on its link; any other visit stays Organic market.
+
+A newsletter is no post: it sends one email per subscriber, each a Unit of its own email outcome.
 
 **Who performs a script is a tactic.** "Performed by" says Ours, Client's team, Mailbox, CRM or Organic market. Budget and return read only "Performed by = Ours". A script of the client's team costs us nothing; its limit is its capacity (section 6).
 
