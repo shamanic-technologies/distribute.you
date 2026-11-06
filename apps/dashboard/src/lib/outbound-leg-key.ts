@@ -127,3 +127,12 @@ export function outboundRenameDrift(
   }
   return out;
 }
+
+/**
+ * The cold-email channel's own steps, as catalogue keys (features-service `/public/catalogue/steps`):
+ * its Sent tab lists the people who reached `email_sent`, its Inbox those who reached `conversation`
+ * (a positive reply). lead-service's `reachedStep` reads them as stored, never mapped.
+ */
+export const EMAIL_SENT_STEP = "email_sent";
+export const CONVERSATION_STEP = "conversation";
+export const WEBSITE_VISIT_STEP = "website_visit";

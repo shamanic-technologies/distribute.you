@@ -1,5 +1,6 @@
 "use client";
 
+import { EMAIL_SENT_STEP } from "@/lib/outbound-leg-key";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -19,7 +20,7 @@ import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
-import { useLeadScope, useBrandRevenue, useBucketCounts, useNeedsYourCall } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue, useReachedCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, v2NewBrandHref, v2OfferHref, type V2Section } from "@/lib/v2/routes";
@@ -561,7 +562,8 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
 
   const { staffMode } = useStaffMode();
   const revenue = useBrandRevenue(brandId).data;
-  const buckets = useBucketCounts(brandId).data;
+  // People we emailed: lead-service's Unibox count of the people who reached the first email.
+  const sentPeople = useReachedCounts(brandId, [EMAIL_SENT_STEP]).data?.[EMAIL_SENT_STEP] ?? null;
   const call = useNeedsYourCall(brandId, 5).data?.leads ?? [];
   const lead = useLeadScope(brandId);
   const peopleQ = useAuthQuery(
@@ -715,8 +717,8 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
           <span className="k-keys hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">esc</span> to close</span>
           <span className="ml-auto tabular-nums">
             {revenue ? `${formatCount(revenue.organizations.length)} companies` : ""}
-            {revenue && buckets?.people?.sent != null ? " · " : ""}
-            {buckets?.people?.sent != null ? `${formatCount(buckets.people.sent)} people` : ""}
+            {revenue && sentPeople != null ? " · " : ""}
+            {sentPeople != null ? `${formatCount(sentPeople)} people` : ""}
           </span>
         </div>
       </div>

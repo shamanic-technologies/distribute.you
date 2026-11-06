@@ -25,7 +25,9 @@ describe("the paged leads readers", () => {
     // An unlisted root is default-OFF: the whole point of a small payload is that it can
     // be written to disk.
     expect(PERSIST).toContain('"leadsPage"');
-    expect(PERSIST).toContain('"leadBucketCounts"');
+    expect(PERSIST).toContain('"reachedCounts"');
+    expect(PERSIST).toContain('"reachedRows"');
+    expect(PERSIST).not.toContain('"leadBucketCounts"');
   });
 
   it("lets the producer stream the export instead of assembling a second one", () => {

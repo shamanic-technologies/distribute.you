@@ -3,86 +3,68 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { fetchLeadsCsv, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
-import { leadStatusLabel } from "@/lib/lead-status";
-import { markTag } from "@/lib/lead-disqualification";
+import { fetchLeadsCsv, listUniboxLeads } from "@/lib/api";
 import { TagChip } from "@/components/v2/tag-chip";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
-import { leadsExportQuery, leadsSearchParam, leadsSearchProblem, LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
+import { leadsExportQuery, LEADS_PAGE_SIZE } from "@/lib/leads-server-page";
+import { leadStateTag, uniboxLeadName, uniboxRowId, uniboxRowKey } from "@/lib/unibox-leads";
+import { v2Href } from "@/lib/v2/routes";
 import { ExportButton, RecordsFooter, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
-import { useLeadCampaigns } from "@/components/v2/lead-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
-import { useLeadScope, useBucketCounts } from "@/components/v2/data";
-import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import {
-  CompanyMark,
-  PersonAvatar,
-  leadCompany,
-  leadCompanyDomain,
-  leadName,
-  leadTitle,
-  personHref,
-} from "@/components/v2/people-bits";
+import { useLeadScope, useReachedCounts } from "@/components/v2/data";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
+import { CompanyMark } from "@/components/v2/people-bits";
 
 /**
- * One lead-service bucket as Keel's people table, embedded under another page's tab (a
- * campaign's Inbox / Sent, an outcome's people). The order is lead-service's activity order,
- * the search runs on the producer over the whole population. A row opens the person page.
- * The People page itself reads the lifecycle ladder (`people-lifecycle-page.tsx`).
+ * The people who REACHED one step, as Keel's people table, embedded under another page's tab (a
+ * campaign's Inbox / Sent, an outcome's people): lead-service's Unibox rows filtered on
+ * `reachedStep` (LEAD-REACHED-STEP-1106), so each row carries the one lead vocabulary
+ * (`leadState`: Won / Hot / Lost and why, else its lifecycle rung). A person who went further
+ * stays listed. Order, search and paging run on lead-service. A row opens the person in the Unibox.
  */
-export function PeoplePage({ bucket, campaignId }: { bucket: LeadBucket; campaignId?: string }) {
+export function PeoplePage({ step, campaignId }: { step: string; campaignId?: string }) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const params = useSearchParams();
   const router = useRouter();
-  const tab = { key: bucket, bucket };
+  const { offerId } = useSelectedOffer();
   const [draft, setDraft] = useState(params.get("q") ?? "");
   const [search, setSearch] = useState(params.get("q") ?? "");
-  const [page, setPage] = useState(0);
+  // lead-service pages by cursor: the cursors of the pages already passed, to step back.
+  const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
-    const t = setTimeout(() => setSearch(draft), 300);
+    const t = setTimeout(() => setSearch(draft.trim()), 300);
     return () => clearTimeout(t);
   }, [draft]);
-  useEffect(() => setPage(0), [tab.key, search]);
-  useEffect(() => setCursor(-1), [tab.key, search, page]);
+  useEffect(() => setCursors([null]), [step, search, campaignId]);
+  const page = cursors.length - 1;
+  useEffect(() => setCursor(-1), [step, search, page]);
 
-  const problem = leadsSearchProblem(search);
-  const wire = problem ? "" : (leadsSearchParam(search) ?? "");
-  const counts = useBucketCounts(brandId).data;
-  const { campaignOf } = useLeadCampaigns(orgId, brandId);
+  // `campaignId` set = one campaign's page: lead-service resolves it to the whole campaign.
+  const scope = campaignId ? { campaignId } : { offerId };
+  const reached = useReachedCounts(brandId, [step], campaignId ?? null).data;
   const brandLead = useLeadScope(brandId);
-  // `campaignId` set = one campaign's page: lead-service resolves the id to the whole
-  // campaign identity (its ancestors included), the same scope its steps card reads.
-  const lead = campaignId ? { scope: { campaignId }, key: `campaign:${campaignId}` } : brandLead;
+  const lead = campaignId ? { scope: { campaignId } } : brandLead;
   const pageQ = useAuthQuery(
-    ["leadsPage", lead.key, "v2-people", tab.bucket, wire, page],
-    () =>
-      listLeadsPage(
-        lead.scope,
-        {
-          view: "basic",
-          bucket: tab.bucket,
-          sort: "activity",
-          limit: String(LEADS_PAGE_SIZE),
-          offset: String(page * LEADS_PAGE_SIZE),
-          ...(wire ? { q: wire } : {}),
-        },
-        undefined,
-        { includeCampaigns: false },
-      ),
-    { refetchInterval: POLL_INTERVAL },
+    ["reachedRows", brandId, campaignId ? "" : (offerId ?? ""), campaignId ?? "", step, search, cursors[page] ?? ""],
+    () => listUniboxLeads(brandId, {}, { ...scope, reachedStep: step, limit: LEADS_PAGE_SIZE, q: search || undefined, cursor: cursors[page] }),
+    { refetchInterval: POLL_INTERVAL, enabled: !!brandId && (!!campaignId || !!offerId) },
   );
-  const rows = pageQ.data?.leads ?? null;
+  const rows = pageQ.data?.rows ?? null;
   const total = pageQ.data?.total ?? null;
+  const next = pageQ.data?.nextCursor ?? null;
   const pages = total == null ? 1 : Math.max(1, Math.ceil(total / LEADS_PAGE_SIZE));
+  const unibox = v2Href(orgId, brandId, "unibox");
+  const hrefOf = (i: number) => (rows?.[i] ? `${unibox}?lead=${encodeURIComponent(uniboxRowId(rows[i]))}` : null);
 
   const openRow = (i: number) => {
-    const lead = rows?.[i];
-    if (lead) router.push(personHref(orgId, brandId, lead));
+    const href = hrefOf(i);
+    if (href) router.push(href);
   };
   useRowKeys({ count: rows?.length ?? 0, cursor, setCursor, onOpen: openRow, searchRef });
 
@@ -91,14 +73,14 @@ export function PeoplePage({ bucket, campaignId }: { bucket: LeadBucket; campaig
       <RecordsToolbar
         search={draft}
         onSearch={setDraft}
-        placeholder="Search people or companies"
-        problem={problem}
+        placeholder="Search people by name or email"
+        problem={null}
         inputRef={searchRef}
         right={
           <ExportButton
             filename={`people-${campaignId ?? brandId}.csv`}
-            csv={() => fetchLeadsCsv(lead.scope, leadsExportQuery({ search: wire }))}
-            disabled={counts?.counts.contacted === 0}
+            csv={() => fetchLeadsCsv(lead.scope, leadsExportQuery({ search }))}
+            disabled={reached?.[step] === 0}
           />
         }
       />
@@ -127,33 +109,31 @@ export function PeoplePage({ bucket, campaignId }: { bucket: LeadBucket; campaig
             ) : rows.length === 0 ? (
               <tr><td colSpan={7}><EmptyNote>Nobody here yet.</EmptyNote></td></tr>
             ) : (
-              rows.map((lead, i) => {
-                const status = getLeadConsolidatedStatus(lead);
-                const at = leadDateForStatus(lead, status);
-                const campaign = campaignOf(lead.campaignId);
-                const company = leadCompany(lead);
-                const title = leadTitle(lead);
+              rows.map((row, i) => {
+                const name = uniboxLeadName(row);
+                const company = row.company?.name || row.company?.domain || null;
+                // The campaign that reached them most recently, as lead-service names it on the row.
+                const campaign = row.campaigns?.[0] ?? null;
+                const tag = row.leadState ? leadStateTag(row.leadState) : null;
+                const href = hrefOf(i)!;
+                const email = row.emails[0] ?? null;
                 return (
                   <tr
-                    key={lead.id}
+                    key={uniboxRowKey(row)}
                     onClick={() => openRow(i)}
                     onMouseEnter={() => setCursor(i)}
                     className={`group k-row h-10 cursor-pointer ${i === cursor ? "k-selected" : ""}`}
                   >
                     <td className="max-w-[240px] pl-4 pr-3 md:pl-6">
-                      <Link
-                        href={personHref(orgId, brandId, lead)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex min-w-0 items-center gap-2"
-                      >
-                        <PersonAvatar lead={lead} size={20} />
-                        <span className="truncate font-medium">{leadName(lead)}</span>
+                      <Link href={href} onClick={(e) => e.stopPropagation()} className="flex min-w-0 items-center gap-2">
+                        <Initials name={name} size={20} round />
+                        <span className="truncate font-medium">{name}</span>
                       </Link>
                     </td>
                     <td className="max-w-[220px] px-3">
                       {company ? (
                         <span className="flex min-w-0 items-center gap-2">
-                          <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={18} />
+                          <CompanyMark name={company} domain={row.company?.domain ?? null} size={18} />
                           <span className="truncate">{company}</span>
                         </span>
                       ) : (
@@ -161,7 +141,7 @@ export function PeoplePage({ bucket, campaignId }: { bucket: LeadBucket; campaig
                       )}
                     </td>
                     <td className="max-w-[220px] px-3">
-                      {title ? <span className="k-fg2 block truncate">{title}</span> : <span className="k-fg4">{"—"}</span>}
+                      {row.title ? <span className="k-fg2 block truncate">{row.title}</span> : <span className="k-fg4">{"—"}</span>}
                     </td>
                     <td className="px-3">
                       {campaign ? (
@@ -174,40 +154,35 @@ export function PeoplePage({ bucket, campaignId }: { bucket: LeadBucket; campaig
                       )}
                     </td>
                     <td className="px-3">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="k-chip">{leadStatusLabel(status)}</span>
-                        {lead.disqualification ? (
-                          <span title={lead.disqualification.note ?? undefined}>
-                            <TagChip tag={markTag(lead.disqualification)} />
-                          </span>
-                        ) : null}
-                      </span>
+                      {tag ? <TagChip tag={tag} /> : <span className="k-fg4">{"—"}</span>}
                     </td>
                     <td className="k-fg2 whitespace-nowrap px-3 tabular-nums">
-                      {at ? (
+                      {row.lastActivityAt ? (
                         <span className="inline-flex items-center gap-1.5">
                           <svg width="12" height="12" viewBox="0 0 16 16" className="k-fg3" aria-hidden="true">
                             <circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
                             <path d="M8 4.8V8l2 1.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                           </svg>
-                          {timeAgo(at)}
+                          {timeAgo(row.lastActivityAt)}
                         </span>
                       ) : "—"}
                     </td>
                     <td className="pr-4 text-right md:pr-6">
                       <span className={`inline-flex items-center gap-1 ${i === cursor ? "" : "opacity-0 group-hover:opacity-100"}`}>
-                        <a
-                          href={`mailto:${lead.email}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="k-btn h-6 px-2 text-[12px]"
-                          aria-label={`Email ${leadName(lead)}`}
-                        >
-                          Email
-                        </a>
+                        {email ? (
+                          <a
+                            href={`mailto:${email}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="k-btn h-6 px-2 text-[12px]"
+                            aria-label={`Email ${name}`}
+                          >
+                            Email
+                          </a>
+                        ) : null}
                         <Link
-                          href={personHref(orgId, brandId, lead)}
+                          href={href}
                           onClick={(e) => e.stopPropagation()}
-                          aria-label={`Open ${leadName(lead)}`}
+                          aria-label={`Open ${name}`}
                           className="k-btn-ghost h-6 w-6 justify-center px-0"
                         >
                           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 3l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -225,8 +200,8 @@ export function PeoplePage({ bucket, campaignId }: { bucket: LeadBucket; campaig
         left={total != null ? `${formatCount(total)} ${total === 1 ? "person" : "people"} · page ${page + 1} of ${pages}` : " "}
         right={
           <span className="flex items-center gap-1.5">
-            <button type="button" className="k-btn h-6 px-2 text-[12px]" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</button>
-            <button type="button" className="k-btn h-6 px-2 text-[12px]" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>Next</button>
+            <button type="button" className="k-btn h-6 px-2 text-[12px]" disabled={page === 0} onClick={() => setCursors((c) => c.slice(0, -1))}>Previous</button>
+            <button type="button" className="k-btn h-6 px-2 text-[12px]" disabled={!next} onClick={() => next && setCursors((c) => [...c, next])}>Next</button>
           </span>
         }
       />

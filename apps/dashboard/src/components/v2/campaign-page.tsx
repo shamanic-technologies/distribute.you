@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getConversationCounts, getLeadBucketCounts } from "@/lib/api";
+import { getConversationCounts } from "@/lib/api";
 import { type RevenueWindow } from "@/lib/revenue-window";
 import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
 import { shownFigure } from "@/lib/maturity";
@@ -13,8 +13,8 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { campaignNameFor, stepPluralLabel } from "@/lib/legs";
-import { isProactiveFrom, sameLegKey } from "@/lib/outbound-leg-key";
+import { campaignNameFor, stepPluralLabel, stepWords } from "@/lib/legs";
+import { CONVERSATION_STEP, EMAIL_SENT_STEP, isProactiveFrom, sameLegKey } from "@/lib/outbound-leg-key";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2CampaignHref, v2Href, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
@@ -25,6 +25,7 @@ import { LEG_STEPS, LegSteps, StepBar, SummaryCard, useCampaignWindow } from "@/
 import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
+import { useReachedCounts } from "@/components/v2/data";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
 import { StaffOnly } from "@/components/v2/staff-only";
@@ -196,11 +197,11 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
         <CampaignOverview brandId={brandId} offerId={offerId} campaignId={id} campaign={campaign} tabHref={tabHref} />
       ) : tab === "inbox" ? (
         <div className="k-card overflow-hidden">
-          <PeoplePage bucket="positive_reply" campaignId={id} />
+          <PeoplePage step={CONVERSATION_STEP} campaignId={id} />
         </div>
       ) : tab === "sent" ? (
         <div className="k-card overflow-hidden">
-          <PeoplePage bucket="contacted" campaignId={id} />
+          <PeoplePage step={EMAIL_SENT_STEP} campaignId={id} />
         </div>
       ) : tab === "targeting" ? (
         <V2AudiencesTable campaignId={id} offerId={offerId} />
@@ -264,8 +265,8 @@ function RoiTile({ campaign }: { campaign: V2Campaign }) {
 }
 
 /**
- * What this campaign did, all served: where the people it reached stand (lead-service's
- * bucket counts on the campaign, people not emails), what it spent and what one outcome
+ * What this campaign did, all served: how many people reached each step (lead-service's
+ * Unibox counts on the campaign, people not emails), what it spent and what one outcome
  * cost (the campaign row's own revenue group, Learning where the producer says so). Then
  * the leg's steps at 2/3 and the other tabs' headlines at 1/3, as the channel page.
  */
@@ -283,16 +284,17 @@ function CampaignOverview({
   tabHref: (tab: V2CampaignTab) => string;
 }) {
   const { basis } = useStatBasis();
-  const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId }, {}), pollOptions);
-  const counts = q.data?.counts ?? null;
-  const people = q.data?.people ?? null;
+  const leg = LEG_STEPS.find((l) => sameLegKey(l.legKey, campaign.row.campaign.legKey)) ?? null;
+  const q = useReachedCounts(brandId, [EMAIL_SENT_STEP, CONVERSATION_STEP, ...(leg ? [leg.step] : [])], campaignId);
+  const counts = q.data ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const audiences = useAudienceTable({ campaignId, offerId });
   const catalogue = useLegCatalogue();
+  const outcomeWords = leg ? stepWords(catalogue, leg.step) : null;
+  const replyWords = stepWords(catalogue, CONVERSATION_STEP);
 
-  const leg = LEG_STEPS.find((l) => sameLegKey(l.legKey, campaign.row.campaign.legKey)) ?? null;
   const g = campaign.row.revenue ?? null;
-  const replyLed = leg?.bucket === "positive_reply";
+  const replyLed = leg?.step === CONVERSATION_STEP;
   const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
   // Measured first: a Learning cost greyed with the served expected one beside it (owner 2026-10-19).
   const costShown = costToShowCents(cost, g?.expectedReturn, replyLed ? "conversation" : "website_visit");
@@ -303,7 +305,7 @@ function CampaignOverview({
   // Emails, every step of a sequence (owner 2026-10-06: "emails, not sequences").
   const emailCount = (v: number | null | undefined) =>
     win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={v != null ? formatCount(v) : "—"} unit={v === 1 ? "email" : "emails"} />;
-  const outcomes = leg && counts ? counts[leg.bucket] : null;
+  const outcomes = leg && counts ? (counts[leg.step] ?? null) : null;
 
   // A person is "person", several are "people" (owner 2026-10-06: "1 people").
   const count = (v: number | null | undefined) =>
@@ -317,13 +319,13 @@ function CampaignOverview({
         {/* Owner's order (2026-10-06), ONE row on desktop: ROI, Contacted, Queued, Sent, Delivered, outcome, Spent, cost per outcome. */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
           <RoiTile campaign={campaign} />
-          <StatTile label="Contacted">{count(counts?.contacted)}</StatTile>
+          <StatTile label="Contacted">{count(counts?.[EMAIL_SENT_STEP])}</StatTile>
           <StatTile label="Queued">{emailCount(queued)}</StatTile>
           <StatTile label="Sent">{emailCount(emails?.sent)}</StatTile>
           <StatTile label="Delivered">{emailCount(emails?.delivered)}</StatTile>
-          <StatTile label={leg ? (outcomes === 1 ? leg.outcome : stepPluralLabel(catalogue, campaign.leg?.toKey, leg.outcome)) : "Outcomes"}>{count(outcomes)}</StatTile>
+          <StatTile label={outcomeWords ? (outcomes === 1 ? outcomeWords.one : outcomeWords.many) : "Outcomes"}>{count(outcomes)}</StatTile>
           <SpentTile win={win} />
-          <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
+          <StatTile label={outcomeWords ? `Cost / ${outcomeWords.one.toLowerCase()}` : "Cost / outcome"}>
             <Figure value={<CostValue cost={costShown} learning={cost.learning} />} />
           </StatTile>
         </div>
@@ -334,9 +336,8 @@ function CampaignOverview({
         <LegSteps
           brandId={brandId}
           featureSlug={campaign.row.campaign.featureSlug ?? null}
-          title={leg?.title ?? campaign.leg?.label ?? "Steps"}
-          outcome={leg?.outcome ?? null}
-          bucket={leg?.bucket ?? null}
+          title={outcomeWords?.many ?? campaign.leg?.label ?? "Steps"}
+          step={leg?.step ?? null}
           campaignId={campaignId}
         />
         <section>
@@ -346,15 +347,15 @@ function CampaignOverview({
               label="Inbox"
               href={tabHref("inbox")}
               loading={!settled}
-              value={counts?.positive_reply ?? null}
-              unit={counts?.positive_reply === 1 ? "positive reply" : "positive replies"}
+              value={counts?.[CONVERSATION_STEP] ?? null}
+              unit={(counts?.[CONVERSATION_STEP] === 1 ? replyWords.one : replyWords.many).toLowerCase()}
             />
             <SummaryCard
               label="Sent"
               href={tabHref("sent")}
               loading={!settled}
-              value={people?.sent ?? null}
-              unit={people?.sent === 1 ? "person emailed" : "people emailed"}
+              value={counts?.[EMAIL_SENT_STEP] ?? null}
+              unit={counts?.[EMAIL_SENT_STEP] === 1 ? "person emailed" : "people emailed"}
             />
             <SummaryCard
               label="Targeting"
@@ -394,8 +395,9 @@ function ConversationOverview({
   const q = useAuthQuery(["conversationCounts", campaign.row.campaign.id], () => getConversationCounts(campaign.row.campaign.id), pollOptions);
   const conv = q.data ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
-  const from = campaign.leg?.fromLabel ?? "Positive reply";
-  const to = campaign.leg?.toLabel ?? "Meeting booked";
+  // A campaign with no known leg names its steps plainly, never a guessed outcome.
+  const from = campaign.leg?.fromLabel ?? "Handed over";
+  const to = campaign.leg?.toLabel ?? "Outcome";
   // Count headings read the catalogue's served plural (features-service `pluralLabel`).
   const catalogue = useLegCatalogue();
   const fromPlural = stepPluralLabel(catalogue, campaign.leg?.fromKey, from);

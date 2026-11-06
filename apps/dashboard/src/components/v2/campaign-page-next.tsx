@@ -7,17 +7,13 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions, POLL_INTERVAL } from "@/lib/query-options";
 import {
   getConversationCounts,
-  getLeadBucketCounts,
-  getLeadConsolidatedStatus,
   getOfferUserFields,
-  leadDateForStatus,
   listAudiences,
   listFunnelCampaignCopies,
   listFunnelCampaignRows,
   getSalesFunnelCaps,
-  listLeadsPage,
+  listUniboxLeads,
   type CampaignRevenueGroup,
-  type Lead,
 } from "@/lib/api";
 import {
   capUnavailableSentence,
@@ -37,27 +33,28 @@ import {
 } from "@/lib/sales-funnel-campaigns";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
-import { leadStatusLabel } from "@/lib/lead-status";
 import { awaitingReason } from "@/lib/awaiting-reason";
 import { shownFigure } from "@/lib/maturity";
 import { costToShowCents } from "@/lib/expected-return";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { legFor } from "@/lib/legs";
+import { legFor, stepWords } from "@/lib/legs";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
-import { isProactiveFrom } from "@/lib/outbound-leg-key";
+import { CONVERSATION_STEP, EMAIL_SENT_STEP, isProactiveFrom, WEBSITE_VISIT_STEP } from "@/lib/outbound-leg-key";
 import { v2CampaignHref, v2Href, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
 import { withLayoutNext } from "@/lib/v2/campaign-layout-preview";
-import { LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
+import { LEADS_PAGE_SIZE } from "@/lib/leads-server-page";
+import { leadStateTag, uniboxLeadName, uniboxRowId, uniboxRowKey, type UniboxRow } from "@/lib/unibox-leads";
+import { TagChip } from "@/components/v2/tag-chip";
 import { useCampaigns } from "@/components/v2/use-campaigns";
-import { useNeedsYourCall } from "@/components/v2/data";
+import { useNeedsYourCall, useReachedCounts } from "@/components/v2/data";
 import { useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { giveListsFrom } from "@/components/v2/offer-give-lists";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
-import { EmptyNote, MarkLines, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
+import { EmptyNote, Initials, MarkLines, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostValue, RoiLabel } from "@/components/v2/roi-label";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi } from "@/components/v2/funnel-campaigns";
 
@@ -81,12 +78,8 @@ const NEXT_TABS: { key: V2CampaignTab; label: string }[] = [
   { key: "targeting", label: "Targeting" },
 ];
 
-/** The activity filters, each one of lead-service's own buckets (Contacted = everyone emailed). */
-const ACTIVITY_FILTERS: { key: string; label: string; bucket: LeadBucket }[] = [
-  { key: "all", label: "All", bucket: "contacted" },
-  { key: "replied", label: "Replied", bucket: "positive_reply" },
-  { key: "clicked", label: "Clicked", bucket: "website_visit" },
-];
+/** The activity filters, each the people who reached one catalogue step (All = everyone emailed); named by the catalogue. */
+const ACTIVITY_STEPS: readonly string[] = [EMAIL_SENT_STEP, CONVERSATION_STEP, WEBSITE_VISIT_STEP];
 
 const Chevron = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className="k-fg3">
@@ -262,45 +255,46 @@ function FunnelStrip({
   conversationCampaignId: string | null;
   campaignRevenue: RevenueGroup | null;
 }) {
-  const countsQ = useAuthQuery(
-    ["leadBucketCounts", `campaign:${coldEmail?.campaignId ?? ""}`, ""],
-    () => getLeadBucketCounts({ campaignId: coldEmail!.campaignId }, {}),
-    { ...pollOptions, enabled: !!coldEmail },
-  );
+  const catalogue = useLegCatalogue();
+  const countsQ = useReachedCounts(brandId, coldEmail ? [EMAIL_SENT_STEP, WEBSITE_VISIT_STEP, CONVERSATION_STEP] : [], coldEmail?.campaignId ?? null);
   const convQ = useAuthQuery(["conversationCounts", conversationCampaignId ?? ""], () => getConversationCounts(conversationCampaignId!), {
     ...pollOptions,
     enabled: !!conversationCampaignId,
   });
   const win = useCampaignWindow(brandId, coldEmail?.campaignId ?? "", coldEmail?.featureSlug ?? null);
   if (!coldEmail && !conversationCampaignId) return null;
-  const counts = countsQ.data?.counts ?? null;
+  const counts = countsQ.data ?? null;
   const countsSettled = countsQ.data !== undefined || countsQ.isFetchedAfterMount;
+  const visits = stepWords(catalogue, WEBSITE_VISIT_STEP);
+  const replies = stepWords(catalogue, CONVERSATION_STEP);
+  const sentEmails = stepWords(catalogue, EMAIL_SENT_STEP);
+  const meetings = stepWords(catalogue, "meeting_booked");
   const convSettled = convQ.data !== undefined || convQ.isFetchedAfterMount;
   const emails = win.data?.emails ?? null;
 
   const steps: { key: string; label: string; value: number | null | undefined; unit: [string, string]; rate?: string | null; pending: boolean }[] = [];
   if (coldEmail) {
-    steps.push({ key: "contacted", label: "Contacted", value: counts?.contacted, unit: ["person", "people"], pending: !countsSettled });
+    steps.push({ key: "contacted", label: "Contacted", value: counts?.[EMAIL_SENT_STEP], unit: ["person", "people"], pending: !countsSettled });
     steps.push({
       key: "sent",
-      label: "Emails sent",
+      label: sentEmails.many,
       value: emails?.sent,
       unit: ["email", "emails"],
       rate: emails?.deliveryRatePct != null ? `${formatRatePct(emails.deliveryRatePct)} delivered` : null,
       pending: win.pending,
     });
-    steps.push({ key: "clicks", label: "Website visits", value: counts?.website_visit, unit: ["person", "people"], pending: !countsSettled });
+    steps.push({ key: "clicks", label: visits.many, value: counts?.[WEBSITE_VISIT_STEP], unit: ["person", "people"], pending: !countsSettled });
     steps.push({
       key: "replies",
-      label: "Positive replies",
-      value: counts?.positive_reply,
+      label: replies.many,
+      value: counts?.[CONVERSATION_STEP],
       unit: ["person", "people"],
       rate: campaignRevenue?.positiveReplyRatePct != null ? `${formatRatePct(campaignRevenue.positiveReplyRatePct)} of people emailed` : null,
       pending: !countsSettled,
     });
   }
   if (conversationCampaignId) {
-    steps.push({ key: "meetings", label: "Meetings booked", value: convQ.data?.meetingsBooked, unit: ["person", "people"], pending: !convSettled });
+    steps.push({ key: "meetings", label: meetings.many, value: convQ.data?.meetingsBooked, unit: ["person", "people"], pending: !convSettled });
   }
 
   return (
@@ -405,49 +399,43 @@ function NeedsYou({ orgId, brandId, campaignIds }: { orgId: string; brandId: str
 
 const ACTIVITY_SHOWN = 12;
 
-/** One row per person of this campaign, newest move first (lead-service's activity order). */
+/** One row per person of this campaign, newest move first (lead-service's Unibox order), each with its one lead tag. */
 function LatestActivity({ orgId, brandId, campaignId }: { orgId: string; brandId: string; campaignId: string }) {
   const router = useRouter();
-  const [filter, setFilter] = useState(ACTIVITY_FILTERS[0]);
+  const catalogue = useLegCatalogue();
+  const [filter, setFilter] = useState<string>(ACTIVITY_STEPS[0]);
   const [all, setAll] = useState(false);
-  const key = `campaign:${campaignId}`;
   // People's own key and arguments (first page), so the Sent and Inbox tabs share this read.
   const pageQ = useAuthQuery(
-    ["leadsPage", key, "v2-people", filter.bucket, "", 0],
-    () =>
-      listLeadsPage(
-        { campaignId },
-        { view: "basic", bucket: filter.bucket, sort: "activity", limit: String(LEADS_PAGE_SIZE), offset: "0" },
-        undefined,
-        { includeCampaigns: false },
-      ),
+    ["reachedRows", brandId, "", campaignId, filter, "", ""],
+    () => listUniboxLeads(brandId, {}, { campaignId, reachedStep: filter, limit: LEADS_PAGE_SIZE, cursor: null }),
     { refetchInterval: POLL_INTERVAL },
   );
-  const countsQ = useAuthQuery(["leadBucketCounts", key, ""], () => getLeadBucketCounts({ campaignId }, {}), pollOptions);
-  const counts = countsQ.data?.counts ?? null;
-  const rows = pageQ.data?.leads ?? null;
+  const counts = useReachedCounts(brandId, ACTIVITY_STEPS, campaignId).data ?? null;
+  const rows = pageQ.data?.rows ?? null;
   const total = pageQ.data?.total ?? null;
   const shown = rows ? (all ? rows : rows.slice(0, ACTIVITY_SHOWN)) : null;
   const settled = pageQ.data !== undefined || pageQ.isFetchedAfterMount;
+  const unibox = v2Href(orgId, brandId, "unibox");
 
   return (
     <section>
       <SectionTitle
         right={
           <span className="flex items-center gap-1">
-            {ACTIVITY_FILTERS.map((f) => (
+            {ACTIVITY_STEPS.map((step, i) => (
               <button
-                key={f.key}
+                key={step}
                 type="button"
-                aria-pressed={filter.key === f.key}
+                aria-pressed={filter === step}
                 onClick={() => {
-                  setFilter(f);
+                  setFilter(step);
                   setAll(false);
                 }}
-                className={`${filter.key === f.key ? "k-btn-strong" : "k-btn"} gap-1 text-[12px]`}
+                className={`${filter === step ? "k-btn-strong" : "k-btn"} gap-1 text-[12px]`}
               >
-                {f.label}
-                <span className="k-fg3 tabular-nums">{counts ? formatCount(counts[f.bucket] ?? 0) : ""}</span>
+                {i === 0 ? "All" : stepWords(catalogue, step).many}
+                <span className="k-fg3 tabular-nums">{counts ? formatCount(counts[step] ?? 0) : ""}</span>
               </button>
             ))}
           </span>
@@ -490,7 +478,9 @@ function LatestActivity({ orgId, brandId, campaignId }: { orgId: string; brandId
                   </td>
                 </tr>
               ) : (
-                shown.map((lead) => <ActivityRow key={lead.id} lead={lead} onOpen={() => router.push(personHref(orgId, brandId, lead))} />)
+                shown.map((row) => (
+                  <ActivityRow key={uniboxRowKey(row)} row={row} onOpen={() => router.push(`${unibox}?lead=${encodeURIComponent(uniboxRowId(row))}`)} />
+                ))
               )}
             </tbody>
           </table>
@@ -512,32 +502,30 @@ function LatestActivity({ orgId, brandId, campaignId }: { orgId: string; brandId
   );
 }
 
-function ActivityRow({ lead, onOpen }: { lead: Lead; onOpen: () => void }) {
-  const status = getLeadConsolidatedStatus(lead);
-  const at = leadDateForStatus(lead, status);
-  const company = leadCompany(lead);
+function ActivityRow({ row, onOpen }: { row: UniboxRow; onOpen: () => void }) {
+  const name = uniboxLeadName(row);
+  const company = row.company?.name || row.company?.domain || null;
+  const tag = row.leadState ? leadStateTag(row.leadState) : null;
   return (
     <tr onClick={onOpen} className="k-row k-line-subtle h-10 cursor-pointer border-b last:border-b-0">
       <td className="max-w-[220px] px-3 pl-4">
         <span className="flex min-w-0 items-center gap-2">
-          <PersonAvatar lead={lead} size={20} />
-          <span className="truncate font-medium">{leadName(lead)}</span>
+          <Initials name={name} size={20} round />
+          <span className="truncate font-medium">{name}</span>
         </span>
       </td>
       <td className="max-w-[200px] px-3">
         {company ? (
           <span className="flex min-w-0 items-center gap-2">
-            <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={18} />
+            <CompanyMark name={company} domain={row.company?.domain ?? null} size={18} />
             <span className="truncate">{company}</span>
           </span>
         ) : (
           DASH
         )}
       </td>
-      <td className="px-3">
-        <span className="k-chip">{leadStatusLabel(status)}</span>
-      </td>
-      <td className="k-mono k-fg2 whitespace-nowrap px-3 pr-4 text-right text-[12px]">{at ? timeAgo(at) : DASH}</td>
+      <td className="px-3">{tag ? <TagChip tag={tag} /> : DASH}</td>
+      <td className="k-mono k-fg2 whitespace-nowrap px-3 pr-4 text-right text-[12px]">{row.lastActivityAt ? timeAgo(row.lastActivityAt) : DASH}</td>
     </tr>
   );
 }
@@ -599,7 +587,7 @@ function Line({ label, children }: { label: React.ReactNode; children: React.Rea
   );
 }
 
-/** ROI once, what went in, and what one positive reply cost: all served. */
+/** ROI once, what went in, and what one outcome cost (named by the catalogue): all served. */
 function ResultsCard({
   row,
   rowsSettled,
@@ -610,6 +598,7 @@ function ResultsCard({
   revenue: RevenueGroup | null;
 }) {
   const { basis } = useStatBasis();
+  const replyWord = stepWords(useLegCatalogue(), CONVERSATION_STEP).one;
   const cost = shownFigure(revenue?.outcomesMaturity, (h) => h.cpprCents, basis);
   const costShown = costToShowCents(cost, revenue?.expectedReturn, "conversation");
   const wait = <Shimmer className="ml-auto h-4 w-14" />;
@@ -619,7 +608,7 @@ function ResultsCard({
         <Line label={<RoiLabel />}>{!rowsSettled ? wait : row ? <FunnelRoi row={row} /> : DASH}</Line>
         <Line label="$ Invested">{!rowsSettled ? wait : row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH}</Line>
         {revenue && (
-          <Line label="$ / Positive reply">
+          <Line label={`$ / ${replyWord}`}>
             <CostValue cost={costShown} learning={cost.learning} />
           </Line>
         )}

@@ -187,7 +187,7 @@ describe("v2 wiring", () => {
   it("keeps v1's key prefixes with the selected offer appended, so a brand invalidation still reaches them", () => {
     const data = read("src/components/v2/data.ts");
     expect(data).toContain('["brandRevenue", brandId, "offer", offerId]');
-    expect(data).toContain('["leadBucketCounts", lead.key, ""]');
+    expect(data).toContain('["reachedCounts", brandId, campaignId ? "" : (offerId ?? ""), campaignId ?? "", list.join(",")]');
     expect(data).toContain("key: brandLeadScopeKey(brandId, offerId)");
     expect(read("src/components/v2/use-campaigns.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
   });
@@ -204,8 +204,9 @@ describe("v2 wiring", () => {
 
   it("People pages and searches on the producer, never over loaded rows", () => {
     const people = read("src/components/v2/people-page.tsx");
-    expect(people).toContain("offset: String(page * LEADS_PAGE_SIZE)");
-    expect(people).toContain("leadsSearchProblem(search)");
+    // LEAD-FOLLOWUPS-1106: the Unibox read filtered on the step, paged by lead-service's cursor, searched by its `q`.
+    expect(people).toContain("listUniboxLeads(brandId, {}, { ...scope, reachedStep: step, limit: LEADS_PAGE_SIZE, q: search || undefined, cursor: cursors[page] })");
+    expect(people).toContain("setCursors((c) => [...c, next])");
     expect(people).not.toMatch(/\.filter\(\(l(ead)?\) =>/);
   });
 

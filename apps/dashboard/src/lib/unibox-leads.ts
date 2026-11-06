@@ -236,6 +236,12 @@ export function filtersKey(f: UniboxFilters): string {
 export interface UniboxScope {
   offerId?: string | null;
   campaignId?: string | null;
+  /**
+   * Only the people who REACHED this catalogue step at some point, whatever rung they stand on now
+   * (lead-service `reachedStep`, LEAD-REACHED-STEP-1106): an outcome's people and its count. Any
+   * step key features-service serves; nothing is mapped here.
+   */
+  reachedStep?: string | null;
 }
 
 /** The brand, the scope and each filter as a comma list (shared by the list and the counts). */
@@ -243,6 +249,7 @@ function scopedQuery(brandId: string, f: UniboxFilters, scope: UniboxScope): URL
   const qs = new URLSearchParams({ brandId });
   if (scope.offerId) qs.set("offerId", scope.offerId);
   if (scope.campaignId) qs.set("campaignId", scope.campaignId);
+  if (scope.reachedStep) qs.set("reachedStep", scope.reachedStep);
   for (const d of UNIBOX_DIMENSIONS) {
     const v = f[d];
     if (v && v.length > 0) qs.set(d, v.join(","));

@@ -20,7 +20,6 @@ import {
   ATTENTION_ORDER,
   DECIDED_BY_LABEL,
   MATCH_METHOD_LABEL,
-  OUR_STATE_LABEL,
   PAIRING_STATE_LABEL,
   STATE_FILTERS,
   THEIR_STATE_LABEL,
@@ -41,9 +40,15 @@ import {
   type OriginBucket,
 } from "@/lib/crm-pairings";
 import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
+import { leadStateTag } from "@/lib/unibox-leads";
 import { EmptyNote, Initials, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { REC_TH, useRowKeys } from "@/components/v2/records";
 import { Count, KpiCell, KpiShimmer, ToneDot } from "@/components/v2/integrations-crm";
+
+/** Our side of a pairing: lead-service's one lead tag (Won / Hot / Lost and why, else its lifecycle rung). Null = none served. */
+function ourStatus(row: Pick<CrmPairingRow, "leadState">): string | null {
+  return row.leadState ? (leadStateTag(row.leadState)?.label ?? null) : null;
+}
 
 /** Contacts per page of the table (the v1 page's own figure; the view pages over THEIR contacts). */
 export const V2_PAIRINGS_PAGE = 100;
@@ -471,7 +476,7 @@ function PairingsTable({
                   )}
                 </td>
                 <td className="k-fg2 hidden px-3 py-2 md:table-cell">
-                  {r.ourStanding?.state ? labelOf(OUR_STATE_LABEL, r.ourStanding.state) : <span className="k-fg4">—</span>}
+                  {ourStatus(r) ?? <span className="k-fg4">—</span>}
                 </td>
                 <td className="hidden px-3 py-2 md:table-cell">
                   {r.theirStatus.opportunities.length === 0 ? (
@@ -690,7 +695,7 @@ function PairingDrawer({
               <Field label="Email" value={lead.email} />
               <Field label="Role" value={lead.jobTitle} />
               <Field label="Company" value={lead.company} />
-              <Field label="Our status" value={row.ourStanding?.state ? labelOf(OUR_STATE_LABEL, row.ourStanding.state) : null} />
+              <Field label="Our status" value={ourStatus(row)} />
             </>
           ) : (
             <p className="k-fg2 text-[13px]">No lead of ours was found for this contact.</p>

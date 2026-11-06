@@ -1,27 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
-  LeadBucketCountsSchema,
   LeadsPageEnvelopeSchema,
-  leadBucketCountsQuery,
   leadsExportQuery,
   leadsSearchParam,
   leadsSearchProblem,
   REACHABLE_BUCKET,
 } from "../src/lib/leads-server-page";
 
-const counts = {
-  total: 12945,
-  counts: {
-    contacted: 7895,
-    website_visit: 45,
-    positive_reply: 29,
-    signup: 0,
-    meeting_booked: 3,
-    meeting_attended: 1,
-    form_submission: 0,
-    sale: 2,
-  },
-};
 
 describe("search", () => {
   it("treats a blank box as no search, not as a problem", () => {
@@ -42,13 +27,6 @@ describe("search", () => {
 
   it("sends the trimmed value when it is usable", () => {
     expect(leadsSearchParam("  jane acme ")).toBe("jane acme");
-  });
-});
-
-describe("counts query", () => {
-  it("asks the counts with the same search and no bucket", () => {
-    expect(leadBucketCountsQuery("jane")).toEqual({ q: "jane" });
-    expect(leadBucketCountsQuery("")).toEqual({});
   });
 });
 
@@ -84,22 +62,6 @@ describe("export query", () => {
     expect(leadsExportQuery({ search: "jane" }).q).toBe("jane");
     expect(leadsExportQuery({ search: "   " }).q).toBeUndefined();
     expect(leadsExportQuery({ search: "a".repeat(201) }).q).toBeUndefined();
-  });
-});
-
-describe("counts", () => {
-  it("parses the producer's body", () => {
-    expect(LeadBucketCountsSchema.safeParse(counts).success).toBe(true);
-  });
-
-  it("keeps lead-service's people counts (delivered, interested)", () => {
-    const parsed = LeadBucketCountsSchema.parse({ ...counts, people: { delivered: 9, interested: 3 } });
-    expect(parsed.people).toEqual({ delivered: 9, interested: 3 });
-  });
-
-  it("refuses a body missing a bucket rather than reading it as zero", () => {
-    const { sale, ...rest } = counts.counts;
-    expect(LeadBucketCountsSchema.safeParse({ total: 1, counts: rest }).success).toBe(false);
   });
 });
 
