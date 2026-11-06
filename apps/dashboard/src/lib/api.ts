@@ -6590,7 +6590,7 @@ const OfferPipelineSchema = z.object({
       ),
     })
     .nullable(),
-  // Lost leads (owner 2026-10-08, features-service #1412): went cold, or ruled out by a
+  // Lost leads (owner 2026-10-08, features-service #1412): stalled, or ruled out by a
   // human and now $0. Went-cold first (oldest cold first), then ruled-out.
   lostLeads: z
     .object({
@@ -6634,7 +6634,7 @@ export type OfferPipeline = z.infer<typeof OfferPipelineSchema>;
 export type OfferLadderStep = OfferPipeline["ladder"][number];
 export type StepValueExplanation = z.infer<typeof StepValueExplanationSchema>;
 export type PipelineLead = z.infer<typeof PipelineLeadSchema>;
-/** A lost lead (went cold, or ruled out): the Lost leads list and its panel. */
+/** A lost lead (stalled, or ruled out): the Lost leads list and its panel. */
 export type ColdPipelineLead = NonNullable<NonNullable<OfferPipeline["lostLeads"]>>["leads"][number];
 export type StepPerson = z.infer<typeof StepPersonSchema>;
 export type ExclusiveLadder = z.infer<typeof ExclusiveLadderSchema>;
