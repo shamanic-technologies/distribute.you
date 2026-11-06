@@ -104,7 +104,8 @@ describe("the AI SDR cluster", () => {
     expect(aiSdrCompetitors().map((c) => c.slug)).toEqual(["11x", "artisan", "aisdr", "qualified"]);
     for (const c of aiSdrCompetitors()) {
       expect(competitorPath(c)).toBe(`/ai-sdr/vs/${c.slug}`);
-      expect(c.verifiedOn).toBe("2026-10-29");
+      // AiSDR re-read 2026-11-06 for its pricing answer (SEO-COMPETITOR-PRICING-PAGES-1106).
+      expect(c.verifiedOn).toBe(c.slug === "aisdr" ? "2026-11-06" : "2026-10-29");
       expect(html).toContain(`href="/ai-sdr/vs/${c.slug}"`);
     }
     expect(competitorPath(competitorBySlug("gojiberry")!)).toBe("/compare/gojiberry");
