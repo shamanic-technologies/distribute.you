@@ -141,23 +141,25 @@ describe("channel pages", () => {
   });
   it("cold email's page carries Overview, Inbox, Sent, Targeting and Settings", () => {
     for (const label of ["Overview", "Inbox", "Sent", "Targeting", "Settings"]) expect(page).toContain(`label: "${label}"`);
-    expect(page).toContain('<PeoplePage bucket="positive_reply" />');
-    expect(page).toContain('<PeoplePage bucket="contacted" />');
+    expect(page).toContain("<PeoplePage step={CONVERSATION_STEP} />");
+    expect(page).toContain("<PeoplePage step={EMAIL_SENT_STEP} />");
     expect(page).toContain("<V2AudiencesTable offerId={offerId} />");
     expect(page).toContain("<ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={channelSlug} />");
   });
   it("the overview reads served figures and never sums Interested", () => {
     expect(page).toContain("useBrandRevenueWindow(brandId, SINCE_INCEPTION)");
     expect(page).not.toContain("TODAY_WINDOWS");
-    expect(page).toContain("useBucketCounts(brandId)");
+    expect(page).toContain("useReachedCounts(brandId, [EMAIL_SENT_STEP, CONVERSATION_STEP])");
     expect(page).not.toMatch(/website_visit\s*\+/);
-    expect(page).not.toMatch(/positive_reply\s*\+/);
+    expect(page).not.toMatch(/CONVERSATION_STEP\]\s*\+/);
     expect(page).not.toMatch(/visits\s*\+\s*replies/);
   });
   it("one steps card per leg, read on the leg's campaign, stopping at its outcome (owner 2026-10-04)", () => {
-    expect(page).toContain('legKey: OUTBOUND_LEG_TO_WEBSITE_VISIT, title: "Website visits", outcome: "Website visit"');
-    expect(page).toContain('legKey: OUTBOUND_LEG_TO_CONVERSATION, title: "Positive replies", outcome: "Positive reply"');
-    expect(page).toContain("getLeadBucketCounts({ campaignId }, {})");
+    // The leg's outcome is named by the catalogue (LEAD-FOLLOWUPS-1106), never a word typed here.
+    expect(page).toContain("{ legKey: OUTBOUND_LEG_TO_WEBSITE_VISIT, step: WEBSITE_VISIT_STEP }");
+    expect(page).toContain("{ legKey: OUTBOUND_LEG_TO_CONVERSATION, step: CONVERSATION_STEP }");
+    expect(page).toContain("useReachedCounts(brandId, step ? [step] : [], campaignId)");
+    expect(page).not.toContain('"Positive replies"');
     // A leg no campaign aims at gets no card, never an empty note.
     expect(page).toContain("return campaignId ? [{ ...leg, campaignId }] : [];");
     expect(page).not.toContain("No campaign aims at this yet");

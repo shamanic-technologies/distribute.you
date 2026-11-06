@@ -57,7 +57,7 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { v2CampaignHref, v2Href, type V2CampaignTab } from "@/lib/v2/routes";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
-import { isProactiveFrom } from "@/lib/outbound-leg-key";
+import { CONVERSATION_STEP, EMAIL_SENT_STEP, isProactiveFrom } from "@/lib/outbound-leg-key";
 import { useCampaigns } from "@/components/v2/use-campaigns";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { CampaignHoldNote, useCampaignHolds } from "@/components/v2/campaign-hold";
@@ -673,11 +673,11 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
     >
       {tab === "inbox" && coldEmail ? (
         <div className="k-card overflow-hidden">
-          <PeoplePage bucket="positive_reply" campaignId={coldEmail.campaignId} />
+          <PeoplePage step={CONVERSATION_STEP} campaignId={coldEmail.campaignId} />
         </div>
       ) : tab === "sent" && coldEmail ? (
         <div className="k-card overflow-hidden">
-          <PeoplePage bucket="contacted" campaignId={coldEmail.campaignId} />
+          <PeoplePage step={EMAIL_SENT_STEP} campaignId={coldEmail.campaignId} />
         </div>
       ) : tab === "targeting" && coldEmail ? (
         <V2AudiencesTable campaignId={coldEmail.campaignId} offerId={campaign.offerId} />

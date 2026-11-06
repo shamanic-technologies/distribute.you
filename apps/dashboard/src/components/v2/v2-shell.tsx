@@ -1,5 +1,6 @@
 "use client";
 
+import { EMAIL_SENT_STEP } from "@/lib/outbound-leg-key";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
@@ -9,7 +10,7 @@ import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
-import { useBucketCounts, useBrandRevenue, useDealsLifecycleCounts, useNeedsYourCall } from "@/components/v2/data";
+import { useReachedCounts, useBrandRevenue, useDealsLifecycleCounts, useNeedsYourCall } from "@/components/v2/data";
 import { dealsBoardRungs } from "@/lib/deals-board";
 import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
 import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS } from "@/lib/staff-catalogue";
@@ -198,10 +199,10 @@ function V2Sidebar() {
   // Leads found counts the people the brand's lists hold, the page's People tab (owner 2026-10-11).
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held;
-  // People badge = people who were actually SENT an email (lead-service `people.sent`), the same 73
-  // the People page's Contacted tab shows; the `contacted` bucket also counts people still queued
-  // (Beyond Logic 2026-10-29: 127 vs 73).
-  const buckets = useBucketCounts(brandId).data;
+  // People badge = people who were actually SENT an email (lead-service: reached `email_sent`), never
+  // people still queued (Beyond Logic 2026-10-29: 127 vs 73). Each outcome entry = the people who
+  // reached its step, the same count its page's Contacted by us tab states.
+  const reached = useReachedCounts(brandId, [EMAIL_SENT_STEP, ...outcomes.flatMap((o) => (o.outcome.items.kind === "people" ? [o.outcome.items.step] : []))]).data;
   // Deals badge = the people on the Deals board's columns (every lifecycle rung but Lead found),
   // read off the same served counts and key the page reads, so the two agree.
   const dealCounts = useDealsLifecycleCounts(brandId).data;
@@ -266,7 +267,7 @@ function V2Sidebar() {
                 href={v2Href(orgId, brandId, "people")}
                 label="People"
                 active={section === "people"}
-                trailing={<Count n={buckets?.people?.sent} />}
+                trailing={<Count n={reached?.[EMAIL_SENT_STEP]} />}
               />
               <NavItem
                 indent
@@ -341,7 +342,7 @@ function V2Sidebar() {
               const n = all
                 ? all.people
                 : outcome.items.kind === "people"
-                  ? buckets?.counts[outcome.items.bucket]
+                  ? reached?.[outcome.items.step]
                   : outcome.items.kind === "leads-found"
                     ? peopleHeld
                     : null;

@@ -20,7 +20,7 @@
 `integrations` = Raw; `integrations/merged` = `components/v2/integrations-merged.tsx`, staff debug over lead-service pairings: one row per THEIR contact, our lead beside it when paired.
 - Counts served (`/v1/leads/crm-pairing-counts`, crm-service `.../contacts/origins`); nothing summed here.
 - Table reads `state=` on `/v1/leads/crm-pairings` server-side; `nextOffset` is a POSITION in their list, so Previous walks a stack of offsets. Opens on `paired`; only a set including `unconfirmed` spends.
-- "Aligned" (`lib/crm-pairings.ts` `alignmentFor`, alias-free) compares only fixed-meaning fields: their deal STATE vs our STANDING; stage names never mapped. `behind` (closed-won there, no sale here) is the point.
+- "Aligned" (`lib/crm-pairings.ts` `alignmentFor`, alias-free) compares only fixed-meaning fields: their deal STATE vs lead-service's served `leadState` on the pairing row (won / lost, read, never re-graded; LEAD-FOLLOWUPS-1106), and "Our status" prints `leadStateTag`; stage names never mapped. `behind` (closed-won there, no sale here) is the point.
 - Doubt counts as ours, a person settles it (lead-service v0.81.18): hesitant Jev judgment PAIRS with `pairing.toConfirm: true` (`pairedToConfirm`, `?toConfirm=true`); **To confirm** section on top, `needsConfirmation` sorts first. `unconfirmed` = model could not answer yet ("Not judged yet", stat only when non-zero).
 - Rulings (Same person / Not the same person / Take back) via `setCrmPairingRuling` / `withdrawCrmPairingRuling`, re-read page + counts before the button releases; denying deletes nothing; refusals render from STATUS. Guard `tests/crm-merged-view.test.ts`.
 

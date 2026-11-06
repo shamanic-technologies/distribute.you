@@ -338,3 +338,13 @@ export function stepPluralLabel(
   }
   return singular;
 }
+
+/**
+ * A step's name for one and for several, as features-service serves them ("Positive reply" /
+ * "Positive replies"): every count label over an outcome reads these, never a word typed in JSX.
+ * Before the catalogue answers, the step key reads (logged by `stepPluralLabel` once it has).
+ */
+export function stepWords(catalogue: Pick<LegCatalogue, "steps">, stepKey: string): { one: string; many: string } {
+  const one = catalogue.steps.get(stepKey)?.label ?? stepKey.replace(/_/g, " ");
+  return { one, many: stepPluralLabel(catalogue, stepKey, one) };
+}

@@ -24,7 +24,8 @@ import {
 } from "@/lib/workflow-eligibility";
 import { rankWorkflowRows, type RankedWorkflow } from "@/lib/workflow-rank-why";
 import { legColumnPair } from "@/lib/campaign-leg-columns";
-import { legFor } from "@/lib/legs";
+import { legFor, stepWords } from "@/lib/legs";
+import { CONVERSATION_STEP, WEBSITE_VISIT_STEP } from "@/lib/outbound-leg-key";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import type { WorkflowLadderRowShape } from "@/lib/workflow-grains";
@@ -179,9 +180,11 @@ export function useCampaignWorkflowRanking(
     [catalogueQ.data, groupsQ.data, pair, hidden],
   );
 
-  const outcomeNoun = ladderQ.data?.leg?.toStep.label ?? (pair === "visit" ? "Website visit" : "Positive reply");
+  // The outcome's words, as the catalogue serves them (the ladder's own step, else the pair's step).
   const outcomeStepKey = ladderQ.data?.leg?.toStep.key ?? null;
-  const outcomeNounPlural = pair === "visit" ? "Website visits" : "Positive replies";
+  const outcomeWords = stepWords(legCatalogue, outcomeStepKey ?? (pair === "visit" ? WEBSITE_VISIT_STEP : CONVERSATION_STEP));
+  const outcomeNoun = ladderQ.data?.leg?.toStep.label ?? outcomeWords.one;
+  const outcomeNounPlural = outcomeWords.many;
 
   const ranked = useMemo(
     () =>

@@ -5,7 +5,10 @@ import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import posthog from "posthog-js";
-import { useBucketCounts } from "@/components/v2/data";
+import { useReachedCounts } from "@/components/v2/data";
+import { useBrandOutcomeList } from "@/components/v2/brand-outcomes";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { EMAIL_SENT_STEP } from "@/lib/outbound-leg-key";
 import { monthlyUsd } from "@/lib/subscription-plan";
 import {
   CANCEL_REASONS,
@@ -102,8 +105,14 @@ export function CancelPlanFlow({
   onPause: (months: PauseMonths) => void;
   onKeep: () => void;
 }) {
-  const { brandId } = useParams<{ brandId: string }>();
-  const counts = useBucketCounts(brandId).data?.counts;
+  const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
+  // What the outreach brought: the people emailed, then the brand's two furthest outcomes, each
+  // named as features-service serves it (a brand whose Target is Signups reads Signups).
+  const { offerId } = useSelectedOffer();
+  const shownOutcomes = useBrandOutcomeList(orgId, brandId, offerId)
+    .outcomes.flatMap((o) => (o.outcome.items.kind === "people" ? [{ label: o.outcome.label, step: o.outcome.items.step }] : []))
+    .slice(0, 2);
+  const counts = useReachedCounts(brandId, [EMAIL_SENT_STEP, ...shownOutcomes.map((o) => o.step)]).data;
   const [step, setStep] = useState<CancelStep>(CANCEL_LOSS_STEPS[0].id);
   const loss = lossStep(step);
   const [reason, setReason] = useState<CancelReason | null>(null);
@@ -207,9 +216,10 @@ export function CancelPlanFlow({
               </div>
               {loss.id === "loss_outreach" && (
                 <div className="k-inset mt-3 grid grid-cols-3 divide-x divide-[var(--line-subtle)] rounded-lg">
-                  <LossFigure label="Contacted" value={counts?.contacted} />
-                  <LossFigure label="Positive replies" value={counts?.positive_reply} />
-                  <LossFigure label="Meetings" value={counts?.meeting_booked} />
+                  <LossFigure label="Contacted" value={counts?.[EMAIL_SENT_STEP]} />
+                  {shownOutcomes.map((o) => (
+                    <LossFigure key={o.step} label={o.label} value={counts?.[o.step]} />
+                  ))}
                 </div>
               )}
               <p className="k-inset mt-3 flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium leading-5">

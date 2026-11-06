@@ -10,8 +10,7 @@ import { z } from "zod";
  * page cold-loaded on every single visit — the customer-visible skeleton this replaces.
  *
  * lead-service answers all of it now (sales-lead-service, `GET /orgs/leads` gained
- * `limit`/`cursor`/`q`/`bucket`/`sort`/`format`, and `GET /orgs/leads/bucket-counts`
- * answers every tab's count without returning a single row). This module is the one
+ * `limit`/`cursor`/`q`/`bucket`/`sort`/`format`; every count is a Unibox read now). This module is the one
  * place that speaks that vocabulary: the tab-to-bucket map, the request builder, the
  * response parsers, and the rule for what the search box may send.
  *
@@ -127,14 +126,6 @@ export function leadsExportQuery(req: { search: string }): Record<string, string
   return leadsScopeQuery(REACHABLE_BUCKET, req.search);
 }
 
-/** The counts query — same scope and same search as the list, no bucket and no bound. */
-export function leadBucketCountsQuery(search: string): Record<string, string> {
-  const query: Record<string, string> = {};
-  const q = leadsSearchParam(search);
-  if (q) query.q = q;
-  return query;
-}
-
 /**
  * `total` is REQUIRED-but-nullable in spirit here: lead-service documents it as present
  * whenever the caller named a bound or a filter, and absent on an unbounded unfiltered
@@ -148,25 +139,4 @@ export const LeadsPageEnvelopeSchema = z.object({
   total: z.number().optional(),
 });
 export type LeadsPageEnvelope = z.infer<typeof LeadsPageEnvelopeSchema>;
-
-/** Every key is always present on this response — a bucket nobody is in is 0. */
-export const LeadBucketCountsSchema = z.object({
-  total: z.number(),
-  counts: z.object({
-    contacted: z.number(),
-    website_visit: z.number(),
-    positive_reply: z.number(),
-    signup: z.number(),
-    meeting_booked: z.number(),
-    meeting_attended: z.number(),
-    form_submission: z.number(),
-    sale: z.number(),
-    // Always served since lead-service v0.83.31; optional only for a body cached before it.
-    booking_call: z.number().optional(),
-  }),
-  // People, not emails (lead-service): sent at least one email; sent and not bounced; distinct
-  // people in website_visit OR positive_reply. Optional only for a body cached before it shipped.
-  people: z.object({ sent: z.number().optional(), delivered: z.number(), interested: z.number() }).optional(),
-});
-export type LeadBucketCounts = z.infer<typeof LeadBucketCountsSchema>;
 
