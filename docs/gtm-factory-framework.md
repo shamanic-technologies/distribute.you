@@ -17,7 +17,7 @@ The framework names this work, measures it, and picks, at every place where seve
 ```mermaid
 flowchart LR
   M((Start)) --> F[Lead found]
-  A[ICP] --> F
+  A[Audience] --> F
   F --> I[Lead identified]
   I --> E[Verified email]
   E --> W[Message written]
@@ -42,7 +42,8 @@ flowchart LR
 | **Provider** | One per outcome, never in competition: the stores of that outcome. A script asks a Provider for what it needs. |
 | **Run** | A production order: one script executed, one Unit or none. |
 | **Request** | What a run hands to the pieces it orders whose subject is the run itself. The writer asks for the email it wants (`ctx.ask({ prompt })`), then calls `ctx.get("llm_completion")`; the LLM completion script reads that Request (`ctx.request`) and writes it. `get()` keeps no argument: the Request travels beside it. |
-| **Campaign** | Orders production: a Target, a start, a budget and a strategy written as a brief. |
+| **Offer** | What a brand sells, as a structured brief several campaigns share: what it is and its price, what we give and never give, the booking link, the lifetime revenue of a paid client, and its one Audience. A brand may sell several offers (a value ladder), each built for one Audience. |
+| **Campaign** | Orders production: a Target, a start, a budget, ONE Offer, and a strategy written as a brief. The brief may narrow the Offer's Audience ("US only") through a strategy. A person is contacted for one offer of a brand only. |
 | **Plan** | The tree a campaign runs, recomputed at every tick: each outcome, its Engine, the script that Engine picks now, and the Plan of each outcome that script calls. It is shown as what actually ran this week: at each Engine every script that made Units is a branch, with its share and cost, the pick of this tick highlighted. Nothing about it is frozen. |
 | **Connected account** | A mailbox, a WhatsApp number, a LinkedIn profile the brand connected, kept as a Unit of the brand. It names its channel and the role the brand gave it: Personal, Pro or AI agent. Several accounts may share a role on a channel. |
 | **Lead** | A person, for one brand. The one business concept the factory hard-codes, because it makes revenue: every outcome whose subject is a person moves a lead. A post, a template or a Rating has no lead. |
@@ -66,7 +67,7 @@ A newsletter is no post: it sends one email per subscriber, each a Unit of its o
 
 **A script asks for a role, never for an account.** A sending script carries the tactic "Account role" (AI agent, Pro, Personal). It receives every connected account of the brand with that role on its channel, with each one's counts (sent today, sent and read this week), and its own code picks one: the cold email queue takes the mailbox that sent the least today; a follow-up leaves from the mailbox the first message left from (same thread, same address). The host only holds the accounts, their roles and their counts. Another way to spread the load is a new version of that script, rated like any other. A reading script runs per role with no filter, so every account is read. A campaign that wants every message from its AI agent says so in its brief, and the judge keeps the strategy "Account role is AI agent" on its sending Engines. In the fictional world, a new client gets one welcome from the Pro number, and anyone who writes to the Pro number becomes a task for the client's team, never an answer from the agent.
 
-**The ICP is an outcome like any other.** An ICP is a plain sentence, written by the client or by an AI. Several ICPs compete as Units of the brand. A judge reads who fits a sentence: an AI in production, the hidden truth in the simulator.
+**The Audience is an outcome like any other.** An Audience is a plain sentence describing the people an offer targets, written by the client or by an AI. Each Offer has exactly one Audience, never competing versions: learning happens on people (the judge reads who replies), never on several Audience texts. A judge reads who fits the sentence: an AI in production, the hidden truth in the simulator. Each sourcing script (one per source: a database, buying signals, LinkedIn engagement) translates the Audience into its source's query; the source is a tactic of that script, never an Audience of its own.
 
 **The market is Start.** A market has a finite size. A script that sources leads draws people its source covers; when its reserve empties, its yield falls and budget moves elsewhere by itself.
 
@@ -74,7 +75,7 @@ A newsletter is no post: it sends one email per subscriber, each a Unit of its o
 
 1. **One Engine per outcome.** An Engine makes one outcome; competing scripts in dynasties perform it. A script makes one outcome and may consume any outcomes. The only pick left is the script, inside the Engine of an outcome: the best value per dollar among the scripts the strategy keeps.
 2. **No written manifest.** A script is code: it calls its Providers at run time. The outcomes it needs (its **materials**, for the Plan, costs and return) are read from its code: each `ctx.get("...")` names one, always a literal, and a test enforces it. They form its **bill of materials (BOM)**: the inputs a script consumes and the quantity of each per Unit produced, loss included. Then the ledger measures what each run consumed, and an unexpected call joins the list. No judge is needed.
-3. **Provider and Engine.** A Provider offers one function, `get()`, with no argument: it returns the most recent Unit of its outcome this caller has not received yet, for the caller's context (the run's subject, its company, its brand, or the run itself), from the stock, else by ordering one from the Engine. "Already received" is the ledger's record of consumption. One exception: when the brand holds several competing versions of an input (ICPs, templates), the Provider puts them against each other and the Rating picks one per run. That is how a new version proves itself against the old ones. An Engine offers `pull()` and `push(unit)`, and always makes a new piece. `pull()` makes one piece for a context, down from the Target. `push(unit)` makes the next outcome from a Unit that landed, up toward the Target.
+3. **Provider and Engine.** A Provider offers one function, `get()`, with no argument: it returns the most recent Unit of its outcome this caller has not received yet, for the caller's context (the run's subject, its company, its brand, or the run itself), from the stock, else by ordering one from the Engine. "Already received" is the ledger's record of consumption. One exception: when the brand holds several competing versions of an input (templates, for example), the Provider puts them against each other and the Rating picks one per run. That is how a new version proves itself against the old ones. An Engine offers `pull()` and `push(unit)`, and always makes a new piece. `pull()` makes one piece for a context, down from the Target. `push(unit)` makes the next outcome from a Unit that landed, up toward the Target.
 4. **Freshness is the script's job.** A script unhappy with what it got calls `get()` again, and a new piece is made, as long as the run's budget lasts.
 5. **The names.** Engine, Provider, Plan, Lead, Lifecycle.
 6. **"Performed by" is a tactic of scripts.** Who runs a script is data on the script, never an object of its own.
@@ -132,7 +133,7 @@ After **14** days, its Plan reads, from the Target down:
 - Meeting booked, made by the slot booking script (**3** scripts compete);
 - Lead interested, made by the website signup, performed by the client's team (**1** script);
 - Lead visited, made by the search ads script (**2** scripts compete);
-- the ICP, served from the stock (**2** ICP dynasties compete), and today's Rating.
+- the offer's Audience, served from the stock, and today's Rating.
 
 It passes through Lead visited, Lead interested and Meeting booked. Per milestone:
 
@@ -163,7 +164,7 @@ A **strategy** is a set of conditions on tactics: equals, in a list, within a ra
 
 **Capacity.** Only work a person does has a capacity: most Units per day, and days one takes. A person types it on the "Done by your team" page. Code and AI scripts have none: an email queue that releases messages little by little is a delay, not a capacity. A script out of capacity today leaves today's picks and the order waits for tomorrow; the Plan ignores today's limits, so it still names the script.
 
-**Tasks.** A script a person performs declares a short answer form. Each run of it is a task: in production the person is notified by email and answers on the "Done by your team" page. The answer becomes the Unit's content. Its first yes or no field says whether the outcome happened, and the Unit then credits the picks that brought the person. In the simulator the hidden truth answers: a no at once, a yes when its delay ends, unless the visitor answers first. Work done once, like the offer or the ICP the client states, shows as done.
+**Tasks.** A script a person performs declares a short answer form. Each run of it is a task: in production the person is notified by email and answers on the "Done by your team" page. The answer becomes the Unit's content. Its first yes or no field says whether the outcome happened, and the Unit then credits the picks that brought the person. In the simulator the hidden truth answers: a no at once, a yes when its delay ends, unless the visitor answers first. Work done once, like the offer or the Audience the client states, shows as done.
 
 ## 7. The ledger is the common stock
 
@@ -173,7 +174,7 @@ Every Unit, from whoever performed it, lands in one stock. Several scripts feed 
 
 ### Dynasties
 
-Anything a pick can pick (a script, or a Unit of the brand) belongs to a dynasty of versions. The pick picks a dynasty and serves its head version. Stats pool across the versions of a dynasty. An **upgrade** is a new version of the same dynasty: it starts from the dynasty's belief. A **fork** is a new dynasty: it starts from its parent's belief. LLM models, templates and ICPs are examples of this one rule; the code holds no line about any of them.
+Anything a pick can pick (a script, or a Unit of the brand) belongs to a dynasty of versions. The pick picks a dynasty and serves its head version. Stats pool across the versions of a dynasty. An **upgrade** is a new version of the same dynasty: it starts from the dynasty's belief. A **fork** is a new dynasty: it starts from its parent's belief. LLM models and templates are examples of this one rule; the code holds no line about any of them.
 
 ## 8. The pick and the Supplier rating
 
@@ -223,7 +224,7 @@ The simulator knows the hidden truth, so it can grade the Rating. **Regret** is,
 
 The split mechanism looks for a tactic that separates successes from failures: a yes or no tactic splits true against false, a list tactic groups its values by yield, a number tactic is cut at the deciles of its values. A split is a conclusion only when the exact test on raw counts passes, corrected for the number of splits tried, and the like for like test inside the same client and month passes in the same direction.
 
-A split on **leads** proposes a finer ICP: an AI script writes a new Unit, a fork of the ICP it refines, that starts from its parent's belief and competes. A split on **scripts** proposes a strategy.
+A split on **leads** proposes a strategy that narrows who the campaign serves ("US only"); the Audience keeps its one text. A split on **scripts** proposes a strategy.
 
 ## 10. The two calculations
 
