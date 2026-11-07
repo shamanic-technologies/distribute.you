@@ -65,7 +65,7 @@ describe("sidebar", () => {
       // Under Campaigns since 2026-11-03 (owner: « mets la section outcomes sous la section campaign »).
       '<Group title="Outcomes">',
       '<Group title="Setup">',
-      'label="Offer"',
+      'label="Offers"',
       'label="Brand"',
       "{staffMode && <StaffObjectSections",
     ].map(at);
