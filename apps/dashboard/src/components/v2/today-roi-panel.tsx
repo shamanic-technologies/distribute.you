@@ -177,7 +177,7 @@ function StepBody({
       {/* No $ pipeline here: it is a forecast that lives on Deals only (owner 2026-11-03). */}
       <div className="k-card">
         <div className="p-3">
-          <p className="k-label">Worth each</p>
+          <p className="k-label">Expected revenue each</p>
           <p className="mt-1 text-[20px] font-medium tabular-nums">{step.valuePerOutcomeUsd != null ? formatUsdAdaptive(step.valuePerOutcomeUsd) : "—"}</p>
         </div>
       </div>
@@ -284,7 +284,7 @@ function ContactedBody({
       {/* No $ pipeline here: it is a forecast that lives on Deals only (owner 2026-11-03). */}
       <div className="k-card">
         <div className="p-3">
-          <p className="k-label">Worth each</p>
+          <p className="k-label">Expected revenue each</p>
           <p className="mt-1 text-[20px] font-medium tabular-nums">{contacted.valuePerPersonUsd != null ? formatUsdAdaptive(contacted.valuePerPersonUsd) : "—"}</p>
         </div>
       </div>
