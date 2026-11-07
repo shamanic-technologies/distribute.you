@@ -61,6 +61,11 @@ export function usePublishedOutcomes(brandId: string) {
   };
 }
 
+/** A published outcome's served catalogue name (the sidebar entry and the page title read the same one). */
+export function usePublishedOutcomeLabel(key: PublishedOutcomeKey): string {
+  return useLabel(key);
+}
+
 function useLabel(key: PublishedOutcomeKey): string {
   const catalogue = useLegCatalogue();
   return outcomeOf(catalogue, null, key)?.label ?? key;
