@@ -73,9 +73,10 @@ describe("published outcomes: breakdown, value, ROI (SOCIAL-OUTCOMES-1107)", () 
     for (const lit of ["<Kind n={r.engagementBreakdown?.likes} />", "<Kind n={r.engagementBreakdown?.replies} />", "<Kind n={r.engagementBreakdown?.reposts} />", "<Kind n={r.engagementBreakdown?.clicks} />"]) {
       expect(page).toContain(lit);
     }
-    expect(page).toContain("<StatTile label={<RoiLabel />}");
-    expect(page).toContain("<RoiValue roi={roi}");
-    expect(page).toContain('<StatTile label="Value produced">');
+    // OUTCOME-ACCOUNTING-1107: no ROI tile and no "Value produced" below a Target; value and cost sit in the accounting card.
+    expect(page).not.toContain("<StatTile label={<RoiLabel />}");
+    expect(page).not.toContain('<StatTile label="Value produced">');
+    expect(page).toContain("<OutcomeAccountingCard accounting={data.accounting}");
     expect(page).toContain("repostsExcluded={data.repostsExcluded?.rows ?? 0}");
     expect(page).toContain("const visitsTracked = data.visitsMeasured !== false;");
   });
@@ -91,7 +92,6 @@ describe("published outcomes: breakdown, value, ROI (SOCIAL-OUTCOMES-1107)", () 
     const page = src("src/components/v2/published-outcome-page.tsx");
     expect(page).toContain('r.viewsUnavailableReason === "views_not_reported" ? (');
     expect(page).toContain("Not reported: {copy.network} gives no views for that post.");
-    expect(page).toContain("publishedReturnReasonWords(roi.reason, outcomeKey)");
     expect(page).not.toMatch(/title="The platform/);
   });
 });

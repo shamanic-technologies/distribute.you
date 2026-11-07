@@ -9,6 +9,7 @@
  */
 import { z } from "zod";
 import { roiToShow, type RoiToShow } from "../expected-return";
+import { OutcomeAccountingSchema } from "./outcome-accounting";
 
 /** The published outcomes with their own page, in the order the Outcomes overview lists them. */
 export const PUBLISHED_OUTCOME_KEYS = ["newsletter_email_sent", "x_post_published", "linkedin_post_published", "threads_post_published"] as const;
@@ -120,8 +121,10 @@ export const PublishedUnitRowSchema = z.object({
   viewsUnavailableReason: z.string().nullish(),
   /** Why `valueUsd` is null (`step_has_no_value`, `no_catalogue_step_for_outcome`, `unit_has_no_value`). */
   value: z.object({ unavailableReason: z.string().nullable() }).passthrough().optional(),
-  /** units x value per unit: the value this row produced (yield). */
+  /** units x the EXPECTED NET value of one Unit (OUTCOME-ACCOUNTING-1107; never a measured value below a Target). */
   valueUsd: z.number().nullish(),
+  /** OUTCOME-ACCOUNTING-1107: this Unit's cost-accounting report; null on a client-team row. */
+  accounting: OutcomeAccountingSchema.nullish(),
 });
 export type PublishedUnitRow = z.infer<typeof PublishedUnitRowSchema>;
 
@@ -141,7 +144,8 @@ export const PublishedUnitsSchema = z.object({
   outcomeKey: z.string(),
   computedAt: z.string(),
   rows: z.array(PublishedUnitRowSchema),
-  totals: z.object({ all: TotalsSchema, ours: TotalsSchema }),
+  /** `clientTeam` (OUTCOME-ACCOUNTING-1107): the client's own Units, counted apart, in none of our figures. */
+  totals: z.object({ all: TotalsSchema, ours: TotalsSchema, clientTeam: TotalsSchema.optional() }),
   /** Ours spend ÷ ours signups; null while Learning (no signup yet). */
   costPerSignupUsd: z.number().nullable(),
   learning: z.boolean(),
@@ -157,6 +161,8 @@ export const PublishedUnitsSchema = z.object({
   /** OURS (billed to the org). */
   measuredReturn: PublishedMeasuredReturnSchema.optional(),
   expectedReturn: PublishedExpectedReturnSchema.optional(),
+  /** OUTCOME-ACCOUNTING-1107: the outcome's cost-accounting report (our Units only). */
+  accounting: OutcomeAccountingSchema.optional(),
 });
 export type PublishedUnits = z.infer<typeof PublishedUnitsSchema>;
 

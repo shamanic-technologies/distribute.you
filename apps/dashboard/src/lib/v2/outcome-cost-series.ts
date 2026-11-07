@@ -8,6 +8,7 @@
  * Alias-free (zod and nothing else) so it carries real unit tests.
  */
 import { z } from "zod";
+import { OutcomeAccountingSchema } from "./outcome-accounting";
 
 const ExpectedSchema = z.object({
   costPerOutcomeUsd: z.number().nullable(),
@@ -45,6 +46,8 @@ export const OutcomeCostStepSchema = z.object({
   value: z.object({ valuePerOutcomeUsd: z.number().nullable(), unavailableReason: z.string().nullable() }).optional(),
   roi: z.object({ measured: z.number().nullable(), expected: z.number().nullable() }).optional(),
   months: z.array(OutcomeCostMonthSchema),
+  /** OUTCOME-ACCOUNTING-1107: the step's cost-accounting report, actual beside expected. */
+  accounting: OutcomeAccountingSchema.nullish(),
 });
 export type OutcomeCostStep = z.infer<typeof OutcomeCostStepSchema>;
 
