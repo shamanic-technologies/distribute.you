@@ -5,7 +5,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getOfferOutcomeCostSeries } from "@/lib/api";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { costStepOf, monthLabel, monthTick, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
+import { costStepOf, monthLabel, monthTick, outcomeCountWords, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
 import type { OutcomeStepStat } from "@/lib/v2/outcome-people";
 import { EmptyNote, Figure, Shimmer, StatTile } from "@/components/v2/ui";
 import { LearningFigure } from "@/components/v2/roi-label";
@@ -67,8 +67,9 @@ export function OutcomeStats({
           <CostFigure answered={costAnswered} cost={cost} />
           {cost && (
             <p className="k-fg3 mt-0.5 truncate text-[12px]">
-              {formatUsdAdaptive(cost.sinceInception.spendUsd)} spent for {formatCount(cost.sinceInception.outcomes)}{" "}
-              {(cost.sinceInception.outcomes === 1 ? label : plural).toLowerCase()}
+              {cost.sinceInception.outcomes == null
+                ? `${formatUsdAdaptive(cost.sinceInception.spendUsd)} spent, ${plural.toLowerCase()} not counted yet`
+                : `${formatUsdAdaptive(cost.sinceInception.spendUsd)} spent for ${formatCount(cost.sinceInception.outcomes)} ${(cost.sinceInception.outcomes === 1 ? label : plural).toLowerCase()}`}
             </p>
           )}
         </StatTile>
@@ -164,7 +165,7 @@ function CostFigure({ answered, cost }: { answered: boolean; cost: OutcomeCostSt
     return (
       <Figure
         value={expected != null ? formatUsdAdaptive(expected) : DASH}
-        sub={expected != null ? "expected" : cost.sinceInception.outcomes === 0 ? "Learning" : undefined}
+        sub={expected != null ? "expected" : cost.sinceInception.outcomes == null ? "Not counted yet" : cost.sinceInception.outcomes === 0 ? "Learning" : undefined}
       />
     );
   }
@@ -194,7 +195,7 @@ function CostMonthsChart({ answered, failed, cost, plural }: { answered: boolean
                 <p className="k-fg3 k-mono">{monthLabel(m.month)}</p>
                 <p className="font-medium tabular-nums">{m.costPerOutcomeUsd == null ? "—" : formatUsdAdaptive(m.costPerOutcomeUsd)}</p>
                 <p className="k-fg3 tabular-nums">
-                  {formatUsdAdaptive(m.spendUsd)} spent, {formatCount(m.outcomes)} {plural.toLowerCase()}
+                  {formatUsdAdaptive(m.spendUsd)} spent, {outcomeCountWords(m.outcomes, formatCount)} {plural.toLowerCase()}
                 </p>
                 {m.learning && <p className="k-fg3">Learning</p>}
               </div>
@@ -243,7 +244,7 @@ function CostCumulativeChart({ answered, failed, cost, plural }: { answered: boo
                 <p className="k-fg3 k-mono">{monthLabel(m.month)}, in total</p>
                 <p className="font-medium tabular-nums">{m.cumulativeCostPerOutcomeUsd == null ? "—" : formatUsdAdaptive(m.cumulativeCostPerOutcomeUsd)}</p>
                 <p className="k-fg3 tabular-nums">
-                  {formatUsdAdaptive(m.cumulativeSpendUsd)} spent, {formatCount(m.cumulativeOutcomes)} {plural.toLowerCase()}
+                  {formatUsdAdaptive(m.cumulativeSpendUsd)} spent, {outcomeCountWords(m.cumulativeOutcomes, formatCount)} {plural.toLowerCase()}
                 </p>
                 {m.learning && <p className="k-fg3">Learning</p>}
               </div>

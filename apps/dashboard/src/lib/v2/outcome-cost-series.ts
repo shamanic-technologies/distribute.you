@@ -21,12 +21,13 @@ export const OutcomeCostMonthSchema = z.object({
   /** YYYY-MM (UTC). */
   month: z.string(),
   spendUsd: z.number(),
-  outcomes: z.number(),
+  /** Null = the ledger holds no count for this step (LEDGER-ONLY-1107: never 0); see the step's `outcomesUnavailableReason`. */
+  outcomes: z.number().nullable(),
   costPerOutcomeUsd: z.number().nullable(),
   cumulativeSpendUsd: z.number(),
-  cumulativeOutcomes: z.number(),
+  cumulativeOutcomes: z.number().nullable(),
   cumulativeCostPerOutcomeUsd: z.number().nullable(),
-  learning: z.boolean(),
+  learning: z.boolean().nullable(),
 });
 export type OutcomeCostMonth = z.infer<typeof OutcomeCostMonthSchema>;
 
@@ -36,11 +37,13 @@ export const OutcomeCostStepSchema = z.object({
   learningOutcomesRequired: z.number(),
   sinceInception: z.object({
     spendUsd: z.number(),
-    outcomes: z.number(),
-    undatedOutcomes: z.number(),
+    outcomes: z.number().nullable(),
+    undatedOutcomes: z.number().nullable(),
     costPerOutcomeUsd: z.number().nullable(),
-    learning: z.boolean(),
+    learning: z.boolean().nullable(),
   }),
+  /** Why the ledger holds no count for this step (LEDGER-ONLY-1107), when `sinceInception.outcomes` is null. */
+  outcomesUnavailableReason: z.string().nullish(),
   expected: ExpectedSchema,
   /** What one outcome is worth and its served `roi` (P5 OUTCOMES-ENTRY). A per-step return is never shown (ROI-CONSISTENCY-1103). */
   value: z.object({ valuePerOutcomeUsd: z.number().nullable(), unavailableReason: z.string().nullable() }).optional(),
@@ -59,6 +62,14 @@ export const OfferOutcomeCostSeriesSchema = z.object({
   steps: z.array(OutcomeCostStepSchema),
 });
 export type OfferOutcomeCostSeries = z.infer<typeof OfferOutcomeCostSeriesSchema>;
+
+/**
+ * A served outcome count in words: the figure, or "not counted yet" when the ledger holds none for the step
+ * (LEDGER-ONLY-1107: a missing count is null with a reason, never 0).
+ */
+export function outcomeCountWords(n: number | null, formatCount: (n: number) => string): string {
+  return n == null ? "not counted yet" : formatCount(n);
+}
 
 /** One step's series, or null when the producer serves none for it. */
 export function costStepOf(series: OfferOutcomeCostSeries | null | undefined, stepKey: string): OutcomeCostStep | null {

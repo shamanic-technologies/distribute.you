@@ -90,3 +90,20 @@ describe("unit prices keep their sub-cent digits", () => {
     expect(formatUsdUnit(-0.013686)).toBe("-$0.014");
   });
 });
+
+import { outcomeCountWords } from "../src/lib/v2/outcome-cost-series";
+describe("a step the ledger holds no count for (LEDGER-ONLY-1107)", () => {
+  it("parses null counts with their reason and words them, never 0", () => {
+    const step = {
+      stepKey: "paid_client", learningOutcomesRequired: 10, outcomesUnavailableReason: "no_producer_declares_it",
+      sinceInception: { spendUsd: 4386.97, outcomes: null, undatedOutcomes: null, costPerOutcomeUsd: null, learning: null },
+      expected: { costPerOutcomeUsd: null, basis: null, combinationKey: null, unavailableReason: null },
+      months: [{ month: "2026-11", spendUsd: 10, outcomes: null, costPerOutcomeUsd: null, cumulativeSpendUsd: 10, cumulativeOutcomes: null, cumulativeCostPerOutcomeUsd: null, learning: null }],
+    };
+    const p = OutcomeCostStepSchema.parse(step);
+    expect(p.sinceInception.outcomes).toBeNull();
+    expect(p.outcomesUnavailableReason).toBe("no_producer_declares_it");
+    expect(outcomeCountWords(null, String)).toBe("not counted yet");
+    expect(outcomeCountWords(4, String)).toBe("4");
+  });
+});
