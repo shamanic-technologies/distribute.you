@@ -8,7 +8,7 @@ import { leadStatusLabel } from "@/lib/lead-status";
 import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { conversationItemSide, conversationItemTag, liveItems, type ConversationItem } from "@/lib/conversation-timeline";
-import { pollOptions, pollIntervalFor } from "@/lib/query-options";
+import { pollIntervalFor, leadReadOptions } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate, friendlyTime } from "@/lib/friendly-datetime";
 import { leadsSearchParam } from "@/lib/leads-server-page";
@@ -80,7 +80,7 @@ export function CompanyPage() {
     queries: people.map((l) => ({
       queryKey: ["leadTimeline", l.id, brandId, null],
       queryFn: () => getLeadTimeline(l.id, { brandId }),
-      ...pollOptions,
+      ...leadReadOptions,
       enabled: gate,
     })),
   });

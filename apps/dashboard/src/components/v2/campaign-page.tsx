@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions } from "@/lib/query-options";
+import { leadReadOptions } from "@/lib/query-options";
 import { getConversationCounts } from "@/lib/api";
 import { type RevenueWindow } from "@/lib/revenue-window";
 import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
@@ -391,7 +391,7 @@ function ConversationOverview({
   tabHref: (tab: V2CampaignTab) => string;
 }) {
   const win = useCampaignWindow(brandId, campaign.row.campaign.id, campaign.row.campaign.featureSlug ?? null);
-  const q = useAuthQuery(["conversationCounts", campaign.row.campaign.id], () => getConversationCounts(campaign.row.campaign.id), pollOptions);
+  const q = useAuthQuery(["conversationCounts", campaign.row.campaign.id], () => getConversationCounts(campaign.row.campaign.id), leadReadOptions);
   const conv = q.data ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   // A campaign with no known leg names its steps plainly, never a guessed outcome.

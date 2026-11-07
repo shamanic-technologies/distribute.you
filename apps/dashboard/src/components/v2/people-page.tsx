@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { fetchLeadsCsv, listUniboxLeads } from "@/lib/api";
 import { TagChip } from "@/components/v2/tag-chip";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollIntervalFor } from "@/lib/query-options";
+import { leadReadOptions } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { leadsExportQuery, LEADS_PAGE_SIZE } from "@/lib/leads-server-page";
@@ -51,7 +51,7 @@ export function PeoplePage({ step, campaignId }: { step: string; campaignId?: st
   const pageQ = useAuthQuery(
     ["reachedRows", brandId, "", campaignId ?? "", step, search, cursors[page] ?? ""],
     () => listUniboxLeads(brandId, {}, { ...scope, reachedStep: step, limit: LEADS_PAGE_SIZE, q: search || undefined, cursor: cursors[page] }),
-    { refetchInterval: pollIntervalFor, enabled: !!brandId },
+    { ...leadReadOptions, enabled: !!brandId },
   );
   const rows = pageQ.data?.rows ?? null;
   const total = pageQ.data?.total ?? null;

@@ -22,7 +22,7 @@ import {
 import { useBrandScope } from "@/components/v2/brand-scope";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
-import { pollOptions, pollIntervalFor } from "@/lib/query-options";
+import { pollOptions, leadReadOptions, peopleOutcomesReadOptions } from "@/lib/query-options";
 import type { RevenueWindowDays } from "@/lib/revenue-window";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -109,7 +109,7 @@ export function useOrgUsage() {
 
 /** Every outcome of the brand from any source its own tools state (crm-service), campaigns or not. */
 export function useBrandOutcomes(brandId: string) {
-  return useAuthQuery(["brandOutcomes", brandId], () => getBrandOutcomes(brandId), { ...pollOptions, enabled: !!brandId });
+  return useAuthQuery(["brandOutcomes", brandId], () => getBrandOutcomes(brandId), { ...peopleOutcomesReadOptions, enabled: !!brandId });
 }
 
 /**
@@ -136,7 +136,7 @@ export function useDealsLifecycleCounts(brandId: string, campaignId: string | nu
   return useAuthQuery(
     ["dealsLifecycleCounts", brandId, "", campaignId ?? "", filtersKey(filters)],
     () => getUniboxLifecycleCounts(brandId, filters, { campaignId }),
-    { ...pollOptions, enabled: !!brandId },
+    { ...leadReadOptions, enabled: !!brandId },
   );
 }
 
@@ -160,7 +160,7 @@ export function useLeadDisqualifications(brandId: string) {
   return useAuthQuery(
     ["leadDisqualifications", brandId, null],
     () => getBrandDisqualifications({ brandId }),
-    { ...pollOptions, enabled: !!brandId },
+    { ...leadReadOptions, enabled: !!brandId },
   );
 }
 
@@ -190,7 +190,7 @@ export function useNeedsYourCall(brandId: string, limit: number) {
       for (const p of shown) waiting[p.id] = p;
       return { total: awaiting.total, leads, waiting };
     },
-    { refetchInterval: pollIntervalFor, enabled: !!brandId },
+    { ...leadReadOptions, enabled: !!brandId },
   );
 }
 

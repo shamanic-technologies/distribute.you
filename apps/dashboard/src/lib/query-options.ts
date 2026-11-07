@@ -46,3 +46,17 @@ export const catalogueReadOptions = {
   refetchInterval: (query: { state: { status: string; data: unknown } }): number | false =>
     query.state.status === "error" && query.state.data === undefined ? false : CATALOGUE_REFRESH_MS,
 } as const;
+
+/**
+ * Data whose PRODUCER moves on minutes (owner 2026-11-08, PAGE-SPEED-1107 option A): lead-service's
+ * reads (Needs your call, Unibox, Deals, lead stages, a person's history and conversation, team queue)
+ * are refreshed every 30 s to 3 min at the producer, and crm-service's people per outcome every 1-2 min.
+ * Re-asked every 5 s by every tab they returned the same answer 6-36 times while the box sat
+ * CPU-saturated. A user's OWN write still shows at once (write-invalidation re-reads its roots).
+ */
+const everyMs = (ms: number) => (query: { state: { status: string; data: unknown } }): number | false =>
+  query.state.status === "error" && query.state.data === undefined ? false : ms;
+export const LEAD_READ_REFRESH_MS = 30_000;
+export const leadReadOptions = { refetchInterval: everyMs(LEAD_READ_REFRESH_MS) } as const;
+export const PEOPLE_OUTCOMES_REFRESH_MS = 60_000;
+export const peopleOutcomesReadOptions = { refetchInterval: everyMs(PEOPLE_OUTCOMES_REFRESH_MS) } as const;

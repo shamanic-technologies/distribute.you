@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions } from "@/lib/query-options";
+import { leadReadOptions } from "@/lib/query-options";
 import { getPipeQueue, getPublicCatalogueSteps, type PublicCatalogueStep } from "@/lib/api";
 import { personName, teamOutcomes, type PipeQueue, type PipeQueuePerson, type TeamOutcome } from "@/lib/v2/team-work";
 import { formatCount } from "@/lib/format-number";
@@ -109,7 +109,7 @@ function StepLabel({ stepKey, fallback, steps }: { stepKey: string; fallback: st
 }
 
 function OutcomeCard({ brandId, outcome, steps, onOpen }: { brandId: string; outcome: TeamOutcome; steps: PublicCatalogueStep[] | undefined; onOpen: (p: PipeQueuePerson) => void }) {
-  const q = useAuthQuery(["pipeQueue", brandId, outcome.fromKey, outcome.toKey], () => getPipeQueue(brandId, outcome.fromKey, outcome.toKey), { ...pollOptions, retry: false });
+  const q = useAuthQuery(["pipeQueue", brandId, outcome.fromKey, outcome.toKey], () => getPipeQueue(brandId, outcome.fromKey, outcome.toKey), { ...leadReadOptions, retry: false });
   const data = q.data;
   const fromName = steps?.find((s) => s.key === outcome.fromKey)?.name ?? outcome.fromLabel;
   const toName = steps?.find((s) => s.key === outcome.toKey)?.name ?? outcome.toLabel;
