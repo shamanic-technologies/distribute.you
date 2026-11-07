@@ -32,3 +32,17 @@ export function pollIntervalFor(query: { state: { status: string; data: unknown 
 export const pollOptions = {
   refetchInterval: pollIntervalFor,
 } as const;
+
+/**
+ * The public channel catalogue (`["publicCatalogue"]`: steps, legs, channel names, marks and
+ * terms) is not a figure: it moves only when staff edit the catalogue. Polled at the 5s cadence it
+ * was re-read 2-3 times per page view by every open tab (21KB each, the dashboard's most repeated
+ * read, 2026-11-07), so it refreshes once a minute and on navigation instead. Same no-data-error
+ * stop as `pollIntervalFor`.
+ */
+export const CATALOGUE_REFRESH_MS = 60_000;
+export const catalogueReadOptions = {
+  staleTime: CATALOGUE_REFRESH_MS,
+  refetchInterval: (query: { state: { status: string; data: unknown } }): number | false =>
+    query.state.status === "error" && query.state.data === undefined ? false : CATALOGUE_REFRESH_MS,
+} as const;

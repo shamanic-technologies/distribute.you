@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getPublicCatalogue } from "@/lib/api";
-import { pollOptions } from "@/lib/query-options";
+import { catalogueReadOptions } from "@/lib/query-options";
 import {
   NO_CHANNEL_MINIMUMS,
   channelMinimumsFromWire,
@@ -27,6 +27,6 @@ import {
  * same rule against the same figure and its 400 is what decides.
  */
 export function useChannelMinimums(): ChannelMinimums {
-  const { data } = useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), pollOptions);
+  const { data } = useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), catalogueReadOptions);
   return useMemo(() => (data ? channelMinimumsFromWire(data.channels) : NO_CHANNEL_MINIMUMS), [data]);
 }

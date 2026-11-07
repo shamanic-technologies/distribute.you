@@ -45,7 +45,7 @@ describe("the channel list read from the served catalogue", () => {
   });
   it("the hook reads the shared public catalogue query, never the features list", () => {
     const hook = readFileSync(join(__dirname, "../src/lib/use-acquisition-channels.ts"), "utf8");
-    expect(hook).toContain('useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), pollOptions)');
+    expect(hook).toContain('useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), catalogueReadOptions)');
     expect(hook).toContain("channelSourcesFromCatalogue(data.channels)");
     expect(hook).not.toContain("useFeatures");
   });

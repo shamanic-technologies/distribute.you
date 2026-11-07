@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getPublicCatalogue } from "@/lib/api";
-import { pollOptions } from "@/lib/query-options";
+import { catalogueReadOptions } from "@/lib/query-options";
 import {
   acquisitionChannelsFromFeatures,
   channelSourcesFromCatalogue,
@@ -26,7 +26,7 @@ import {
  * to guess at, so the surfaces degrade to a name and no tile instead of to a wrong tile.
  */
 export function useAcquisitionChannels(): AcquisitionChannelDef[] {
-  const { data } = useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), pollOptions);
+  const { data } = useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), catalogueReadOptions);
   return useMemo(
     () =>
       data

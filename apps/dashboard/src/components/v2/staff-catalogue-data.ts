@@ -5,7 +5,7 @@ import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { getOfferSalesPaths, getStaffCatalogueObject, getWorkflowRankLadder, listSalesFunnelCampaigns, listStaffCatalogue, listStaffCatalogueTriggers } from "@/lib/api";
 import { isOngoingFunnelCampaign, type SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
-import { pollOptions } from "@/lib/query-options";
+import { CATALOGUE_REFRESH_MS, pollOptions } from "@/lib/query-options";
 import {
   ongoingChannelsAndSteps,
   ongoingFunnelIds,
@@ -18,12 +18,9 @@ import {
 import { featureLegId } from "@/lib/outbound-leg-key";
 import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 
-/**
- * The catalogue's economics are recomputed by features-service every ~15 minutes (warmed off
- * the request path), so a minute is fresh enough and keeps a staff tab from hammering it with
- * one read per ongoing object every 5s.
- */
-const CATALOGUE_REFRESH_MS = 60_000;
+// The catalogue's economics are recomputed by features-service every ~15 minutes (warmed off
+// the request path), so a minute is fresh enough and keeps a staff tab from hammering it with
+// one read per ongoing object every 5s.
 const catalogueOptions = {
   staleTime: CATALOGUE_REFRESH_MS,
   refetchInterval: (q: { state: { status: string; data: unknown } }) =>
@@ -97,6 +94,25 @@ export interface OngoingFunnelCampaign {
   /** What starts its funnel: the funnel's served `trigger` (its head, owner 2026-10-15), null = proactive or not read yet. */
   trigger: ServedTrigger | null;
 }
+
+/**
+ * The staff sidebar's Campaigns entries: the offer's ONGOING funnel campaigns with their funnel's
+ * face, and nothing else. The sidebar mounts on every page, so it must not pay for
+ * `useOngoingCatalogue` (every pipe, channel, step, sales funnel, path, trigger and workflow
+ * ranking of the offer: ~200 reads per page view in staff mode, 2026-11-07) to print a name and
+ * a face. Same keys as `useOngoingCatalogue`, so the Catalogue pages reuse these answers.
+ */
+export function useOngoingFunnelFaces(brandId: string, offerId: string | null): OngoingFunnelCampaign[] {
+  const funnelCampaigns = useFunnelCampaigns(brandId, offerId);
+  const ongoing = useMemo(() => (funnelCampaigns.data ?? []).filter(isOngoingFunnelCampaign), [funnelCampaigns.data]);
+  const funnels = useObjects("sales-funnels", [...new Set(ongoing.map((c) => c.salesFunnelId))], true);
+  const funnelById = new Map(funnels.data.map((f) => [f.id, f] as const));
+  return ongoing.map((c) => {
+    const f = funnelById.get(c.salesFunnelId);
+    return { campaign: c, face: f?.face.svgPath ?? null, trigger: f?.trigger ?? null };
+  });
+}
+
 
 /** A workflow an ON campaign runs: the producer's money pick for that campaign, on its pipe. */
 export interface OngoingWorkflow {

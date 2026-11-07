@@ -227,7 +227,7 @@ describe("a campaign's channel is read, never inferred", () => {
   // campaign costs no request of its own.
   it("projects the served catalogue the legs and pipe marks already read (P5.1: never the seeded features list)", () => {
     const hook = read("../src/lib/use-acquisition-channels.ts");
-    expect(hook).toContain('useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), pollOptions)');
+    expect(hook).toContain('useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), catalogueReadOptions)');
     expect(hook).toContain("acquisitionChannelsFromFeatures(channelSourcesFromCatalogue(data.channels))");
     expect(hook).not.toContain("useFeatures");
   });
