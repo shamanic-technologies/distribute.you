@@ -261,7 +261,17 @@ describe("staff Campaigns section (owner 2026-10-10): sales funnel campaigns wit
     const at = sections.indexOf('<Group title="Campaigns">');
     expect(at).toBeGreaterThan(sections.indexOf('<Group title="Workflows">'));
     expect(sections.slice(at)).toContain('v2CatalogueHref(orgId, brandId, "campaigns")');
-    expect(sections.slice(at)).toContain("ongoing.campaigns.map(({ campaign, face })");
+    expect(sections.slice(at)).toContain("campaigns.map(({ campaign, face })");
+  });
+  it("the sidebar section reads only names + faces, never the whole ongoing catalogue (~200 reads per page in staff mode, 2026-11-07)", () => {
+    const shell = read("src/components/v2/v2-shell.tsx");
+    const sections = shell.slice(shell.indexOf("function StaffObjectSections("));
+    expect(sections).toContain("useOngoingFunnelFaces(brandId, offerId)");
+    expect(shell).not.toContain("useOngoingCatalogue(");
+    const data = read("src/components/v2/staff-catalogue-data.ts");
+    const hook = data.slice(data.indexOf("export function useOngoingFunnelFaces("), data.indexOf("export interface OngoingFunnelCampaign") > data.indexOf("export function useOngoingFunnelFaces(") ? data.indexOf("export interface OngoingFunnelCampaign") : data.indexOf("export interface OngoingWorkflow"));
+    expect(hook).toContain('useObjects("sales-funnels"');
+    for (const heavy of ['useObjects("pipes"', 'useObjects("channels"', 'useObjects("steps"', "getWorkflowRankLadder", "getOfferSalesPaths"]) expect(hook).not.toContain(heavy);
   });
   it("its pages sit behind <StaffOnly> and show the staff-only detail (units, workflow picked, funnel id, caps, stop reason)", () => {
     const base = "src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/catalogue/[object]";

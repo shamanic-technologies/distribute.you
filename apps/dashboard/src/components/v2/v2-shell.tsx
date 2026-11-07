@@ -13,7 +13,7 @@ import { V2NavContext } from "@/components/v2/nav-context";
 import { useReachedCounts, useBrandRevenue, useDealsLifecycleCounts, useNeedsYourCall } from "@/components/v2/data";
 import { dealsBoardRungs } from "@/lib/deals-board";
 import { v2CampaignHref, v2CatalogueHome, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
-import { useOngoingCatalogue } from "@/components/v2/staff-catalogue-data";
+import { useOngoingFunnelFaces } from "@/components/v2/staff-catalogue-data";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
 import type { PublishedOutcomeKey } from "@/lib/v2/published-units";
@@ -505,7 +505,7 @@ function OutcomeMark({ outcomeKey, label, stepIcons }: { outcomeKey: string; lab
  * Mounted only in staff mode, so a customer makes none of these reads.
  */
 function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: string; brandId: string; offerId: string | null; pathname: string }) {
-  const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
+  const campaigns = useOngoingFunnelFaces(brandId, offerId);
   return (
     <>
       {/* Campaigns (owner 2026-10-10): the offer's SALES FUNNEL campaigns, staff detail (units, workflows, caps). */}
@@ -517,7 +517,7 @@ function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: str
           active={pathname === v2CatalogueHref(orgId, brandId, "campaigns")}
         />
         {offerId &&
-          ongoing.campaigns.map(({ campaign, face }) => {
+          campaigns.map(({ campaign, face }) => {
             const href = v2CatalogueHref(orgId, brandId, "campaigns", campaign.id);
             return (
               <NavItem
