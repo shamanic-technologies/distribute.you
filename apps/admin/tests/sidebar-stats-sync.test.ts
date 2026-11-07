@@ -35,7 +35,9 @@ describe("Campaign sidebar badges use entity.countKey from feature definition", 
   });
 
   it("should use != null (not !== undefined) so null stats fall through to listing fallback", () => {
-    expect(content).toContain("fStats[entity.countKey] != null");
+    // The served value is read once into `served` (typed number | null since LEDGER-ONLY-1107-P2).
+    expect(content).toContain("const served = fStats[entity.countKey];");
+    expect(content).toContain("if (served != null)");
     expect(content).not.toContain("fStats[entity.countKey] !== undefined");
   });
 

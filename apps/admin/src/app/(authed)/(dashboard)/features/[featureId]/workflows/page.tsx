@@ -146,12 +146,12 @@ function WorkflowCard({
   registry,
   onShowDetail,
 }: {
-  row: { workflowSlug: string; dynastyLabel: string; stats: Record<string, number>; systemStats: import("@/lib/api").SystemStats };
+  row: { workflowSlug: string; dynastyLabel: string; stats: Record<string, number | null>; systemStats: import("@/lib/api").SystemStats };
   sortedOutputs: import("@/lib/api").FeatureOutput[];
   registry: import("@/lib/api").StatsRegistry;
   onShowDetail: () => void;
 }) {
-  const hasStats = Object.values(row.stats).some((v) => v > 0);
+  const hasStats = Object.values(row.stats).some((v) => v != null && v > 0);
 
   return (
     <button

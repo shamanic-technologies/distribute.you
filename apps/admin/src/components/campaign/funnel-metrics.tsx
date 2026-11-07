@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/skeleton";
 
 interface FunnelMetricsProps {
   steps: FunnelStep[];
-  stats: Record<string, number>;
+  stats: Record<string, number | null>;
   registry: StatsRegistry;
   pending?: boolean;
 }
@@ -38,14 +38,15 @@ export function FunnelMetrics({ steps, stats, registry, pending = false }: Funne
     ? [0, 1, 2, 3].map((i) => ({ key: `placeholder-${i}` }))
     : steps
   ).map((step, i) => {
-    const value = stats[step.key] ?? 0;
-    const prevValue = i > 0 && steps[i - 1] ? (stats[steps[i - 1].key] ?? 0) : 0;
-    const rate = i > 0 && prevValue > 0 ? (value / prevValue * 100) : null;
+    // LEDGER-ONLY-1107-P2: a count with no ledger figure is null and reads "—", never 0.
+    const value = stats[step.key] ?? null;
+    const prevValue = i > 0 && steps[i - 1] ? (stats[steps[i - 1].key] ?? null) : null;
+    const rate = i > 0 && value != null && prevValue != null && prevValue > 0 ? (value / prevValue * 100) : null;
     const label = registry[step.key]?.label ?? step.key;
     return { key: step.key, label, value, rate };
   });
 
-  const maxValue = Math.max(...resolved.map(s => s.value), 1);
+  const maxValue = Math.max(...resolved.map(s => s.value ?? 0), 1);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 min-h-[200px]">
@@ -55,7 +56,7 @@ export function FunnelMetrics({ steps, stats, registry, pending = false }: Funne
           one baseline regardless of how many lines a label wraps to. */}
       <div className="flex items-start justify-between gap-3">
         {resolved.map((step) => {
-          const barHeight = Math.max((step.value / maxValue) * 100, 4);
+          const barHeight = step.value == null ? 0 : Math.max((step.value / maxValue) * 100, 4);
           return (
             <div key={step.key} className="flex-1 flex flex-col items-center">
               {/* Bar — fixed-height container, bar grows from bottom */}
@@ -72,7 +73,7 @@ export function FunnelMetrics({ steps, stats, registry, pending = false }: Funne
 
               {/* Labels — fixed layout so all columns align */}
               <p className="mt-2 text-lg font-bold text-gray-800 leading-tight">
-                {pending ? <Skeleton className="h-5 w-8" /> : step.value.toLocaleString()}
+                {pending ? <Skeleton className="h-5 w-8" /> : step.value == null ? "\u2014" : step.value.toLocaleString()}
               </p>
               {/* Fixed two-line height so the value + %-rate rows stay aligned
                   across columns whether a label wraps to one line or two. */}

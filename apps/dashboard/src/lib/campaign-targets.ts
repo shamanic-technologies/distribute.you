@@ -140,6 +140,12 @@ export function reasonWords(reason: string | null): string {
     outcome_not_declared_in_ledger: "Not counted yet",
     unit_cost_not_in_ledger: "Not priced yet",
     ledger_unreadable: "Could not read this right now",
+    // LEDGER-ONLY-1107-P2: a figure with no ledger twin, or not counted at this grain.
+    not_a_ledger_outcome: "Not counted",
+    no_producer_declares_outcome: "Not counted yet",
+    lens_not_in_ledger: "Not counted for this view",
+    per_workflow_not_in_ledger: "Not counted per workflow",
+    won_counted_on_ledger: "Counted from paid clients",
   };
   // `pipe_unpriced:<pipe>` names the step with no price yet; the customer reads the fact, not the id.
   if (reason.startsWith("pipe_unpriced")) return "Not priced yet";

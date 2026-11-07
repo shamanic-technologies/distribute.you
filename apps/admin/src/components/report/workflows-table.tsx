@@ -9,8 +9,9 @@ export interface WorkflowRow {
   version: number;
   status: string;
   description: string;
-  emailsSent: number;
-  positiveReplies: number;
+  /** Null = not a ledger count (LEDGER-ONLY-1107-P2): reads "—", never 0. */
+  emailsSent: number | null;
+  positiveReplies: number | null;
   /** USD cents of total run cost attributed to this workflow */
   totalCostCents: number;
   /** ISO timestamp from the Workflow row; used by the page's default composite sort. */
@@ -34,8 +35,10 @@ function formatUsd(cents: number): string {
   return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-function cpa(totalCostCents: number, count: number): string {
-  if (count <= 0) return "—";
+const countText = (n: number | null): string => (n == null ? "\u2014" : n.toLocaleString("en-US"));
+
+function cpa(totalCostCents: number, count: number | null): string {
+  if (count == null || count <= 0) return "—";
   return formatUsd(totalCostCents / count);
 }
 
@@ -64,19 +67,19 @@ function buildColumns(labels: WorkflowsTableLabels): ReportTableColumn<WorkflowR
     {
       key: "emailsSent",
       label: labels.leadsSent,
-      sortValue: (r) => String(r.emailsSent).padStart(8, "0"),
-      render: (r) => r.emailsSent.toLocaleString("en-US"),
+      sortValue: (r) => String(r.emailsSent ?? 0).padStart(8, "0"),
+      render: (r) => countText(r.emailsSent),
     },
     {
       key: "positiveReplies",
       label: labels.leadsRepliesPositive,
-      sortValue: (r) => String(r.positiveReplies).padStart(8, "0"),
-      render: (r) => r.positiveReplies.toLocaleString("en-US"),
+      sortValue: (r) => String(r.positiveReplies ?? 0).padStart(8, "0"),
+      render: (r) => countText(r.positiveReplies),
     },
     {
       key: "cacReply",
       label: "CAC / positive reply",
-      sortValue: (r) => String(r.positiveReplies > 0 ? r.totalCostCents / r.positiveReplies : Number.MAX_SAFE_INTEGER).padStart(12, "0"),
+      sortValue: (r) => String(r.positiveReplies != null && r.positiveReplies > 0 ? r.totalCostCents / r.positiveReplies : Number.MAX_SAFE_INTEGER).padStart(12, "0"),
       render: (r) => <span className="font-medium text-gray-900">{cpa(r.totalCostCents, r.positiveReplies)}</span>,
     },
   ];
@@ -87,8 +90,8 @@ function buildColumns(labels: WorkflowsTableLabels): ReportTableColumn<WorkflowR
 function buildDrawerEntries(labels: WorkflowsTableLabels) {
   return (r: WorkflowRow): DrawerEntry[] => [
     { label: "Version", value: `v${r.version}` },
-    { label: labels.leadsSent, value: r.emailsSent.toLocaleString("en-US") },
-    { label: labels.leadsRepliesPositive, value: r.positiveReplies.toLocaleString("en-US") },
+    { label: labels.leadsSent, value: countText(r.emailsSent) },
+    { label: labels.leadsRepliesPositive, value: countText(r.positiveReplies) },
     { label: "Total cost", value: formatUsd(r.totalCostCents) },
     { label: "CAC / positive reply", value: cpa(r.totalCostCents, r.positiveReplies) },
     { label: "Description", value: r.description, block: true },

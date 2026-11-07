@@ -59,7 +59,7 @@ const CostEconomicsSchema = z.object({
   // The REALIZED return (ROI-CONSISTENCY-1103). Nullish as served.
   realizedReturn: RealizedReturnSchema.nullish(),
 });
-const FeatureRevenueResponseSchema = z.object({
+export const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
   costEconomics: CostEconomicsSchema,
   organizations: z.array(RevenueOrgSchema),

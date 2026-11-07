@@ -87,10 +87,12 @@ function registryLabel(registry: StatsRegistry, key: string): string {
   return entry.label;
 }
 
-function statValue(stats: Record<string, number>, key: string): number {
+// LEDGER-ONLY-1107-P2: a count the ledger does not hold is null and reads "—", never 0.
+function statValue(stats: Record<string, number | null>, key: string): number | null {
   const v = stats[key];
-  return typeof v === "number" ? v : 0;
+  return typeof v === "number" ? v : null;
 }
+const countText = (n: number | null): string => (n == null ? "\u2014" : n.toLocaleString("en-US"));
 
 async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brandId: string; featureSlug: string }) {
   const [featureStats, workflows, registry] = await Promise.all([
@@ -124,7 +126,7 @@ async function StatsGrid({ orgId, brandId, featureSlug }: { orgId: string; brand
         <div key={c.statKey} className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{registryLabel(registry, c.statKey)}</div>
           <div className="text-2xl font-bold text-gray-800 mt-1">
-            {statValue(stats, c.statKey).toLocaleString("en-US")}
+            {countText(statValue(stats, c.statKey))}
           </div>
           <div className="text-xs text-gray-500 mt-1">{c.note}</div>
         </div>
@@ -149,7 +151,8 @@ async function CpaFunnel({ orgId, brandId, featureSlug }: { orgId: string; brand
   // Funnel stages all keyed on cumulative `leads*` stats (every lead that
   // ever reached this milestone). The Leads page tabs use the same boolean
   // semantics, so per-stage counts and per-tab counts match by construction.
-  const stageKeys = ["leadsSent", "leadsDelivered", "leadsOpened", "leadsClicked", "leadsRepliesPositive"];
+  // Opens are retired (no ledger figure): no Opened stage.
+  const stageKeys = ["leadsSent", "leadsDelivered", "leadsClicked", "leadsRepliesPositive"];
 
   return (
     <SectionCard
@@ -178,8 +181,8 @@ function formatUsd(cents: number): string {
   return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-function CpaCard({ label, count, totalCostCents }: { label: string; count: number; totalCostCents: number }) {
-  const cpa = count > 0 ? totalCostCents / count : null;
+function CpaCard({ label, count, totalCostCents }: { label: string; count: number | null; totalCostCents: number }) {
+  const cpa = count != null && count > 0 ? totalCostCents / count : null;
   return (
     <div className="bg-gray-50 rounded-lg p-3 text-center">
       <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
@@ -187,7 +190,7 @@ function CpaCard({ label, count, totalCostCents }: { label: string; count: numbe
         {cpa != null ? formatUsd(cpa) : "—"}
       </div>
       <div className="text-[10px] text-gray-500 mt-0.5">
-        {count.toLocaleString("en-US")} {count === 1 ? "lead" : "leads"}
+        {count == null ? "Not counted" : `${count.toLocaleString("en-US")} ${count === 1 ? "lead" : "leads"}`}
       </div>
     </div>
   );

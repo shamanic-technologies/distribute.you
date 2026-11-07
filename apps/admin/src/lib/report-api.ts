@@ -356,7 +356,7 @@ export async function fetchAllEmails(orgId: string, brandId: string, featureSlug
  *  which keys they need. */
 export interface FeatureStats {
   systemStats: { totalCostInUsdCents?: number | string } & Record<string, unknown>;
-  stats: Record<string, number>;
+  stats: Record<string, number | null>;
 }
 
 export async function fetchFeatureStats(orgId: string, brandId: string, featureSlug: string): Promise<FeatureStats> {
@@ -382,7 +382,7 @@ export interface FeatureStatsGroupedByWorkflow {
   groups: Array<{
     workflowSlug: string | null;
     systemStats: { totalCostInUsdCents?: number | string } & Record<string, unknown>;
-    stats: Record<string, number>;
+    stats: Record<string, number | null>;
   }>;
 }
 

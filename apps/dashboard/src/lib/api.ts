@@ -6261,17 +6261,19 @@ export interface FeatureAudienceStatsRow {
     completedRuns: number;
     firstRunAt: string | null;
     lastRunAt: string | null;
-    contacted: number;
-    websiteClicks: number;
-    positiveReplies: number;
+    /** Null since LEDGER-ONLY-1107-P2: people contacted is not a ledger outcome. */
+    contacted: number | null;
+    /** Null when the ledger holds no Unit of it (never 0). */
+    websiteClicks: number | null;
+    positiveReplies: number | null;
     /** REAL per-audience form-submission conversions (attributed, deduped). Present
      *  ONLY for the form_submissions goal; absent otherwise — never a fabricated 0. */
-    formSubmissions?: number;
+    formSubmissions?: number | null;
     /** REAL per-audience signup conversions (attributed by audience-member-email ∩
      *  signup-converted-lead emails, deduped). Present ONLY for the signups goal;
      *  absent otherwise / when the signup emails weren't served — never a fabricated
      *  0. Optional to decouple the rollout: renders "-" until features-service ships. */
-    signups?: number;
+    signups?: number | null;
     /** REAL per-audience SALES — paying clients won (lead-service conversion tracker,
      *  event=sale), attributed by the same membership join as signups. Present ONLY for
      *  the website_purchase OR combined-sales goals (both terminate in a `sale`); absent
@@ -6346,11 +6348,13 @@ const FeatureAudienceStatsRowSchema = z.object({
     completedRuns: z.number(),
     firstRunAt: z.string().nullable(),
     lastRunAt: z.string().nullable(),
-    contacted: z.number(),
-    websiteClicks: z.number(),
-    positiveReplies: z.number(),
-    formSubmissions: z.number().optional(),
-    signups: z.number().optional(),
+    // LEDGER-ONLY-1107-P2: the ledger's Units of runs served under the audience. `contacted` has no
+    // ledger twin (always null); the others are null when the ledger holds no Unit of them.
+    contacted: z.number().nullable(),
+    websiteClicks: z.number().nullable(),
+    positiveReplies: z.number().nullable(),
+    formSubmissions: z.number().nullish(),
+    signups: z.number().nullish(),
     sales: z.coerce.number().nullable().optional(),
   }),
   metrics: z.object({
@@ -6364,7 +6368,7 @@ const FeatureAudienceStatsRowSchema = z.object({
   }),
 });
 
-const FeatureAudienceStatsResponseSchema = z.object({
+export const FeatureAudienceStatsResponseSchema = z.object({
   featureSlug: z.string(),
   brandId: z.string(),
   goal: z.union([
@@ -6578,8 +6582,8 @@ const StepValueExplanationSchema = z.object({
 
 const StepConversionSchema = z.object({
   previousSteps: z.array(z.string()),
-  previousReached: z.coerce.number(),
-  reachedFromPrevious: z.coerce.number(),
+  previousReached: z.coerce.number().nullable(),
+  reachedFromPrevious: z.coerce.number().nullable(),
   ratePct: z.coerce.number().nullable(),
 });
 
@@ -6631,14 +6635,15 @@ const ExclusiveLostPersonSchema = LostStepPersonSchema.extend({
 const ConversionFromRowAboveSchema = z
   .object({
     rowAbove: OutcomeStepRefSchema,
-    rowAbovePeople: z.coerce.number(),
-    rowPeople: z.coerce.number(),
+    rowAbovePeople: z.coerce.number().nullable(),
+    rowPeople: z.coerce.number().nullable(),
     ratePct: z.coerce.number().nullable(),
   })
   .nullish();
 const ExclusiveLadderSchema = z.object({
   contacted: z.object({
-    count: z.coerce.number(),
+    // Null since LEDGER-ONLY-1107-P2: people contacted is not a ledger outcome.
+    count: z.coerce.number().nullable(),
     valuedCount: z.coerce.number(),
     expiredCount: z.coerce.number(),
     cannotConvertCount: z.coerce.number(),
@@ -6688,7 +6693,8 @@ const ExclusiveLadderSchema = z.object({
     }),
   ),
   total: z.object({
-    people: z.coerce.number(),
+    // Null since LEDGER-ONLY-1107-P2 (people, no ledger twin).
+    people: z.coerce.number().nullable(),
     gapUsd: z.coerce.number().nullable(),
     gapReason: z.string().nullable(),
     // Where the hot leads stand on the sliced ladder (#1424): onRows + onContactedRow + onNoRow = count.
@@ -6706,8 +6712,9 @@ const ExclusiveLadderSchema = z.object({
 // What working with us earned the offer, every step a lead climbs (not only the steps a
 // leg of ours lands on), customers won on our outreach, and the hot and cold leads.
 const OfferPipelineSchema = z.object({
-  peopleContacted: z.coerce.number(),
-  companiesContacted: z.coerce.number(),
+  // Null since LEDGER-ONLY-1107-P2: people / companies contacted have no ledger twin.
+  peopleContacted: z.coerce.number().nullable(),
+  companiesContacted: z.coerce.number().nullable(),
   ladder: z.array(
     z.object({
       step: OutcomeStepRefSchema,
@@ -6735,9 +6742,12 @@ const OfferPipelineSchema = z.object({
   ),
   customersWon: z
     .object({
-      count: z.coerce.number(),
+      // LEDGER-ONLY-1107-P2: the ledger's Paid client Units; null + `unavailableReason` when the
+      // ledger holds none. `otherCausesLeadCount` (people) is always null now.
+      count: z.coerce.number().nullable(),
       valueUsd: z.coerce.number().nullable(),
-      otherCausesLeadCount: z.coerce.number(),
+      otherCausesLeadCount: z.coerce.number().nullable(),
+      unavailableReason: z.string().nullish(),
     })
     .nullable(),
   coldRule: z.object({ applies: z.boolean(), afterDays: z.coerce.number().nullable() }).nullable(),
@@ -6781,7 +6791,7 @@ const OfferPipelineSchema = z.object({
   exclusiveLadder: ExclusiveLadderSchema.optional(),
 });
 
-const OfferOutcomesSchema = z.object({
+export const OfferOutcomesSchema = z.object({
   offerId: z.string(),
   outcomes: z.array(OfferOutcomeRowSchema),
   // Not served before features-service v0.179.81; the page says so rather than guess.
@@ -6974,7 +6984,9 @@ export function keepLastGoodFeatureRevenue(
   return keepLastGoodFields(
     prev,
     next,
-    ["spend", "sequences", "outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
+    // Count series are NOT kept: since LEDGER-ONLY-1107-P2 a null series is the ledger saying it
+    // holds no Unit of that outcome, a real answer that must replace any older number.
+    ["spend"],
     "featureRevenue",
   );
 }
@@ -7051,7 +7063,7 @@ const CampaignRevenueOutcomesSchema = z.object({
     })
     .nullish(),
 });
-const FeatureRevenueByCampaignSchema = z.object({
+export const FeatureRevenueByCampaignSchema = z.object({
   groupBy: z.string(),
   groups: z.array(
     z.object({
@@ -7240,7 +7252,7 @@ const WorkflowRevenueOutcomesSchema = z.object({
   cpcCents: z.number().nullish(),
   maturity: OutcomesMaturitySchema.nullish(),
 });
-const FeatureRevenueByWorkflowSchema = z.object({
+export const FeatureRevenueByWorkflowSchema = z.object({
   groupBy: z.string(),
   groups: z.array(
     z.object({

@@ -1130,21 +1130,24 @@ export interface StatsGroup {
   campaignId?: string;
   featureSlug?: string;
   systemStats: SystemStats;
-  stats: Record<string, number>;
+  /** LEDGER-ONLY-1107-P2: a count with no ledger twin (or no Unit yet) is null, never 0. */
+  stats: Record<string, number | null>;
 }
 
 export interface FeatureStatsResponse {
   featureSlug?: string;
   groupBy?: string;
   systemStats: SystemStats;
-  stats: Record<string, number>;
+  /** LEDGER-ONLY-1107-P2: a count with no ledger twin (or no Unit yet) is null, never 0. */
+  stats: Record<string, number | null>;
   groups?: StatsGroup[];
 }
 
 export interface GlobalStatsResponse {
   groupBy?: string;
   systemStats: SystemStats;
-  stats: Record<string, number>;
+  /** LEDGER-ONLY-1107-P2: a count with no ledger twin (or no Unit yet) is null, never 0. */
+  stats: Record<string, number | null>;
   groups?: StatsGroup[];
 }
 
@@ -1236,7 +1239,7 @@ export async function getFeatureRevenue(
 // A single call returns every campaign's realized return (no per-campaign fan-out;
 // features-service is the single source). safeParse
 // → shape rot becomes a caught fetch-error, never a render crash (CLAUDE.md #1213).
-const FeatureRevenueByCampaignSchema = z.object({
+export const FeatureRevenueByCampaignSchema = z.object({
   featureSlug: z.string(),
   groupBy: z.literal("campaignId"),
   groups: z.array(
@@ -1308,7 +1311,7 @@ export async function getFeatureRevenueByCampaign(
 // `workflowSlug`/`workflowName` stay readable and `.nullish()`: they are what an
 // older or differently-shaped body would carry, and reading them costs nothing
 // while making the row survive a producer that speaks the versioned vocabulary.
-const FeatureRevenueByWorkflowSchema = z.object({
+export const FeatureRevenueByWorkflowSchema = z.object({
   groups: z.array(
     z.object({
       workflowDynastySlug: z.string().nullish(),
