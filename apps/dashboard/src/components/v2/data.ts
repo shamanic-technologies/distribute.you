@@ -24,7 +24,7 @@ import {
 import { useSelectedOffer, useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
-import { pollOptions } from "@/lib/query-options";
+import { pollOptions, pollIntervalFor } from "@/lib/query-options";
 import type { RevenueWindowDays } from "@/lib/revenue-window";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -236,7 +236,7 @@ export function useNeedsYourCall(brandId: string, limit: number) {
       for (const p of shown) waiting[p.id] = p;
       return { total: awaiting.total, leads, waiting };
     },
-    { refetchInterval: POLL_INTERVAL, enabled: !!brandId },
+    { refetchInterval: pollIntervalFor, enabled: !!brandId },
   );
 }
 

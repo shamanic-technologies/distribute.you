@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { fetchLeadsCsv, listUniboxLeads } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { POLL_INTERVAL } from "@/lib/query-options";
+import { pollIntervalFor } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { leadsExportQuery, LEADS_PAGE_SIZE } from "@/lib/leads-server-page";
@@ -74,7 +74,7 @@ export function PeopleLifecyclePage() {
     ["dealsLifecycleRows", brandId, offerId ?? "", "people", fKey, tab?.key ?? "", search, sort ?? "", cursors[page] ?? ""],
     // A cursor answers only the sort it was issued for: the reset above drops it on a sort change.
     () => listUniboxLeads(brandId, { ...filters, lifecycle: [tab!.key] }, { limit: LEADS_PAGE_SIZE, offerId, q: search || undefined, cursor: cursors[page], sort }),
-    { refetchInterval: POLL_INTERVAL, enabled: !!brandId && !!offerId && !!tab },
+    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!offerId && !!tab },
   );
   const rows = pageQ.data?.rows ?? null;
   const total = pageQ.data?.total ?? null;
