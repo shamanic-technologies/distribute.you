@@ -45,7 +45,7 @@ import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
 import { UniboxLeadCardSchema, UniboxLeadStateSchema, UniboxLifecycleCountsSchema, UniboxPageSchema, uniboxCardQuery, uniboxCountsQuery, uniboxQuery, type LeadState, type UniboxFilters, type UniboxLeadCard, type UniboxLifecycleCounts, type UniboxPage, type UniboxScope, type UniboxSort } from "./unibox-leads";
-import { CompanyLifecycleSchema, DealsLifecycleSchema, companyLifecycleQuery, dealsLifecycleQuery, type CompanyLifecycle, type DealsLifecycle } from "./deals-board";
+import { CompanyLifecycleSchema, DealsLifecycleSchema, PipelineGeneratedSchema, companyLifecycleQuery, dealsLifecycleQuery, pipelineGeneratedQuery, type CompanyLifecycle, type DealsLifecycle, type PipelineGenerated } from "./deals-board";
 import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-schedule";
 import {
   PeopleListSchema,
@@ -8812,6 +8812,20 @@ export async function getOfferCompanyLifecycle(offerId: string, brandId: string)
   if (!parsed.success) {
     console.error("[getOfferCompanyLifecycle] response shape mismatch", parsed.error.issues);
     throw new Error("getOfferCompanyLifecycle: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * The offer's pipeline generated to date and over time, measured then expected (features-service
+ * `GET /offers/:offerId/deals-value?columns=pipeline_generated`, owner 2026-11-07). Today's top tile.
+ */
+export async function getOfferPipelineGenerated(offerId: string, brandId: string): Promise<PipelineGenerated> {
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/deals-value?${pipelineGeneratedQuery(brandId)}`);
+  const parsed = PipelineGeneratedSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getOfferPipelineGenerated] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getOfferPipelineGenerated: invalid response shape");
   }
   return parsed.data;
 }

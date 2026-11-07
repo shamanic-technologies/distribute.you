@@ -23,7 +23,8 @@ describe("Today: one window for the whole stat row", () => {
     // Owner 2026-11-07: "provisioned costs", never the per-case "follow-ups reserved".
     expect(src).toContain("formatCentsAsUsdAdaptive(winSpend.totalSpentCents)} with provisioned costs");
     expect(src).not.toContain("follow-ups reserved");
-    expect(src).toContain("winSpend.daily.map((d) => d.actualSpentCents)");
+    // Owner 2026-11-07: the top row's chart is pipeline generated, never a cost curve.
+    expect(src).not.toContain("winSpend.daily.map(");
     expect(src).not.toContain("costPerEmailSentCents");
   });
 
@@ -42,7 +43,19 @@ describe("Today: one window for the whole stat row", () => {
     expect(src).not.toContain('note="all time"');
   });
 
-  it("draws no $ pipeline tile or curve: a forecast that lives on Deals only (ROI-CONSISTENCY-1103)", () => {
+  it("the main chart is PIPELINE GENERATED, measured solid then expected dotted (owner 2026-11-07, PIPELINE-GENERATED-1107)", () => {
+    const tile = readFileSync(join(__dirname, "../src/components/v2/pipeline-generated.tsx"), "utf8");
+    expect(src).toContain('<PipelineGeneratedTile brandId={brandId} offerId={selectedOfferId} className="col-span-2" />');
+    expect(tile).toContain("<Figure value={formatUsdAdaptive(d.measuredUsd)} />");
+    expect(tile).toContain("formatUsdAdaptive(d.expectedUsd!)} expected in {d.expectedHorizonDays} days");
+    expect(tile).toContain('strokeDasharray="3 4"');
+    // Served figures only: nothing summed or projected here.
+    expect(tile).not.toMatch(/\.reduce\([^)]*cumulativeUsd|dailyPaceUsd/);
+  });
+
+  // The old pipeline-based RETURN fields stay gone (ROI-CONSISTENCY-1103); the pipeline generated
+  // chart above is features-service's own served figure, not a return.
+  it("draws none of the deleted pipeline-based return fields (ROI-CONSISTENCY-1103)", () => {
     expect(src).not.toContain("expectedPipeline");
     expect(src).not.toContain("totalPipelineUsd");
     expect(src).not.toContain("roiHistory");
