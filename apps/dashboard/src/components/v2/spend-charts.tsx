@@ -4,7 +4,7 @@ import { Bar, BarChart, Line, LineChart, ReferenceArea, ReferenceLine, Responsiv
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getFunnelCampaignSpendCharts, getOfferSpendCharts } from "@/lib/api";
-import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
+import { formatUsdAdaptive, formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { stepLabel, stepPluralLabel } from "@/lib/legs";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -70,8 +70,18 @@ export function spendChartState<T>(q: { data: T | undefined; isFetchedAfterMount
   return { chart: q.data !== undefined ? pick(q.data) : null, answered, failed: !answered && q.isFetchedAfterMount && q.isError };
 }
 
+/**
+ * The page's own billed spend, when the page states one (Today's Spent tile): the $ Spent card then
+ * prints THAT figure as its headline, the served total with provisioned costs beside it, so one
+ * page never shows two main spend figures (owner 2026-11-07). Both served by features-service.
+ */
+export interface BilledSpend {
+  pending: boolean;
+  spend: { actualSpentCents: number; totalSpentCents: number } | null;
+}
+
 /** Today: the selected offer's block. Renders nothing while the offer runs no campaign. */
-export function OfferSpendChartsSection({ brandId, offerId }: { brandId: string; offerId: string | null }) {
+export function OfferSpendChartsSection({ brandId, offerId, billed }: { brandId: string; offerId: string | null; billed?: BilledSpend }) {
   const q = useAuthQuery(["spendCharts", "offer", brandId, offerId ?? ""], () => getOfferSpendCharts(offerId!, brandId), {
     ...pollOptions,
     enabled: !!offerId,
@@ -81,13 +91,13 @@ export function OfferSpendChartsSection({ brandId, offerId }: { brandId: string;
   return (
     <section>
       <SectionTitle right={<span>Since you started</span>}>Your spend, day by day</SectionTitle>
-      <SpendChartsBlock {...state} />
+      <SpendChartsBlock {...state} billed={billed} />
     </section>
   );
 }
 
 /** The three cards: spend per day by action, cost per outcome, % conversion. */
-export function SpendChartsBlock({ chart, answered, failed }: SpendChartState) {
+export function SpendChartsBlock({ chart, answered, failed, billed }: SpendChartState & { billed?: BilledSpend }) {
   const catalogue = useLegCatalogue();
   const outcome = chart?.outcomeStep ? stepLabel(catalogue, chart.outcomeStep) ?? chart.outcomeStep : null;
   const outcomes = outcome ? stepPluralLabel(catalogue, chart?.outcomeStep, outcome) : null;
@@ -101,7 +111,7 @@ export function SpendChartsBlock({ chart, answered, failed }: SpendChartState) {
   return (
     <div className="space-y-2">
       <div className="grid gap-3 lg:grid-cols-3">
-        <SpendCard chart={chart} answered={answered} />
+        <SpendCard chart={chart} answered={answered} billed={billed} />
         <CostCard chart={chart} answered={answered} outcome={outcome} outcomes={outcomes} />
         <ConversionCard chart={chart} answered={answered} outcome={outcome} />
       </div>
@@ -128,7 +138,7 @@ function ChartBox({ answered, children }: { answered: boolean; children: React.R
 }
 
 /** Spend: the total, the last day that spent in words, then one stacked bar per day by action. */
-function SpendCard({ chart, answered }: { chart: SpendChart | null; answered: boolean }) {
+function SpendCard({ chart, answered, billed }: { chart: SpendChart | null; answered: boolean; billed?: BilledSpend }) {
   const daily = chart?.daily ?? [];
   const last = latestSpendDay(daily);
   const words = last ? dayInWords(last) : null;
@@ -141,7 +151,16 @@ function SpendCard({ chart, answered }: { chart: SpendChart | null; answered: bo
   }));
   return (
     <Card title="$ Spent">
-      <BigFigure>{!answered ? <Shimmer className="h-7 w-20" /> : chart ? formatUsdAdaptive(chart.totals.spendUsd) : DASH}</BigFigure>
+      {billed ? (
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <BigFigure>{billed.pending ? <Shimmer className="h-7 w-20" /> : billed.spend ? formatCentsAsUsdAdaptive(billed.spend.actualSpentCents) : DASH}</BigFigure>
+          {billed.spend && billed.spend.totalSpentCents > billed.spend.actualSpentCents && (
+            <span className="k-fg3 text-[12px] tabular-nums">{formatCentsAsUsdAdaptive(billed.spend.totalSpentCents)} with provisioned costs</span>
+          )}
+        </div>
+      ) : (
+        <BigFigure>{!answered ? <Shimmer className="h-7 w-20" /> : chart ? formatUsdAdaptive(chart.totals.spendUsd) : DASH}</BigFigure>
+      )}
       <div className="k-fg3 mt-0.5 min-h-[48px] text-[12px] leading-4">
         {last && words?.counts ? (
           <>

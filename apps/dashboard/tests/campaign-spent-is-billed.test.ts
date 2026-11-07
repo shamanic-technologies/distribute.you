@@ -26,7 +26,9 @@ describe("campaign money: Spent is billed, provisioned follow-ups stated apart",
     const tile = page.slice(page.indexOf("export function SpentTile("), page.indexOf("const CAMPAIGN_ROI_TIP"));
     expect(tile).toContain('<StatTile label="Spent">');
     expect(tile).toContain("formatCentsAsUsdAdaptive(spend.actualSpentCents)");
-    expect(tile).toContain("+{formatCentsAsUsdAdaptive(provisioned)} provisioned for follow-ups");
+    // Owner 2026-11-07: the served total "with provisioned costs", the same words as Today; never "follow-ups".
+    expect(tile).toContain("{formatCentsAsUsdAdaptive(spend.totalSpentCents)} with provisioned costs");
+    expect(tile).not.toContain("follow-ups");
     expect(tile).not.toMatch(/totalSpentCents\s*-|-\s*spend\.actualSpentCents/);
     // Both overviews (cold email and conversation campaigns) use it.
     expect(page.match(/<SpentTile win=\{win\} \/>/g)?.length).toBe(2);

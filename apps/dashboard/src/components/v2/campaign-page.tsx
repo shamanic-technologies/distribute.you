@@ -225,14 +225,13 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
 }
 
 /**
- * "Spent" is what was billed (cost status actual). The follow-ups RESERVED when a first
- * email went out and not sent yet stand on their own line, as the served provisioned
- * figure (2026-10-06: a client read "$67 spent" over 185 emails, part of it follow-ups
- * still to go; owner: "+$22 provisioned for follow-ups"). The browser subtracts nothing.
+ * "Spent" is what was billed (cost status actual). The served total with provisioned costs
+ * (holds not billed yet) stands on its own line, the same words as Today (owner 2026-11-07:
+ * "provisioned costs", never a per-case "follow-ups"). The browser adds nothing.
  */
 export function SpentTile({ win }: { win: { data: RevenueWindow | null; pending: boolean } }) {
   const spend = win.data?.spend ?? null;
-  const provisioned = spend?.provisionedSpentCents ?? null;
+
   return (
     <StatTile label="Spent">
       {win.pending ? (
@@ -240,8 +239,8 @@ export function SpentTile({ win }: { win: { data: RevenueWindow | null; pending:
       ) : (
         <>
           <Figure value={spend ? formatCentsAsUsdAdaptive(spend.actualSpentCents) : "—"} />
-          {provisioned != null && provisioned > 0 && (
-            <p className="k-fg3 mt-1 text-[12px] leading-4">+{formatCentsAsUsdAdaptive(provisioned)} provisioned for follow-ups</p>
+          {spend && spend.totalSpentCents > spend.actualSpentCents && (
+            <p className="k-fg3 mt-1 text-[12px] leading-4">{formatCentsAsUsdAdaptive(spend.totalSpentCents)} with provisioned costs</p>
           )}
         </>
       )}
