@@ -57,6 +57,7 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, pe
 import { EmptyNote, Initials, MarkLines, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostValue, RoiLabel } from "@/components/v2/roi-label";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi } from "@/components/v2/funnel-campaigns";
+import { CampaignPinButton } from "@/components/v2/outcome-pins";
 
 /**
  * THE CAMPAIGN PAGE, NEXT LAYOUT (staff preview, owner 2026-10-15, after Frontrunner's project
@@ -124,7 +125,10 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
         <header className="mb-5 flex min-w-0 items-start gap-3">
           <FunnelFace name={campaign.salesFunnelName} size={40} />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{campaign.salesFunnelName}</h1>
+            <div className="flex min-w-0 items-center gap-3">
+              <h1 className="min-w-0 flex-1 truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{campaign.salesFunnelName}</h1>
+              <CampaignPinButton brandId={campaign.brandId} campaignId={campaign.id} />
+            </div>
             {path && (
               <div className="mt-1">
                 <FunnelPathLine items={path.items} />
