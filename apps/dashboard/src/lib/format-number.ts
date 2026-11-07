@@ -92,6 +92,17 @@ export function formatUsdAdaptive(usd: number): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
+/**
+ * A UNIT price (cost or value of ONE post, email, lead): under $1 it keeps two significant digits ($0.0051, $0.019),
+ * so a sub-cent cost and its gap to the expected one stay readable; $1 and up reads like {@link formatUsdAdaptive}.
+ */
+export function formatUsdUnit(usd: number): string {
+  const abs = Math.abs(usd);
+  if (abs === 0 || abs >= 1) return formatUsdAdaptive(usd);
+  const decimals = Math.min(8, Math.max(2, 1 - Math.floor(Math.log10(abs))));
+  return `${usd < 0 ? "-" : ""}$${abs.toFixed(decimals)}`;
+}
+
 /** Cents variant of {@link formatUsdAdaptive}. */
 export function formatCentsAsUsdAdaptive(cents: number | string): string {
   const usd = (typeof cents === "string" ? parseFloat(cents) : cents) / 100;

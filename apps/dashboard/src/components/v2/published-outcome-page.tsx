@@ -8,7 +8,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getBrandPublishedUnits } from "@/lib/api";
-import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { formatCount, formatUsdAdaptive, formatUsdUnit } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { outcomeOf } from "@/lib/v2/outcomes";
@@ -19,9 +19,6 @@ import {
   PUBLISHED_OUTCOME_KEYS,
   costPerSignupReasonWords,
   dayTime,
-  performedByLabel,
-  publishedReturnReasonWords,
-  publishedRoiToShow,
   rowValueReasonWords,
   visitsReasonWords,
   type PublishedDay,
@@ -33,7 +30,8 @@ import { BarSpark, EmptyNote, Figure, Shimmer, StatTile, TopBar } from "@/compon
 import { OutcomePinButton } from "@/components/v2/outcome-pins";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { Arrow } from "@/components/v2/research-bits";
-import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { OutcomeAccountingCard } from "@/components/v2/outcome-accounting-card";
+import { accountingReasonWords } from "@/lib/v2/outcome-accounting";
 
 /**
  * ONE PUBLISHED OUTCOME (owner 2026-11-06, OUTCOME-FINEST-1106: « du hardcode pour chaque [outcome] »; « en connectant les
@@ -202,11 +200,13 @@ export function PublishedBody({ outcomeKey, data }: { outcomeKey: PublishedOutco
       </div>
     );
   }
-  const roi = publishedRoiToShow(data);
   // visitsMeasured false = nothing tracks a click on this outcome: the visits and signups are not tracked, never 0.
   const visitsTracked = data.visitsMeasured !== false;
-  // Posts, Views, then Visits + Signups + $ / signup when tracked (one "Not tracked" tile otherwise), Value, ROI.
-  const tiles = 1 + (copy.hasViews ? 1 : 0) + (visitsTracked ? 3 : 1) + (all.valueUsd !== undefined ? 1 : 0) + (roi ? 1 : 0);
+  // Posts, Views, then Visits + Signups + $ / signup when tracked (one "Not tracked" tile otherwise). Value, cost and any
+  // return live in the accounting card, actual beside expected (OUTCOME-ACCOUNTING-1107): no ROI below a Target.
+  const tiles = 1 + (copy.hasViews ? 1 : 0) + (visitsTracked ? 3 : 1);
+  const oursRows = data.rows.filter((r) => r.performedBy === "ours");
+  const teamRows = data.rows.filter((r) => r.performedBy !== "ours");
   return (
     <div className="space-y-6">
       <div className={`grid grid-cols-2 gap-3 ${TILE_COLS[tiles] ?? "lg:grid-cols-4"}`}>
@@ -239,30 +239,6 @@ export function PublishedBody({ outcomeKey, data }: { outcomeKey: PublishedOutco
             <p className="k-fg3 mt-0.5 truncate text-[12px]">No click on these {copy.rows} is tracked yet</p>
           </StatTile>
         )}
-        {all.valueUsd !== undefined && (
-          <StatTile label="Value produced">
-            <Figure value={formatUsdAdaptive(all.valueUsd)} />
-            <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">
-              {all.unvaluedRows ? `${formatCount(all.unvaluedRows)} ${all.unvaluedRows === 1 ? copy.row : copy.rows} not valued` : `What your ${copy.rows} are worth`}
-            </p>
-          </StatTile>
-        )}
-        {roi && (
-          <StatTile label={<RoiLabel />} note={<span className="hidden sm:inline">Since you started</span>}>
-            <Figure
-              value={
-                roi.value == null ? (
-                  <span className="k-fg3 text-[13px] font-normal">{publishedReturnReasonWords(roi.reason, outcomeKey)}</span>
-                ) : (
-                  <RoiValue roi={roi} learning={data.measuredReturn?.learning} />
-                )
-              }
-            />
-            <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">
-              {formatUsdAdaptive(ours.spentUsd)} spent by us
-            </p>
-          </StatTile>
-        )}
         {visitsTracked && (
           <StatTile label="$ / signup" note={<span className="hidden sm:inline">Since you started</span>}>
             <Figure value={<CostPerSignup data={data} />} />
@@ -270,6 +246,8 @@ export function PublishedBody({ outcomeKey, data }: { outcomeKey: PublishedOutco
           </StatTile>
         )}
       </div>
+
+      {data.accounting && <OutcomeAccountingCard accounting={data.accounting} unit={copy.unit} units={copy.units} clientTeamUnits={data.totals.clientTeam?.units} />}
 
       <div className="grid gap-3 lg:grid-cols-2">
         <ChartCard title={`${copy.network ? "Posts" : "Emails sent"} per day`} legend={<Legend items={[["Everyone", EVERYONE], ["By us", OURS]]} />}>
@@ -284,7 +262,8 @@ export function PublishedBody({ outcomeKey, data }: { outcomeKey: PublishedOutco
         </ChartCard>
       </div>
 
-      <UnitsTable outcomeKey={outcomeKey} rows={data.rows} repostsExcluded={data.repostsExcluded?.rows ?? 0} visitsTracked={visitsTracked} />
+      <UnitsTable outcomeKey={outcomeKey} rows={oursRows} ours repostsExcluded={data.repostsExcluded?.rows ?? 0} visitsTracked={visitsTracked} />
+      {teamRows.length > 0 && <UnitsTable outcomeKey={outcomeKey} rows={teamRows} ours={false} repostsExcluded={0} visitsTracked={visitsTracked} />}
     </div>
   );
 }
@@ -345,14 +324,22 @@ function VisitsCell({ n, reason }: { n: number | null; reason: string | null | u
   return <td className="px-3 py-2.5 text-right tabular-nums">{n != null ? formatCount(n) : reason ? <span className="k-fg3 text-[12px]">{visitsReasonWords(reason)}</span> : DASH}</td>;
 }
 
+/** A row's served $ figure, else why it is absent. */
+function UsdCell({ usd, reason }: { usd: number | null | undefined; reason: string | null | undefined }) {
+  return <td className="px-3 py-2.5 text-right tabular-nums">{usd != null ? formatUsdUnit(usd) : reason ? <span className="k-fg3 text-[12px]">{accountingReasonWords(reason)}</span> : DASH}</td>;
+}
+
 function UnitsTable({
   outcomeKey,
   rows,
+  ours,
   repostsExcluded,
   visitsTracked,
 }: {
   outcomeKey: PublishedOutcomeKey;
   rows: PublishedUnitRow[];
+  /** True = our Units, with their actual cost, expected cost and expected value; false = the client's team's, counted apart at $0 to us. */
+  ours: boolean;
   repostsExcluded: number;
   /** False = no click is tracked on this outcome: the Visits and Signups columns would say "Not tracked" on every row, so they go (the tile says it once). */
   visitsTracked: boolean;
@@ -364,7 +351,7 @@ function UnitsTable({
   return (
     <div className="k-card overflow-hidden">
       <div className="flex items-baseline gap-2 px-4 pb-1 pt-3.5">
-        <h2 className="text-[14px] font-medium">{isPost ? "Every post" : "Every newsletter"}</h2>
+        <h2 className="text-[14px] font-medium">{ours ? (isPost ? "Posts by us" : "Newsletters by us") : isPost ? "Posts by your team" : "Newsletters by your team"}</h2>
         <span className="k-fg3 text-[14px] tabular-nums">{formatCount(rows.length)}</span>
         {repostsExcluded > 0 && (
           <span className="k-fg3 ml-auto text-[12px] tabular-nums">
@@ -377,12 +364,11 @@ function UnitsTable({
       ) : (
         <>
           <div className="k-scroll overflow-x-auto">
-            <table className={`w-full table-fixed text-[13px] ${isPost ? "min-w-[1320px]" : "min-w-[1040px]"}`}>
+            <table className={`w-full table-fixed text-[13px] ${isPost ? "min-w-[1360px]" : "min-w-[1080px]"}`}>
               <thead>
                 <tr className="k-line-subtle border-b">
                   <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">{copy.creative}</th>
                   <th className="k-label w-[150px] px-3 py-2.5 text-left font-normal">{copy.account}</th>
-                  <th className="k-label w-[116px] px-3 py-2.5 text-left font-normal">Performed by</th>
                   {isPost ? (
                     <>
                       <th className="k-label w-[72px] px-3 py-2.5 text-right font-normal">Views</th>
@@ -401,8 +387,13 @@ function UnitsTable({
                       <th className="k-label w-[96px] px-3 py-2.5 text-right font-normal">Signups</th>
                     </>
                   )}
-                  <th className="k-label w-[80px] px-3 py-2.5 text-right font-normal">Value</th>
-                  <th className="k-label w-[80px] px-3 py-2.5 text-right font-normal">$ spent</th>
+                  {ours && (
+                    <>
+                      <th className="k-label w-[104px] px-3 py-2.5 text-right font-normal">Actual $ / {copy.unit}</th>
+                      <th className="k-label w-[112px] px-3 py-2.5 text-right font-normal">Expected $ / {copy.unit}</th>
+                      <th className="k-label w-[112px] px-3 py-2.5 text-right font-normal">Value / {copy.unit}</th>
+                    </>
+                  )}
                   <th className="k-label w-[104px] px-3 py-2.5 pr-4 text-right font-normal">{isPost ? "Posted" : "Sent"}</th>
                 </tr>
               </thead>
@@ -413,9 +404,6 @@ function UnitsTable({
                       <Creative row={r} />
                     </td>
                     <td className="k-fg2 truncate px-3 py-2.5">{r.account ? (isPost ? `@${r.account.replace(/^@/, "")}` : r.account) : DASH}</td>
-                    <td className="px-3 py-2.5">
-                      <span className="k-chip">{performedByLabel(r.performedBy)}</span>
-                    </td>
                     {isPost ? (
                       <>
                         <td className="px-3 py-2.5 text-right tabular-nums">
@@ -445,16 +433,21 @@ function UnitsTable({
                         <VisitsCell n={r.signups} reason={r.visitsUnavailableReason ?? r.ledgerUnavailableReason} />
                       </>
                     )}
-                    <td className="px-3 py-2.5 text-right tabular-nums">
-                      {r.valueUsd != null ? (
-                        formatUsdAdaptive(r.valueUsd)
-                      ) : r.value?.unavailableReason ? (
-                        <span className="k-fg3 text-[12px]">{rowValueReasonWords(r.value.unavailableReason)}</span>
-                      ) : (
-                        DASH
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{r.spentUsd == null ? DASH : formatUsdAdaptive(r.spentUsd)}</td>
+                    {ours && (
+                      <>
+                        <UsdCell usd={r.accounting?.costPerUnit.actualUsd} reason={r.accounting?.costPerUnit.actualUnavailableReason} />
+                        <UsdCell usd={r.accounting?.costPerUnit.expectedUsd} reason={r.accounting?.costPerUnit.expectedUnavailableReason} />
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {r.accounting?.value.expectedNetPerUnitUsd != null ? (
+                            formatUsdUnit(r.accounting.value.expectedNetPerUnitUsd)
+                          ) : r.value?.unavailableReason ? (
+                            <span className="k-fg3 text-[12px]">{rowValueReasonWords(r.value.unavailableReason)}</span>
+                          ) : (
+                            DASH
+                          )}
+                        </td>
+                      </>
+                    )}
                     <td className="k-mono k-fg2 px-3 py-2.5 pr-4 text-right text-[12px]">{friendlyDate(r.publishedAt)}</td>
                   </tr>
                 ))}

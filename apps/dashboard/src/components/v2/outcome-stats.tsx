@@ -9,6 +9,7 @@ import { costStepOf, monthLabel, monthTick, type OutcomeCostStep } from "@/lib/v
 import type { OutcomeStepStat } from "@/lib/v2/outcome-people";
 import { EmptyNote, Figure, Shimmer, StatTile } from "@/components/v2/ui";
 import { LearningFigure } from "@/components/v2/roi-label";
+import { OutcomeAccountingCard } from "@/components/v2/outcome-accounting-card";
 
 /**
  * ONE OUTCOME, OVER TIME (owner 2026-10-27): above the people table of an outcome page, five cards
@@ -82,6 +83,7 @@ export function OutcomeStats({
           )}
         </StatTile>
       </div>
+      {cost?.accounting && <OutcomeAccountingCard accounting={cost.accounting} unit={label.toLowerCase()} units={plural.toLowerCase()} />}
       <div className="grid gap-3 lg:grid-cols-2">
         <ChartCard title={`${plural} per month`} legend={<PeopleLegend />}>
           {months.length === 0 ? (
