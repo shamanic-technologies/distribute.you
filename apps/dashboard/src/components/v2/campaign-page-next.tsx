@@ -14,7 +14,9 @@ import {
   getSalesFunnelCaps,
   listUniboxLeads,
   type CampaignRevenueGroup,
+  listBrandOffers,
 } from "@/lib/api";
+import { OfferMark } from "@/components/marks/offer-mark";
 import {
   capUnavailableSentence,
   capWindowWords,
@@ -655,6 +657,11 @@ function OfferCard({ brandId, offerId, href }: { brandId: string; offerId: strin
   const q = useAuthQuery(["offerUserFields", brandId, offerId], () => getOfferUserFields(brandId, offerId), { ...pollOptions, enabled: !!brandId && !!offerId });
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   const give = giveListsFrom(q.data?.fields);
+  // A campaign sells ONE offer (owner 2026-11-07): its name heads the card. Same key as the offer page's name read.
+  const offersQ = useAuthQuery(["brandOffers", brandId, "withArchived"], () => listBrandOffers(brandId, undefined, { includeArchived: true }), {
+    enabled: !!brandId,
+  });
+  const offer = offersQ.data?.offers.find((o) => o.offerId === offerId) ?? null;
   const list = (label: string, lines: string[]) => (
     <div>
       <span className="k-label">{label}</span>
@@ -682,6 +689,12 @@ function OfferCard({ brandId, offerId, href }: { brandId: string; offerId: strin
         <p className="k-fg3 text-[12px]">Could not read the offer. Retrying.</p>
       ) : (
         <div className="space-y-3">
+          {offer && (
+            <div className="flex min-w-0 items-center gap-2">
+              <OfferMark size="md" imageUrl={offer.imageUrl} />
+              <span className="min-w-0 truncate text-[13px] font-medium">{offer.name}</span>
+            </div>
+          )}
           {list("We give for free", give.giveForFree)}
           {list("We never give", give.neverGive)}
         </div>

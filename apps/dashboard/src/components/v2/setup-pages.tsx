@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrandOffers } from "@/lib/api";
+import { listAudiences, listBrandOffers, type Offer } from "@/lib/api";
+import { pollOptions } from "@/lib/query-options";
+import { OfferMark } from "@/components/marks/offer-mark";
 import { v2Base, v2Href, v2OfferHref } from "@/lib/v2/routes";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
@@ -116,8 +118,81 @@ export function V2Page({
  * in the sidebar's switcher. `/offers` (old links, the `?new=1` entry) opens the selected
  * offer's page, or says there is none yet with the way to make one.
  */
+/**
+ * The brand's offers, each with its one audience (owner 2026-11-07, AUDIENCE-PER-OFFER-1107):
+ * an offer is a brief several campaigns share, built for one audience. The whole card opens the
+ * offer's page. Until human-service keeps one audience per offer, an offer still holding several
+ * shows the first text and how many more.
+ */
 export function V2OffersPage() {
-  return <SelectedOfferRedirect title="Offer" />;
+  const { orgId, brandId } = useIds();
+  const q = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
+  const [creating, setCreating] = useState(false);
+  const offers = q.data?.offers ?? null;
+  const settled = q.data !== undefined || q.isError;
+  return (
+    <V2Page
+      crumbs={[{ label: "Offers" }]}
+      title={offers ? (offers.length === 1 ? "1 offer" : `${offers.length} offers`) : "Offers"}
+      sub="Each offer is built for one audience."
+      actions={
+        <button type="button" className="k-btn-accent" onClick={() => setCreating(true)}>
+          New offer
+        </button>
+      }
+      width="max-w-[1280px]"
+    >
+      {!settled ? (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Shimmer className="h-28 w-full" />
+          <Shimmer className="h-28 w-full" />
+        </div>
+      ) : !offers ? (
+        <p className="k-fg3 text-[13px]">Could not read the offers. Retrying.</p>
+      ) : offers.length === 0 ? (
+        <p className="k-fg3 text-[13px]">This brand has no offer yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {offers.map((o) => (
+            <OfferListCard key={o.offerId} brandId={brandId} offer={o} href={v2OfferHref(orgId, brandId, o.offerId)} />
+          ))}
+        </div>
+      )}
+      {creating && <V2NewOfferModal brandId={brandId} orgId={orgId} onClose={() => setCreating(false)} />}
+    </V2Page>
+  );
+}
+
+function OfferListCard({ brandId, offer, href }: { brandId: string; offer: Offer; href: string }) {
+  // The campaign page's Target card reads the same key, so the two cost one read.
+  const q = useAuthQuery(["audiences", brandId, "active", offer.offerId], () => listAudiences(brandId, { status: "active", offerId: offer.offerId }), pollOptions);
+  const settled = q.data !== undefined || q.isFetchedAfterMount;
+  const list = q.data?.audiences ?? null;
+  const first = list?.[0] ?? null;
+  const text = first ? (first.targetText ?? first.description ?? first.name) : null;
+  return (
+    <Link href={href} className="k-card k-row block p-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <OfferMark size="title" imageUrl={offer.imageUrl} />
+        <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{offer.name}</span>
+      </div>
+      <div className="mt-3">
+        <span className="k-label">Audience</span>
+        {!settled ? (
+          <Shimmer className="mt-1 h-10 w-full" />
+        ) : !list ? (
+          <p className="k-fg3 mt-1 text-[12px]">Could not read the audience. Retrying.</p>
+        ) : !text ? (
+          <p className="k-fg3 mt-1 text-[12px]">No audience yet.</p>
+        ) : (
+          <>
+            <p className="k-fg2 mt-1 line-clamp-3 text-[13px]">{text}</p>
+            {list.length > 1 && <p className="k-fg3 mt-1 text-[12px]">{list.length - 1} more being merged into this one</p>}
+          </>
+        )}
+      </div>
+    </Link>
+  );
 }
 
 function SelectedOfferRedirect({
@@ -183,7 +258,7 @@ export function V2OfferPage() {
   if (!offerId) return null;
   return (
     <V2Page
-      crumbs={[{ label: name ?? " " }]}
+      crumbs={[{ label: "Offers", href: v2Href(orgId, brandId, "offers") }, { label: name ?? " " }]}
       title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
       tabs={offerTabs(orgId, brandId, offerId, "overview")}
     >
@@ -232,7 +307,7 @@ export function V2TargetingPage({ view = "audiences" }: { view?: TargetingView }
   ];
   return (
     <V2Page
-      crumbs={[{ label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Targeting" }]}
+      crumbs={[{ label: "Offers", href: v2Href(orgId, brandId, "offers") }, { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Targeting" }]}
       title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
       tabs={offerTabs(orgId, brandId, offerId, "targeting")}
       width="max-w-[1280px]"

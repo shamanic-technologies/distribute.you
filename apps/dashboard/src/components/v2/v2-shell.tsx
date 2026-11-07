@@ -12,7 +12,7 @@ import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useReachedCounts, useBrandRevenue, useDealsLifecycleCounts, useNeedsYourCall } from "@/components/v2/data";
 import { dealsBoardRungs } from "@/lib/deals-board";
-import { v2CampaignHref, v2CatalogueHome, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
+import { v2CampaignHref, v2CatalogueHome, v2CatalogueHref, v2Href, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
 import { useOngoingFunnelFaces } from "@/components/v2/staff-catalogue-data";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
@@ -424,11 +424,10 @@ function V2Sidebar() {
         </Group>
 
         <Group title="Setup">
-          {/* The selected offer's own page, its Targeting inside (owner 2026-10-10): there is
-              no list of offers, the switcher at the top is where another one is picked. */}
+          {/* The brand's offers, each with its one audience (owner 2026-11-07, AUDIENCE-PER-OFFER-1107). */}
           <NavItem
-            href={offerId ? v2OfferHref(orgId, brandId, offerId) : v2Href(orgId, brandId, "offers")}
-            label="Offer"
+            href={v2Href(orgId, brandId, "offers")}
+            label="Offers"
             icon={<I d={ICONS.offer} />}
             active={section === "offers" || section === "targeting"}
           />
