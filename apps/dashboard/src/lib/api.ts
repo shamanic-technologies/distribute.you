@@ -4987,8 +4987,6 @@ const AudienceSegmentProposalSchema = z.object({
   /** Phosphor icon name, kebab-case, from human-service's closed vocabulary. */
   icon: z.string(),
   iconConfidence: z.number(),
-  /** human-service's instant rough guess of the people the segment reaches; null when it has none. */
-  estimatedLeadCount: z.number().nullish(),
 });
 export type AudienceSegmentProposal = z.infer<typeof AudienceSegmentProposalSchema>;
 
