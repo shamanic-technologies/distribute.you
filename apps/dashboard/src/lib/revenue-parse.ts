@@ -11,6 +11,7 @@ import { maturityPairSchema } from "./maturity";
 import type { RevenueOverview, RevenueOverviewWithLeads } from "./revenue-view";
 import { ExpectedReturnSchema } from "./expected-return";
 import { RealizedReturnSchema } from "./realized-return";
+import { RevenueGeneratedSchema } from "./revenue-generated";
 
 /** The cost-per-outcome ratios of a spend block, served twice. `*Cents` coerce like the block's own. */
 const SpendMaturitySchema = maturityPairSchema(
@@ -538,6 +539,9 @@ const FeatureRevenueResponseSchema = z.object({
   // The scope's EXPECTED return (features-service EXPECTED-ROI-1011): never empty, read where the
   // measured one is Learning or null. Optional until every grain serves it.
   expectedReturn: ExpectedReturnSchema.nullish(),
+  // Real revenue first, expected on the expected return's basis (REVENUE-GENERATED-1107): the offer
+  // read serves it, other grains do not (yet), so absent and null both parse.
+  revenueGenerated: RevenueGeneratedSchema.nullish(),
   organizations: z.array(RevenueOrgSchema),
   events: z.array(RevenueEventSchema),
   /**
@@ -663,6 +667,7 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     // Whole, verbatim: the scope's verdict and each leg's mature and flash figures.
     maturity: d.maturity ?? null,
     expectedReturn: d.expectedReturn ?? null,
+    revenueGenerated: d.revenueGenerated ?? null,
     stepWalk: d.funnelSteps ?? null,
     // Passed through whole. The band renders these figures verbatim: the browser no
     // longer picks a price, multiplies a threshold or divides a countdown.

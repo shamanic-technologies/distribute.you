@@ -48,7 +48,7 @@ import {
 } from "@/components/v2/data";
 import { TodayTargets } from "@/components/v2/today-targets";
 import { OfferSpendChartsSection } from "@/components/v2/spend-charts";
-import { PipelineGeneratedTile } from "@/components/v2/pipeline-generated";
+import { RevenueGeneratedTile } from "@/components/v2/revenue-generated-tile";
 import {
   CompanyMark,
   PersonAvatar,
@@ -107,7 +107,7 @@ export function TodayPage() {
   // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
   // that nothing aims at.
   const ongoing = useOngoingCampaigns(orgId, brandId, selectedOfferId);
-  // ROI, Pipeline generated (the main chart, two columns wide) and Spent: every outcome lives in its
+  // ROI, Revenue generated (the main chart, two columns wide) and Spent: every outcome lives in its
   // campaign's Target row below (owner 2026-11-06, LEAD-GENERIC-1106).
   const statTiles = 4 as const;
 
@@ -220,8 +220,8 @@ export function TodayPage() {
               </StatTile>
               {/* Spent = billed, setup included. The total with provisioned costs stands under it on its own
                   line (owner 2026-11-07: one main figure on the page, the $ Spent chart reads the same). */}
-              {/* The main chart is pipeline generated, never a cost (owner 2026-11-07, PIPELINE-GENERATED-1107). */}
-              <PipelineGeneratedTile brandId={brandId} offerId={selectedOfferId} className="col-span-2" />
+              {/* The main chart is REAL revenue generated, expected beside it (owner 2026-11-07, REVENUE-GENERATED-1107). */}
+              <RevenueGeneratedTile pending={rev.pending} data={data?.revenueGenerated ?? null} className="col-span-2" />
               <StatTile label="Spent" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
                 {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={winSpend ? formatCentsAsUsdAdaptive(winSpend.actualSpentCents) : "—"} />}
                 {winSpend && winSpend.totalSpentCents > winSpend.actualSpentCents && (
