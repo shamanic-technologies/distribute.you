@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { POLL_INTERVAL } from "@/lib/query-options";
+import { pollIntervalFor } from "@/lib/query-options";
 import { listBrandOffers, isOfferArchived, offerArchiveErrorMessage, setBrandOfferArchived } from "@/lib/api";
 import { OfferMark } from "@/components/marks/offer-mark";
 
@@ -12,7 +12,7 @@ export function useArchivedOffers(brandId: string) {
   const allQ = useAuthQuery(
     ["brandOffers", brandId, "withArchived"],
     () => listBrandOffers(brandId, undefined, { includeArchived: true }),
-    { refetchInterval: POLL_INTERVAL, enabled: !!brandId },
+    { refetchInterval: pollIntervalFor, enabled: !!brandId },
   );
   return (allQ.data?.offers ?? []).filter(isOfferArchived);
 }

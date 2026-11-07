@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { POLL_INTERVAL } from "@/lib/query-options";
+import { pollIntervalFor } from "@/lib/query-options";
 import { getBrandRunsByCampaign } from "@/lib/api";
 import type { V2Campaign } from "@/components/v2/use-campaigns";
 
@@ -25,7 +25,7 @@ export function useRunsToday(brandId: string) {
   return useAuthQuery(
     ["v2RunsByCampaign", brandId, start],
     () => getBrandRunsByCampaign(brandId, { startedAfter: start }),
-    { enabled: !!brandId, refetchInterval: POLL_INTERVAL },
+    { enabled: !!brandId, refetchInterval: pollIntervalFor },
   );
 }
 

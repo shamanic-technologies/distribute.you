@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getOfferDealsLifecycle, listUniboxLeads } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { POLL_INTERVAL } from "@/lib/query-options";
+import { pollIntervalFor } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
@@ -48,7 +48,7 @@ export function DealsPage() {
   const dealsValue = useAuthQuery(
     ["dealsLifecycle", brandId, offerId ?? "", campaignFilter ?? ""],
     () => getOfferDealsLifecycle(offerId!, brandId, campaignFilter),
-    { refetchInterval: POLL_INTERVAL, enabled: !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0 },
+    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0 },
   );
   const served = useMemo(() => servedRungValues(dealsValue.data), [dealsValue.data]);
   const pipeline = dealsValue.data?.expectedPipelineUsd ?? null;
@@ -158,7 +158,7 @@ function DealColumn({
   const q = useAuthQuery(
     ["dealsLifecycleRows", brandId, offerId ?? "", campaignId ?? "", filtersKey(filters), rung.key, limit],
     () => listUniboxLeads(brandId, { ...filters, lifecycle: [rung.key] }, { limit, offerId, campaignId }),
-    { refetchInterval: POLL_INTERVAL, enabled: !!brandId && !!offerId && (total === null || total > 0) },
+    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!offerId && (total === null || total > 0) },
   );
   const rows = total === 0 ? [] : (q.data?.rows ?? null);
   const color = TONE_COLOR[uniboxValueTone("lifecycle", rung.key)];

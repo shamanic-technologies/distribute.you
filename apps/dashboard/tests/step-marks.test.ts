@@ -11,17 +11,50 @@ import { LEG_MARKS, legMarkKey } from "../src/lib/leg-marks";
 
 const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "utf8");
 
-/** Every step production publishes on `GET /public/channels` (2026-09-18, features-service
- *  v0.169.3: ONE form step), in order. */
+/** Every outcome production publishes on `GET /public/channels` `steps[].key`, read in the
+ *  features-service container on 2026-11-07 (41 keys, `purchase` included). Every one MUST
+ *  wear its own tile (owner 2026-11-07). */
 const PROD_STEPS = [
-  "booking_call",
   "conversation",
   "website_visit",
+  "booking_call",
   "meeting_booked",
   "meeting_attended",
   "signup",
   "form_submitted",
   "paid_client",
+  "lead_found",
+  "industry_update_video",
+  "email_sent",
+  "message_sent",
+  "message_written",
+  "company_researched",
+  "email_checked",
+  "email_found",
+  "phone_found",
+  "lead_identified",
+  "audience_built",
+  "ad_shown",
+  "post_published",
+  "client_satisfied",
+  "post_viewed",
+  "post_engaged",
+  "message_queued",
+  "reply_received",
+  "x_post_published",
+  "linkedin_post_published",
+  "linkedin_comment_published",
+  "x_post_validated",
+  "linkedin_post_validated",
+  "x_post_drafted",
+  "linkedin_post_drafted",
+  "linkedin_comment_drafted",
+  "threads_post_published",
+  "newsletter_email_sent",
+  "whatsapp_message_sent",
+  "copilot_message_sent",
+  "email_queued",
+  "email_reply_received",
 ];
 
 /** Steps DRAWN ahead of the wire, with why. A step the producer never ships draws a
@@ -29,13 +62,13 @@ const PROD_STEPS = [
  *  is a blank square. `purchase` is an outcome `/start` offers today and the producer
  *  is publishing as a step of its own. */
 const AHEAD_OF_WIRE = ["purchase"];
+// `purchase` reached the wire since: drawn once, listed once.
+const ALL_STEPS = [...new Set([...PROD_STEPS, ...AHEAD_OF_WIRE])];
 
 describe("step marks — one tile per step, the same product-wide", () => {
   it("draws every step the producer publishes", () => {
     for (const key of PROD_STEPS) expect(stepMarkFor(key), key).not.toBeNull();
-    expect(Object.keys(STEP_MARKS).sort()).toEqual(
-      [...PROD_STEPS, ...AHEAD_OF_WIRE].sort(),
-    );
+    expect(Object.keys(STEP_MARKS).sort()).toEqual([...ALL_STEPS].sort());
     for (const key of AHEAD_OF_WIRE) expect(stepMarkFor(key), key).not.toBeNull();
   });
 
@@ -54,7 +87,7 @@ describe("step marks — one tile per step, the same product-wide", () => {
   });
 
   it("keeps the entry leg's glyph for a step that has one, so the outcome screen is unchanged", () => {
-    for (const key of [...PROD_STEPS, ...AHEAD_OF_WIRE]) {
+    for (const key of ALL_STEPS) {
       const entry = LEG_MARKS[legMarkKey(null, key)];
       if (entry) expect(STEP_MARKS[key].glyph).toBe(entry.glyph);
     }
@@ -81,5 +114,11 @@ describe("step marks — one tile per step, the same product-wide", () => {
   it("is what every surface naming a step draws", () => {
     // The v2 Sales path draws it (the v1 /start picks that also did are deleted).
     expect(read("components/v2/offer-sales-path.tsx")).toContain("<StepMark stepKey={s}");
+  });
+
+  it("never draws a blank tile for an outcome the catalogue has not drawn yet", () => {
+    const src = read("components/marks/step-mark.tsx");
+    expect(src).toContain("drawn ?? { glyph: UNDRAWN_STEP_GLYPH, tone: STEP_TONE }");
+    expect(src).not.toContain("if (!mark) return null");
   });
 });

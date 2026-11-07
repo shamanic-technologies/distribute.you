@@ -8,7 +8,7 @@ import { leadStatusLabel } from "@/lib/lead-status";
 import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { conversationItemSide, conversationItemTag, liveItems, type ConversationItem } from "@/lib/conversation-timeline";
-import { POLL_INTERVAL, pollOptions } from "@/lib/query-options";
+import { pollOptions, pollIntervalFor } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate, friendlyTime } from "@/lib/friendly-datetime";
 import { leadsSearchParam } from "@/lib/leads-server-page";
@@ -62,7 +62,7 @@ export function CompanyPage() {
   const peopleQ = useAuthQuery(
     ["leadsPage", lead.key, "v2-company", q],
     () => listLeadsPage(lead.scope, { view: "basic", sort: "activity", limit: "50", q }, undefined, { includeCampaigns: false }),
-    { enabled: !!q && lead.ready, refetchInterval: POLL_INTERVAL },
+    { enabled: !!q && lead.ready, refetchInterval: pollIntervalFor },
   );
   // lead-service searches names and companies; keep the people who work HERE.
   const people = useMemo(

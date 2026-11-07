@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { POLL_INTERVAL } from "@/lib/query-options";
+import { pollIntervalFor } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listCampaignsByBrand,
@@ -90,13 +90,13 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const campaignsQ = useAuthQuery(
     ["campaigns", brandId],
     () => listCampaignsByBrand(brandId),
-    { refetchInterval: POLL_INTERVAL },
+    { refetchInterval: pollIntervalFor },
   );
 
   const groupsQ = useAuthQuery(
     ["featureRevenueByCampaign", brandId, featureSlug],
     () => getFeatureRevenueByCampaign(featureSlug, brandId),
-    { enabled: revenueEnabled, refetchInterval: POLL_INTERVAL },
+    { enabled: revenueEnabled, refetchInterval: pollIntervalFor },
   );
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
@@ -175,7 +175,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       queryKey: ["featureRevenueByCampaign", brandId, slug] as const,
       queryFn: () => getFeatureRevenueByCampaign(slug, brandId),
       enabled: orgConsistent && acquisitionChannelForFeatureSlug(slug, channels) !== null,
-      refetchInterval: POLL_INTERVAL,
+      refetchInterval: pollIntervalFor,
     })),
   });
   // ONE LINE PER IDENTITY, running or paused.

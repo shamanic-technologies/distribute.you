@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions, POLL_INTERVAL } from "@/lib/query-options";
+import { pollOptions, pollIntervalFor } from "@/lib/query-options";
 import {
   getConversationCounts,
   getOfferUserFields,
@@ -409,7 +409,7 @@ function LatestActivity({ orgId, brandId, campaignId }: { orgId: string; brandId
   const pageQ = useAuthQuery(
     ["reachedRows", brandId, "", campaignId, filter, "", ""],
     () => listUniboxLeads(brandId, {}, { campaignId, reachedStep: filter, limit: LEADS_PAGE_SIZE, cursor: null }),
-    { refetchInterval: POLL_INTERVAL },
+    { refetchInterval: pollIntervalFor },
   );
   const counts = useReachedCounts(brandId, ACTIVITY_STEPS, campaignId).data ?? null;
   const rows = pageQ.data?.rows ?? null;
