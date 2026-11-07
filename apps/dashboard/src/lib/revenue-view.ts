@@ -11,6 +11,7 @@
 import type { MaturityPair } from "./maturity";
 import type { ExpectedReturn } from "./expected-return";
 import type { RealizedReturn } from "./realized-return";
+import type { RevenueGenerated } from "./revenue-generated";
 
 /** A grouped read's cost per visit and per positive reply, as one half of its maturity pair. */
 export interface OutcomeFigures {
@@ -540,6 +541,8 @@ export interface RevenueOverview {
   maturity?: ScopeMaturity | null;
   /** The scope's EXPECTED return, never empty (features-service), read where the measured one is Learning. */
   expectedReturn?: ExpectedReturn | null;
+  /** Real revenue generated (headline) and expected revenue, to date and per day (offer read only). */
+  revenueGenerated?: RevenueGenerated | null;
 }
 
 /** The figures of ONE scope on ONE basis for one leg — observed accounting. */
