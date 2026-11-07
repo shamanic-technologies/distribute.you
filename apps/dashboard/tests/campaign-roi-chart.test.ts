@@ -35,7 +35,7 @@ describe("Today: one row of cards per campaign Target (LEAD-GENERIC-1106)", () =
   });
 
   it("names no sales-funnel outcome in JSX: the Target rows wear the served label (owner 2026-11-06)", () => {
-    expect(today).toContain("<TodayTargets orgId={orgId} brandId={brandId} offerId={selectedOfferId} />");
+    expect(today).toContain("<TodayTargets orgId={orgId} brandId={brandId} />");
     for (const word of ["Hot leads", "Lost leads", "Customers won", "Positive replies", "Website visits", ">Meetings<"]) {
       expect(today).not.toContain(word);
       expect(targets).not.toContain(word);
@@ -51,7 +51,9 @@ describe("Today: one row of cards per campaign Target (LEAD-GENERIC-1106)", () =
   });
 
   it("reads ONE entry per Target, merged by features-service (owner 2026-11-07: « Les rows target doivent être uniques »)", () => {
-    expect(targets).toContain("targetsOfOffer(q.data.offerTargets, offerId)");
+    // Every offer of the brand (AUDIENCE-PER-OFFER-1107), each row named when several.
+    expect(targets).toContain("targetsOfOffer(q.data.offerTargets, null)");
+    expect(targets).toContain("offerName={offerName(r.offerId)}");
     expect(targets).not.toContain("targetsOfOffer(q.data.targets");
   });
 

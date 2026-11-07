@@ -72,7 +72,7 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
   const params = useSearchParams();
   const router = useRouter();
   const { staffMode } = useStaffMode();
-  const { settled, campaignById } = useCampaigns(orgId, brandId, { allOffers: true });
+  const { settled, campaignById } = useCampaigns(orgId, brandId);
   const campaign = campaignById.get(campaignId) ?? null;
   // The live row of the identity: a link naming an ancestor row still lands on today's campaign.
   const id = campaign?.row.campaign.id ?? campaignId;

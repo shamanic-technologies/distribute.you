@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { Fact, OngoingDot, TableSkeleton, useRelated } from "@/components/v2/staff-catalogue-pages";
 import { useFunnelCampaigns, useStaffCatalogueObject } from "@/components/v2/staff-catalogue-data";
@@ -79,19 +78,18 @@ function FunnelCampaignTable({ rows, orgId, brandId }: { rows: SalesFunnelCampai
 }
 
 /**
- * Staff Campaigns > Overview (owner 2026-10-10): the selected offer's SALES FUNNEL campaigns
+ * Staff Campaigns > Overview (owner 2026-10-10): the brand's SALES FUNNEL campaigns, every offer
  * (campaign-service), the ongoing ones first; then the campaigns still running one pipe each,
  * from before funnels, which open their GA campaign page.
  */
 export function StaffCampaignsOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const { offerId } = useSelectedOffer();
-  const q = useFunnelCampaigns(brandId, offerId);
+  const q = useFunnelCampaigns(brandId);
   const answered = q.data !== undefined || q.isFetchedAfterMount;
   const all = q.data ?? [];
   const ongoing = all.filter(isOngoingFunnelCampaign);
   const stopped = all.filter((c) => !isOngoingFunnelCampaign(c));
-  const { campaigns: perPipe, settled: perPipeSettled } = useOngoingCampaigns(orgId, brandId, offerId);
+  const { campaigns: perPipe, settled: perPipeSettled } = useOngoingCampaigns(orgId, brandId);
   const funnelUnitIds = useMemo(() => new Set(all.flatMap((c) => c.units.map((u) => u.campaignId))), [all]);
   const legacy = perPipe.filter((c) => !funnelUnitIds.has(c.m.row.campaign.id));
 
@@ -104,7 +102,7 @@ export function StaffCampaignsOverviewPage() {
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
               {answered && q.data ? `${ongoing.length} of ${all.length} funnel campaigns ongoing` : "Campaigns"}
             </h1>
-            <p className="k-fg2 mt-1 text-[14px]">A campaign runs one sales funnel for this offer. Its units are its pipes.</p>
+            <p className="k-fg2 mt-1 text-[14px]">A campaign runs one sales funnel for one offer. Its units are its pipes.</p>
           </div>
           {answered && q.data && (
             <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">

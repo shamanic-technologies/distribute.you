@@ -213,9 +213,12 @@ export async function fundOfferOnPlan(brandId: string, offerId: string): Promise
 export function OfferPlanBanner({
   brandId,
   offerId,
+  offerName = null,
 }: {
   brandId: string;
   offerId: string | null;
+  /** Named when the brand holds several offers, so each banner says which one. */
+  offerName?: string | null;
 }) {
   const queryClient = useQueryClient();
   const needsPlan = useOfferNeedsPlan(brandId, offerId);
@@ -235,7 +238,7 @@ export function OfferPlanBanner({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-[13px]">
-            <span className="font-medium">This offer has no plan yet.</span>{" "}
+            <span className="font-medium">{offerName ? `${offerName} has no plan yet.` : "This offer has no plan yet."}</span>{" "}
             <span className="k-fg2">Choose one to start sending.</span>
           </p>
           <button type="button" className="k-btn-accent" onClick={() => setOpen(true)}>

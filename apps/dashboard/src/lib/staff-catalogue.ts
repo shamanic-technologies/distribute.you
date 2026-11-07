@@ -6,7 +6,7 @@
  * under the GA nav: an overview, the ONGOING ones, a page per object.
  *
  * Every figure (cost, ROI, status, value) is the producer's, fleet-wide. What this module
- * decides is only which objects are ONGOING for the selected offer: used by at least one of
+ * decides is only which objects are ONGOING for the brand: used by at least one of
  * its ON campaigns. That is an identity join on keys both sides serve (a campaign IS a pipe
  * today, `<channel slug>|<leg key>`; a funnel id IS the offer read's `combinationKey`, and
  * the funnel serves its own `salesPathId`), never a figure.
@@ -333,7 +333,7 @@ export function catalogueFaceSrc(face: string | null | undefined): string | null
   return `/api/v1${face}`;
 }
 
-// ─── Ongoing: what the selected offer's ON campaigns use ─────────────────────────────────
+// ─── Ongoing: what the brand's ON campaigns use ─────────────────────────────────
 
 /** One ON campaign, as the join needs it. */
 export interface OnCampaignKey {

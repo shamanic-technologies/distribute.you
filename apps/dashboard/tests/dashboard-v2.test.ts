@@ -95,7 +95,7 @@ const V2_FILES = [
   "src/components/v2/v2-client-layout.tsx",
   "src/components/v2/today-page.tsx",
   "src/components/v2/archived-offers.tsx",
-  "src/components/v2/selected-offer.tsx",
+  "src/components/v2/brand-scope.tsx",
   "src/components/v2/new-offer-modal.tsx",
   "src/components/v2/campaign-page.tsx",
   "src/components/v2/people-page.tsx",
@@ -185,18 +185,18 @@ describe("v2 wiring", () => {
     }
   });
 
-  it("keeps v1's key prefixes with the selected offer appended, so a brand invalidation still reaches them", () => {
+  it("keeps v1's key prefixes at brand grain, so a brand invalidation still reaches them", () => {
     const data = read("src/components/v2/data.ts");
-    expect(data).toContain('["brandRevenue", brandId, "offer", offerId]');
-    expect(data).toContain('["reachedCounts", brandId, campaignId ? "" : (offerId ?? ""), campaignId ?? "", list.join(",")]');
-    expect(data).toContain("key: brandLeadScopeKey(brandId, offerId)");
+    expect(data).toContain('["brandRevenue", brandId, "brand"]');
+    expect(data).toContain('["reachedCounts", brandId, "", campaignId ?? "", list.join(",")]');
+    expect(data).toContain("key: brandLeadScopeKey(brandId)");
     expect(read("src/components/v2/use-campaigns.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
   });
 
   it("the Deals board sizes each column from lead-service's per-rung counts and pages it on the producer", () => {
     const deals = read("src/components/v2/deals-page.tsx");
     expect(deals).toContain("useDealsLifecycleCounts(brandId, campaignFilter, filters)");
-    expect(deals).toContain("listUniboxLeads(brandId, { ...filters, lifecycle: [rung.key] }, { limit, offerId, campaignId })");
+    expect(deals).toContain("listUniboxLeads(brandId, { ...filters, lifecycle: [rung.key] }, { limit, campaignId })");
     // The columns ARE the served ladder (owner 2026-10-21), never the old standings.
     expect(deals).toContain("dealsBoardRungs(ladder)");
     expect(deals).not.toContain("STANDINGS_BY_COLUMN");
@@ -321,7 +321,7 @@ describe("Keel parity, second pass", () => {
 
   it("Deals column and card values are features-service's deals-value per rung, read, never summed", () => {
     const deals = read(V2 + "deals-page.tsx");
-    expect(deals).toContain("getOfferDealsLifecycle(offerId!, brandId, campaignFilter)");
+    expect(deals).toContain("getOfferDealsLifecycle(valueOfferId!, brandId, campaignFilter)");
     expect(deals).toContain("served?.byRow.get(uniboxRowId(row))");
     expect(deals).toContain("dealsValue.data?.expectedPipelineUsd");
     expect(deals).not.toContain("valueByDomain");

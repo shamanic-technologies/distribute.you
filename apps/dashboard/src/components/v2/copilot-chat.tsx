@@ -6,7 +6,7 @@ import { CONVERSATION_STEP } from "@/lib/outbound-leg-key";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
@@ -46,7 +46,6 @@ import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { useBrandInfo, useBrandRevenue, useBrandRevenueWindow, useNeedsYourCall } from "@/components/v2/data";
 import { Figure, Shimmer } from "@/components/v2/ui";
 import { AddCreditsButton, ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
-import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { expectedReasonWords } from "@/lib/expected-return";
 import { expectedBasisWord } from "@/lib/realized-return";
@@ -246,7 +245,8 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   const [historyChoices, setHistoryChoices] = useState<Map<string, CopilotChoices>>(new Map());
   const [historyPages, setHistoryPages] = useState<Map<string, CopilotOpenPage[]>>(new Map());
   const [historyCredits, setHistoryCredits] = useState<Map<string, CopilotCreditsRequired>>(new Map());
-  const offerId = useSelectedOfferIfAny()?.offerId ?? null;
+  // The brand is the scope (owner 2026-11-07): an offer is named only by an offer-addressed page's URL.
+  const offerId = useParams<{ offerId?: string }>().offerId ?? null;
   // Loading the stored conversation, then either showing it or opening a new one.
   const [phase, setPhase] = useState<"loading" | "ready">("loading");
   const [openerWanted, setOpenerWanted] = useState(false);

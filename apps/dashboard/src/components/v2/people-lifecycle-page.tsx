@@ -27,7 +27,6 @@ import { v2Href } from "@/lib/v2/routes";
 import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { useDealsLifecycleCounts, useLeadScope } from "@/components/v2/data";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
 import { UniboxFilterBar } from "@/components/v2/unibox-lead-card";
 import { EmptyNote, Initials, Shimmer, TopBar } from "@/components/v2/ui";
@@ -44,7 +43,6 @@ export function PeopleLifecyclePage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const params = useSearchParams();
   const router = useRouter();
-  const { offerId } = useSelectedOffer();
   // Links written before the ladder (Today's tiles, the bell) name a bucket tab: open its rung.
   const legacy = peopleLegacyTab(params.get("tab"));
   const [filters, setFilters] = useState<UniboxFilters>(legacy?.filters ?? {});
@@ -71,10 +69,10 @@ export function PeopleLifecyclePage() {
   useEffect(() => setCursor(-1), [tab?.key, search, fKey, sort, page]);
 
   const pageQ = useAuthQuery(
-    ["dealsLifecycleRows", brandId, offerId ?? "", "people", fKey, tab?.key ?? "", search, sort ?? "", cursors[page] ?? ""],
+    ["dealsLifecycleRows", brandId, "", "people", fKey, tab?.key ?? "", search, sort ?? "", cursors[page] ?? ""],
     // A cursor answers only the sort it was issued for: the reset above drops it on a sort change.
-    () => listUniboxLeads(brandId, { ...filters, lifecycle: [tab!.key] }, { limit: LEADS_PAGE_SIZE, offerId, q: search || undefined, cursor: cursors[page], sort }),
-    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!offerId && !!tab },
+    () => listUniboxLeads(brandId, { ...filters, lifecycle: [tab!.key] }, { limit: LEADS_PAGE_SIZE, q: search || undefined, cursor: cursors[page], sort }),
+    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!tab },
   );
   const rows = pageQ.data?.rows ?? null;
   const total = pageQ.data?.total ?? null;

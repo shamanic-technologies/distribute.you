@@ -29,7 +29,7 @@ export function useRunsToday(brandId: string) {
   );
 }
 
-/** Runs finished today by the campaigns in `campaignById` (the selected offer's). */
+/** Runs finished today by the campaigns in `campaignById` (every offer of the brand). */
 export function useCampaignRunsToday(
   brandId: string,
   campaignById: Map<string, V2Campaign>,

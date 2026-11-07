@@ -115,8 +115,8 @@ describe("wire shape", () => {
 
 describe("the block is drawn at the three grains", () => {
   const src = (f: string) => fs.readFileSync(path.join(__dirname, "../src/components/v2", f), "utf-8");
-  it("Today draws the offer's block", () => {
-    expect(src("today-page.tsx")).toContain("<OfferSpendChartsSection brandId={brandId} offerId={selectedOfferId} billed={{ pending: win.pending, spend: winSpend }} />");
+  it("Today draws the brand's one offer's block (no brand-grain chart yet)", () => {
+    expect(src("today-page.tsx")).toContain("<OfferSpendChartsSection brandId={brandId} offerId={scope.soleOfferId} billed={{ pending: win.pending, spend: winSpend }} />");
   });
   it("the campaign page draws the campaign's block (the per-pipe blocks are gone: FACTORY-USER-DASHBOARD-1102)", () => {
     const s = src("funnel-campaigns.tsx");

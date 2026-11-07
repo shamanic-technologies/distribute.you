@@ -1,7 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { lastBrandCookieName, matchBrandPath } from "@/lib/last-brand";
-import { v2PathForV1, stripV2Prefix } from "@/lib/ui-version";
+import { v2PathForV1, v2PathForRetired, stripV2Prefix } from "@/lib/ui-version";
 import { clerkOrgRedirectPath } from "@/lib/internal-org-url";
 import { getInternalOrg } from "@/lib/client-service";
 
@@ -158,6 +158,10 @@ export default clerkMiddleware(
       });
       if (v2Path) return NextResponse.redirect(new URL(v2Path, req.url));
     }
+
+    // A retired v2 page (the brand Audiences page) lands on the page that replaced it.
+    const retired = v2PathForRetired(pathname, req.nextUrl.search);
+    if (retired) return NextResponse.redirect(new URL(retired, req.url));
 
     const res = NextResponse.next();
 

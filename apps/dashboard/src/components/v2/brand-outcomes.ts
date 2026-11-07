@@ -18,13 +18,13 @@ export interface BrandOutcome extends OngoingOutcome {
 
 /**
  * EVERY outcome of the brand (owner 2026-10-11: « tous mes outcomes … même s'ils ne
- * viennent pas de campaigns distribute »): the steps the selected offer's ON campaigns
+ * viennent pas de campaigns distribute »): the steps the brand's ON campaigns (every offer)
  * land on, plus every step crm-service states people for that no campaign produces,
  * most advanced first (Paid clients down to Leads, owner 2026-10-12). One read
  * for the sidebar and the Overview.
  */
-export function useBrandOutcomeList(orgId: string, brandId: string, offerId: string | null) {
-  const ongoing = useOngoingCampaigns(orgId, brandId, offerId);
+export function useBrandOutcomeList(orgId: string, brandId: string) {
+  const ongoing = useOngoingCampaigns(orgId, brandId);
   const allQ = useBrandOutcomes(brandId);
   const catalogue = useLegCatalogue();
   const outcomes = useMemo<BrandOutcome[]>(() => {

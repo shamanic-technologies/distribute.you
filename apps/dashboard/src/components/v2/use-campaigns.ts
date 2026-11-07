@@ -19,7 +19,6 @@ import {
 import { servedPipe, type ServedPipe } from "@/lib/v2/served-pipe";
 import { v2CampaignHref } from "@/lib/v2/routes";
 import { paymentHoldKind, type PaymentHoldKind } from "@/lib/payment-declined";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 
 export interface V2Campaign {
   row: CampaignRow;
@@ -48,17 +47,12 @@ export interface V2Campaign {
  * costs a request v1 does not already make. The only thing added is naming: the pipe
  * is the campaign's own leg on its own channel, read off the producer's leg catalogue.
  *
- * Narrowed to the SELECTED offer (owner 2026-10-03: the dashboard reads one offer), so
- * every run and budget filed through these campaigns is that offer's. `allOffers` is for
- * the pages addressed by a campaign or run id, which must resolve whatever offer it sells
- * (the provider then selects that offer), and for an offer's own page.
+ * Every offer of the brand (owner 2026-11-07, AUDIENCE-PER-OFFER-1107: the brand is the
+ * scope, Offers is a list): each row keeps its own offer (`offerId`, `offerName`). A page
+ * addressed by an offer id narrows to it itself.
  */
-export function useCampaigns(orgId: string, brandId: string, { allOffers = false }: { allOffers?: boolean } = {}) {
+export function useCampaigns(orgId: string, brandId: string) {
   const featureSlug = useSoleFeatureSlug();
-  const selected = useSelectedOffer();
-  const scopeOfferId = allOffers ? null : selected.offerId;
-  // Nothing to file until an offer is picked: never the whole brand under one offer.
-  const scopeReady = allOffers || selected.offerId !== null;
   const { rows, settled } = useCampaignRows(brandId, featureSlug, ALL_OFFERS);
   const channels = useAcquisitionChannels();
   const legCatalogue = useLegCatalogue();
@@ -81,7 +75,6 @@ export function useCampaigns(orgId: string, brandId: string, { allOffers = false
       rows.flatMap((row) => {
         const c = row.campaign;
         if (!c.offerId || !c.featureSlug) return [];
-        if (!scopeReady || (scopeOfferId && c.offerId !== scopeOfferId)) return [];
         const def = acquisitionChannelForFeatureSlug(c.featureSlug, channels);
         const leg = legFor(legCatalogue, c.legKey);
         const served = campaignNameFor(legCatalogue, c.featureSlug, c.legKey);
@@ -100,7 +93,7 @@ export function useCampaigns(orgId: string, brandId: string, { allOffers = false
           },
         ];
       }),
-    [rows, channels, legCatalogue, offerNames, orgId, brandId, scopeReady, scopeOfferId],
+    [rows, channels, legCatalogue, offerNames, orgId, brandId],
   );
   // The campaigns a surface LISTS (owner 2026-10-10): a part of a sales-funnel campaign is never
   // listed as a campaign of its own; its campaign is listed once, by name and face.
@@ -129,5 +122,5 @@ export function useCampaigns(orgId: string, brandId: string, { allOffers = false
     return out;
   }, [allCampaigns, allQ.data]);
 
-  return { campaigns, allCampaigns, settled: settled && (allOffers || selected.settled), campaignById };
+  return { campaigns, allCampaigns, settled, campaignById };
 }

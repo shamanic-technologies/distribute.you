@@ -19,7 +19,7 @@ import { outcomeOf, reachedStepOf, type Outcome } from "@/lib/v2/outcomes";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { useReachedCounts } from "@/components/v2/data";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { useBrandScope } from "@/components/v2/brand-scope";
 import type { OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { v2CampaignHref } from "@/lib/v2/routes";
@@ -130,8 +130,9 @@ function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, numb
  */
 export function OutcomesOverviewPage() {
   const { orgId, brandId } = useIds();
-  const { offerId } = useSelectedOffer();
-  const { outcomes, settled, allError } = useBrandOutcomeList(orgId, brandId, offerId);
+  // $ per outcome is served per offer only: read while the brand sells ONE offer (it IS the brand's then).
+  const offerId = useBrandScope().soleOfferId;
+  const { outcomes, settled, allError } = useBrandOutcomeList(orgId, brandId);
   const counts = useReachedCounts(brandId, outcomes.flatMap((o) => reachedStepOf(o.outcome) ?? [])).data ?? null;
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held ?? null;
@@ -379,8 +380,8 @@ function EveryoneTable({ crmStep }: { crmStep: string }) {
 
 export function OutcomePage() {
   const { orgId, brandId, stepKey } = useIds();
-  const { offerId } = useSelectedOffer();
-  const { outcomes, settled } = useBrandOutcomeList(orgId, brandId, offerId);
+  const offerId = useBrandScope().soleOfferId;
+  const { outcomes, settled } = useBrandOutcomeList(orgId, brandId);
   const catalogue = useLegCatalogue();
   const shownStep = (outcomes.find((o) => o.outcome.key === stepKey)?.outcome ?? (stepKey ? outcomeOf(catalogue, null, stepKey) : null))?.key ?? null;
   const counts = useReachedCounts(brandId, shownStep ? [shownStep] : []).data ?? null;

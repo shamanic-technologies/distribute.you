@@ -266,7 +266,7 @@ describe("staff Campaigns section (owner 2026-10-10): sales funnel campaigns wit
   it("the sidebar section reads only names + faces, never the whole ongoing catalogue (~200 reads per page in staff mode, 2026-11-07)", () => {
     const shell = read("src/components/v2/v2-shell.tsx");
     const sections = shell.slice(shell.indexOf("function StaffObjectSections("));
-    expect(sections).toContain("useOngoingFunnelFaces(brandId, offerId)");
+    expect(sections).toContain("useOngoingFunnelFaces(brandId)");
     expect(shell).not.toContain("useOngoingCatalogue(");
     const data = read("src/components/v2/staff-catalogue-data.ts");
     const hook = data.slice(data.indexOf("export function useOngoingFunnelFaces("), data.indexOf("export interface OngoingFunnelCampaign") > data.indexOf("export function useOngoingFunnelFaces(") ? data.indexOf("export interface OngoingFunnelCampaign") : data.indexOf("export interface OngoingWorkflow"));

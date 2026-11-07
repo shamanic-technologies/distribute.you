@@ -778,7 +778,7 @@ function RunsCard({
     },
     { ...pollOptions, enabled: read.length > 0 },
   );
-  const { campaignById } = useCampaigns(orgId, brandId, { allOffers: true });
+  const { campaignById } = useCampaigns(orgId, brandId);
   const runs = q.data ?? [];
   const shown = expanded ? runs : runs.slice(0, RUNS_SHOWN);
   const pending = read.length > 0 && q.data === undefined && !q.isFetchedAfterMount;

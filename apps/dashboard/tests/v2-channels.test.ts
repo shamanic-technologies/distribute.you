@@ -98,7 +98,7 @@ describe("sidebar", () => {
   it("staff mode adds one section per business object below the GA nav, nothing else (owner 2026-10-10)", () => {
     const sidebar = shell.slice(at("function V2Sidebar() {"));
     const gaNav = sidebar.slice(0, sidebar.indexOf("{staffMode && <StaffObjectSections"));
-    expect(sidebar).toContain("{staffMode && <StaffObjectSections orgId={orgId} brandId={brandId} offerId={offerId} pathname={pathname} />}");
+    expect(sidebar).toContain("{staffMode && <StaffObjectSections orgId={orgId} brandId={brandId} pathname={pathname} />}");
     // The old Staff block is gone: its pages are reached from the object overviews.
     expect(shell).not.toContain('<Group title="Staff">');
     for (const l of ["Workflows", "Sales path", "Channels", "Sourcing", "Posts"]) expect(gaNav).not.toContain(`label="${l}"`);

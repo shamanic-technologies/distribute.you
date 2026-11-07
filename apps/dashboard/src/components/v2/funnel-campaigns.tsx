@@ -614,7 +614,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   const { orgId } = useParams<{ orgId: string }>();
   const params = useSearchParams();
   const catalogue = useLegCatalogue();
-  const { campaignById } = useCampaigns(orgId, campaign.brandId, { allOffers: true });
+  const { campaignById } = useCampaigns(orgId, campaign.brandId);
   const rowsQ = useAuthQuery(["funnelCampaignRows", campaign.brandId, campaign.offerId], () => listFunnelCampaignRows(campaign.brandId, campaign.offerId), pollOptions);
   const row = rowsQ.data?.find((r) => r.id === campaign.id) ?? null;
   // A campaign newer than the cached rows waits for the fresh read, never "—" (funnelRowSettled).

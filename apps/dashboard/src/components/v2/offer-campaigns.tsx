@@ -72,7 +72,7 @@ export function OfferCampaigns({
   const prefetch = useRoutePrefetch();
   const { basis } = useStatBasis();
   const catalogue = useLegCatalogue();
-  const { campaigns: records } = useCampaigns(orgId, brandId, { allOffers: true });
+  const { campaigns: records } = useCampaigns(orgId, brandId);
   const campaignByKey = useMemo(() => {
     const m = new Map<string, V2Campaign>();
     for (const x of records) {

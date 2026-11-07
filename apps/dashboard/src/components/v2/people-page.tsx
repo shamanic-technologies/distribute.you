@@ -15,7 +15,6 @@ import { v2Href } from "@/lib/v2/routes";
 import { ExportButton, RecordsFooter, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { useLeadScope, useReachedCounts } from "@/components/v2/data";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
 
@@ -30,7 +29,6 @@ export function PeoplePage({ step, campaignId }: { step: string; campaignId?: st
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const params = useSearchParams();
   const router = useRouter();
-  const { offerId } = useSelectedOffer();
   const [draft, setDraft] = useState(params.get("q") ?? "");
   const [search, setSearch] = useState(params.get("q") ?? "");
   // lead-service pages by cursor: the cursors of the pages already passed, to step back.
@@ -46,14 +44,14 @@ export function PeoplePage({ step, campaignId }: { step: string; campaignId?: st
   useEffect(() => setCursor(-1), [step, search, page]);
 
   // `campaignId` set = one campaign's page: lead-service resolves it to the whole campaign.
-  const scope = campaignId ? { campaignId } : { offerId };
+  const scope = campaignId ? { campaignId } : {};
   const reached = useReachedCounts(brandId, [step], campaignId ?? null).data;
   const brandLead = useLeadScope(brandId);
   const lead = campaignId ? { scope: { campaignId } } : brandLead;
   const pageQ = useAuthQuery(
-    ["reachedRows", brandId, campaignId ? "" : (offerId ?? ""), campaignId ?? "", step, search, cursors[page] ?? ""],
+    ["reachedRows", brandId, "", campaignId ?? "", step, search, cursors[page] ?? ""],
     () => listUniboxLeads(brandId, {}, { ...scope, reachedStep: step, limit: LEADS_PAGE_SIZE, q: search || undefined, cursor: cursors[page] }),
-    { refetchInterval: pollIntervalFor, enabled: !!brandId && (!!campaignId || !!offerId) },
+    { refetchInterval: pollIntervalFor, enabled: !!brandId },
   );
   const rows = pageQ.data?.rows ?? null;
   const total = pageQ.data?.total ?? null;

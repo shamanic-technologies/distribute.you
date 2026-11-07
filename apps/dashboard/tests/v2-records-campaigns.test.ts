@@ -33,10 +33,10 @@ describe("v2 Records read campaigns, never crews", () => {
     expect(v2("people-page.tsx")).toContain("<th className={REC_TH}>Campaign</th>");
   });
 
-  it("Deals filters by the offer's campaigns, on the producers (never over loaded cards)", () => {
+  it("Deals filters by the brand's campaigns, on the producers (never over loaded cards)", () => {
     const src = v2("deals-page.tsx");
     expect(src).toContain("useDealsLifecycleCounts(brandId, campaignFilter, filters)");
-    expect(src).toContain("getOfferDealsLifecycle(offerId!, brandId, campaignFilter)");
+    expect(src).toContain("getOfferDealsLifecycle(valueOfferId!, brandId, campaignFilter)");
     expect(src).toContain("campaignId={campaignFilter}");
   });
 
@@ -48,7 +48,7 @@ describe("v2 Records read campaigns, never crews", () => {
 
   it("a company's timeline is its people's lead-service conversations, keyed like the person page", () => {
     const src = v2("company-page.tsx");
-    expect(src).toContain('queryKey: ["leadTimeline", l.id, brandId, offerId]');
+    expect(src).toContain('queryKey: ["leadTimeline", l.id, brandId, null]');
     expect(src).toContain("liveItems(t)");
     expect(src).not.toContain("firstDeliveredAt");
   });

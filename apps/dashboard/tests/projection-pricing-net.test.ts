@@ -120,6 +120,10 @@ describe("Today's Target rows ask for net pricing (LEAD-GENERIC-1106)", () => {
   it("getBrandCampaignTargets requests net pricing", () => {
     expect(readerBody("getBrandCampaignTargets")).toContain("/campaign-targets?pricing=net");
   });
+
+  it("getBrandRevenueWindow (Today's stat row at brand grain) requests net pricing", () => {
+    expect(readerBody("getBrandRevenueWindow")).toContain('new URLSearchParams({ pricing: "net", windowDays: String(days) })');
+  });
 });
 
 describe("every v2 offer-grain money reader asks for net pricing", () => {

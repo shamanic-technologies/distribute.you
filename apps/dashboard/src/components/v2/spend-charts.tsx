@@ -80,7 +80,7 @@ export interface BilledSpend {
   spend: { actualSpentCents: number; totalSpentCents: number } | null;
 }
 
-/** Today: the selected offer's block. Renders nothing while the offer runs no campaign. */
+/** Today: one offer's block (the brand's one offer). Renders nothing with no offer named (none, or several: no brand-grain chart yet). */
 export function OfferSpendChartsSection({ brandId, offerId, billed }: { brandId: string; offerId: string | null; billed?: BilledSpend }) {
   const q = useAuthQuery(["spendCharts", "offer", brandId, offerId ?? ""], () => getOfferSpendCharts(offerId!, brandId), {
     ...pollOptions,

@@ -22,8 +22,8 @@ describe("the offer's Engine picks (features-service, via api-service)", () => {
     expect(pickStateWords("running")).toBeNull();
   });
 
-  it("Today draws the section for the selected offer, reading the served sentence, never composing one", () => {
-    expect(read("components/v2/today-page.tsx")).toContain("<EnginePicksSection orgId={orgId} brandId={brandId} offerId={selectedOfferId} />");
+  it("Today draws the section for every offer of the brand, reading the served sentence, never composing one", () => {
+    expect(read("components/v2/today-page.tsx")).toContain("<EnginePicksSection orgId={orgId} brandId={brandId} offerIds={scope.campaignOfferIds} />");
     const s = read("components/v2/engine-picks-section.tsx");
     expect(s).toContain('["offerEnginePicks", brandId, offerId]');
     expect(s).toContain("{p.campaignName}: {p.why}");

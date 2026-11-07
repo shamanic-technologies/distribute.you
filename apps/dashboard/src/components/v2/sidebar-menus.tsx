@@ -17,13 +17,10 @@ import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
-import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
-import { OfferMark } from "@/components/marks/offer-mark";
-import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { useLeadScope, useBrandRevenue, useReachedCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
-import { v2Base, v2Href, v2NewBrandHref, v2OfferHref, type V2Section } from "@/lib/v2/routes";
+import { v2Base, v2Href, v2NewBrandHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { moveOrgCursor, showOrgSearch, switcherOrgs } from "@/lib/v2/org-switcher-list";
 
@@ -104,11 +101,7 @@ export function TenantSwitcherV2() {
   // "New organization" names + creates the org over this page, then lands on its brand
   // walk; "New brand" opens that same walk on this org (`v2NewBrandHref`).
   const [newOrg, setNewOrg] = useState(false);
-  const [newOffer, setNewOffer] = useState(false);
   const name = t.displayBrand?.name || t.displayBrand?.domain || t.displayOrgName || "Brand";
-  // The ONE offer every brand page reads (owner 2026-10-03). Null on org pages.
-  const selected = useSelectedOfferIfAny();
-  const offerName = selected?.offer?.name ?? null;
   // Every org on the platform for any staff reader, staff mode on or off (owner
   // 2026-10-05: staff in the GA view still switch to any org). Customers see their
   // memberships.
@@ -150,9 +143,6 @@ export function TenantSwitcherV2() {
   return (
     <div ref={ref} className="relative">
       {newOrg && <NewOrganizationModal onClose={() => setNewOrg(false)} existingOrgNames={t.memberships.map((m) => m.organization.name)} />}
-      {newOffer && selected && t.orgId && (
-        <V2NewOfferModal brandId={selected.brandId} orgId={t.orgId} onClose={() => setNewOffer(false)} />
-      )}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -169,9 +159,6 @@ export function TenantSwitcherV2() {
         />
         <span className="min-w-0 leading-4">
           <span className="block truncate text-[13px] font-semibold">{t.switchingOrgName ?? name}</span>
-          {selected && !t.switchingOrgName && (
-            <span className="k-fg3 block truncate text-[12px]">{offerName ?? (selected.settled ? "No offer yet" : " ")}</span>
-          )}
         </span>
         <Updown />
       </button>
@@ -213,52 +200,6 @@ export function TenantSwitcherV2() {
             <Plus />
             New brand
           </button>
-          {selected && (
-            <>
-              <div className="my-1 h-px bg-[var(--line-subtle)]" />
-              <MenuLabel>Offers</MenuLabel>
-              <div className="k-scroll max-h-48 overflow-y-auto">
-                {!selected.settled ? (
-                  <p className="k-fg3 px-2 py-1.5 text-[12px]">Loading…</p>
-                ) : (
-                  selected.offers.map((o) => (
-                    <button
-                      key={o.offerId}
-                      type="button"
-                      role="menuitem"
-                      aria-current={o.offerId === selected.offerId ? "true" : undefined}
-                      className={`${itemCls} ${o.offerId === selected.offerId ? currentCls : ""}`}
-                      onClick={() => {
-                        setOpen(false);
-                        selected.select(o.offerId);
-                        // On an offer's own page, follow the switch to the new offer's page.
-                        if (t.orgId && /\/offers\/[^/]+/.test(window.location.pathname)) {
-                          router.push(v2OfferHref(t.orgId, selected.brandId, o.offerId));
-                        }
-                      }}
-                    >
-                      <OfferMark size="sm" imageUrl={o.imageUrl} />
-                      <span className="truncate">{o.name || "Offer"}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-              <div className="my-1 h-px bg-[var(--line-subtle)]" />
-              <button
-                type="button"
-                role="menuitem"
-                className={itemCls}
-                disabled={!t.orgId}
-                onClick={() => {
-                  setOpen(false);
-                  setNewOffer(true);
-                }}
-              >
-                <Plus />
-                New offer
-              </button>
-            </>
-          )}
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           <MenuLabel>Organizations</MenuLabel>
           {t.switchError && <p className="px-2 py-1 text-[12px] text-[var(--data-rose)]">{t.switchError}</p>}

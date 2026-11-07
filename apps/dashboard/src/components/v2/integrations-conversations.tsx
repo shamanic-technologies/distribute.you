@@ -35,7 +35,6 @@ import { THREAD_SCROLL_STEP, uniboxKeyAction, type UniboxPane } from "@/lib/unib
 import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
 import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, type ConversationItem, type ConversationTimeline } from "@/lib/conversation-timeline";
 import { DisqualifiedTag } from "@/components/v2/conversation-timeline";
-import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
 import { WrittenWithTags, useLeadWrittenBy } from "@/components/v2/written-with-tags";
 import { writtenMessageId, type WrittenBy } from "@/lib/written-by";
@@ -170,16 +169,15 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   // any other row's as the pointer reaches it. Same key and read as the Thread itself.
   // The lead-service facts load WITH the thread, keyed on the lead row the thread names (same
   // key and read as the Thread), never after the click.
-  const selected = useSelectedOfferIfAny();
-  const offerId = selected?.offerId ?? null;
-  const offerSettled = selected ? selected.settled : true;
+  // At the brand, every offer (owner 2026-11-07, AUDIENCE-PER-OFFER-1107): no offer narrows the facts.
+  const offerId = null;
   const preload = (r: UniboxRow) => {
     const ref = uniboxThreadRef(r);
     if (ref) {
       void queryClient.prefetchInfiniteQuery({ ...timelineQuery(brandId, ref), staleTime: TIMELINE_POLL }).then(() => {
         const thread = queryClient.getQueryData<InfiniteData<PersonTimeline>>(timelineKey(brandId, ref));
         const leadRowId = thread ? personLeadRowId(thread.pages[0].person) : null;
-        if (!leadRowId || !offerSettled) return;
+        if (!leadRowId) return;
         void queryClient.prefetchQuery({
           queryKey: factsKey(leadRowId, brandId, offerId),
           queryFn: () => getLeadTimeline(leadRowId, { brandId, offerId }),
@@ -199,7 +197,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     if (!gate || !topKeys) return;
     for (const r of top) preload(r);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, brandId, topKeys, offerId, offerSettled]);
+  }, [gate, brandId, topKeys, offerId]);
   // J/K moves the cursor: the row it lands on loads too.
   const cursorRow = cursor >= 0 ? (rows?.[cursor] ?? null) : null;
   useEffect(() => {
@@ -522,11 +520,10 @@ function Thread({
     refetchInterval: (query) =>
       query.state.data?.pages.some((p) => p.sources.some((s) => s.refreshing)) ? TIMELINE_REFRESHING_POLL : TIMELINE_POLL,
   });
-  // The conversation at the selected offer: lead-service's labelled facts and its tags, keyed
+  // The conversation at the brand: lead-service's labelled facts and its tags, keyed
   // on crm-service's lead row for this person (none = not one of our leads).
-  const selected = useSelectedOfferIfAny();
-  const offerId = selected?.offerId ?? null;
-  const offerSettled = selected ? selected.settled : true;
+  // At the brand, every offer (owner 2026-11-07, AUDIENCE-PER-OFFER-1107): no offer narrows the facts.
+  const offerId = null;
   // Only THIS person's data: the app-wide placeholder would hand a re-keyed query the last person's.
   const pages = ownQueryData(q)?.pages;
   // The latest page names the person and the sources; the older pages go above it.
@@ -536,7 +533,7 @@ function Thread({
   const factsQ = useAuthQuery(
     factsKey(leadRowId, brandId, offerId),
     () => getLeadTimeline(leadRowId!, { brandId, offerId }),
-    { enabled: Boolean(leadRowId) && offerSettled, refetchInterval: TIMELINE_POLL },
+    { enabled: Boolean(leadRowId), refetchInterval: TIMELINE_POLL },
   );
   // No lead row (a CRM-only person) means no lead-service facts, never the previous person's.
   const facts = leadRowId ? ownQueryData(factsQ) : undefined;

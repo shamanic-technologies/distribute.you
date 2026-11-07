@@ -19,7 +19,6 @@ import { SendingScheduleCard } from "@/components/v2/sending-schedule-card";
 import { LeadChecks } from "@/components/v2/lead-checks";
 import { ConversationTimelineCard } from "@/components/v2/conversation-timeline";
 import { useLeadWrittenBy } from "@/components/v2/written-with-tags";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { TagChip } from "@/components/v2/tag-chip";
 import {
@@ -51,8 +50,6 @@ export function PersonPage() {
   const { orgId, brandId, leadRowId } = useParams<{ orgId: string; brandId: string; leadRowId: string }>();
   // A run opens the staff-only Work run page: a customer reads the step, with no link.
   const { staffMode } = useStaffMode();
-  // The Checks read the selected offer's criteria: wait for the offers, never a brand-wide read first.
-  const { offerId, settled: offerSettled } = useSelectedOffer();
   const leadQ = useAuthQuery(["leadDetail", leadRowId, brandId], () => getLeadDetail(leadRowId, brandId), pollOptions);
   const stateLeadId = ownQueryData(leadQ)?.leadId ?? null;
   const stateQ = useAuthQuery(["leadUniboxState", stateLeadId, brandId], () => getLeadUniboxState(stateLeadId!, brandId), {
@@ -67,12 +64,12 @@ export function PersonPage() {
     () => getLeadHistory(leadRowId, { brandId, scope: "brand" }),
     { enabled: Boolean(leadRowId) },
   );
-  // The conversation (this person x the selected offer x the brand): lead-service's stored,
-  // labelled timeline and its tags. Asked once the offer is known, never brand-wide first.
+  // The conversation (this person x the brand, every offer): lead-service's stored, labelled
+  // timeline and its tags.
   const timelineQ = useAuthQuery(
-    ["leadTimeline", leadRowId, brandId, offerId],
-    () => getLeadTimeline(leadRowId, { brandId, offerId }),
-    { ...pollOptions, enabled: Boolean(leadRowId) && offerSettled },
+    ["leadTimeline", leadRowId, brandId, null],
+    () => getLeadTimeline(leadRowId, { brandId }),
+    { ...pollOptions, enabled: Boolean(leadRowId) },
   );
   const [closing, setClosing] = useState(false);
   const setStep = useSetAnyLeadStepStatement();
@@ -185,7 +182,7 @@ export function PersonPage() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   disqualify.mutate(
-                    { leadRowId, brandId, level: formLevel, ...(offerId ? { offerId } : {}), ...disqualificationNoteBody(note) },
+                    { leadRowId, brandId, level: formLevel, ...disqualificationNoteBody(note) },
                     {
                       onSuccess: () => {
                         setDisqualifying(false);
@@ -278,7 +275,7 @@ export function PersonPage() {
                   failed={timelineQ.isFetchedAfterMount && !timeline && timelineQ.isError}
                   writtenBy={writtenBy}
                 />
-                {lead.leadId && offerSettled ? <LeadChecks leadId={lead.leadId} brandId={brandId} offerId={offerId} /> : null}
+                {lead.leadId ? <LeadChecks leadId={lead.leadId} brandId={brandId} offerId={null} /> : null}
                 {history ? (
                   <LeadHistoryTimeline
                     history={history}

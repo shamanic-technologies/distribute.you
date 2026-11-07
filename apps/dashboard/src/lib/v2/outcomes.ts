@@ -1,7 +1,7 @@
 /**
  * OUTCOMES (owner 2026-10-10): a step a RUNNING campaign produces (Leads, Website
  * visits, Positive replies, Meetings booked...). The sidebar lists one entry per step the
- * selected offer's ON campaigns land on; its page lists the items that reached it, each
+ * brand's ON campaigns land on; its page lists the items that reached it, each
  * read from the service that serves them. Nothing is counted or listed here, and no step
  * is named here: its plural is features-service's `pluralLabel` (owner 2026-10-15).
  *

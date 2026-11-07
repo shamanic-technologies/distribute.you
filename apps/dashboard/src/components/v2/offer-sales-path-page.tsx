@@ -53,7 +53,7 @@ export function V2OfferSalesPathPage() {
   // offer has run (owner 2026-10-08: the old Campaigns page folds in here, each row opening
   // its campaign page). The SOURCE campaigns live on the offer's Sourcing page (owner
   // 2026-10-07: keep this page simple).
-  const { campaigns: records } = useCampaigns(orgId, brandId, { allOffers: true });
+  const { campaigns: records } = useCampaigns(orgId, brandId);
   const ran = useMemo(
     () =>
       new Set(
