@@ -49,9 +49,10 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
   });
 
   it("sorts outcomes from the most advanced (paid client) to the least (lead found)", () => {
-    const keys = ["conversation", "meeting_booked", "lead_found", "meeting_attended", "paid_client", "website_visit"];
+    const keys = ["conversation", "meeting_booked", "lead_found", "meeting_attended", "paid_client", "website_visit", "client_satisfied"];
     const sorted = byDepth(keys.map((k) => ({ outcome: outcomeOf(SERVED_STEPS, null, k)! })));
     expect(sorted.map((o) => o.outcome.label)).toEqual([
+      "Clients Satisfied",
       "Paid clients",
       "Meetings attended",
       "Meetings booked",
@@ -86,6 +87,12 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     expect(outcomeOfCrmStep(SERVED_STEPS, "sale")).toMatchObject({ key: "paid_client", label: "Paid clients", items: { kind: "people", step: "paid_client", crmStep: "sale" } });
     expect(outcomeOfCrmStep(SERVED_STEPS, "form_submission")?.key).toBe("form_submitted");
     expect(outcomeOfCrmStep(SERVED_STEPS, "nope")).toBeNull();
+    // CLIENT-SATISFIED-1107: crm-service's people list for a paying client's positive message.
+    expect(outcomeOfCrmStep(SERVED_STEPS, "client_satisfied")).toEqual({
+      key: "client_satisfied",
+      label: "Clients Satisfied",
+      items: { kind: "people", step: "client_satisfied", crmStep: "client_satisfied" },
+    });
     const served = BrandOutcomesSchema.parse({
       brandId: "b",
       scope: { status: "ready", lastBuiltAt: null, lastError: null },

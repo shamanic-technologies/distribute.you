@@ -43,16 +43,20 @@ const CRM_STEP_FOR_STEP: Record<string, string> = {
   form_submitted: "form_submission",
   paid_client: "sale",
   booking_call: "booking_call",
+  // A paying client's positive message, judged by crm-service (CLIENT-SATISFIED-1107).
+  client_satisfied: "client_satisfied",
 };
 
 /** A publishing campaign's outcome is its posts: not a catalogue step, so it is named here. */
 const POSTS_LABEL = "Posts";
 
 /**
- * The steps from the most advanced (a paid client) to the least (a lead found): the
+ * The steps from the most advanced (a satisfied paid client) to the least (a lead found): the
  * Outcomes list reads in this order (owner 2026-10-12). A step not listed goes last.
  */
 const DEPTH: readonly string[] = [
+  // A paying client who wrote the brand something positive: past the sale (CLIENT-SATISFIED-1107).
+  "client_satisfied",
   "paid_client",
   "meeting_attended",
   "meeting_booked",
