@@ -74,6 +74,11 @@ export function v2WorkflowHref(
   return `${v2Base(orgId, brandId)}/workflows/${encodeURIComponent(dynastySlug)}?pipe=${encodeURIComponent(pipe)}${c}`;
 }
 
+/** The Catalogue page every client reads (owner 2026-11-07): outcomes, Engines, scripts, tactics, strategies. */
+export function v2CatalogueHome(orgId: string, brandId: string): string {
+  return `${v2Base(orgId, brandId)}/catalogue`;
+}
+
 /**
  * A staff catalogue object's overview (`/catalogue/<object>`), or one object's page. The id
  * travels as ONE encoded segment (a pipe id carries `|`, a sales path `+`, a funnel `@`).
