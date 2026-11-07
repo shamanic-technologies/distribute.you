@@ -82,18 +82,29 @@ const CampaignTargetRowSchema = z
   .passthrough();
 export type CampaignTargetRow = z.infer<typeof CampaignTargetRowSchema>;
 
+/**
+ * One entry per (offer, Target), every campaign of that offer on that Target merged by features-service
+ * (owner 2026-11-07, TARGET-ROWS-UNIQUE-1107: « Les rows target doivent être uniques »). Today reads these;
+ * the per-campaign `targets` stay for the campaign page. No campaign name: Today names no campaign.
+ */
+const OfferTargetEntrySchema = CampaignTargetRowSchema.omit({ salesFunnelCampaignId: true, name: true, milestones: true, milestonesUnavailableReason: true })
+  .extend({ salesFunnelCampaignIds: z.array(z.string()) })
+  .passthrough();
+export type OfferTargetEntry = z.infer<typeof OfferTargetEntrySchema>;
+
 export const CampaignTargetsSchema = z
   .object({
     brandId: z.string(),
     pricing: z.enum(["gross", "net"]),
     computedAt: z.string(),
     targets: z.array(CampaignTargetRowSchema),
+    offerTargets: z.array(OfferTargetEntrySchema),
   })
   .passthrough();
 export type CampaignTargets = z.infer<typeof CampaignTargetsSchema>;
 
-/** The rows of one offer (the dashboard shows the selected offer only), in the served order. */
-export function targetsOfOffer(rows: readonly CampaignTargetRow[], offerId: string | null): CampaignTargetRow[] {
+/** The entries of one offer (the dashboard shows the selected offer only), in the served order. */
+export function targetsOfOffer<T extends { offerId: string }>(rows: readonly T[], offerId: string | null): T[] {
   return offerId ? rows.filter((r) => r.offerId === offerId) : [...rows];
 }
 
