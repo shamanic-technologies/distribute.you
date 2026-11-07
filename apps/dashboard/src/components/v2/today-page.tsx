@@ -15,8 +15,6 @@ import { useClientClock } from "@/lib/use-client-clock";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import {
-  BarSpark,
-  SparkLine,
   EmptyNote,
   Figure,
   HoverScroll,
@@ -50,6 +48,7 @@ import {
 } from "@/components/v2/data";
 import { TodayTargets } from "@/components/v2/today-targets";
 import { OfferSpendChartsSection } from "@/components/v2/spend-charts";
+import { PipelineGeneratedTile } from "@/components/v2/pipeline-generated";
 import {
   CompanyMark,
   PersonAvatar,
@@ -64,11 +63,6 @@ import { expectedReasonWords } from "@/lib/expected-return";
 import { expectedBasisWord } from "@/lib/realized-return";
 import { RealizedReturnLine } from "@/components/v2/return-figures";
 
-/** Bars for a short window, a line for a long one (30 bars do not fit a tile). */
-function Trend({ values, line = false, className = "" }: { values: number[] | null; line?: boolean; className?: string }) {
-  if (line || (values && values.length > 14)) return <SparkLine className={`h-8 ${className}`} values={values} />;
-  return <BarSpark className={className} values={values} />;
-}
 /** One column per stat tile on a wide screen, so the row always spans the full width. */
 const STAT_GRID_COLS = {
   2: "md:grid-cols-2",
@@ -113,8 +107,9 @@ export function TodayPage() {
   // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
   // that nothing aims at.
   const ongoing = useOngoingCampaigns(orgId, brandId, selectedOfferId);
-  // ROI and Spent: every outcome lives in its campaign's Target row below (owner 2026-11-06, LEAD-GENERIC-1106).
-  const statTiles = 2 as const;
+  // ROI, Pipeline generated (the main chart, two columns wide) and Spent: every outcome lives in its
+  // campaign's Target row below (owner 2026-11-06, LEAD-GENERIC-1106).
+  const statTiles = 4 as const;
 
   const winSpend = w?.spend ?? null;
   // The only two returns a screen shows (owner 2026-11-03, ROI-CONSISTENCY-1103): the
@@ -225,12 +220,13 @@ export function TodayPage() {
               </StatTile>
               {/* Spent = billed, setup included. The total with provisioned costs stands under it on its own
                   line (owner 2026-11-07: one main figure on the page, the $ Spent chart reads the same). */}
+              {/* The main chart is pipeline generated, never a cost (owner 2026-11-07, PIPELINE-GENERATED-1107). */}
+              <PipelineGeneratedTile brandId={brandId} offerId={selectedOfferId} className="col-span-2" />
               <StatTile label="Spent" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
                 {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={winSpend ? formatCentsAsUsdAdaptive(winSpend.actualSpentCents) : "—"} />}
                 {winSpend && winSpend.totalSpentCents > winSpend.actualSpentCents && (
                   <p className="k-fg3 mt-1 text-[12px] leading-4">{formatCentsAsUsdAdaptive(winSpend.totalSpentCents)} with provisioned costs</p>
                 )}
-                <Trend className="mt-auto pt-2" values={winSpend ? winSpend.daily.map((d) => d.actualSpentCents) : null} />
               </StatTile>
             </div>
 
