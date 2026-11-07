@@ -18,8 +18,17 @@ COPY . .
 
 # Only admin's subtree, not the whole workspace: the other four apps are deployed
 # elsewhere and installing them here would cost minutes and gigabytes for nothing.
-RUN pnpm install --frozen-lockfile --filter @distribute/admin...
-RUN pnpm --filter @distribute/admin build
+# BOX-LOAD-1107: the box builds this image on every merge while serving production, and
+# `COPY . .` above invalidates every later layer each time, so without these cache mounts
+# each build re-downloaded every package and recompiled + re-type-checked from nothing
+# (20-50 min at nice 19 on a saturated box, the deploy lock held most of the day). The
+# pnpm store and Next's .next/cache (incremental tsc .tsbuildinfo, image cache) now
+# survive between builds; the fetch/data cache is wiped before each build so a prerender
+# never reuses data from a previous build. The image content is unchanged.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    pnpm install --frozen-lockfile --store-dir /pnpm-store --filter @distribute/admin...
+RUN --mount=type=cache,id=next-cache-admin,target=/repo/apps/admin/.next/cache \
+    rm -rf apps/admin/.next/cache/fetch-cache && pnpm --filter @distribute/admin build
 
 FROM node:22.23.4-alpine AS runner
 WORKDIR /app
