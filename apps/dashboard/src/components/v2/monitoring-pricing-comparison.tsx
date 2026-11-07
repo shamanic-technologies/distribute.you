@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getStaffBrands, getStaffPriceComparison, getStaffRealCosts, type PriceListRef } from "@/lib/api";
+import { SeriesRefreshProblems } from "@/components/v2/price-refresh";
 import { EmptyNote, Figure, SectionTitle, Shimmer } from "@/components/v2/ui";
 import {
   COMPARISON_INTERVALS,
@@ -56,7 +57,13 @@ export function PricingComparisonView() {
     );
   }
   if (!latest.data) return <Shimmer className="h-[320px] w-full" />;
-  return <Comparison since={latest.data.rules.since} asOf={latest.data.asOf} brands={brands.data} brandsError={brands.isError} />;
+  return (
+    <div className="space-y-8">
+      {/* Real problems first (PRICE-REFRESH-RED-1107): the proposed list reads these real costs. */}
+      <SeriesRefreshProblems s={latest.data} what="Real costs" />
+      <Comparison since={latest.data.rules.since} asOf={latest.data.asOf} brands={brands.data} brandsError={brands.isError} />
+    </div>
+  );
 }
 
 /** Org and brand names from the staff brand list: an org is named by its brands. A display lookup. */

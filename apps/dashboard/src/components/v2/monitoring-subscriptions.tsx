@@ -1,5 +1,6 @@
 "use client";
 
+import { RefreshStatus, SeriesRefreshProblems } from "@/components/v2/price-refresh";
 import { useState } from "react";
 import { Figure, SectionTitle } from "@/components/v2/ui";
 import type { SubscriptionCost, SubscriptionCosts } from "@/lib/monitoring/monitoring";
@@ -32,13 +33,13 @@ export function SubscriptionsView({ data }: { data: SubscriptionCosts }) {
   const sel = data.subscriptions.find((s) => s.key === key) ?? null;
   return (
     <div className="space-y-8">
+      {/* Real problems first (PRICE-REFRESH-RED-1107): a failed refresh, prices over a day old. */}
+      <SeriesRefreshProblems s={data} what="Subscription prices" />
       <div className="k-fg2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: data.stale ? "var(--data-amber)" : "var(--data-teal)" }} />
-          {data.stale ? "Not refreshed today" : "Refreshed today"} · as of {dayLabel(data.asOf)} · since {dayLabel(data.since)}
-        </span>
+        <RefreshStatus s={data}>
+          <span className="k-fg2"> · as of {dayLabel(data.asOf)} · since {dayLabel(data.since)}</span>
+        </RefreshStatus>
         <span className="k-fg3">{data.formula}</span>
-        {data.lastRefresh?.status === "failed" && data.lastRefresh.error && <span style={{ color: "var(--data-rose)" }}>Last refresh failed: {data.lastRefresh.error}</span>}
       </div>
 
       <section>
