@@ -1,4 +1,5 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
+import { CatalogueRowsSchema, CatalogueStrategySchema, CatalogueTacticSchema, ScriptListSchema, type Script } from "./v2/catalogue";
 import { BrandOutcomesSchema, OutcomePeopleSchema, type BrandOutcomes, type OutcomePeople } from "./v2/outcome-people";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
 import {
@@ -4570,6 +4571,46 @@ export async function getPublicCatalogueSteps(): Promise<PublicCatalogueStep[]> 
     throw new Error("[dashboard] getPublicCatalogueSteps: invalid response shape");
   }
   return parsed.data.rows;
+}
+
+/**
+ * The Catalogue page's reads (owner 2026-11-07, every client): the live scripts (workflow-service `GET /scripts` through
+ * the gateway's `/v1/scripts`, any signed-in org user) and the tactics and strategies (features-service catalogue through
+ * `/v1/catalogue/*`, opened to customers by CATALOGUE-FOR-CLIENTS-1107). Shapes: `lib/v2/catalogue.ts`.
+ */
+export async function listActiveScripts(): Promise<Script[]> {
+  const raw = await apiCall<unknown>(`/scripts?status=active`);
+  const parsed = ScriptListSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listActiveScripts: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[dashboard] listActiveScripts: invalid response shape");
+  }
+  return parsed.data.scripts;
+}
+
+const CatalogueTacticPageSchema = CatalogueRowsSchema(CatalogueTacticSchema);
+const CatalogueStrategyPageSchema = CatalogueRowsSchema(CatalogueStrategySchema);
+export type CatalogueTacticPage = z.infer<typeof CatalogueTacticPageSchema>;
+export type CatalogueStrategyPage = z.infer<typeof CatalogueStrategyPageSchema>;
+
+export async function listCatalogueTactics(): Promise<CatalogueTacticPage> {
+  const raw = await apiCall<unknown>(`/catalogue/tactics?limit=25`);
+  const parsed = CatalogueTacticPageSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listCatalogueTactics: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[dashboard] listCatalogueTactics: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export async function listCatalogueStrategies(): Promise<CatalogueStrategyPage> {
+  const raw = await apiCall<unknown>(`/catalogue/strategies?limit=25`);
+  const parsed = CatalogueStrategyPageSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listCatalogueStrategies: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[dashboard] listCatalogueStrategies: invalid response shape");
+  }
+  return parsed.data;
 }
 
 /** GET /public/channels — the steps, the legs, and what each channel performs and costs. */
