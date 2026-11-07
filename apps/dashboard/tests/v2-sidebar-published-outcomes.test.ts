@@ -15,7 +15,7 @@ describe("sidebar Outcomes list every published outcome with a row (SOCIAL-OUTCO
   });
 
   it("one entry per outcome that has a row, its badge the page's How many figure", () => {
-    expect(group).toContain("published.withRows.map(");
+    expect(group).toContain("published.withRows.filter(");
     expect(group).toContain("n={data.totals.all.units}");
     expect(group).toContain("href={v2OutcomeHref(orgId, brandId, key)}");
   });

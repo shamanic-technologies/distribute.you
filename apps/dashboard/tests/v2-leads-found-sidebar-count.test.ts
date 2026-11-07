@@ -17,10 +17,12 @@ describe("sidebar Leads found shows the people its page counts (owner 2026-10-11
 
   it("the Leads found entry's count is the People tab figure (people held)", () => {
     expect(shell).toContain("useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held");
-    const at = shell.indexOf("{outcomes.map(");
-    const block = shell.slice(at, shell.indexOf("</Group>", at));
+    // One count per entry (`outcomeCount`), read by the entry's badge and by the default pins (owner 2026-11-07).
+    const at = shell.indexOf("const outcomeCount = ");
+    const block = shell.slice(at, shell.indexOf("\n\n", at));
     expect(block).toContain('outcome.items.kind === "leads-found"');
     expect(block).toContain("? peopleHeld");
+    expect(shell).toContain("const n = outcomeCount(o);");
     expect(page).toContain("count: totals?.people.held");
   });
 });
