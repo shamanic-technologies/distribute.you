@@ -22,6 +22,7 @@ import { AccountsView } from "@/components/v2/monitoring-accounts";
 import { NewPricingView } from "@/components/v2/monitoring-new-pricing";
 import { PricingBasisView } from "@/components/v2/monitoring-pricing-basis";
 import { PricingComparisonView } from "@/components/v2/monitoring-pricing-comparison";
+import { PriceRefreshTile } from "@/components/v2/price-refresh";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
@@ -538,6 +539,8 @@ function Hub({ base }: { base: string }) {
         <VendorRefusalTile href={href("emails/capacity")} />
         {/* How many mailboxes can take a new email now, through the sender's own selection; zero = every org's new emails refused (SEND-POOL-VENDOR-402-1030, a day at zero from 2026-10-29): red here IS the alert, never an email. */}
         <SendPoolTile href={href("emails/capacity")} />
+        {/* A vendor whose prices did not refresh, or a price series over a day old (PRICE-REFRESH-RED-1107, Postmark frozen 3 weeks): red here IS the alert, never an email. */}
+        <PriceRefreshTile href={href("price/new-pricing")} />
       </div>
 
       <HubOpen.Provider value={hub}>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getStaffBasisSummary } from "@/lib/api";
+import { RefreshStatus, SeriesRefreshProblems } from "@/components/v2/price-refresh";
 import { EmptyNote, Figure, SectionTitle, Shimmer } from "@/components/v2/ui";
 import type { BasisSummary } from "@/lib/monitoring/monitoring";
 import { Dash, PeriodBars, TD, TDR, TH, THR, dayLabel, dollars, n, pct } from "@/components/v2/monitoring-charts";
@@ -74,11 +75,12 @@ function Body({ d, day, setDay, fetching }: { d: BasisSummary; day: string | nul
   ];
   return (
     <div className="space-y-8">
+      {/* Real problems first (PRICE-REFRESH-RED-1107): a vendor skipped, prices over a day old. */}
+      <SeriesRefreshProblems s={d} what="Price lists" />
       <div className="k-fg2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: d.stale ? "var(--data-amber)" : "var(--data-teal)" }} />
-          Fleet since Jan 1, 2026 · lists of {dayLabel(d.day)}
-        </span>
+        <RefreshStatus s={d}>
+          <span className="k-fg2"> · fleet since Jan 1, 2026 · lists of {dayLabel(d.day)}</span>
+        </RefreshStatus>
         <label className="inline-flex items-center gap-2">
           <span className="k-label">Day</span>
           <input
