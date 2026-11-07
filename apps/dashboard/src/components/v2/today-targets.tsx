@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { friendlyDate } from "@/lib/friendly-datetime";
-import { v2CampaignHref } from "@/lib/v2/routes";
 import { nextExpectedWords, reasonWords, targetsOfOffer, type CampaignTargetRow, type MilestoneCard } from "@/lib/campaign-targets";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { StepMark } from "@/components/marks/step-mark";
@@ -37,7 +35,7 @@ export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brand
       ) : (
         <div className="space-y-6">
           {rows.map((r) => (
-            <TargetRow key={r.salesFunnelCampaignId} orgId={orgId} brandId={brandId} row={r} />
+            <TargetRow key={r.salesFunnelCampaignId} row={r} />
           ))}
         </div>
       )}
@@ -45,7 +43,7 @@ export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brand
   );
 }
 
-export function TargetRow({ orgId, brandId, row }: { orgId: string; brandId: string; row: CampaignTargetRow }) {
+function TargetRow({ row }: { row: CampaignTargetRow }) {
   const label = row.target?.label ?? null;
   const roi = row.measuredReturn.roiMultiple;
   const next = nextExpectedWords(row.projection.nextExpectedInHours);
@@ -54,9 +52,6 @@ export function TargetRow({ orgId, brandId, row }: { orgId: string; brandId: str
       <div className="mb-2 flex min-w-0 items-center gap-2">
         {row.target && <StepMark stepKey={row.target.key} />}
         <span className="truncate text-[14px] font-medium">{label ?? "No target yet"}</span>
-        <Link href={v2CampaignHref(orgId, brandId, row.salesFunnelCampaignId)} className="k-fg3 truncate text-[12px] hover:text-[var(--fg-1)]">
-          {row.name}
-        </Link>
       </div>
       <div className="grid grid-cols-3 gap-3 md:grid-cols-5">
         <StatTile label="So far">
