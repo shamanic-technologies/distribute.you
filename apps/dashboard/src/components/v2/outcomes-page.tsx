@@ -216,7 +216,13 @@ function OutcomeCard({
   brandId: string;
 }) {
   // How many per month: crm-service's months (everyone), else what features-service counted from people we contacted.
-  const bars = o.all?.months?.length ? o.all.months.map((m) => m.people) : cost?.months.map((m) => m.outcomes) ?? null;
+  // A month the ledger holds no count for is null, never 0 (LEDGER-ONLY-1107): no bars then rather than a false zero.
+  const ourMonths = cost?.months.map((m) => m.outcomes) ?? null;
+  const bars = o.all?.months?.length
+    ? o.all.months.map((m) => m.people)
+    : ourMonths && ourMonths.every((n): n is number => n != null)
+      ? ourMonths
+      : null;
   const curve = cost ? cost.months.map((m) => m.cumulativeCostPerOutcomeUsd).filter((v): v is number => v != null) : null;
   const name = o.outcome.label;
   return (
