@@ -76,9 +76,12 @@ const DealsLifecycleRungSchema = z
 
 export const DealsLifecycleSchema = z
   .object({
-    offerId: z.string(),
+    // Shared by the offer read and the BRAND read (features-service v0.179.548,
+    // AUDIENCE-PER-OFFER-1107): the brand body carries `offerIds` and no `offerId`/`campaignId`.
+    offerId: z.string().nullish(),
+    offerIds: z.array(z.string()).nullish(),
     brandId: z.string(),
-    campaignId: z.string().nullable(),
+    campaignId: z.string().nullish(),
     columns: z.literal("lifecycle"),
     unvaluedReason: z.string().nullable(),
     totalUsd: z.number().nullable(),
@@ -145,7 +148,9 @@ export function peopleLegacyTab(key: string | null): { rung: string; filters: { 
  */
 export const CompanyLifecycleSchema = z
   .object({
-    offerId: z.string(),
+    // Shared by the offer read and the BRAND read (v0.179.548): the brand body has `offerIds`, no `offerId`.
+    offerId: z.string().nullish(),
+    offerIds: z.array(z.string()).nullish(),
     brandId: z.string(),
     columns: z.literal("company_lifecycle"),
     organizationCount: z.number(),

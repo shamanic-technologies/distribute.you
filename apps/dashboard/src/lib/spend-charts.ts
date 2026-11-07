@@ -116,6 +116,16 @@ export const OfferSpendChartsSchema = z.object({
 });
 export type OfferSpendCharts = z.infer<typeof OfferSpendChartsSchema>;
 
+/** The same chart for the whole BRAND (features-service v0.179.548, `/v1/brands/:brandId/spend-charts`). */
+export const BrandSpendChartsSchema = z.object({
+  brandId: z.string(),
+  offerIds: z.array(z.string()),
+  pricing: z.string(),
+  salesFunnelCampaignIds: z.array(z.string()),
+  brand: SpendChartSchema,
+});
+export type BrandSpendCharts = z.infer<typeof BrandSpendChartsSchema>;
+
 /** One row a convergence line chart draws: the served value on the Learning line OR the measured line. */
 export interface ConvergenceRow {
   t: number;

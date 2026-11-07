@@ -55,7 +55,10 @@ export const OutcomeCostStepSchema = z.object({
 export type OutcomeCostStep = z.infer<typeof OutcomeCostStepSchema>;
 
 export const OfferOutcomeCostSeriesSchema = z.object({
-  offerId: z.string(),
+  // Shared by the offer read and the BRAND read (features-service v0.179.548): the brand body
+  // carries `offerIds` and no `offerId`.
+  offerId: z.string().nullish(),
+  offerIds: z.array(z.string()).nullish(),
   brandId: z.string(),
   pricing: z.string(),
   firstSpendDay: z.string().nullable(),

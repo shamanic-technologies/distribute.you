@@ -130,14 +130,14 @@ function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, numb
  */
 export function OutcomesOverviewPage() {
   const { orgId, brandId } = useIds();
-  // $ per outcome is served per offer only: read while the brand sells ONE offer (it IS the brand's then).
+  // $ per outcome: the brand's one offer when it sells one, else the BRAND series (features-service v0.179.548).
   const offerId = useBrandScope().soleOfferId;
   const { outcomes, settled, allError } = useBrandOutcomeList(orgId, brandId);
   const counts = useReachedCounts(brandId, outcomes.flatMap((o) => reachedStepOf(o.outcome) ?? [])).data ?? null;
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held ?? null;
   const costQ = useOutcomeCostSeries(brandId, offerId);
-  const costAnswered = costQ.data !== undefined || (costQ.isFetchedAfterMount && costQ.isError) || !offerId;
+  const costAnswered = costQ.data !== undefined || (costQ.isFetchedAfterMount && costQ.isError);
   const stepIcons = useStepIcons();
   const ordered = inServedOrder(outcomes, costQ.data);
   // The published outcomes (posts, newsletter emails): one card each once the brand has a row (OUTCOME-FINEST-1106).

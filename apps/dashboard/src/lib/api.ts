@@ -35,8 +35,10 @@ import {
   type FunnelCampaignRow,
 } from "./sales-funnel-campaigns";
 import {
+  BrandSpendChartsSchema,
   FunnelCampaignSpendChartsSchema,
   OfferSpendChartsSchema,
+  type BrandSpendCharts,
   type FunnelCampaignSpendCharts,
   type OfferSpendCharts,
 } from "./spend-charts";
@@ -2474,6 +2476,35 @@ export async function getOfferSpendCharts(offerId: string, brandId: string): Pro
     return parseStaff("getOfferSpendCharts", OfferSpendChartsSchema, raw);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404 && err.body?.reason === "offer_has_no_campaigns") return null;
+    throw err;
+  }
+}
+
+/**
+ * The spend chart for the whole BRAND (features-service v0.179.548, gateway api-service v0.112.229):
+ * every sales funnel campaign of every offer as one scope, net. Null = the producer's 404 for a brand
+ * that runs no campaign yet (its reason ends in `has_no_campaigns`, like the offer read's).
+ */
+export async function getBrandSpendCharts(brandId: string): Promise<BrandSpendCharts | null> {
+  try {
+    const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/spend-charts?pricing=net`);
+    return parseStaff("getBrandSpendCharts", BrandSpendChartsSchema, raw);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && String(err.body?.reason ?? "").endsWith("has_no_campaigns")) return null;
+    throw err;
+  }
+}
+
+/**
+ * $ / outcome per month and since inception for the whole BRAND (features-service v0.179.548):
+ * the offer series' body with `offerIds`. Null = the brand runs no campaign yet.
+ */
+export async function getBrandOutcomeCostSeries(brandId: string): Promise<OfferOutcomeCostSeries | null> {
+  try {
+    const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/outcome-cost-series?pricing=net`);
+    return parseStaff("getBrandOutcomeCostSeries", OfferOutcomeCostSeriesSchema, raw);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && String(err.body?.reason ?? "").endsWith("has_no_campaigns")) return null;
     throw err;
   }
 }
@@ -8904,6 +8935,36 @@ export async function getOfferCompanyLifecycle(offerId: string, brandId: string)
   if (!parsed.success) {
     console.error("[getOfferCompanyLifecycle] response shape mismatch", parsed.error.issues);
     throw new Error("getOfferCompanyLifecycle: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * The BRAND's company lifecycle (features-service v0.179.548, `GET /brands/:brandId/deals-value
+ * ?columns=company_lifecycle` through the gateway passthrough): every offer of the brand, each
+ * company once. For a brand selling one offer it equals the offer read.
+ */
+export async function getBrandCompanyLifecycle(brandId: string): Promise<CompanyLifecycle> {
+  const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/deals-value?${companyLifecycleQuery(brandId)}`);
+  const parsed = CompanyLifecycleSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getBrandCompanyLifecycle] response shape mismatch", parsed.error.issues);
+    throw new Error("getBrandCompanyLifecycle: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * The BRAND's Deals board value per lifecycle rung (features-service v0.179.548,
+ * `GET /brands/:brandId/deals-value?columns=lifecycle`): every offer's people priced on their own
+ * offer's terms, a person served by two offers once. A campaign filter reads its offer instead.
+ */
+export async function getBrandDealsLifecycle(brandId: string): Promise<DealsLifecycle> {
+  const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/deals-value?${dealsLifecycleQuery(brandId, null)}`);
+  const parsed = DealsLifecycleSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getBrandDealsLifecycle] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getBrandDealsLifecycle: invalid response shape");
   }
   return parsed.data;
 }
