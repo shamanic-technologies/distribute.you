@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import * as queryOptions from "../src/lib/query-options";
 import { POLL_INTERVAL, pollIntervalFor, pollOptions } from "../src/lib/query-options";
 
@@ -33,5 +35,23 @@ describe("the Leads reads", () => {
     // the ~5s the rest of the dashboard promises.
     expect("LEADS_POLL_INTERVAL" in queryOptions).toBe(false);
     expect("leadsPollOptions" in queryOptions).toBe(false);
+  });
+});
+
+describe("every polled read", () => {
+  it("polls through pollIntervalFor, never a fixed POLL_INTERVAL", () => {
+    // A fixed interval keeps re-polling a read that failed with no data; React Query resets it
+    // to pending on each refetch, so its surface blinks skeleton/content every 5s (Today's
+    // Campaigns card, 2026-11-07: six channels' money read answered 404 on every poll).
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.tsx?$/.test(name) && /refetchInterval:\s*POLL_INTERVAL\b/.test(readFileSync(p, "utf8"))) offenders.push(p);
+      }
+    };
+    walk(join(__dirname, "../src"));
+    expect(offenders).toEqual([]);
   });
 });
