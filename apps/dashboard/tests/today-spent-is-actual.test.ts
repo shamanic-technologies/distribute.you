@@ -20,9 +20,19 @@ describe("Today: one window for the whole stat row", () => {
     // the total with follow-ups reserved and not sent yet is served beside it on its own
     // line. Supersedes 2026-10-03 "spent il faut mettre le total" under the Spent label.
     expect(src).toContain("formatCentsAsUsdAdaptive(winSpend.actualSpentCents)");
-    expect(src).toContain("formatCentsAsUsdAdaptive(winSpend.totalSpentCents)} with follow-ups reserved");
+    // Owner 2026-11-07: "provisioned costs", never the per-case "follow-ups reserved".
+    expect(src).toContain("formatCentsAsUsdAdaptive(winSpend.totalSpentCents)} with provisioned costs");
+    expect(src).not.toContain("follow-ups reserved");
     expect(src).toContain("winSpend.daily.map((d) => d.actualSpentCents)");
     expect(src).not.toContain("costPerEmailSentCents");
+  });
+
+  it("the $ Spent chart card prints the SAME billed figure as the Spent tile (owner 2026-11-07)", () => {
+    const charts = readFileSync(join(__dirname, "../src/components/v2/spend-charts.tsx"), "utf8");
+    expect(src).toContain("billed={{ pending: win.pending, spend: winSpend }}");
+    expect(charts).toContain("<SpendChartsBlock {...state} billed={billed} />");
+    expect(charts).toContain("formatCentsAsUsdAdaptive(billed.spend.actualSpentCents)");
+    expect(charts).toContain("formatCentsAsUsdAdaptive(billed.spend.totalSpentCents)} with provisioned costs");
   });
 
   it("never sums a series in the browser, never mixes today with all time", () => {

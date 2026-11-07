@@ -223,12 +223,12 @@ export function TodayPage() {
                   </div>
                 )}
               </StatTile>
-              {/* Spent = billed, setup included. The total with follow-ups reserved and not sent yet
-                  stands under it on its own line, never under the Spent label (2026-10-06, Legistai). */}
+              {/* Spent = billed, setup included. The total with provisioned costs stands under it on its own
+                  line (owner 2026-11-07: one main figure on the page, the $ Spent chart reads the same). */}
               <StatTile label="Spent" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
                 {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={winSpend ? formatCentsAsUsdAdaptive(winSpend.actualSpentCents) : "—"} />}
                 {winSpend && winSpend.totalSpentCents > winSpend.actualSpentCents && (
-                  <p className="k-fg3 mt-1 text-[12px] leading-4">{formatCentsAsUsdAdaptive(winSpend.totalSpentCents)} with follow-ups reserved</p>
+                  <p className="k-fg3 mt-1 text-[12px] leading-4">{formatCentsAsUsdAdaptive(winSpend.totalSpentCents)} with provisioned costs</p>
                 )}
                 <Trend className="mt-auto pt-2" values={winSpend ? winSpend.daily.map((d) => d.actualSpentCents) : null} />
               </StatTile>
@@ -240,7 +240,7 @@ export function TodayPage() {
             </div>
             {/* Why each day costs what it costs, and where the cost is heading (owner 2026-10-19). */}
             <div className="mt-6">
-              <OfferSpendChartsSection brandId={brandId} offerId={selectedOfferId} />
+              <OfferSpendChartsSection brandId={brandId} offerId={selectedOfferId} billed={{ pending: win.pending, spend: winSpend }} />
             </div>
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <section>
