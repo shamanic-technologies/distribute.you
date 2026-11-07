@@ -16,5 +16,6 @@ export const SERVED_STEPS = legCatalogueFromWire({
     { key: "signup", label: "Signup", pluralLabel: "Signups" },
     { key: "form_submitted", label: "Form submitted", pluralLabel: "Forms submitted" },
     { key: "paid_client", label: "Paid client", pluralLabel: "Paid clients" },
+    { key: "client_satisfied", label: "Client Satisfied", pluralLabel: "Clients Satisfied" },
   ],
 });
