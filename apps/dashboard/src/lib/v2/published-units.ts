@@ -116,6 +116,10 @@ export const PublishedUnitRowSchema = z.object({
   engagementBreakdown: EngagementBreakdownSchema.optional(),
   /** `engagements_exceed_views`: the platform reports more interactions than views. */
   metricsWarning: z.string().nullish(),
+  /** `views_not_reported`: the platform gives no views (absent, or 0 beside an engagement), then `views` is null. */
+  viewsUnavailableReason: z.string().nullish(),
+  /** Why `valueUsd` is null (`step_has_no_value`, `no_catalogue_step_for_outcome`, `unit_has_no_value`). */
+  value: z.object({ unavailableReason: z.string().nullable() }).passthrough().optional(),
   /** units x value per unit: the value this row produced (yield). */
   valueUsd: z.number().nullish(),
 });
@@ -185,6 +189,44 @@ export function publishedRoiToShow(data: PublishedUnits): RoiToShow | undefined 
 export function visitsReasonWords(reason: string | null | undefined): string {
   if (reason === "no_visit_attribution_on_outcome") return "Not tracked";
   if (reason === "not_on_ledger_yet") return "Not counted yet";
+  return "—";
+}
+
+/** What a published outcome's rows are, for a sentence ("LinkedIn posts", "newsletters"). */
+function rowsNoun(outcomeKey: PublishedOutcomeKey): string {
+  const c = PUBLISHED_OUTCOME_COPY[outcomeKey];
+  return c.network ? `${c.network} ${c.rows}` : c.rows;
+}
+
+/**
+ * Why the page has no ROI, one readable line per served reason (SOCIAL-OUTCOMES-1107): the measured block's reason first,
+ * then the expected one's. Unknown reasons are logged and printed as words.
+ */
+export function publishedReturnReasonWords(reason: string | null, outcomeKey: PublishedOutcomeKey): string {
+  switch (reason) {
+    case "nothing_spent_yet":
+    case "nothing_spent_on_outcome":
+      return `Nothing spent on ${rowsNoun(outcomeKey)} yet`;
+    case "no_unit_yet":
+      return `No ${rowsNoun(outcomeKey)} yet`;
+    case "unit_has_no_value":
+    case "step_has_no_value":
+      return `No value set for ${rowsNoun(outcomeKey)} yet`;
+    case "no_catalogue_step_for_outcome":
+    case "no_pipe_prices_outcome":
+      return `${rowsNoun(outcomeKey)[0]!.toUpperCase()}${rowsNoun(outcomeKey).slice(1)} have no price yet`;
+    case null:
+      return "—";
+    default:
+      console.error("[published-units] no words for reason", { reason });
+      return reason.replace(/_/g, " ");
+  }
+}
+
+/** Why one row has no value, short enough for its table cell. */
+export function rowValueReasonWords(reason: string | null | undefined): string {
+  if (reason === "step_has_no_value" || reason === "unit_has_no_value") return "No value set";
+  if (reason === "no_catalogue_step_for_outcome") return "No price yet";
   return "—";
 }
 
