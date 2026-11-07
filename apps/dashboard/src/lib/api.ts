@@ -8909,6 +8909,36 @@ export async function getOfferCompanyLifecycle(offerId: string, brandId: string)
 }
 
 /**
+ * The BRAND's company lifecycle (features-service v0.179.548, `GET /brands/:brandId/deals-value
+ * ?columns=company_lifecycle` through the gateway passthrough): every offer of the brand, each
+ * company once. For a brand selling one offer it equals the offer read.
+ */
+export async function getBrandCompanyLifecycle(brandId: string): Promise<CompanyLifecycle> {
+  const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/deals-value?${companyLifecycleQuery(brandId)}`);
+  const parsed = CompanyLifecycleSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getBrandCompanyLifecycle] response shape mismatch", parsed.error.issues);
+    throw new Error("getBrandCompanyLifecycle: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * The BRAND's Deals board value per lifecycle rung (features-service v0.179.548,
+ * `GET /brands/:brandId/deals-value?columns=lifecycle`): every offer's people priced on their own
+ * offer's terms, a person served by two offers once. A campaign filter reads its offer instead.
+ */
+export async function getBrandDealsLifecycle(brandId: string): Promise<DealsLifecycle> {
+  const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/deals-value?${dealsLifecycleQuery(brandId, null)}`);
+  const parsed = DealsLifecycleSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getBrandDealsLifecycle] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getBrandDealsLifecycle: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
  * The offer's Deals board value per LIFECYCLE rung (features-service
  * `GET /offers/:offerId/deals-value?columns=lifecycle`, v0.179.313): each rung's value, each
  * card's, the expected pipeline and what was won. One campaign when named, else the whole offer.
