@@ -11,8 +11,8 @@ import { FunnelCampaignCopySchema, unpricedWords } from "../src/lib/sales-funnel
 const read = (rel: string) => readFileSync(join(__dirname, "../src", rel), "utf8");
 
 describe("when the path last changed (campaign-service plan changes, newest first)", () => {
-  const RUN = "start_to_post_published@threads-post+post_published_to_website_visit+website_visit_to_signup+signup_to_paid_client";
-  const OLD = "start_to_post_published@threads-post+post_published_to_paid_client";
+  const RUN = "start_to_threads_post_published@threads-post+threads_post_published_to_website_visit+website_visit_to_signup+signup_to_paid_client";
+  const OLD = "start_to_threads_post_published@threads-post+threads_post_published_to_paid_client";
   it("is the newest change that landed on the running funnel", () => {
     const changes = [
       { fromSalesFunnelId: RUN, toSalesFunnelId: RUN, appliedAt: "2026-10-30T09:00:00Z" },
@@ -38,10 +38,10 @@ describe("the served copy carries the running funnel and each pipe", () => {
     const now = FunnelCampaignCopySchema.parse({
       ...base,
       runningSalesFunnelId: "f2",
-      path: { items: [{ kind: "step", key: "start", label: "Start" }, { kind: "channel", slug: "threads-post", name: "Threads posts", pipeId: "threads-post|start_to_post_published" }] },
+      path: { items: [{ kind: "step", key: "start", label: "Start" }, { kind: "channel", slug: "threads-post", name: "Threads posts", pipeId: "threads-post|start_to_threads_post_published" }] },
     });
     expect(now.runningSalesFunnelId).toBe("f2");
-    expect(now.path?.items[1]).toMatchObject({ pipeId: "threads-post|start_to_post_published" });
+    expect(now.path?.items[1]).toMatchObject({ pipeId: "threads-post|start_to_threads_post_published" });
     expect(FunnelCampaignCopySchema.parse({ ...base, path: { items: [{ kind: "channel", slug: "x", name: "X" }] } }).runningSalesFunnelId).toBeUndefined();
   });
 });

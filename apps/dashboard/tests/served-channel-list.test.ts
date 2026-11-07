@@ -17,7 +17,7 @@ const CATALOGUE = [
     displayOrder: 10004,
     channelType: "earned",
     operatedBy: "platform",
-    stepTransitions: [{ from: null, to: { key: "post_published" } }],
+    stepTransitions: [{ from: null, to: { key: "threads_post_published" } }],
   },
   {
     slug: "organic-market",
@@ -27,7 +27,7 @@ const CATALOGUE = [
     displayOrder: 10005,
     channelType: "earned",
     operatedBy: "customer",
-    stepTransitions: [{ from: { key: "post_published" }, to: { key: "website_visit" } }],
+    stepTransitions: [{ from: { key: "threads_post_published" }, to: { key: "website_visit" } }],
   },
   { slug: "sales-cold-email-outreach", name: "Sales Cold Email Outreach", description: "", icon: "envelope", displayOrder: 1, channelType: "outbound", operatedBy: "platform", stepTransitions: [] },
   { slug: "investor-outreach", name: "Investors", description: "", icon: "x", displayOrder: 2, channelType: "fundraising", stepTransitions: [] },
@@ -40,8 +40,8 @@ describe("the channel list read from the served catalogue", () => {
     expect(list.map((c) => c.featureSlug)).toEqual(["sales-cold-email-outreach", "threads-post", "organic-market"]);
   });
   it("carries the served name, icon, operator and legs", () => {
-    expect(list.find((c) => c.featureSlug === "threads-post")).toMatchObject({ name: "Threads posts", servedIcon: "threads-logo", operatedBy: "platform", legs: [{ from: null, to: "post_published" }] });
-    expect(list.find((c) => c.featureSlug === "organic-market")).toMatchObject({ servedIcon: "users-three", legs: [{ from: "post_published", to: "website_visit" }] });
+    expect(list.find((c) => c.featureSlug === "threads-post")).toMatchObject({ name: "Threads posts", servedIcon: "threads-logo", operatedBy: "platform", legs: [{ from: null, to: "threads_post_published" }] });
+    expect(list.find((c) => c.featureSlug === "organic-market")).toMatchObject({ servedIcon: "users-three", legs: [{ from: "threads_post_published", to: "website_visit" }] });
   });
   it("the hook reads the shared public catalogue query, never the features list", () => {
     const hook = readFileSync(join(__dirname, "../src/lib/use-acquisition-channels.ts"), "utf8");
