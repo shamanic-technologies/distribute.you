@@ -19,6 +19,8 @@ import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
 import type { PublishedOutcomeKey } from "@/lib/v2/published-units";
 import { POSTS_STEP } from "@/lib/v2/outcomes";
+import { shownPins } from "@/lib/v2/outcome-pins";
+import { useOwnOutcomePins, usePublishShownPins } from "@/components/v2/outcome-pins";
 import { formatCount } from "@/lib/format-number";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -208,6 +210,17 @@ function V2Sidebar() {
   // people still queued (Beyond Logic 2026-10-29: 127 vs 73). Each outcome entry = the people who
   // reached its step, the same count its page's Contacted by us tab states.
   const reached = useReachedCounts(brandId, [EMAIL_SENT_STEP, ...outcomes.flatMap((o) => (o.outcome.items.kind === "people" ? [o.outcome.items.step] : []))]).data;
+  // Each outcome's count, the one its entry shows: crm-service's everyone, else the people who reached its step.
+  const outcomeCount = ({ outcome, all }: (typeof outcomes)[number]) =>
+    all ? all.people : outcome.items.kind === "people" ? reached?.[outcome.items.step] : outcome.items.kind === "leads-found" ? peopleHeld : null;
+  // Pinned outcomes only (owner 2026-11-07: « au lieu de voir 100% des outcomes affichées, too much »): the user's own
+  // pins, else the 3 biggest counts; an outcome at a known 0 is never a default pin (owner 2026-10-14).
+  const ownPins = useOwnOutcomePins(brandId);
+  const pinned = shownPins(ownPins, [
+    ...outcomes.map((o) => ({ key: o.outcome.key, count: outcomeCount(o) })).filter((o) => o.count !== 0),
+    ...published.withRows.map(({ key, data }) => ({ key, count: data.totals.all.units })),
+  ]);
+  usePublishShownPins(brandId, pinned);
   // Deals badge = the people on the Deals board's columns (every lifecycle rung but Lead found),
   // read off the same served counts and key the page reads, so the two agree.
   const dealCounts = useDealsLifecycleCounts(brandId).data;
@@ -342,18 +355,14 @@ function V2Sidebar() {
             icon={<I d={ICONS.overview} />}
             active={section === "outcomes" && /\/outcomes\/?$/.test(pathname)}
           />
-          {outcomes.map(({ outcome, all }) => {
+          {outcomes.map((o) => {
+              const { outcome } = o;
               const href = v2OutcomeHref(orgId, brandId, outcome.key);
-              const n = all
-                ? all.people
-                : outcome.items.kind === "people"
-                  ? reached?.[outcome.items.step]
-                  : outcome.items.kind === "leads-found"
-                    ? peopleHeld
-                    : null;
-              // An outcome at a known 0 is not listed (owner 2026-10-14); a count still loading
-              // keeps its entry, and so does the page being read.
+              const n = outcomeCount(o);
+              // An outcome at a known 0 is not listed (owner 2026-10-14), nor one the user did not pin (owner
+              // 2026-11-07); the page being read always keeps its entry.
               if (n === 0 && pathname !== href) return null;
+              if (!pinned.includes(outcome.key) && pathname !== href) return null;
               return (
                 <NavItem
                   key={outcome.key}
@@ -365,7 +374,7 @@ function V2Sidebar() {
                 />
               );
             })}
-          {published.withRows.map(({ key, data }) => (
+          {published.withRows.filter(({ key }) => pinned.includes(key) || pathname === v2OutcomeHref(orgId, brandId, key)).map(({ key, data }) => (
             <PublishedOutcomeNavItem
               key={key}
               outcomeKey={key}

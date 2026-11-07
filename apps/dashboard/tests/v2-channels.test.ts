@@ -91,7 +91,7 @@ describe("sidebar", () => {
   it("Outcomes: its Overview, then one entry per step the ON campaigns produce or the brand's tools state", () => {
     const block = shell.slice(at('<Group title="Outcomes">'), at('<Group title="Production">'));
     expect(block).toContain("v2OutcomeHref(orgId, brandId)");
-    expect(block).toContain("outcomes.map(({ outcome, all })");
+    expect(block).toContain("outcomes.map((o) => {");
     expect(block).not.toContain("indent");
   });
   it("staff mode adds one section per business object below the GA nav, nothing else (owner 2026-10-10)", () => {

@@ -31,6 +31,7 @@ import { PostsPage } from "@/components/v2/posts-page";
 import { PublishedOutcomeCard, PublishedOutcomePage, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
 import { isPublishedOutcomeKey } from "@/lib/v2/published-units";
 import { BarSpark, EmptyNote, Shimmer, SparkLine, TopBar } from "@/components/v2/ui";
+import { OutcomePinButton } from "@/components/v2/outcome-pins";
 import { OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { Arrow } from "@/components/v2/research-bits";
@@ -174,6 +175,7 @@ export function OutcomesOverviewPage() {
                 cost={costStepOf(costQ.data, o.outcome.key)}
                 costAnswered={costAnswered}
                 icon={stepIcons?.get(o.outcome.key) ?? null}
+                brandId={brandId}
               />
             ))}
             {published.withRows.map((p) => (
@@ -202,6 +204,7 @@ function OutcomeCard({
   cost,
   costAnswered,
   icon,
+  brandId,
 }: {
   o: BrandOutcome;
   href: string;
@@ -210,6 +213,7 @@ function OutcomeCard({
   cost: OutcomeCostStep | null;
   costAnswered: boolean;
   icon: string | null;
+  brandId: string;
 }) {
   // How many per month: crm-service's months (everyone), else what features-service counted from people we contacted.
   const bars = o.all?.months?.length ? o.all.months.map((m) => m.people) : cost?.months.map((m) => m.outcomes) ?? null;
@@ -222,6 +226,7 @@ function OutcomeCard({
         <Link href={href} className="min-w-0 flex-1 truncate text-[14px] font-medium leading-5 after:absolute after:inset-0 after:content-['']">
           {name}
         </Link>
+        <OutcomePinButton brandId={brandId} outcomeKey={o.outcome.key} compact />
       </div>
 
       <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
@@ -388,7 +393,10 @@ export function OutcomePage() {
     <div>
       <TopBar crumbs={[{ label: "Outcomes", href: v2OutcomeHref(orgId, brandId) }, { label: outcome.label }]} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        <h1 className="text-[28px] font-semibold leading-[34px] tracking-[-0.01em]">{outcome.label}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="min-w-0 flex-1 text-[28px] font-semibold leading-[34px] tracking-[-0.01em]">{outcome.label}</h1>
+          <OutcomePinButton brandId={brandId} outcomeKey={outcome.key} />
+        </div>
         <div className="k-fg2 mb-6 mt-1 flex flex-wrap items-center gap-x-2 text-[14px]">
           {!settled ? (
             <Shimmer className="h-5 w-56" />
