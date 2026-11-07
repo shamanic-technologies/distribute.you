@@ -353,8 +353,22 @@ const RealCostFields = {
 };
 /** One slice of a split vendor's bank money; only `loadedOnUnits` slices price a unit. */
 const SplitPart = z.object({ part: z.string(), usdCents: z.number(), basis: z.string().nullable(), loadedOnUnits: z.boolean(), flag: z.string().nullable() });
+/**
+ * A vendor costs-service skipped on its daily price refresh (PRICE-REFRESH-RED-1107): the other vendors
+ * refreshed, this one did not. A non-empty list = BROKEN, red on Monitoring. `.optional()` only to decouple
+ * a rollout; costs-service serves it since NEWSLETTER-COST-1107.
+ */
+export const VendorFailureSchema = z.object({ provider: z.string(), input: z.string(), error: z.string() });
+export type VendorFailure = z.infer<typeof VendorFailureSchema>;
 const RefreshShape = z
-  .object({ status: z.string(), asOf: z.string(), startedAt: z.string(), finishedAt: z.string().nullable(), error: z.string().nullable() })
+  .object({
+    status: z.string(),
+    asOf: z.string(),
+    startedAt: z.string(),
+    finishedAt: z.string().nullable(),
+    error: z.string().nullable(),
+    vendorFailures: z.array(VendorFailureSchema).optional(),
+  })
   .nullable();
 export const RealCostsSchema = z.object({
   formula: z.string(),
@@ -379,6 +393,7 @@ export const RealCostsSchema = z.object({
   asOf: z.string(),
   refreshedAt: z.string(),
   stale: z.boolean(),
+  vendorFailures: z.array(VendorFailureSchema).optional(),
   lastRefresh: RefreshShape,
   payAsYouGo: z.array(
     z.object({
@@ -392,6 +407,8 @@ export const RealCostsSchema = z.object({
       // What the ratio's numerator is: the whole bank block ("ledger-net-paid") or only the metered part
       // of a split vendor (Google from its billing export, Twilio from its usage records).
       numeratorBasis: z.string(),
+      // Why the split was skipped ("split-unavailable" basis); null when it ran.
+      splitError: z.string().nullable().optional(),
       meteredUsdCents: Num,
       // Owner 2026-10-01: an API is priced at list cost; what the bank paid beyond it is internal, outside clients.
       vendorCostRecordedAtListUsdCents: z.number(),
@@ -485,6 +502,7 @@ export const BasisSummarySchema = z.object({
   day: z.string(),
   asOf: z.string(),
   stale: z.boolean(),
+  vendorFailures: z.array(VendorFailureSchema).optional(),
   rule: z.string(),
   bases: z.array(
     z.object({

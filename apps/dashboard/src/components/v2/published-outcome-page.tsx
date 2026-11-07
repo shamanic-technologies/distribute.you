@@ -27,6 +27,7 @@ import {
   type PublishedUnits,
 } from "@/lib/v2/published-units";
 import { BarSpark, EmptyNote, Figure, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
+import { OutcomePinButton } from "@/components/v2/outcome-pins";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { Arrow } from "@/components/v2/research-bits";
 import { OutcomeAccountingCard } from "@/components/v2/outcome-accounting-card";
@@ -100,6 +101,7 @@ export function PublishedOutcomeCard({ outcomeKey, data, icon }: { outcomeKey: P
         <Link href={v2OutcomeHref(orgId, brandId, outcomeKey)} className="min-w-0 flex-1 truncate text-[14px] font-medium leading-5 after:absolute after:inset-0 after:content-['']">
           {name}
         </Link>
+        <OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} compact />
       </div>
       <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
         <div className="min-w-0 border-r border-[var(--line-subtle)] p-3">
@@ -147,7 +149,8 @@ export function PublishedOutcomePage({ outcomeKey }: { outcomeKey: PublishedOutc
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex items-center gap-3">
           <NetworkLogo outcomeKey={outcomeKey} size={28} />
-          <h1 className="text-[28px] font-semibold leading-[34px] tracking-[-0.01em]">{name}</h1>
+          <h1 className="min-w-0 flex-1 text-[28px] font-semibold leading-[34px] tracking-[-0.01em]">{name}</h1>
+          <OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} />
         </div>
         <p className="k-fg2 mb-6 mt-1 text-[14px]">
           {copy.network

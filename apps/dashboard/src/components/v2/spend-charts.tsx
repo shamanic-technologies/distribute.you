@@ -252,7 +252,7 @@ function CostCard({ chart, answered, outcome, outcomes }: { chart: SpendChart | 
         )}
       </BigFigure>
       <p className="k-fg3 mt-0.5 min-h-[48px] text-[12px] leading-4">
-        {t && outcome && outcomes ? `${formatUsdAdaptive(t.spendUsd)} spent for ${formatCount(t.outcomes)} ${(t.outcomes === 1 ? outcome : outcomes).toLowerCase()}` : null}
+        {t && outcome && outcomes && t.outcomes != null ? `${formatUsdAdaptive(t.spendUsd)} spent for ${formatCount(t.outcomes)} ${(t.outcomes === 1 ? outcome : outcomes).toLowerCase()}` : null}
       </p>
       <ChartBox answered={answered}>
         {unavailable ? (
@@ -261,7 +261,7 @@ function CostCard({ chart, answered, outcome, outcomes }: { chart: SpendChart | 
           // With an expected cost served, the chart draws its dotted Expected line before the first result (owner 2026-11-02:
           // like the % chart beside it); the measured line starts with the first one.
           <EmptyNote>
-            {t && t.outcomes > 0
+            {t && t.outcomes != null && t.outcomes > 0
               ? "Nothing spent on this step yet, so it has no cost per result."
               : outcome
                 ? `No ${outcome.toLowerCase()} yet: the line starts with the first one.`
@@ -301,7 +301,7 @@ function ConversionCard({ chart, answered, outcome }: { chart: SpendChart | null
         )}
       </BigFigure>
       <p className="k-fg3 mt-0.5 min-h-[48px] text-[12px] leading-4">
-        {t && outcome && !unavailable && t.entered > 0 ? `${formatCount(t.converted)} of ${formatCount(t.entered)} people went on to ${outcome}` : null}
+        {t && outcome && !unavailable && t.entered != null && t.converted != null && t.entered > 0 ? `${formatCount(t.converted)} of ${formatCount(t.entered)} people went on to ${outcome}` : null}
       </p>
       <ChartBox answered={answered}>
         {unavailable ? (

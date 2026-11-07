@@ -12,13 +12,14 @@ import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useReachedCounts, useBrandRevenue, useDealsLifecycleCounts, useNeedsYourCall } from "@/components/v2/data";
 import { dealsBoardRungs } from "@/lib/deals-board";
-import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
-import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS } from "@/lib/staff-catalogue";
+import { v2CampaignHref, v2CatalogueHome, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
 import { useOngoingCatalogue } from "@/components/v2/staff-catalogue-data";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
 import type { PublishedOutcomeKey } from "@/lib/v2/published-units";
 import { POSTS_STEP } from "@/lib/v2/outcomes";
+import { shownPins } from "@/lib/v2/outcome-pins";
+import { useOwnOutcomePins, usePublishShownPins } from "@/components/v2/outcome-pins";
 import { formatCount } from "@/lib/format-number";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -157,6 +158,8 @@ const ICONS = {
   ledger: "M8 4.5c-1.5-1-3.5-1.5-5.5-1.5v9c2 0 4 .5 5.5 1.5m0-9c1.5-1 3.5-1.5 5.5-1.5v9c-2 0-4 .5-5.5 1.5m0-9v9",
   // Two people: the client's own team.
   team: "M6 7.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm-3.5 6c0-2 1.6-3.5 3.5-3.5s3.5 1.5 3.5 3.5M11 7.5a1.6 1.6 0 1 0 0-3.2M11.5 10c1.2.3 2 1.6 2 3.5",
+  // A stack of layers: the Catalogue (outcomes, Engines, scripts).
+  catalogue: "M8 2.5 13.5 5 8 7.5 2.5 5Zm-5.5 5L8 10l5.5-2.5M2.5 10.5 8 13l5.5-2.5",
   workflows: "M4 3.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4 6.5v2a2 2 0 0 0 2 2h4.5",
 };
 
@@ -208,6 +211,17 @@ function V2Sidebar() {
   // people still queued (Beyond Logic 2026-10-29: 127 vs 73). Each outcome entry = the people who
   // reached its step, the same count its page's Contacted by us tab states.
   const reached = useReachedCounts(brandId, [EMAIL_SENT_STEP, ...outcomes.flatMap((o) => (o.outcome.items.kind === "people" ? [o.outcome.items.step] : []))]).data;
+  // Each outcome's count, the one its entry shows: crm-service's everyone, else the people who reached its step.
+  const outcomeCount = ({ outcome, all }: (typeof outcomes)[number]) =>
+    all ? all.people : outcome.items.kind === "people" ? reached?.[outcome.items.step] : outcome.items.kind === "leads-found" ? peopleHeld : null;
+  // Pinned outcomes only (owner 2026-11-07: « au lieu de voir 100% des outcomes affichées, too much »): the user's own
+  // pins, else the 3 biggest counts; an outcome at a known 0 is never a default pin (owner 2026-10-14).
+  const ownPins = useOwnOutcomePins(brandId);
+  const pinned = shownPins(ownPins, [
+    ...outcomes.map((o) => ({ key: o.outcome.key, count: outcomeCount(o) })).filter((o) => o.count !== 0),
+    ...published.withRows.map(({ key, data }) => ({ key, count: data.totals.all.units })),
+  ]);
+  usePublishShownPins(brandId, pinned);
   // Deals badge = the people on the Deals board's columns (every lifecycle rung but Lead found),
   // read off the same served counts and key the page reads, so the two agree.
   const dealCounts = useDealsLifecycleCounts(brandId).data;
@@ -342,18 +356,14 @@ function V2Sidebar() {
             icon={<I d={ICONS.overview} />}
             active={section === "outcomes" && /\/outcomes\/?$/.test(pathname)}
           />
-          {outcomes.map(({ outcome, all }) => {
+          {outcomes.map((o) => {
+              const { outcome } = o;
               const href = v2OutcomeHref(orgId, brandId, outcome.key);
-              const n = all
-                ? all.people
-                : outcome.items.kind === "people"
-                  ? reached?.[outcome.items.step]
-                  : outcome.items.kind === "leads-found"
-                    ? peopleHeld
-                    : null;
-              // An outcome at a known 0 is not listed (owner 2026-10-14); a count still loading
-              // keeps its entry, and so does the page being read.
+              const n = outcomeCount(o);
+              // An outcome at a known 0 is not listed (owner 2026-10-14), nor one the user did not pin (owner
+              // 2026-11-07); the page being read always keeps its entry.
               if (n === 0 && pathname !== href) return null;
+              if (!pinned.includes(outcome.key) && pathname !== href) return null;
               return (
                 <NavItem
                   key={outcome.key}
@@ -365,7 +375,7 @@ function V2Sidebar() {
                 />
               );
             })}
-          {published.withRows.map(({ key, data }) => (
+          {published.withRows.filter(({ key }) => pinned.includes(key) || pathname === v2OutcomeHref(orgId, brandId, key)).map(({ key, data }) => (
             <PublishedOutcomeNavItem
               key={key}
               outcomeKey={key}
@@ -392,6 +402,13 @@ function V2Sidebar() {
             label="Connected accounts"
             icon={<I d={ICONS.settings} />}
             active={section === "integrations"}
+          />
+          {/* Catalogue (owner 2026-11-07, every client, the GTM Factory preview's entry): outcomes, Engines, scripts. */}
+          <NavItem
+            href={v2CatalogueHome(orgId, brandId)}
+            label="Catalogue"
+            icon={<I d={ICONS.catalogue} />}
+            active={pathname === v2CatalogueHome(orgId, brandId)}
           />
         </Group>
 
@@ -472,40 +489,14 @@ function OutcomeMark({ outcomeKey, label, stepIcons }: { outcomeKey: string; lab
 }
 
 /**
- * The staff sections (owner 2026-10-10): Steps, Sales Paths, Channels, Pipes, Sales Funnels,
- * Triggers (owner 2026-10-11), Workflows. Each = its Overview + every ONGOING one with its served mark and name.
+ * The staff section (owner 2026-10-10): the offer's sales funnel campaigns with their staff detail. Steps left the menu
+ * on 2026-11-07: the Catalogue page every client reads (Production) lists the outcomes, owner « la page catalogue ».
  * Mounted only in staff mode, so a customer makes none of these reads.
  */
-const NAV_CATALOGUE_OBJECTS = CATALOGUE_OBJECTS.filter((o) => o === "steps");
-
 function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: string; brandId: string; offerId: string | null; pathname: string }) {
   const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
   return (
     <>
-      {/* Steps only (owner 2026-11-02): Sales Paths, Channels, Pipes, Sales Funnels, Triggers and Workflows left the menu,
-          Engines run every campaign (Research shows them); their pages stay reachable from the pages that link them. */}
-      {NAV_CATALOGUE_OBJECTS.map((object) => {
-        const overview = v2CatalogueHref(orgId, brandId, object);
-        return (
-          <Group key={object} title={CATALOGUE_OBJECT_LABELS[object].title}>
-            <NavItem href={overview} label="Overview" icon={<I d={ICONS.overview} />} active={pathname === overview} />
-            {offerId &&
-              (ongoing[object] as Array<{ id: string; name: string; icon?: string; color?: string; face?: string | { svgPath: string } }>).map((o) => {
-                const href = v2CatalogueHref(orgId, brandId, object, o.id);
-                const face = typeof o.face === "string" ? o.face : o.face?.svgPath;
-                return (
-                  <NavItem
-                    key={o.id}
-                    href={href}
-                    label={o.name}
-                    icon={<CatalogueMark icon={o.icon} color={o.color} face={face} name={o.name} size={16} />}
-                    active={pathname === href}
-                  />
-                );
-              })}
-          </Group>
-        );
-      })}
       {/* Campaigns (owner 2026-10-10): the offer's SALES FUNNEL campaigns, staff detail (units, workflows, caps). */}
       <Group title="Campaigns">
         <NavItem

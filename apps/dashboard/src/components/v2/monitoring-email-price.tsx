@@ -1,5 +1,6 @@
 "use client";
 
+import { RefreshStatus, SeriesRefreshProblems } from "@/components/v2/price-refresh";
 import { Figure, SectionTitle } from "@/components/v2/ui";
 import {
   DEFAULT_WINDOWS,
@@ -74,15 +75,16 @@ export function EmailPriceView({ p }: { p: EmailSendPrice }) {
 
 /** As of when, and whether today's refresh ran: a stale series is said, never hidden. */
 function Freshness({ p }: { p: EmailSendPrice }) {
-  const failed = p.lastRefresh?.status === "failed";
   return (
-    <div className="k-fg2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
-      <span className="inline-flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.stale ? "var(--data-amber)" : "var(--data-teal)" }} />
-        {p.stale ? "Not refreshed today" : "Refreshed today"} · as of {dayLabel(p.asOf)}
-      </span>
-      <span className="k-fg3">{p.formula}</span>
-      {failed && p.lastRefresh?.error && <span style={{ color: "var(--data-rose)" }}>Last refresh failed: {p.lastRefresh.error}</span>}
+    <div className="space-y-3">
+      {/* Real problems first (PRICE-REFRESH-RED-1107): a failed refresh, a price over a day old. */}
+      <SeriesRefreshProblems s={p} what="Email sending price" />
+      <div className="k-fg2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+        <RefreshStatus s={p}>
+          <span className="k-fg2"> · as of {dayLabel(p.asOf)}</span>
+        </RefreshStatus>
+        <span className="k-fg3">{p.formula}</span>
+      </div>
     </div>
   );
 }

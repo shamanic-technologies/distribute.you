@@ -193,6 +193,10 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffBrands",
   // Staff catalogue sections (fleet economics of every business object).
   "staffCatalogueList",
+  // The Catalogue page (every client, owner 2026-11-07): live scripts, tactics, strategies.
+  "catalogueScripts",
+  "catalogueTactics",
+  "catalogueStrategies",
   "staffCatalogueObject",
   // A pipe's own figures since inception (fleet, brand, offer).
   "staffPipeStats",

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getStaffRealCostSeries, getStaffRealCosts } from "@/lib/api";
+import { RefreshStatus, SeriesRefreshProblems } from "@/components/v2/price-refresh";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import type { RealCostItem, RealCostSeries, RealCosts } from "@/lib/monitoring/monitoring";
 import { DailyLines, Dash, TD, TDR, TH, THR, cents, dayLabel, dollars, pct, type Line } from "@/components/v2/monitoring-charts";
@@ -85,11 +86,12 @@ function Body({ d, day, setDay, fetching }: { d: RealCosts; day: string | null; 
   const count = (m: string | null) => (m == null ? d.items.length : d.items.filter((i) => i.method === m).length);
   return (
     <div className="space-y-8">
+      {/* Real problems first (PRICE-REFRESH-RED-1107): a vendor skipped, a failed refresh, prices over a day old. */}
+      <SeriesRefreshProblems s={d} what="Real costs" />
       <div className="k-fg2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: d.stale ? "var(--data-amber)" : "var(--data-teal)" }} />
-          {d.stale ? "Not refreshed today" : "Refreshed today"} · prices of {dayLabel(d.day)}
-        </span>
+        <RefreshStatus s={d}>
+          <span className="k-fg2"> · prices of {dayLabel(d.day)}</span>
+        </RefreshStatus>
         <label className="inline-flex items-center gap-2">
           <span className="k-label">Day</span>
           <input
