@@ -2,6 +2,8 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { lastBrandCookieName, matchBrandPath } from "@/lib/last-brand";
 import { v2PathForV1, stripV2Prefix } from "@/lib/ui-version";
+import { clerkOrgRedirectPath } from "@/lib/internal-org-url";
+import { getInternalOrg } from "@/lib/client-service";
 
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
@@ -107,6 +109,17 @@ export default clerkMiddleware(
       return NextResponse.redirect(new URL("/sign-in", req.url));
     }
 
+    // An org URL naming the org by its INTERNAL uuid (links from agents, emails,
+    // Monitoring, staff tools) is the same page under the Clerk org id: Clerk can only
+    // switch the session to an `org_…` id, and a uuid URL renders with every call
+    // refused as `org_desync` (2026-11-07). Redirect BEFORE the first-run gate, which
+    // reads the session's org, not the URL's. Membership is then decided on the
+    // Clerk-id URL exactly as for any org link (org sync + OrgActivator).
+    if (userId && !isApiRoute(req)) {
+      const clerkPath = await clerkOrgRedirectPath(pathname, req.nextUrl.search, getInternalOrg);
+      if (clerkPath) return NextResponse.redirect(new URL(clerkPath, req.url));
+    }
+
     // First-run gate (DIS-111). Decided at the edge from a session-token claim
     // (`org.public_metadata.onboardingComplete`, surfaced as `orgMeta`), so the
     // onboarding redirect happens pre-paint with zero data fetch — no dashboard
@@ -178,7 +191,14 @@ export default clerkMiddleware(
     // (or redirects if the user is not a member). Prevents the dashboard from issuing
     // API calls under a stale active org after navigation or tab switching.
     organizationSyncOptions: {
-      organizationPatterns: ["/orgs/:id", "/orgs/:id/(.*)", "/v2/orgs/:id", "/v2/orgs/:id/(.*)"],
+      // Clerk org ids only (`org_…`): an internal-uuid URL is redirected by the handler
+      // above, and matching it here would first cost three failed activation handshakes.
+      organizationPatterns: [
+        "/orgs/:id(org_[^/]+)",
+        "/orgs/:id(org_[^/]+)/(.*)",
+        "/v2/orgs/:id(org_[^/]+)",
+        "/v2/orgs/:id(org_[^/]+)/(.*)",
+      ],
     },
   },
 );

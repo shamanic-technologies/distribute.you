@@ -9,8 +9,12 @@ describe("Clerk org/URL sync guards", () => {
     const src = readFileSync(resolve(ROOT, "src/proxy.ts"), "utf8");
     expect(src).toContain("organizationSyncOptions");
     // v1 URLs first, then the same two shapes under the v2 dashboard prefix — the
-    // URL org drives Clerk's active org in both trees.
-    expect(src).toMatch(/organizationPatterns\s*:\s*\[\s*['"]\/orgs\/:id['"]\s*,\s*['"]\/orgs\/:id\/\(\.\*\)['"]\s*,\s*['"]\/v2\/orgs\/:id['"]\s*,\s*['"]\/v2\/orgs\/:id\/\(\.\*\)['"]\s*\]/);
+    // URL org drives Clerk's active org in both trees. Clerk ids only (`org_…`): an
+    // internal-uuid org URL is redirected to its Clerk-id URL by the handler instead.
+    expect(src).toMatch(/organizationPatterns\s*:\s*\[\s*"\/orgs\/:id\(org_\[\^\/\]\+\)",\s*"\/orgs\/:id\(org_\[\^\/\]\+\)\/\(\.\*\)",\s*"\/v2\/orgs\/:id\(org_\[\^\/\]\+\)",\s*"\/v2\/orgs\/:id\(org_\[\^\/\]\+\)\/\(\.\*\)",?\s*\]/);
+    // The uuid redirect runs before the first-run gate.
+    expect(src.indexOf("clerkOrgRedirectPath(pathname")).toBeGreaterThan(0);
+    expect(src.indexOf("clerkOrgRedirectPath(pathname")).toBeLessThan(src.indexOf("// First-run gate (DIS-111)"));
   });
 
   it("handleOrgSwitch loads the target org's URL so organizationSyncOptions activates it", () => {

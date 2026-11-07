@@ -14,6 +14,7 @@ import { FeaturesProvider } from "@/lib/features-context";
 import { EntityRegistryProvider } from "@/lib/entity-registry-context";
 import { BillingGuardProvider } from "@/lib/billing-guard";
 import { V2Shell } from "@/components/v2/v2-shell";
+import { OrgDesyncNotice } from "@/components/v2/org-desync-notice";
 
 /**
  * Dashboard v2: the only dashboard (v1 was deleted; it lives in git history).
@@ -39,6 +40,7 @@ export function V2ClientLayout({ children }: { children: React.ReactNode }) {
                 <AdsPurchaseTracker />
                 <DistributeSaleTracker />
                 <InviteClaimer />
+                <OrgDesyncNotice />
                 <V2Shell>{children}</V2Shell>
               </BillingGuardProvider>
             </EntityRegistryProvider>

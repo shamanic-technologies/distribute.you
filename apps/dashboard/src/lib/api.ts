@@ -140,7 +140,7 @@ import {
   LeadsPageEnvelopeSchema,
 } from "./leads-server-page";
 import type { PublishedChannelTerms } from "./channel-minimums";
-import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
+import { ORG_DESYNC_ERROR, ORG_DESYNC_EVENT, ORG_DESYNC_STATUS, orgDesyncMessage, type OrgDesyncInfo } from "./org-desync";
 import { keepLastGoodFields } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { RevenueWindowResponseSchema, type RevenueWindow, type RevenueWindowDays } from "./revenue-window";
@@ -346,6 +346,14 @@ async function getTabSessionToken(forceRefresh = false): Promise<string | null> 
   }
 }
 
+/** The name of the org this tab's Clerk session is on (`window.Clerk.organization`), or null. */
+function sessionOrgNameInBrowser(): string | null {
+  if (typeof window === "undefined") return null;
+  const clerk = (window as unknown as { Clerk?: { organization?: { name?: unknown } | null } }).Clerk;
+  const name = clerk?.organization?.name;
+  return typeof name === "string" && name ? name : null;
+}
+
 /**
  * Backoff between org-desync retries. Three attempts, not one: a switch has to
  * get through `setActive` → Clerk's token endpoint → the cookie before the JWT's
@@ -479,6 +487,19 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
         required_cents: stringOrNumber(errorBody.required_cents),
         error: stringOrUndefined(errorBody.error),
       });
+    }
+    // An org desync that outlived the retries is not lag: the page names an org the
+    // session is not on (a link carrying another org, a non-member). Say WHICH org is
+    // open, here and in the v2 shell's notice, never a generic "try again".
+    if (response.status === ORG_DESYNC_STATUS && errorBody.error === ORG_DESYNC_ERROR) {
+      const info: OrgDesyncInfo = {
+        sessionOrgId: stringOrUndefined(errorBody.sessionOrgId) ?? null,
+        sessionOrgName: sessionOrgNameInBrowser(),
+      };
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent<OrgDesyncInfo>(ORG_DESYNC_EVENT, { detail: info }));
+      }
+      throw new ApiError(orgDesyncMessage(info.sessionOrgName), response.status, errorBody);
     }
     throw new ApiError(
       stringOrUndefined(errorBody.error) ?? stringOrUndefined(errorBody.message) ?? "Request failed",

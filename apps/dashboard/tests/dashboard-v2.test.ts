@@ -114,7 +114,8 @@ describe("v2 wiring", () => {
     expect(proxy).not.toContain("isBetaEmail(");
     expect(proxy).not.toContain("UI_VERSION_COOKIE");
     expect(proxy).toContain("v2PathForV1(pathname, req.nextUrl.search");
-    expect(proxy).toContain('"/v2/orgs/:id"');
+    // Clerk org ids only: an internal-uuid org URL is redirected to its Clerk id first.
+    expect(proxy).toContain('"/v2/orgs/:id(org_[^/]+)"');
   });
 
   it("the v2 tree is GA: no allowlist gate, and a badge only on the named gated surfaces", () => {

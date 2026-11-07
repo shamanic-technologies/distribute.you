@@ -171,6 +171,22 @@ export async function claimAnonymousOrg(input: ClaimInput): Promise<ClaimOutcome
   return { claimed: false, alreadyClaimed: false, refusal };
 }
 
+/**
+ * An org's record by its INTERNAL uuid (`GET /internal/orgs/:orgId`): `externalId` is
+ * the Clerk org id. Null on 404. Used by the edge to turn a uuid org URL into its
+ * Clerk-id URL (`lib/internal-org-url.ts`). Short timeout: it runs before a page paints.
+ */
+export async function getInternalOrg(orgId: string): Promise<{ externalId: string | null } | null> {
+  const res = await fetch(endpoint(`/internal/orgs/${encodeURIComponent(orgId)}`), {
+    headers: { "x-api-key": CLIENT_SERVICE_API_KEY as string },
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`[client-service] GET /internal/orgs/${orgId} failed: ${res.status}`);
+  const body = (await res.json()) as { externalId?: unknown };
+  return { externalId: typeof body.externalId === "string" ? body.externalId : null };
+}
+
 /** Who the first touch belongs to: the anonymous org's internal uuid, or the
  *  identity-provider pair an ordinary signup knows. */
 export type AcquisitionTarget =
