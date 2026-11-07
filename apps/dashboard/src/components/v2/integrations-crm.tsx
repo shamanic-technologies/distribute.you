@@ -167,7 +167,8 @@ function ConnectionStrip({
   contacts: number | null;
   contactsCapped: boolean;
 }) {
-  const paused = connection.status !== "active";
+  // Only a connection someone PAUSED reads Paused; a failed sync ("error") is still on.
+  const paused = connection.status === "paused";
   const state = connection.lastError ? "Needs attention" : paused ? "Paused" : "Connected";
   const color = connection.lastError ? "var(--data-amber)" : paused ? "var(--fg-3)" : "var(--data-teal)";
   return (
