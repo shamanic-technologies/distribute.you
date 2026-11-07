@@ -129,6 +129,15 @@ export function expectedReasonWords(reason: string | null): string {
       return "No conversion yet";
     case "leg_cost_unavailable":
       return "No price yet";
+    // A published outcome's measured return (features-service published-units, SOCIAL-OUTCOMES-1107).
+    case "no_unit_yet":
+      return "Nothing published yet";
+    case "unit_has_no_value":
+      return "No value set";
+    case "nothing_spent_yet":
+      return "Nothing spent yet";
+    case "no_pipe_prices_outcome":
+      return "No price yet";
     case null:
       return "—";
     default:

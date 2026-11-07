@@ -17,8 +17,11 @@ import {
   PUBLISHED_OUTCOME_COPY,
   PUBLISHED_OUTCOME_DOMAIN,
   PUBLISHED_OUTCOME_KEYS,
+  costPerSignupReasonWords,
   dayTime,
   performedByLabel,
+  publishedRoiToShow,
+  visitsReasonWords,
   type PublishedDay,
   type PublishedOutcomeKey,
   type PublishedUnitRow,
@@ -27,6 +30,7 @@ import {
 import { BarSpark, EmptyNote, Figure, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { Arrow } from "@/components/v2/research-bits";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 
 /**
  * ONE PUBLISHED OUTCOME (owner 2026-11-06, OUTCOME-FINEST-1106: « du hardcode pour chaque [outcome] »; « en connectant les
@@ -41,6 +45,8 @@ const TICK = { fontSize: 11, fill: "var(--fg-3)" };
 const EVERYONE = "var(--data-teal)";
 const OURS = "var(--accent)";
 const PAGE = 50;
+/** Tile count to grid columns (static class names, so Tailwind compiles them). */
+const TILE_COLS: Record<number, string> = { 4: "lg:grid-cols-4", 5: "lg:grid-cols-5", 6: "lg:grid-cols-6", 7: "lg:grid-cols-7" };
 
 export function usePublishedUnits(brandId: string, outcomeKey: PublishedOutcomeKey) {
   return useAuthQuery(["publishedUnits", brandId, outcomeKey], () => getBrandPublishedUnits(brandId, outcomeKey), { ...pollOptions, enabled: !!brandId });
@@ -77,7 +83,7 @@ function NetworkLogo({ outcomeKey, size = 16 }: { outcomeKey: PublishedOutcomeKe
 
 /** $ per signup on what we did: Learning while no signup came from it yet. */
 function CostPerSignup({ data }: { data: PublishedUnits }) {
-  if (data.costPerSignupUsd == null) return <span className="k-fg3 text-[13px] font-normal">Learning</span>;
+  if (data.costPerSignupUsd == null) return <span className="k-fg3 text-[13px] font-normal">{costPerSignupReasonWords(data.costPerSignupUnavailableReason)}</span>;
   return <>{formatUsdAdaptive(data.costPerSignupUsd)}</>;
 }
 
@@ -120,7 +126,9 @@ export function PublishedOutcomeCard({ outcomeKey, data, icon }: { outcomeKey: P
       <div className="relative z-10 mt-2 flex min-w-0 items-center gap-1.5 text-[12px]">
         <NetworkLogo outcomeKey={outcomeKey} />
         <span className="k-fg2 truncate">
-          {formatCount(all.visits)} visit{all.visits === 1 ? "" : "s"}, {formatCount(all.signups)} signup{all.signups === 1 ? "" : "s"}
+          {data.visitsMeasured === false
+            ? "Visits not tracked yet"
+            : `${formatCount(all.visits)} visit${all.visits === 1 ? "" : "s"}, ${formatCount(all.signups)} signup${all.signups === 1 ? "" : "s"}`}
         </span>
       </div>
     </div>
@@ -189,9 +197,14 @@ export function PublishedBody({ outcomeKey, data }: { outcomeKey: PublishedOutco
       </div>
     );
   }
+  const roi = publishedRoiToShow(data);
+  // visitsMeasured false = nothing tracks a click on this outcome: the visits and signups are not tracked, never 0.
+  const visitsTracked = data.visitsMeasured !== false;
+  // Posts, Views, then Visits + Signups + $ / signup when tracked (one "Not tracked" tile otherwise), Value, ROI.
+  const tiles = 1 + (copy.hasViews ? 1 : 0) + (visitsTracked ? 3 : 1) + (all.valueUsd !== undefined ? 1 : 0) + (roi ? 1 : 0);
   return (
     <div className="space-y-6">
-      <div className={`grid grid-cols-2 gap-3 ${copy.hasViews ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
+      <div className={`grid grid-cols-2 gap-3 ${TILE_COLS[tiles] ?? "lg:grid-cols-4"}`}>
         <StatTile label={copy.network ? "Posts" : "Emails sent"}>
           <Figure value={formatCount(all.units)} unit={all.units === 1 ? copy.unit : copy.units} />
           <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">
@@ -204,18 +217,45 @@ export function PublishedBody({ outcomeKey, data }: { outcomeKey: PublishedOutco
             <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">{formatCount(all.engagements)} engagements</p>
           </StatTile>
         )}
-        <StatTile label="Visits">
-          <Figure value={formatCount(all.visits)} unit={all.visits === 1 ? "visit" : "visits"} />
-          <p className="k-fg3 mt-0.5 truncate text-[12px]">From a click on a link</p>
-        </StatTile>
-        <StatTile label="Signups">
-          <Figure value={formatCount(all.signups)} unit={all.signups === 1 ? "signup" : "signups"} />
-          <p className="k-fg3 mt-0.5 truncate text-[12px]">From those visits</p>
-        </StatTile>
-        <StatTile label="$ / signup" note={<span className="hidden sm:inline">Since you started</span>}>
-          <Figure value={<CostPerSignup data={data} />} />
-          <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">{formatUsdAdaptive(ours.spentUsd)} spent by us</p>
-        </StatTile>
+        {visitsTracked ? (
+          <>
+            <StatTile label="Visits">
+              <Figure value={formatCount(all.visits)} unit={all.visits === 1 ? "visit" : "visits"} />
+              <p className="k-fg3 mt-0.5 truncate text-[12px]">From a click on a link</p>
+            </StatTile>
+            <StatTile label="Signups">
+              <Figure value={formatCount(all.signups)} unit={all.signups === 1 ? "signup" : "signups"} />
+              <p className="k-fg3 mt-0.5 truncate text-[12px]">From those visits</p>
+            </StatTile>
+          </>
+        ) : (
+          <StatTile label="Visits and signups">
+            <Figure value={<span className="k-fg3 text-[13px] font-normal">{visitsReasonWords(data.visitsUnavailableReason)}</span>} />
+            <p className="k-fg3 mt-0.5 truncate text-[12px]">No click on these {copy.rows} is tracked yet</p>
+          </StatTile>
+        )}
+        {all.valueUsd !== undefined && (
+          <StatTile label="Value produced">
+            <Figure value={formatUsdAdaptive(all.valueUsd)} />
+            <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">
+              {all.unvaluedRows ? `${formatCount(all.unvaluedRows)} ${all.unvaluedRows === 1 ? copy.row : copy.rows} not valued` : `What your ${copy.rows} are worth`}
+            </p>
+          </StatTile>
+        )}
+        {roi && (
+          <StatTile label={<RoiLabel />} note={<span className="hidden sm:inline">Since you started</span>}>
+            <Figure value={<RoiValue roi={roi} learning={data.measuredReturn?.learning} />} />
+            <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">
+              {formatUsdAdaptive(ours.spentUsd)} spent by us
+            </p>
+          </StatTile>
+        )}
+        {visitsTracked && (
+          <StatTile label="$ / signup" note={<span className="hidden sm:inline">Since you started</span>}>
+            <Figure value={<CostPerSignup data={data} />} />
+            <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">{formatUsdAdaptive(ours.spentUsd)} spent by us</p>
+          </StatTile>
+        )}
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -231,7 +271,7 @@ export function PublishedBody({ outcomeKey, data }: { outcomeKey: PublishedOutco
         </ChartCard>
       </div>
 
-      <UnitsTable outcomeKey={outcomeKey} rows={data.rows} />
+      <UnitsTable outcomeKey={outcomeKey} rows={data.rows} repostsExcluded={data.repostsExcluded?.rows ?? 0} visitsTracked={visitsTracked} />
     </div>
   );
 }
@@ -282,7 +322,28 @@ function DayBars({ days, bars }: { days: PublishedDay[]; bars: Array<[DayField, 
   );
 }
 
-function UnitsTable({ outcomeKey, rows }: { outcomeKey: PublishedOutcomeKey; rows: PublishedUnitRow[] }) {
+/** One engagement kind of a row: the served count, `—` when the platform does not report it. */
+function Kind({ n }: { n: number | null | undefined }) {
+  return <td className="px-3 py-2.5 text-right tabular-nums">{n == null ? DASH : formatCount(n)}</td>;
+}
+
+/** A row's visits or signups: the served count, else why it is absent. */
+function VisitsCell({ n, reason }: { n: number | null; reason: string | null | undefined }) {
+  return <td className="px-3 py-2.5 text-right tabular-nums">{n != null ? formatCount(n) : reason ? <span className="k-fg3 text-[12px]">{visitsReasonWords(reason)}</span> : DASH}</td>;
+}
+
+function UnitsTable({
+  outcomeKey,
+  rows,
+  repostsExcluded,
+  visitsTracked,
+}: {
+  outcomeKey: PublishedOutcomeKey;
+  rows: PublishedUnitRow[];
+  repostsExcluded: number;
+  /** False = no click is tracked on this outcome: the Visits and Signups columns would say "Not tracked" on every row, so they go (the tile says it once). */
+  visitsTracked: boolean;
+}) {
   const copy = PUBLISHED_OUTCOME_COPY[outcomeKey];
   const [shown, setShown] = useState(PAGE);
   const visible = rows.slice(0, shown);
@@ -292,13 +353,18 @@ function UnitsTable({ outcomeKey, rows }: { outcomeKey: PublishedOutcomeKey; row
       <div className="flex items-baseline gap-2 px-4 pb-1 pt-3.5">
         <h2 className="text-[14px] font-medium">{isPost ? "Every post" : "Every newsletter"}</h2>
         <span className="k-fg3 text-[14px] tabular-nums">{formatCount(rows.length)}</span>
+        {repostsExcluded > 0 && (
+          <span className="k-fg3 ml-auto text-[12px] tabular-nums">
+            {formatCount(repostsExcluded)} repost{repostsExcluded === 1 ? "" : "s"} of others excluded
+          </span>
+        )}
       </div>
       {rows.length === 0 ? (
         <EmptyNote>{isPost ? `No ${copy.network} post yet. Connect your ${copy.network} account to see each one here.` : "No newsletter sent yet."}</EmptyNote>
       ) : (
         <>
           <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[960px] table-fixed text-[13px]">
+            <table className={`w-full table-fixed text-[13px] ${isPost ? "min-w-[1320px]" : "min-w-[1040px]"}`}>
               <thead>
                 <tr className="k-line-subtle border-b">
                   <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">{copy.creative}</th>
@@ -308,12 +374,21 @@ function UnitsTable({ outcomeKey, rows }: { outcomeKey: PublishedOutcomeKey; row
                     <>
                       <th className="k-label w-[72px] px-3 py-2.5 text-right font-normal">Views</th>
                       <th className="k-label w-[96px] px-3 py-2.5 text-right font-normal">Engagements</th>
+                      <th className="k-label w-[64px] px-3 py-2.5 text-right font-normal">Likes</th>
+                      <th className="k-label w-[84px] px-3 py-2.5 text-right font-normal">Comments</th>
+                      <th className="k-label w-[72px] px-3 py-2.5 text-right font-normal">Reposts</th>
+                      <th className="k-label w-[64px] px-3 py-2.5 text-right font-normal">Clicks</th>
                     </>
                   ) : (
                     <th className="k-label w-[80px] px-3 py-2.5 text-right font-normal">Emails</th>
                   )}
-                  <th className="k-label w-[64px] px-3 py-2.5 text-right font-normal">Visits</th>
-                  <th className="k-label w-[72px] px-3 py-2.5 text-right font-normal">Signups</th>
+                  {visitsTracked && (
+                    <>
+                      <th className="k-label w-[96px] px-3 py-2.5 text-right font-normal">Visits</th>
+                      <th className="k-label w-[96px] px-3 py-2.5 text-right font-normal">Signups</th>
+                    </>
+                  )}
+                  <th className="k-label w-[80px] px-3 py-2.5 text-right font-normal">Value</th>
                   <th className="k-label w-[80px] px-3 py-2.5 text-right font-normal">$ spent</th>
                   <th className="k-label w-[104px] px-3 py-2.5 pr-4 text-right font-normal">{isPost ? "Posted" : "Sent"}</th>
                 </tr>
@@ -330,14 +405,31 @@ function UnitsTable({ outcomeKey, rows }: { outcomeKey: PublishedOutcomeKey; row
                     </td>
                     {isPost ? (
                       <>
-                        <td className="px-3 py-2.5 text-right tabular-nums">{r.views == null ? DASH : formatCount(r.views)}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {r.views == null ? DASH : formatCount(r.views)}
+                          {r.metricsWarning === "engagements_exceed_views" && (
+                            <span
+                              className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--data-amber)] align-middle"
+                              title="The platform reports more interactions than views: one of the two is not fully measured."
+                            />
+                          )}
+                        </td>
                         <td className="px-3 py-2.5 text-right tabular-nums">{r.engagements == null ? DASH : formatCount(r.engagements)}</td>
+                        <Kind n={r.engagementBreakdown?.likes} />
+                        <Kind n={r.engagementBreakdown?.replies} />
+                        <Kind n={r.engagementBreakdown?.reposts} />
+                        <Kind n={r.engagementBreakdown?.clicks} />
                       </>
                     ) : (
                       <td className="px-3 py-2.5 text-right tabular-nums">{formatCount(r.units)}</td>
                     )}
-                    <td className="px-3 py-2.5 text-right tabular-nums">{r.visits == null ? DASH : formatCount(r.visits)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{r.signups == null ? DASH : formatCount(r.signups)}</td>
+                    {visitsTracked && (
+                      <>
+                        <VisitsCell n={r.visits} reason={r.visitsUnavailableReason ?? r.ledgerUnavailableReason} />
+                        <VisitsCell n={r.signups} reason={r.visitsUnavailableReason ?? r.ledgerUnavailableReason} />
+                      </>
+                    )}
+                    <td className="px-3 py-2.5 text-right tabular-nums">{r.valueUsd == null ? DASH : formatUsdAdaptive(r.valueUsd)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{r.spentUsd == null ? DASH : formatUsdAdaptive(r.spentUsd)}</td>
                     <td className="k-mono k-fg2 px-3 py-2.5 pr-4 text-right text-[12px]">{friendlyDate(r.publishedAt)}</td>
                   </tr>
