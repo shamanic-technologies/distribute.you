@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { formatCount, formatUsdAdaptive, formatUsdUnit } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/brand-conversion-rates";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { stepLabel } from "@/lib/legs";
@@ -24,7 +24,7 @@ function Reason({ reason }: { reason: string | null | undefined }) {
 }
 
 function Usd({ usd, reason }: { usd: number | null; reason?: string | null }) {
-  return usd == null ? <Reason reason={reason} /> : <>{formatUsdAdaptive(usd)}</>;
+  return usd == null ? <Reason reason={reason} /> : <>{formatUsdUnit(usd)}</>;
 }
 
 function Pct({ pct, reason }: { pct: number | null; reason?: string | null }) {
@@ -38,7 +38,7 @@ function Gap({ usd }: { usd: number | null }) {
   return (
     <span className={color}>
       {usd > 0 ? "+" : usd < 0 ? "−" : ""}
-      {formatUsdAdaptive(Math.abs(usd))}
+      {formatUsdUnit(Math.abs(usd))}
     </span>
   );
 }
@@ -111,12 +111,15 @@ export function OutcomeAccountingCard({
               expected={<Usd usd={c.expectedUsd} reason={c.expectedUnavailableReason} />}
               gap={<Gap usd={c.variance.usd} />}
             />
+            {/* An outcome made straight from the start: this row would repeat Cost per unit. */}
+            {s.route.length > 1 && (
             <Row
               label="Cost from the start"
               sub={s.rolledYieldPct != null ? `${formatRatePct(s.rolledYieldPct)} of tries end as a ${unit}` : undefined}
               actual={<Usd usd={s.actualUsd} reason={s.actualUnavailableReason} />}
               expected={<Usd usd={s.expectedUsd} reason={s.expectedUnavailableReason} />}
             />
+            )}
             <Row
               label={next ? `Go on to ${next}` : "Go on to the next step"}
               sub={y.measuredNextUnits != null && y.measuredTrials != null ? `${formatCount(y.measuredNextUnits)} of ${formatCount(Math.round(y.measuredTrials))} so far` : undefined}

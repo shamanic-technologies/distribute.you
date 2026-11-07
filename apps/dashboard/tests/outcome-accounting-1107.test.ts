@@ -78,3 +78,15 @@ describe("outcome accounting (OUTCOME-ACCOUNTING-1107)", () => {
     expect(page).toContain("rows={teamRows} ours={false}");
   });
 });
+
+import { formatUsdUnit } from "../src/lib/format-number";
+describe("unit prices keep their sub-cent digits", () => {
+  it("two significant digits under $1, adaptive above", () => {
+    expect(formatUsdUnit(0.005132)).toBe("$0.0051");
+    expect(formatUsdUnit(0.018818)).toBe("$0.019");
+    expect(formatUsdUnit(0.25)).toBe("$0.25");
+    expect(formatUsdUnit(2.5)).toBe("$2.50");
+    expect(formatUsdUnit(0)).toBe("$0.00");
+    expect(formatUsdUnit(-0.013686)).toBe("-$0.014");
+  });
+});

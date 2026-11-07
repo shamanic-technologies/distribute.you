@@ -8,7 +8,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getBrandPublishedUnits } from "@/lib/api";
-import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { formatCount, formatUsdAdaptive, formatUsdUnit } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { outcomeOf } from "@/lib/v2/outcomes";
@@ -323,7 +323,7 @@ function VisitsCell({ n, reason }: { n: number | null; reason: string | null | u
 
 /** A row's served $ figure, else why it is absent. */
 function UsdCell({ usd, reason }: { usd: number | null | undefined; reason: string | null | undefined }) {
-  return <td className="px-3 py-2.5 text-right tabular-nums">{usd != null ? formatUsdAdaptive(usd) : reason ? <span className="k-fg3 text-[12px]">{accountingReasonWords(reason)}</span> : DASH}</td>;
+  return <td className="px-3 py-2.5 text-right tabular-nums">{usd != null ? formatUsdUnit(usd) : reason ? <span className="k-fg3 text-[12px]">{accountingReasonWords(reason)}</span> : DASH}</td>;
 }
 
 function UnitsTable({
@@ -436,7 +436,7 @@ function UnitsTable({
                         <UsdCell usd={r.accounting?.costPerUnit.expectedUsd} reason={r.accounting?.costPerUnit.expectedUnavailableReason} />
                         <td className="px-3 py-2.5 text-right tabular-nums">
                           {r.accounting?.value.expectedNetPerUnitUsd != null ? (
-                            formatUsdAdaptive(r.accounting.value.expectedNetPerUnitUsd)
+                            formatUsdUnit(r.accounting.value.expectedNetPerUnitUsd)
                           ) : r.value?.unavailableReason ? (
                             <span className="k-fg3 text-[12px]">{rowValueReasonWords(r.value.unavailableReason)}</span>
                           ) : (
