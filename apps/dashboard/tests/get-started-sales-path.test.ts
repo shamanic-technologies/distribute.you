@@ -217,8 +217,8 @@ describe("a click moves on at once, and Back goes one step back", () => {
     expect(PAGE).not.toContain("We ticked what we read on your site");
   });
 
-  it("shows each audience's market size, big, from human-service's estimate", () => {
-    expect(PAGE).toContain("<AudienceSize count={a.estimatedLeadCount ?? counts[a.name]}");
+  it("shows each audience's market size, big, from human-service's real count", () => {
+    expect(PAGE).toContain("<AudienceSize count={counts[a.name]} failed={!!countErrors[a.name]} />");
     expect(PAGE).toContain("if (e.estimatedPeople != null) counts[e.name] = e.estimatedPeople;");
   });
 
@@ -344,9 +344,15 @@ describe("step descriptions and the instant audience size", () => {
     expect(c.steps.get("signup")?.description).toBeUndefined();
   });
 
-  it("shows human-service's instant estimate on each audience card, the measured count only as a fallback", () => {
-    expect(PAGE).toContain("<AudienceSize count={a.estimatedLeadCount ?? counts[a.name]}");
+  // SEGMENT-REAL-COUNT-1107 (owner 2026-11-07): the split's LLM guess read ~350 where
+  // Apollo counted 31. Cards render at once, read "Counting…", then the REAL count, or
+  // say the count failed; the guess is read nowhere.
+  it("shows only the real count on each audience card: Counting… first, a visible failure, never the guess", () => {
     const api = read("src/lib/api.ts");
-    expect(api).toContain("estimatedLeadCount: z.number().nullish(),");
+    const lib = read("src/lib/v2/get-started.ts");
+    for (const src of [PAGE, api, lib]) expect(src).not.toContain(["estimated", "LeadCount"].join(""));
+    expect(PAGE).toContain(">Counting…</span>");
+    expect(PAGE).toContain(">Could not count</span>");
+    expect(PAGE).toContain("for (const a of audienceProposals) if (!(a.name in counts)) failed[a.name] = true;");
   });
 });

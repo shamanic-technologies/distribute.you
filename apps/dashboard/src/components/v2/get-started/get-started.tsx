@@ -353,8 +353,11 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // Each proposed audience's approximate market size, estimated WITHOUT creating it
   // (owner 2026-10-06: creating every proposal cost ~$2.25 a visitor; only the picked
   // one is created, by `pickAudience`).
+  // Only this REAL count is shown, never the split's LLM guess (owner 2026-11-07,
+  // SEGMENT-REAL-COUNT-1107: a card read ~350, Apollo counted 31). A name in
+  // `audienceCountErrors` could not be counted and says so on its card.
   const [audienceCounts, setAudienceCounts] = useState<Record<string, number>>({});
-  const [estimating, setEstimating] = useState(false);
+  const [audienceCountErrors, setAudienceCountErrors] = useState<Record<string, true>>({});
   const estimated = useRef(false);
   const [building, setBuilding] = useState<Record<string, boolean>>({});
   // Step 5: the first companies of the picked audience (PREVIEW_COMPANIES).
@@ -751,6 +754,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       saveSnapshot({ icp: text });
       estimated.current = false;
       setAudienceCounts({});
+      setAudienceCountErrors({});
       showAudiences(segments);
       posthog.capture("get_started_audience_own", { audiences: segments.length });
       if (segments.length === 1) pickAudience(0, segments);
@@ -1088,18 +1092,26 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   useEffect(() => {
     if (!brandId || !offer || audienceProposals.length === 0 || estimated.current) return;
     estimated.current = true;
-    setEstimating(true);
     estimateAudienceSegments(brandId, offer.offerId, audienceProposals)
       .then(({ estimates }) => {
         const counts: Record<string, number> = {};
+        const failed: Record<string, true> = {};
         for (const e of estimates) {
           if (e.estimatedPeople != null) counts[e.name] = e.estimatedPeople;
-          else console.error("[get-started] audience estimate unavailable:", e.name, e.unavailableReason);
+          else {
+            failed[e.name] = true;
+            console.error("[get-started] audience estimate unavailable:", e.name, e.unavailableReason);
+          }
         }
+        // A proposal the producer answered nothing for is a failure too, never a blank.
+        for (const a of audienceProposals) if (!(a.name in counts)) failed[a.name] = true;
         setAudienceCounts(counts);
+        setAudienceCountErrors(failed);
       })
-      .catch((e) => console.error("[get-started] audience estimate failed:", e))
-      .finally(() => setEstimating(false));
+      .catch((e) => {
+        console.error("[get-started] audience estimate failed:", e);
+        setAudienceCountErrors(Object.fromEntries(audienceProposals.map((a) => [a.name, true as const])));
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandId, offer?.offerId, audienceProposals]);
 
@@ -1885,7 +1897,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           busy={audienceBusy}
           error={audienceError}
           counts={audienceCounts}
-          counting={estimating || (!estimated.current && !!offerPromise.current)}
+          countErrors={audienceCountErrors}
           target={audienceTarget}
           waitingForOffer={!offer && !pendingOffer}
           onPick={(i) => void pickAudience(i)}
@@ -3495,7 +3507,7 @@ function AudienceStage({
   busy,
   error,
   counts,
-  counting,
+  countErrors,
   target,
   waitingForOffer,
   onPick,
@@ -3509,8 +3521,8 @@ function AudienceStage({
   error: string | null;
   /** Market size per audience name (human-service's people count), when counted. */
   counts: Record<string, number>;
-  /** The audiences are being counted: a missing figure shows a loading bar, not nothing. */
-  counting: boolean;
+  /** Audiences the count failed for: their card says so (no fallback to a guess). */
+  countErrors: Record<string, true>;
   /** Who we will write to, in words, once drafted: shown while the audiences are split out of it. */
   target: string;
   waitingForOffer: boolean;
@@ -3617,7 +3629,7 @@ function AudienceStage({
                       <OfferIcon token={a.icon} />
                     </span>
                     <span className="k-fg min-w-0 flex-1 text-[14px] font-medium leading-5">{a.name}</span>
-                    <AudienceSize count={a.estimatedLeadCount ?? counts[a.name]} counting={counting && a.estimatedLeadCount == null} />
+                    <AudienceSize count={counts[a.name]} failed={!!countErrors[a.name]} />
                   </span>
                   <span className="k-fg2 mt-2 block text-[12.5px] leading-5">{a.description}</span>
                   {on && <span className="mt-2 flex"><span aria-hidden className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] text-white">✓</span></span>}
@@ -3633,8 +3645,8 @@ function AudienceStage({
   );
 }
 
-/** An audience's market size, big, top right: "14K leads". A loading bar while counted. */
-function AudienceSize({ count, counting }: { count: number | undefined; counting: boolean }) {
+/** An audience's REAL market size (Apollo count), big, top right: "14K leads". "Counting…" until it lands. */
+function AudienceSize({ count, failed }: { count: number | undefined; failed: boolean }) {
   const label = leadCountLabel(count);
   if (label)
     return (
@@ -3643,7 +3655,12 @@ function AudienceSize({ count, counting }: { count: number | undefined; counting
         <span className="k-fg3 block text-[11px]">leads</span>
       </span>
     );
-  return counting ? <Shimmer className="mt-1 h-5 w-12 shrink-0 rounded-md" /> : null;
+  if (failed)
+    return (
+      <span className="shrink-0 text-right text-[11px] leading-6 text-[var(--data-rose)]">Could not count</span>
+    );
+  // No figure and no failure yet: the count is on its way (it runs as soon as the offer exists).
+  return <span className="k-fg3 shrink-0 animate-pulse text-right text-[11px] leading-6 motion-reduce:animate-none">Counting…</span>;
 }
 
 function RetryNote({ text, onRetry }: { text: string; onRetry: () => void }) {
