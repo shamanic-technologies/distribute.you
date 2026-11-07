@@ -27,7 +27,15 @@ COPY . .
 # Only the landing's subtree, not the whole workspace: the other four apps are deployed
 # elsewhere and installing them here would cost minutes and gigabytes for nothing. The
 # trailing `...` pulls in @distribute/content, which every served page reads its copy from.
-RUN pnpm install --frozen-lockfile --filter @distribute/landing...
+# BOX-LOAD-1107: the box builds this image on every merge while serving production, and
+# `COPY . .` above invalidates every later layer each time, so without these cache mounts
+# each build re-downloaded every package and recompiled + re-type-checked from nothing
+# (20-50 min at nice 19 on a saturated box, the deploy lock held most of the day). The
+# pnpm store and Next's .next/cache (incremental tsc .tsbuildinfo, image cache) now
+# survive between builds; the fetch/data cache is wiped before each build so a prerender
+# never reuses data from a previous build. The image content is unchanged.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    pnpm install --frozen-lockfile --store-dir /pnpm-store --filter @distribute/landing...
 
 # Idempotent (`IF NOT EXISTS` throughout) and skipped silently when the secret is absent,
 # which is what a local `docker build` without BuildKit secrets does. Run explicitly
@@ -39,6 +47,8 @@ RUN --mount=type=secret,id=landing_db_url \
     pnpm --filter @distribute/landing migrate
 
 RUN --mount=type=secret,id=landing_db_url \
+    --mount=type=cache,id=next-cache-landing,target=/repo/apps/landing/.next/cache \
+    rm -rf apps/landing/.next/cache/fetch-cache && \
     DATABASE_URL="$(cat /run/secrets/landing_db_url 2>/dev/null || true)" \
     pnpm --filter @distribute/landing... build
 
