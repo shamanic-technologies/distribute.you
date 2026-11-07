@@ -5211,6 +5211,8 @@ export interface AudienceWire {
    *  to. Required on the wire, so required here: a renamed or absent field would read
    *  `undefined` forever and every audience link would quietly disappear. */
   offerId: string | null;
+  /** AUDIENCE-PER-OFFER-1107: "target" = the offer's one audience, "search" = a brand list. */
+  role?: "target" | "search" | null;
   status: AudienceStatus;
   source: string | null;
   filters: Record<string, unknown> | null;
@@ -5271,6 +5273,11 @@ const AudienceSchema = z.object({
   // human-service v0.50.0: the client profile a source list was built for; null on a
   // profile itself and on every other audience. nullish: a pre-rollout body omits it.
   profileAudienceId: z.string().nullish(),
+  // AUDIENCE-PER-OFFER-1107 (human-service): "target" = THE one audience of its offer,
+  // "search" = a list of the brand every offer audience walks (hidden from the default
+  // read, asked with `role=search`), null = an audience as before. nullish: a pre-rollout
+  // body omits it.
+  role: z.enum(["target", "search"]).nullish(),
   filters: z.record(z.string(), z.unknown()).nullable(),
   avatarUrl: z.string().nullable(),
   apolloCount: z.number().nullable(),
@@ -5632,11 +5639,12 @@ const ListAudiencesResponseSchema = z.object({
  *  audiences. Omitting it is the brand-wide read, unchanged. */
 export async function listAudiences(
   brandId: string,
-  params?: { status?: AudienceStatus; limit?: number; offset?: number; offerId?: string },
+  params?: { status?: AudienceStatus; limit?: number; offset?: number; offerId?: string; role?: "target" | "search" },
   token?: string,
 ): Promise<{ audiences: AudienceWire[]; total: number }> {
   const query = new URLSearchParams({ brandId });
   if (params?.offerId) query.set("offerId", params.offerId);
+  if (params?.role) query.set("role", params.role);
   if (params?.status) query.set("status", params.status);
   if (params?.limit !== undefined) query.set("limit", String(params.limit));
   if (params?.offset !== undefined) query.set("offset", String(params.offset));

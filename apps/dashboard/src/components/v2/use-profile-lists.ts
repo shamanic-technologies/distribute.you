@@ -28,14 +28,25 @@ export function useProfileLists(brandId: string, offerId: string | undefined) {
     () => listAudiences(brandId, { status: "archived", offerId }),
     pollOptions,
   );
+  // AUDIENCE-PER-OFFER-1107: the brand's lists (human-service role "search") are walked by
+  // every offer audience and hidden from the reads above, so the Lists and Sources views ask
+  // for them on their own, brand-wide. A body predating the role param answers the default
+  // rows: deduped by id below.
+  const brandLists = useAuthQuery(
+    ["audiences", brandId, "search"],
+    () => listAudiences(brandId, { role: "search", limit: 200 }),
+    pollOptions,
+  );
   const origins = useAuthQuery(["sourcingOrigins"], () => getSourcingOrigins());
 
-  const audiences: AudienceWire[] = useMemo(
-    () => [active.data, paused.data, archived.data].flatMap((d) => d?.audiences ?? []),
-    [active.data, paused.data, archived.data],
-  );
+  const audiences: AudienceWire[] = useMemo(() => {
+    const seen = new Set<string>();
+    return [active.data, paused.data, archived.data, brandLists.data]
+      .flatMap((d) => d?.audiences ?? [])
+      .filter((a) => (seen.has(a.id) ? false : (seen.add(a.id), true)));
+  }, [active.data, paused.data, archived.data, brandLists.data]);
   const byId = useMemo(() => new Map(audiences.map((a) => [a.id, a])), [audiences]);
-  const reads = [active, paused, archived];
+  const reads = [active, paused, archived, brandLists];
   return {
     audiences,
     byId,
