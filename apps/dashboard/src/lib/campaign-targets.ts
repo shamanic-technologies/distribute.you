@@ -136,6 +136,10 @@ export function reasonWords(reason: string | null): string {
     target: "Target",
     no_spend_on_this_milestone: "Nothing spent on this step",
     no_unit_yet: "None yet",
+    // LEDGER-ONLY-1107: every count comes from the cost-accounting ledger; these name why it has no figure yet.
+    outcome_not_declared_in_ledger: "Not counted yet",
+    unit_cost_not_in_ledger: "Not priced yet",
+    ledger_unreadable: "Could not read this right now",
   };
   // `pipe_unpriced:<pipe>` names the step with no price yet; the customer reads the fact, not the id.
   if (reason.startsWith("pipe_unpriced")) return "Not priced yet";
