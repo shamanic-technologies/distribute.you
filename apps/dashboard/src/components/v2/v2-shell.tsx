@@ -16,6 +16,8 @@ import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2
 import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS } from "@/lib/staff-catalogue";
 import { useOngoingCatalogue } from "@/components/v2/staff-catalogue-data";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
+import { usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
+import type { PublishedOutcomeKey } from "@/lib/v2/published-units";
 import { POSTS_STEP } from "@/lib/v2/outcomes";
 import { formatCount } from "@/lib/format-number";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
@@ -196,6 +198,9 @@ function V2Sidebar() {
   // Every outcome of the brand, campaigns or not (owner 2026-10-11), the Overview's own list.
   const { outcomes } = useBrandOutcomeList(orgId, brandId, offerId);
   const stepIcons = useStepIcons();
+  // Published outcomes (posts, newsletter emails; SOCIAL-OUTCOMES-1107): one entry each once the brand has a row, read
+  // through the Overview's own query keys so the sidebar count and the card agree.
+  const published = usePublishedOutcomes(brandId);
   // Leads found counts the people the brand's lists hold, the page's People tab (owner 2026-10-11).
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held;
@@ -360,6 +365,16 @@ function V2Sidebar() {
                 />
               );
             })}
+          {published.withRows.map(({ key, data }) => (
+            <PublishedOutcomeNavItem
+              key={key}
+              outcomeKey={key}
+              n={data.totals.all.units}
+              href={v2OutcomeHref(orgId, brandId, key)}
+              pathname={pathname}
+              stepIcons={stepIcons}
+            />
+          ))}
         </Group>
 
         {/* Production (the GTM Factory sidebar, FACTORY-USER-DASHBOARD-1102, every client): the work the client's own
@@ -408,6 +423,36 @@ function V2Sidebar() {
       <BudgetGauge orgId={orgId} brandId={brandId} />
       <AccountMenuV2 orgId={orgId} brandId={brandId} />
     </aside>
+  );
+}
+
+/**
+ * A published outcome's sidebar entry (SOCIAL-OUTCOMES-1107, owner 2026-11-07: « Sont-ils dans la sidebar ? »): its served
+ * catalogue name, its step icon, and the page's own "How many" figure (`totals.all.units`). Listed only once the brand has
+ * a row, the same rule as the Overview cards (a known 0 is not listed).
+ */
+function PublishedOutcomeNavItem({
+  outcomeKey,
+  n,
+  href,
+  pathname,
+  stepIcons,
+}: {
+  outcomeKey: PublishedOutcomeKey;
+  n: number;
+  href: string;
+  pathname: string;
+  stepIcons: Map<string, string> | undefined;
+}) {
+  const label = usePublishedOutcomeLabel(outcomeKey);
+  return (
+    <NavItem
+      href={href}
+      label={label}
+      icon={<OutcomeMark outcomeKey={outcomeKey} label={label} stepIcons={stepIcons} />}
+      active={pathname === href}
+      trailing={<Count n={n} />}
+    />
   );
 }
 
