@@ -35,7 +35,7 @@ const PROD_STEPS = [
   "lead_identified",
   "audience_built",
   "ad_shown",
-  "post_published",
+  // `post_published` left the catalogue 2026-11-07 (DELETE-POST-PUBLISHED-1107): each post is its network's own outcome.
   "client_satisfied",
   "post_viewed",
   "post_engaged",

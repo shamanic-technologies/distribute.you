@@ -95,7 +95,6 @@ export const STEP_MARKS: Record<string, StepMark> = {
   lead_identified: { glyph: "identification-card", tone: STEP_TONE },
   audience_built: { glyph: "users-four", tone: STEP_TONE },
   ad_shown: { glyph: "monitor-play", tone: STEP_TONE },
-  post_published: { glyph: "article", tone: STEP_TONE },
   client_satisfied: { glyph: "smiley", tone: STEP_TONE },
   post_viewed: { glyph: "eye", tone: STEP_TONE },
   post_engaged: { glyph: "heart", tone: STEP_TONE },
