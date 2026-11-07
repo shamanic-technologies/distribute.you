@@ -352,6 +352,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "dealsLifecycleRows",
   "dealsLifecycle",
   "companyLifecycle",
+  // Today's top tile: pipeline generated over time, measured then expected (owner 2026-11-07).
+  "pipelineGenerated",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
   // is the offer sidebar's own label.

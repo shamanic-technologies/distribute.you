@@ -31,7 +31,7 @@ describe("/get-started: a reload never asks the model again for a list it showed
       }),
     )!;
     expect(s.offerProposals).toEqual({ items: offers, main: 1 });
-    expect(s.audienceProposals?.[0]).toEqual({ name: "Vendors", description: "Tech vendors.", icon: "users", iconConfidence: 0.9, estimatedLeadCount: null });
+    expect(s.audienceProposals?.[0]).toEqual({ name: "Vendors", description: "Tech vendors.", icon: "users", iconConfidence: 0.9 });
   });
 
   it("drops a malformed list rather than showing half of it", () => {

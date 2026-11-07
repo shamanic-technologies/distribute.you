@@ -473,7 +473,6 @@ export interface SnapshotAudienceProposal {
   description: string;
   icon: string;
   iconConfidence: number;
-  estimatedLeadCount?: number | null;
 }
 
 function parseOfferProposal(v: unknown): SnapshotOfferProposal | null {
@@ -502,8 +501,7 @@ export function parseSnapshotAudienceProposals(v: unknown): SnapshotAudienceProp
     if (!x || typeof x !== "object") return null;
     const o = x as Record<string, unknown>;
     if (typeof o.name !== "string" || !o.name || typeof o.description !== "string" || typeof o.icon !== "string" || typeof o.iconConfidence !== "number") return null;
-    const n = o.estimatedLeadCount;
-    out.push({ name: o.name, description: o.description, icon: o.icon, iconConfidence: o.iconConfidence, estimatedLeadCount: typeof n === "number" ? n : null });
+    out.push({ name: o.name, description: o.description, icon: o.icon, iconConfidence: o.iconConfidence });
   }
   return out;
 }
