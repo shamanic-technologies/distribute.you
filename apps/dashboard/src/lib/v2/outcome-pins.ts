@@ -9,7 +9,14 @@
 export const DEFAULT_PIN_COUNT = 3;
 export const OUTCOME_PINS_EVENT = "distribute:outcome-pins";
 
-export const outcomePinsStorageKey = (brandId: string): string => `distribute-outcome-pins-${brandId}`;
+/**
+ * The sidebar groups that pin: Outcomes, and Campaigns (owner 2026-11-07: « un pin system comme dans le catalogue, so
+ * that some campaigns can be visible on the sidebar but not all »). Same mechanism, one list per group per brand.
+ */
+export type PinGroup = "outcome" | "campaign";
+
+export const pinsStorageKey = (group: PinGroup, brandId: string): string => `distribute-${group}-pins-${brandId}`;
+export const outcomePinsStorageKey = (brandId: string): string => pinsStorageKey("outcome", brandId);
 
 /** The user's own pins on a brand, or null when they never pinned or unpinned there. */
 export function parseOutcomePins(raw: string | null): string[] | null {
@@ -44,4 +51,15 @@ export function shownPins(own: string[] | null, listed: Array<{ key: string; cou
 /** The next own list after a click on Pin / Unpin: starts from what the sidebar showed, so the default is kept. */
 export function togglePin(shown: string[], key: string): string[] {
   return shown.includes(key) ? shown.filter((k) => k !== key) : [...shown, key];
+}
+
+/**
+ * The campaign keys the sidebar shows: own pins win; with none, the first DEFAULT_PIN_COUNT in the served order (the
+ * Campaigns page's own order). Budgets are stated per day, week or month, so ranking them would need browser math.
+ */
+export function shownPinsInOrder(own: string[] | null, listed: string[]): string[] {
+  return shownPins(
+    own,
+    listed.map((key) => ({ key, count: 0 })),
+  );
 }

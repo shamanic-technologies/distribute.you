@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_PIN_COUNT, parseOutcomePins, shownPins, togglePin } from "../src/lib/v2/outcome-pins";
+import { DEFAULT_PIN_COUNT, outcomePinsStorageKey, parseOutcomePins, pinsStorageKey, shownPins, shownPinsInOrder, togglePin } from "../src/lib/v2/outcome-pins";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
@@ -56,5 +56,34 @@ describe("outcome pins (owner 2026-11-07: pin outcomes in the sidebar instead of
     const published = read("src/components/v2/published-outcome-page.tsx");
     expect(published).toContain("<OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} />");
     expect(published).toContain("<OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} compact />");
+  });
+});
+
+describe("campaign pins (owner 2026-11-07: some campaigns visible on the sidebar but not all)", () => {
+  it("keeps one list per group, the outcome key unchanged", () => {
+    expect(outcomePinsStorageKey("b1")).toBe("distribute-outcome-pins-b1");
+    expect(pinsStorageKey("campaign", "b1")).toBe("distribute-campaign-pins-b1");
+  });
+
+  it("with no pin of the user's own, shows the first 3 in the served order", () => {
+    expect(shownPinsInOrder(null, ["c1", "c2", "c3", "c4"])).toEqual(["c1", "c2", "c3"]);
+    expect(shownPinsInOrder(["c4", "gone"], ["c1", "c2", "c3", "c4"])).toEqual(["c4"]);
+    expect(shownPinsInOrder([], ["c1"])).toEqual([]);
+  });
+
+  it("the sidebar lists only pinned campaigns, the campaign being read always kept", () => {
+    const shell = read("src/components/v2/v2-shell.tsx");
+    const at = shell.indexOf('<Group title="Campaigns">');
+    const group = shell.slice(at, shell.indexOf("</Group>", at));
+    expect(shell).toContain('const ownCampaignPins = useOwnPins("campaign", brandId);');
+    expect(shell).toContain('usePublishPins("campaign", brandId, pinnedCampaigns);');
+    expect(group).toContain("if (!pinnedCampaigns.includes(c.id) && !pathname.startsWith(href)) return null;");
+    expect(group).toContain("pinnedCampaigns.includes(m.row.campaign.id) || pathname.startsWith(m.href)");
+  });
+
+  it("every campaign page and Overview row carries the Pin button", () => {
+    expect(read("src/components/v2/funnel-campaigns.tsx")).toContain("<CampaignPinButton brandId={campaign.brandId} campaignId={campaign.id} />");
+    expect(read("src/components/v2/campaign-page-next.tsx")).toContain("<CampaignPinButton brandId={campaign.brandId} campaignId={campaign.id} />");
+    expect(read("src/components/v2/campaigns-overview-page.tsx")).toContain("<CampaignPinButton brandId={campaign.brandId} campaignId={campaign.id} compact />");
   });
 });

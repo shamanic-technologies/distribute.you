@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CampaignPinButton } from "@/components/v2/outcome-pins";
 import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank";
 import { createPortal } from "react-dom";
@@ -665,6 +666,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
       tabs={tabs}
       actions={
         <>
+          <CampaignPinButton brandId={campaign.brandId} campaignId={campaign.id} />
           {/* ONE button like the Campaigns table (owner 2026-11-02): green with the budget when on, "Off" when off. */}
           <FunnelCampaignStatus campaign={campaign} onLabel={capsSettled ? funnelOnLabel(copyOf?.type === "reactive" ? "reactive" : type, c) : null} />
         </>

@@ -18,8 +18,8 @@ import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
 import type { PublishedOutcomeKey } from "@/lib/v2/published-units";
 import { POSTS_STEP } from "@/lib/v2/outcomes";
-import { shownPins } from "@/lib/v2/outcome-pins";
-import { useOwnOutcomePins, usePublishShownPins } from "@/components/v2/outcome-pins";
+import { shownPins, shownPinsInOrder } from "@/lib/v2/outcome-pins";
+import { useOwnOutcomePins, useOwnPins, usePublishPins, usePublishShownPins } from "@/components/v2/outcome-pins";
 import { formatCount } from "@/lib/format-number";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -222,6 +222,14 @@ function V2Sidebar() {
     ...published.withRows.map(({ key, data }) => ({ key, count: data.totals.all.units })),
   ]);
   usePublishShownPins(brandId, pinned);
+  // Pinned campaigns only (owner 2026-11-07: « some campaigns visible on the sidebar but not all »): the user's own
+  // pins, else the first 3 in the Campaigns page's order. The campaign being read always shows.
+  const ownCampaignPins = useOwnPins("campaign", brandId);
+  const pinnedCampaigns = shownPinsInOrder(
+    ownCampaignPins,
+    offerId ? [...funnelCampaigns.map((c) => c.id), ...ongoing.map(({ m }) => m.row.campaign.id)] : [],
+  );
+  usePublishPins("campaign", brandId, pinnedCampaigns);
   // Deals badge = the people on the Deals board's columns (every lifecycle rung but Lead found),
   // read off the same served counts and key the page reads, so the two agree.
   const dealCounts = useDealsLifecycleCounts(brandId).data;
@@ -319,6 +327,7 @@ function V2Sidebar() {
           {offerId &&
             funnelCampaigns.map((c) => {
               const href = v2CampaignHref(orgId, brandId, c.id);
+              if (!pinnedCampaigns.includes(c.id) && !pathname.startsWith(href)) return null;
               return (
                 <NavItem
                   key={c.id}
@@ -333,7 +342,9 @@ function V2Sidebar() {
               );
             })}
           {offerId &&
-            ongoing.map(({ m, name }) => (
+            ongoing
+              .filter(({ m }) => pinnedCampaigns.includes(m.row.campaign.id) || pathname.startsWith(m.href))
+              .map(({ m, name }) => (
               <NavItem
                 key={m.row.campaign.id}
                 href={m.href}
