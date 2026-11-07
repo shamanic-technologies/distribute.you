@@ -137,7 +137,12 @@ export function expectedReasonWords(reason: string | null): string {
     case "nothing_spent_yet":
       return "Nothing spent yet";
     case "no_pipe_prices_outcome":
+    case "no_catalogue_step_for_outcome":
       return "No price yet";
+    case "nothing_spent_on_outcome":
+      return "Nothing spent yet";
+    case "step_has_no_value":
+      return "No value set";
     case null:
       return "—";
     default:

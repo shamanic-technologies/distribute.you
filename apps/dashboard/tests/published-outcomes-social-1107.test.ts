@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PublishedUnitsSchema, costPerSignupReasonWords, publishedRoiToShow, visitsReasonWords } from "../src/lib/v2/published-units";
+import { PublishedUnitsSchema, costPerSignupReasonWords, publishedReturnReasonWords, publishedRoiToShow, rowValueReasonWords, visitsReasonWords } from "../src/lib/v2/published-units";
 
 /**
  * SOCIAL-OUTCOMES-1107 (owner 2026-11-07: « engagements (comments, reposts, clicks, etc) … Le $ ? Le yield ? Le ROI ? »):
@@ -78,5 +78,20 @@ describe("published outcomes: breakdown, value, ROI (SOCIAL-OUTCOMES-1107)", () 
     expect(page).toContain('<StatTile label="Value produced">');
     expect(page).toContain("repostsExcluded={data.repostsExcluded?.rows ?? 0}");
     expect(page).toContain("const visitsTracked = data.visitsMeasured !== false;");
+  });
+
+  it("each null ROI or value reason reads as one line naming the outcome (features #2306)", () => {
+    expect(publishedReturnReasonWords("nothing_spent_on_outcome", "linkedin_post_published")).toBe("Nothing spent on LinkedIn posts yet");
+    expect(publishedReturnReasonWords("step_has_no_value", "newsletter_email_sent")).toBe("No value set for newsletters yet");
+    expect(publishedReturnReasonWords("no_pipe_prices_outcome", "x_post_published")).toBe("X posts have no price yet");
+    expect(rowValueReasonWords("step_has_no_value")).toBe("No value set");
+  });
+
+  it("unreported views read Not reported, explained once under the table", () => {
+    const page = src("src/components/v2/published-outcome-page.tsx");
+    expect(page).toContain('r.viewsUnavailableReason === "views_not_reported" ? (');
+    expect(page).toContain("Not reported: {copy.network} gives no views for that post.");
+    expect(page).toContain("publishedReturnReasonWords(roi.reason, outcomeKey)");
+    expect(page).not.toMatch(/title="The platform/);
   });
 });

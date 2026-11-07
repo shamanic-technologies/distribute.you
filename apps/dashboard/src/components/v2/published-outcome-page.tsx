@@ -20,7 +20,9 @@ import {
   costPerSignupReasonWords,
   dayTime,
   performedByLabel,
+  publishedReturnReasonWords,
   publishedRoiToShow,
+  rowValueReasonWords,
   visitsReasonWords,
   type PublishedDay,
   type PublishedOutcomeKey,
@@ -244,7 +246,15 @@ export function PublishedBody({ outcomeKey, data }: { outcomeKey: PublishedOutco
         )}
         {roi && (
           <StatTile label={<RoiLabel />} note={<span className="hidden sm:inline">Since you started</span>}>
-            <Figure value={<RoiValue roi={roi} learning={data.measuredReturn?.learning} />} />
+            <Figure
+              value={
+                roi.value == null ? (
+                  <span className="k-fg3 text-[13px] font-normal">{publishedReturnReasonWords(roi.reason, outcomeKey)}</span>
+                ) : (
+                  <RoiValue roi={roi} learning={data.measuredReturn?.learning} />
+                )
+              }
+            />
             <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">
               {formatUsdAdaptive(ours.spentUsd)} spent by us
             </p>
@@ -406,12 +416,15 @@ function UnitsTable({
                     {isPost ? (
                       <>
                         <td className="px-3 py-2.5 text-right tabular-nums">
-                          {r.views == null ? DASH : formatCount(r.views)}
+                          {r.views != null ? (
+                            formatCount(r.views)
+                          ) : r.viewsUnavailableReason === "views_not_reported" ? (
+                            <span className="k-fg3 text-[12px]">Not reported</span>
+                          ) : (
+                            DASH
+                          )}
                           {r.metricsWarning === "engagements_exceed_views" && (
-                            <span
-                              className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--data-amber)] align-middle"
-                              title="The platform reports more interactions than views: one of the two is not fully measured."
-                            />
+                            <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--data-amber)] align-middle" aria-label="More interactions than views" />
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-right tabular-nums">{r.engagements == null ? DASH : formatCount(r.engagements)}</td>
@@ -429,7 +442,15 @@ function UnitsTable({
                         <VisitsCell n={r.signups} reason={r.visitsUnavailableReason ?? r.ledgerUnavailableReason} />
                       </>
                     )}
-                    <td className="px-3 py-2.5 text-right tabular-nums">{r.valueUsd == null ? DASH : formatUsdAdaptive(r.valueUsd)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {r.valueUsd != null ? (
+                        formatUsdAdaptive(r.valueUsd)
+                      ) : r.value?.unavailableReason ? (
+                        <span className="k-fg3 text-[12px]">{rowValueReasonWords(r.value.unavailableReason)}</span>
+                      ) : (
+                        DASH
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{r.spentUsd == null ? DASH : formatUsdAdaptive(r.spentUsd)}</td>
                     <td className="k-mono k-fg2 px-3 py-2.5 pr-4 text-right text-[12px]">{friendlyDate(r.publishedAt)}</td>
                   </tr>
@@ -437,10 +458,19 @@ function UnitsTable({
               </tbody>
             </table>
           </div>
-          <div className="k-fg3 k-line-subtle flex items-center gap-3 border-t px-4 py-2.5 text-[12px] tabular-nums">
+          <div className="k-fg3 k-line-subtle flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2.5 text-[12px] tabular-nums">
             <span>
               {formatCount(visible.length)} of {formatCount(rows.length)}
             </span>
+            {isPost && rows.some((r) => r.viewsUnavailableReason === "views_not_reported") && (
+              <span>Not reported: {copy.network} gives no views for that post.</span>
+            )}
+            {isPost && rows.some((r) => r.metricsWarning === "engagements_exceed_views") && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--data-amber)]" />
+                More interactions than views: {copy.network} under-reports one of the two.
+              </span>
+            )}
             {shown < rows.length && (
               <button type="button" className="k-btn-ghost ml-auto h-6 px-2" onClick={() => setShown(shown + PAGE)}>
                 Show {formatCount(Math.min(PAGE, rows.length - shown))} more
