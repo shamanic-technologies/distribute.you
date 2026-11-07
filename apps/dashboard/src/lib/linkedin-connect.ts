@@ -110,9 +110,26 @@ export function linkedinFinishErrorMessage(err: unknown): string {
   // The page's org is not the session's: say which org is open (apiCall's message names it).
   if (isOrgDesyncError(err)) return err instanceof Error && err.message ? err.message : orgDesyncMessage(null);
   if (isLinkedinNotConfigured(err)) return "LinkedIn is not set up on our side yet. Try again soon.";
-  const e = err as { status?: unknown } | null;
+  const e = err as { status?: unknown; body?: { type?: unknown; error?: unknown } | null } | null;
+  // social-service names what LinkedIn refused in member words (not an admin of the page, page permission not
+  // granted to our app): show it as is (LINKEDIN-PAGES-1107). Without one, the login expired or was reused.
+  if (e?.status === 400 && e.body?.type === "linkedin_login_invalid" && typeof e.body.error === "string" && e.body.error.trim()) return e.body.error;
   if (e?.status === 400) return "This LinkedIn login expired. Connect the account again.";
   return "We could not connect this LinkedIn account. Try again.";
+}
+
+/**
+ * What the card says when LinkedIn sent the browser back WITHOUT a code. A cancel is said as one; a permission
+ * LinkedIn refuses our app (`unauthorized_scope_error`: a company page asks the page posting permission, which
+ * needs LinkedIn's Community Management API on our app) is named with LinkedIn's own words (LINKEDIN-PAGES-1107).
+ */
+export function linkedinDeniedMessage(error: string | null, description: string | null): string {
+  if (error === "access_denied" || !!error?.startsWith("user_cancelled")) return "You cancelled the LinkedIn login.";
+  if (error === "unauthorized_scope_error") {
+    const said = (description ?? "").replace(/&quot;/g, '"').trim();
+    return `LinkedIn refused a permission our app asked${said ? ` (${said})` : ""}. Our team has to enable it on LinkedIn: contact us.`;
+  }
+  return "LinkedIn did not finish the login. Try again.";
 }
 
 /** A link the member pasted that reads as a LinkedIn profile or company page (the producer checks it for real). */

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { parseLinkedinTrip, linkedinReturnUrl, linkedinTripKey } from "@/lib/linkedin-connect";
+import { linkedinDeniedMessage, parseLinkedinTrip, linkedinReturnUrl, linkedinTripKey } from "@/lib/linkedin-connect";
 
 /**
  * Where LinkedIn sends the browser back after its login (LINKEDIN-ACCOUNTS-1106).
@@ -35,11 +35,7 @@ export default function LinkedinCallbackPage() {
     if (!code || !state) {
       const denied = params.get("error");
       console.error("[linkedin-connect] LinkedIn returned no code", { denied, reason: params.get("error_reason") });
-      window.location.replace(
-        linkedinReturnUrl(trip.returnTo, {
-          error: denied === "access_denied" || !!denied?.startsWith("user_cancelled") ? "You cancelled the LinkedIn login." : "LinkedIn did not finish the login. Try again.",
-        }),
-      );
+      window.location.replace(linkedinReturnUrl(trip.returnTo, { error: linkedinDeniedMessage(denied, params.get("error_description")) }));
       return;
     }
     window.location.replace(linkedinReturnUrl(trip.returnTo, { code, state }));
