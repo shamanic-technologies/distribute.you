@@ -35,6 +35,7 @@ import { campaignKey, campaignsOfOffer, sourceCampaignsOfOffer } from "@/lib/off
 import { useCampaigns } from "@/components/v2/use-campaigns";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { v2CampaignHref } from "@/lib/v2/routes";
+import { CampaignPinButton } from "@/components/v2/outcome-pins";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
@@ -417,6 +418,8 @@ export function CampaignLine({
       <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-[14px] font-medium">{campaign.salesFunnelName}</span>
+          {/* Pin / Unpin in the sidebar (owner 2026-11-07); the button stops the row's click. */}
+          <CampaignPinButton brandId={campaign.brandId} campaignId={campaign.id} compact />
         </span>
         {/* P5.1 (owner 2026-10-31): the path the campaign runs NOW, each pipe by its served name and mark. */}
         {copy?.path ? (

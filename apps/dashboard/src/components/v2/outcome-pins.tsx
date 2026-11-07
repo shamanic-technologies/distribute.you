@@ -1,15 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { OUTCOME_PINS_EVENT, outcomePinsStorageKey, parseOutcomePins, togglePin } from "@/lib/v2/outcome-pins";
+import { OUTCOME_PINS_EVENT, parseOutcomePins, pinsStorageKey, togglePin, type PinGroup } from "@/lib/v2/outcome-pins";
 
 /**
- * Outcome pins (owner 2026-11-07, `lib/v2/outcome-pins.ts`): the user's own pins per brand in localStorage, and the
- * list the sidebar SHOWS (own pins, else the default) published here so a Pin button anywhere toggles from what the
- * user sees. The sidebar is mounted on every brand page, so the shown list is always there once it rendered.
+ * Sidebar pins (owner 2026-11-07, `lib/v2/outcome-pins.ts`), for Outcomes and Campaigns alike: the user's own pins per
+ * group and brand in localStorage, and the list the sidebar SHOWS (own pins, else the default) published here so a Pin
+ * button anywhere toggles from what the user sees. The sidebar is mounted on every brand page, so the shown list is
+ * always there once it rendered.
  */
 
 const shownByBrand = new Map<string, string[]>();
+const slot = (group: PinGroup, brandId: string) => `${group}:${brandId}`;
 
 function subscribe(onChange: () => void) {
   window.addEventListener(OUTCOME_PINS_EVENT, onChange);
@@ -20,69 +22,74 @@ function subscribe(onChange: () => void) {
   };
 }
 
-function readOwnRaw(brandId: string): string | null {
+function readOwnRaw(group: PinGroup, brandId: string): string | null {
   try {
-    return window.localStorage.getItem(outcomePinsStorageKey(brandId));
+    return window.localStorage.getItem(pinsStorageKey(group, brandId));
   } catch (err) {
     console.error("[v2] outcome pins: localStorage unreadable", err);
     return null;
   }
 }
 
-/** The user's own pins on this brand (null = never chosen, the sidebar shows its default). */
-export function useOwnOutcomePins(brandId: string): string[] | null {
+/** The user's own pins in a group on this brand (null = never chosen, the sidebar shows its default). */
+export function useOwnPins(group: PinGroup, brandId: string): string[] | null {
   const raw = useSyncExternalStore(
     subscribe,
-    () => (brandId ? readOwnRaw(brandId) : null),
+    () => (brandId ? readOwnRaw(group, brandId) : null),
     () => null,
   );
   return parseOutcomePins(raw);
 }
 
+export const useOwnOutcomePins = (brandId: string) => useOwnPins("outcome", brandId);
+
 /** The sidebar publishes the keys it shows, so a Pin button reads and toggles the same list. */
-export function usePublishShownPins(brandId: string, shown: string[]) {
+export function usePublishPins(group: PinGroup, brandId: string, shown: string[]) {
   const sig = shown.join("|");
   useEffect(() => {
     if (!brandId) return;
-    if ((shownByBrand.get(brandId) ?? []).join("|") === sig) return;
-    shownByBrand.set(brandId, sig ? sig.split("|") : []);
+    const at = slot(group, brandId);
+    if ((shownByBrand.get(at) ?? []).join("|") === sig) return;
+    shownByBrand.set(at, sig ? sig.split("|") : []);
     window.dispatchEvent(new Event(OUTCOME_PINS_EVENT));
-  }, [brandId, sig]);
+  }, [group, brandId, sig]);
 }
 
-function useShownPins(brandId: string): string[] | null {
+export const usePublishShownPins = (brandId: string, shown: string[]) => usePublishPins("outcome", brandId, shown);
+
+function useShownPins(group: PinGroup, brandId: string): string[] | null {
   const sig = useSyncExternalStore(
     subscribe,
-    () => shownByBrand.get(brandId)?.join("|") ?? null,
+    () => shownByBrand.get(slot(group, brandId))?.join("|") ?? null,
     () => null,
   );
   return sig == null ? null : sig ? sig.split("|") : [];
 }
 
-/** Pin / Unpin one outcome of a brand. */
-export function useOutcomePin(brandId: string, outcomeKey: string): { pinned: boolean; ready: boolean; toggle: () => void } {
-  const own = useOwnOutcomePins(brandId);
-  const shown = useShownPins(brandId);
+/** Pin / Unpin one item (an outcome, a campaign) of a brand. */
+export function usePin(group: PinGroup, brandId: string, itemKey: string): { pinned: boolean; ready: boolean; toggle: () => void } {
+  const own = useOwnPins(group, brandId);
+  const shown = useShownPins(group, brandId);
   const current = shown ?? own;
   const toggle = useCallback(() => {
     if (!brandId || !current) return;
-    const next = togglePin(current, outcomeKey);
+    const next = togglePin(current, itemKey);
     try {
-      window.localStorage.setItem(outcomePinsStorageKey(brandId), JSON.stringify(next));
+      window.localStorage.setItem(pinsStorageKey(group, brandId), JSON.stringify(next));
     } catch (err) {
-      console.error("[v2] outcome pins: localStorage refused the write", err);
+      console.error("[v2] sidebar pins: localStorage refused the write", { group, err });
     }
-    shownByBrand.set(brandId, next);
+    shownByBrand.set(slot(group, brandId), next);
     window.dispatchEvent(new Event(OUTCOME_PINS_EVENT));
-  }, [brandId, current, outcomeKey]);
-  return { pinned: Boolean(current?.includes(outcomeKey)), ready: current != null, toggle };
+  }, [group, brandId, current, itemKey]);
+  return { pinned: Boolean(current?.includes(itemKey)), ready: current != null, toggle };
 }
 
 const PIN_D = "M9.5 2.5l4 4-2 1-2.5 2.5-.5 3-2-2-3 3m2-5l-2-2 3-.5L9 4.5z";
 
 /** The Pin / Unpin control (GTM Factory's): a `k-btn` with the pin glyph, its word saying what a click does. */
-export function OutcomePinButton({ brandId, outcomeKey, compact = false }: { brandId: string; outcomeKey: string; compact?: boolean }) {
-  const { pinned, ready, toggle } = useOutcomePin(brandId, outcomeKey);
+export function PinButton({ group, brandId, itemKey, compact = false }: { group: PinGroup; brandId: string; itemKey: string; compact?: boolean }) {
+  const { pinned, ready, toggle } = usePin(group, brandId, itemKey);
   if (!ready) return null;
   const word = pinned ? "Unpin" : "Pin";
   return (
@@ -104,4 +111,12 @@ export function OutcomePinButton({ brandId, outcomeKey, compact = false }: { bra
       {!compact && word}
     </button>
   );
+}
+
+export function OutcomePinButton({ brandId, outcomeKey, compact = false }: { brandId: string; outcomeKey: string; compact?: boolean }) {
+  return <PinButton group="outcome" brandId={brandId} itemKey={outcomeKey} compact={compact} />;
+}
+
+export function CampaignPinButton({ brandId, campaignId, compact = false }: { brandId: string; campaignId: string; compact?: boolean }) {
+  return <PinButton group="campaign" brandId={brandId} itemKey={campaignId} compact={compact} />;
 }
