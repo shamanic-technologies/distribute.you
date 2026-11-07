@@ -43,14 +43,17 @@ describe("Today: one window for the whole stat row", () => {
     expect(src).not.toContain('note="all time"');
   });
 
-  it("the main chart is PIPELINE GENERATED, measured solid then expected dotted (owner 2026-11-07, PIPELINE-GENERATED-1107)", () => {
-    const tile = readFileSync(join(__dirname, "../src/components/v2/pipeline-generated.tsx"), "utf8");
-    expect(src).toContain('<PipelineGeneratedTile brandId={brandId} offerId={selectedOfferId} className="col-span-2" />');
-    expect(tile).toContain("<Figure value={formatUsdAdaptive(d.measuredUsd)} />");
-    expect(tile).toContain("formatUsdAdaptive(d.expectedUsd!)} expected in {d.expectedHorizonDays} days");
+  it("the main chart is REAL REVENUE generated, expected beside it, solid then dotted (owner 2026-11-07, REVENUE-GENERATED-1107)", () => {
+    const tile = readFileSync(join(__dirname, "../src/components/v2/revenue-generated-tile.tsx"), "utf8");
+    expect(src).toContain("<RevenueGeneratedTile pending={rev.pending} data={data?.revenueGenerated ?? null}");
+    expect(tile).toContain('label="Revenue generated"');
+    expect(tile).toContain("<Figure value={formatUsdAdaptive(data.realUsd)} />");
+    expect(tile).toContain("{formatUsdAdaptive(data.expectedToDateUsd)} expected");
     expect(tile).toContain('strokeDasharray="3 4"');
-    // Served figures only: nothing summed or projected here.
-    expect(tile).not.toMatch(/\.reduce\([^)]*cumulativeUsd|dailyPaceUsd/);
+    // Served figures only: nothing summed, multiplied or projected here.
+    expect(tile).not.toMatch(/\.reduce\(|roiMultiple|spentUsd \*/);
+    // The pipeline is the Deals board's figure, never this tile's headline (ROI-CONSISTENCY-1103).
+    expect(src).not.toContain("PipelineGeneratedTile");
   });
 
   // The old pipeline-based RETURN fields stay gone (ROI-CONSISTENCY-1103); the pipeline generated

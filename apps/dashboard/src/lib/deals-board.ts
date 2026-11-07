@@ -162,29 +162,3 @@ export function companyRungs(body: CompanyLifecycle | undefined): Map<string, Li
   return new Map((body?.organizations ?? []).map((o) => [o.organizationKey, o.lifecycle]));
 }
 
-/**
- * Pipeline generated over time (owner 2026-11-07, PIPELINE-GENERATED-1107): features-service
- * `GET /offers/:offerId/deals-value?columns=pipeline_generated` (net). The board's dollars to date
- * (`measuredUsd`, the solid line's last point) and the next days at the offer's own pace
- * (`expectedUsd`, the dotted line). Every figure served; nothing is summed here.
- */
-export const PipelineGeneratedSchema = z.object({
-  columns: z.literal("pipeline_generated"),
-  unvaluedReason: z.enum(["no_economics", "no_client_value"]).nullable(),
-  measuredUsd: z.number().nullable(),
-  expectedUsd: z.number().nullable(),
-  expectedHorizonDays: z.number(),
-  expectedFlatReason: z.enum(["offer_not_running", "no_pipeline_yet"]).nullable(),
-  points: z.array(
-    z.object({
-      date: z.string(),
-      kind: z.enum(["measured", "expected"]),
-      cumulativeUsd: z.number(),
-    }),
-  ),
-});
-export type PipelineGenerated = z.infer<typeof PipelineGeneratedSchema>;
-
-export function pipelineGeneratedQuery(brandId: string): string {
-  return new URLSearchParams({ brandId, pricing: "net", columns: "pipeline_generated" }).toString();
-}
