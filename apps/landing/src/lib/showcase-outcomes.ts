@@ -30,6 +30,9 @@ import { hasHeroOutcome, renderShowcaseCard } from "@/lib/showcase-cards";
  * and ours to choose, so only the FIGURE crosses the wire.
  */
 
+/** The hero row names exactly this many clients, never fewer (owner 2026-11-07). */
+export const HERO_CLIENT_CARDS = 3;
+
 /** One outcome a named client reached, as the producer states it. */
 export interface ShowcaseOutcome {
   /** A step key (`conversation`, `website_visit`, ...) or `contacted` for the outreach base. */
@@ -277,18 +280,15 @@ export function pickedBrands(
       `[landing] showcase group "${label}" dropped ${served.length - brands.length} client(s) whose drawn outcomes show nothing past outreach`
     );
   }
-  // Nobody left to name: the section keeps its shipped clients, reseeded, like an unanswered group.
-  if (brands.length === 0) return null;
-  if (
-    typeof group.qualifyingCount === "number" &&
-    typeof group.requestedCount === "number" &&
-    group.qualifyingCount < group.requestedCount
-  ) {
-    console.warn(
-      `[landing] showcase group "${label}" is short: ${group.qualifyingCount} of ${group.requestedCount} clients qualified`
+  // The hero ALWAYS names three clients (owner 2026-11-07: « 2 cases au lieu de 3, ça ne devrait
+  // jamais arriver »). A short pick keeps the shipped row, reseeded, and says so loud.
+  if (brands.length < HERO_CLIENT_CARDS) {
+    console.error(
+      `[landing] showcase group "${label}" is short: ${brands.length} of ${HERO_CLIENT_CARDS} drawable clients, keeping the shipped clients`
     );
+    return null;
   }
-  return brands;
+  return brands.slice(0, HERO_CLIENT_CARDS);
 }
 
 /**
@@ -302,9 +302,12 @@ export function renderShowcaseSelection(html: string, brands: ShowcaseBrand[]): 
   const cards = brands
     .filter(hasHeroOutcome)
     .map(renderShowcaseCard).filter((card): card is string => card !== null);
-  // Every client the producer picked failed to render — a payload with no measured rung
-  // for any of them. Keeping the shipped row beats emptying the hero.
-  if (cards.length === 0) return html;
+  // Fewer than three cards would render (a payload with no measured rung for some of them):
+  // the shipped row of three beats a short or empty hero.
+  if (cards.length < HERO_CLIENT_CARDS) {
+    console.error(`[landing] only ${cards.length} hero card(s) rendered, keeping the shipped clients`);
+    return html;
+  }
   return html.replace(
     /(<div class="showcase-grid" id="live-cards">\s*)[\s\S]*?(\s*<a class="show-card yours")/,
     (whole, open: string, tail: string) => `${open}${cards.join("\n        ")}${tail}`

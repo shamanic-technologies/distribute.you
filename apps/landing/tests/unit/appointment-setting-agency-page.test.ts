@@ -164,6 +164,22 @@ describe("the Appointment Setting Agency page", () => {
           { key: "meeting_booked", label: "Meetings booked", peopleReached: 2 },
         ],
       } as never,
+      {
+        brand: { domain: "beta.com", name: "Beta" },
+        measured: true,
+        outcomes: [
+          { key: "conversation", label: "Interested leads", peopleReached: 9 },
+          { key: "meeting_booked", label: "Meetings booked", peopleReached: 2 },
+        ],
+      } as never,
+      {
+        brand: { domain: "gamma.com", name: "Gamma" },
+        measured: true,
+        outcomes: [
+          { key: "conversation", label: "Interested leads", peopleReached: 9 },
+          { key: "meeting_booked", label: "Meetings booked", peopleReached: 2 },
+        ],
+      } as never,
     ]);
     expect(swapped).toContain('data-brand="acme.com"');
     expect(swapped).not.toContain('data-brand="docdinners.com"');
