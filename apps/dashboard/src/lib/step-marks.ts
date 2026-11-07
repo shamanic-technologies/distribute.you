@@ -22,7 +22,40 @@ export type StepGlyph =
   | "clipboard"
   | "currency-dollar"
   | "shopping-bag-open"
-  | "phone-call";
+  | "phone-call"
+  | "user-focus"
+  | "film-slate"
+  | "paper-plane-tilt"
+  | "paper-plane-right"
+  | "pencil-simple-line"
+  | "buildings"
+  | "shield-check"
+  | "at"
+  | "device-mobile"
+  | "identification-card"
+  | "users-four"
+  | "monitor-play"
+  | "article"
+  | "smiley"
+  | "eye"
+  | "heart"
+  | "queue"
+  | "arrow-bend-up-left"
+  | "x-logo"
+  | "linkedin-logo"
+  | "chat-centered-text"
+  | "check-square"
+  | "check-square-offset"
+  | "pencil-simple"
+  | "pencil-line"
+  | "chat-centered-dots"
+  | "threads-logo"
+  | "mailbox"
+  | "whatsapp-logo"
+  | "robot"
+  | "tray"
+  | "arrow-bend-double-up-left"
+  | "flag";
 
 export interface StepMark {
   glyph: StepGlyph;
@@ -48,6 +81,40 @@ export const STEP_MARKS: Record<string, StepMark> = {
   purchase: { glyph: "shopping-bag-open", tone: STEP_TONE },
   // A PHONE CALL placed on a positive reply: the brand's rep talks to the lead now.
   booking_call: { glyph: "phone-call", tone: STEP_TONE },
+  // Every other outcome the producer publishes (41 live on 2026-11-07): an outcome
+  // without a tile reads as a broken row (owner 2026-11-07: "all outcomes MUST have an icon").
+  lead_found: { glyph: "user-focus", tone: STEP_TONE },
+  industry_update_video: { glyph: "film-slate", tone: STEP_TONE },
+  email_sent: { glyph: "paper-plane-tilt", tone: STEP_TONE },
+  message_sent: { glyph: "paper-plane-right", tone: STEP_TONE },
+  message_written: { glyph: "pencil-simple-line", tone: STEP_TONE },
+  company_researched: { glyph: "buildings", tone: STEP_TONE },
+  email_checked: { glyph: "shield-check", tone: STEP_TONE },
+  email_found: { glyph: "at", tone: STEP_TONE },
+  phone_found: { glyph: "device-mobile", tone: STEP_TONE },
+  lead_identified: { glyph: "identification-card", tone: STEP_TONE },
+  audience_built: { glyph: "users-four", tone: STEP_TONE },
+  ad_shown: { glyph: "monitor-play", tone: STEP_TONE },
+  post_published: { glyph: "article", tone: STEP_TONE },
+  client_satisfied: { glyph: "smiley", tone: STEP_TONE },
+  post_viewed: { glyph: "eye", tone: STEP_TONE },
+  post_engaged: { glyph: "heart", tone: STEP_TONE },
+  message_queued: { glyph: "queue", tone: STEP_TONE },
+  reply_received: { glyph: "arrow-bend-up-left", tone: STEP_TONE },
+  x_post_published: { glyph: "x-logo", tone: STEP_TONE },
+  linkedin_post_published: { glyph: "linkedin-logo", tone: STEP_TONE },
+  linkedin_comment_published: { glyph: "chat-centered-text", tone: STEP_TONE },
+  x_post_validated: { glyph: "check-square", tone: STEP_TONE },
+  linkedin_post_validated: { glyph: "check-square-offset", tone: STEP_TONE },
+  x_post_drafted: { glyph: "pencil-simple", tone: STEP_TONE },
+  linkedin_post_drafted: { glyph: "pencil-line", tone: STEP_TONE },
+  linkedin_comment_drafted: { glyph: "chat-centered-dots", tone: STEP_TONE },
+  threads_post_published: { glyph: "threads-logo", tone: STEP_TONE },
+  newsletter_email_sent: { glyph: "mailbox", tone: STEP_TONE },
+  whatsapp_message_sent: { glyph: "whatsapp-logo", tone: STEP_TONE },
+  copilot_message_sent: { glyph: "robot", tone: STEP_TONE },
+  email_queued: { glyph: "tray", tone: STEP_TONE },
+  email_reply_received: { glyph: "arrow-bend-double-up-left", tone: STEP_TONE },
 };
 
 /**
@@ -63,6 +130,9 @@ export const STEP_KEY_FOR_LEAD_STAGE: Record<string, string> = {
   form_submission: "form_submitted",
   sale: "paid_client",
 };
+
+/** The glyph `StepMark` draws for an outcome this app has not drawn yet: never a blank tile. */
+export const UNDRAWN_STEP_GLYPH: StepGlyph = "flag";
 
 /** The tile for a step, or null for one this app has not drawn. */
 export function stepMarkFor(stepKey: string | null | undefined): StepMark | null {
