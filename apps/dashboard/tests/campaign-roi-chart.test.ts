@@ -44,6 +44,12 @@ describe("Today: one row of cards per campaign Target (LEAD-GENERIC-1106)", () =
     expect(targets).toContain("<StepMark stepKey={row.target.key} />");
   });
 
+  it("names no campaign on a Target row (owner 2026-11-07: « arrête de nommer les campagnes associées »)", () => {
+    const rowFn = targets.slice(targets.indexOf("function TargetRow("), targets.indexOf("export function CampaignMilestoneCards("));
+    expect(rowFn).not.toContain("row.name");
+    expect(rowFn).not.toContain("v2CampaignHref");
+  });
+
   it("prints served figures only: count, $ each, measured return, past then projection", () => {
     expect(targets).toContain("row.outcomesToDate");
     expect(targets).toContain("row.costPerOutcomeUsd");
