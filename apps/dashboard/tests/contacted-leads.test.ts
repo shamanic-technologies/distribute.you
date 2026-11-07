@@ -1,12 +1,7 @@
 import { describe, it, expect } from "vitest";
-import * as fs from "fs";
-import * as path from "path";
 import { parseFeatureRevenue } from "../src/lib/revenue-parse";
 import { keepLastGoodFeatureRevenue } from "../src/lib/api";
-import type { RevenueOverview } from "../src/lib/revenue-view";
 
-const read = (rel: string) =>
-  fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
 // A minimal-but-valid /revenue overview payload, optionally with actual signal series.
 function rawRevenue(
@@ -17,8 +12,6 @@ function rawRevenue(
       | "recipientsOpened"
       | "recipientsClicked"
       | "recipientsRepliesPositive"
-      | "outreachContacted"
-      | "opened"
       | "clicked"
       | "repliedPositive"
       | "meetingsBooked"
@@ -39,50 +32,35 @@ function rawRevenue(
   };
 }
 
-describe("parseFeatureRevenue → outreachContacted (server-computed, render-only)", () => {
-  it("parses the server outreachContacted aggregate (total / daily / undatedCount)", () => {
+describe("parseFeatureRevenue: count series on the ledger (LEDGER-ONLY-1107-P2)", () => {
+  it("people contacted / opened are no longer read (no ledger twin): absent from the view", () => {
     const view = parseFeatureRevenue(
-      rawRevenue({
-        outreachContacted: {
-          total: 5,
-          daily: [
-            { date: "2026-06-21", count: 2 },
-            { date: "2026-06-22", count: 2 },
-          ],
-          undatedCount: 1,
-        },
-      }),
+      rawRevenue({ recipientsContacted: null, recipientsOpened: null }),
       "test",
     );
-    expect(view.outreachContacted?.total).toBe(5);
-    expect(view.outreachContacted?.daily).toEqual([
-      { date: "2026-06-21", count: 2 },
-      { date: "2026-06-22", count: 2 },
-    ]);
-    expect(view.outreachContacted?.undatedCount).toBe(1);
+    expect("outreachContacted" in view).toBe(false);
+    expect("opened" in view).toBe(false);
+    expect(view.costEconomics.committedCostUsd).toBe(10);
+  });
+
+  it("a null series stays null (absent), never a 0 series", () => {
+    const view = parseFeatureRevenue(
+      rawRevenue({ purchased: null, meetingsBooked: null, sequences: null, recipientsClicked: null }),
+      "test",
+    );
+    expect(view.purchased).toBeUndefined();
+    expect(view.meetingsBooked).toBeUndefined();
+    expect(view.sequences).toBeUndefined();
+    expect(view.clicked).toBeUndefined();
   });
 
   it("coerces string integers on the wire (Postgres numeric/bigint serialize as string)", () => {
     const view = parseFeatureRevenue(
-      rawRevenue({
-        outreachContacted: {
-          total: "7",
-          daily: [{ date: "2026-06-22", count: "7" }],
-          undatedCount: "0",
-        },
-      }),
+      rawRevenue({ sequences: { total: "7", daily: [{ date: "2026-06-22", count: "7" }], undatedCount: "0" } }),
       "test",
     );
-    expect(view.outreachContacted?.total).toBe(7);
-    expect(view.outreachContacted?.daily[0].count).toBe(7);
-    expect(view.outreachContacted?.undatedCount).toBe(0);
-  });
-
-  it("tolerates an absent outreachContacted (optional during rollout)", () => {
-    const view = parseFeatureRevenue(rawRevenue(), "test");
-    expect(view.outreachContacted).toBeUndefined();
-    // the rest of the overview still parses
-    expect(view.costEconomics.committedCostUsd).toBe(10);
+    expect(view.sequences?.total).toBe(7);
+    expect(view.sequences?.daily[0].count).toBe(7);
   });
 
   it("parses clicked/goal-outcome series from the same signal-series schema", () => {
@@ -99,100 +77,24 @@ describe("parseFeatureRevenue → outreachContacted (server-computed, render-onl
     expect(view.purchased?.total).toBe(0);
   });
 
-  it("parses the new features-service#416 `sequences` series (per-day outreach volume)", () => {
-    const view = parseFeatureRevenue(
-      rawRevenue({
-        sequences: { total: 34, daily: [{ date: "2026-07-01", count: 34 }], undatedCount: 0 },
-      }),
-      "test",
-    );
-    expect(view.sequences?.total).toBe(34);
-    expect(view.sequences?.daily).toEqual([{ date: "2026-07-01", count: 34 }]);
-  });
-
-  it("prefers the new recipients* names, falls back to legacy on a pre-#416 payload", () => {
-    // Post-#416 payload: new names present → normalized view reads them.
+  it("prefers the recipients* names, falls back to the legacy name (pure rename)", () => {
     const post = parseFeatureRevenue(
       rawRevenue({
-        recipientsContacted: { total: 12, daily: [], undatedCount: 12 },
         recipientsClicked: { total: 4, daily: [], undatedCount: 4 },
         recipientsRepliesPositive: { total: 2, daily: [], undatedCount: 2 },
       }),
       "test",
     );
-    expect(post.outreachContacted?.total).toBe(12);
     expect(post.clicked?.total).toBe(4);
     expect(post.repliedPositive?.total).toBe(2);
-
-    // Current prod payload: only legacy names → view still populated via fallback.
-    const legacy = parseFeatureRevenue(
-      rawRevenue({
-        outreachContacted: { total: 3, daily: [], undatedCount: 3 },
-        clicked: { total: 1, daily: [], undatedCount: 1 },
-        repliedPositive: { total: 1, daily: [], undatedCount: 1 },
-      }),
-      "test",
-    );
-    expect(legacy.outreachContacted?.total).toBe(3);
-    expect(legacy.clicked?.total).toBe(1);
-    expect(legacy.repliedPositive?.total).toBe(1);
   });
+
 });
 
-describe("keepLastGoodFeatureRevenue (cache-write boundary)", () => {
-  const withContacted = parseFeatureRevenue(
-    rawRevenue({
-      outreachContacted: { total: 9, daily: [{ date: "2026-06-22", count: 9 }], undatedCount: 0 },
-    }),
-    "test",
-  );
-  const withoutContacted = parseFeatureRevenue(rawRevenue(), "test");
-
-  it("keeps last-good actual series when a refetch drops them on a valid 200", () => {
-    const merged = keepLastGoodFeatureRevenue(withContacted, withoutContacted);
-    expect(merged.outreachContacted?.total).toBe(9);
-  });
-
-  it("adopts a fresh non-null outreachContacted (no stale pinning)", () => {
-    const next = parseFeatureRevenue(
-      rawRevenue({ outreachContacted: { total: 11, daily: [], undatedCount: 11 } }),
-      "test",
-    );
-    const merged = keepLastGoodFeatureRevenue(withContacted, next);
-    expect(merged.outreachContacted?.total).toBe(11);
-  });
-
-  it("returns next unchanged when there is no previous value", () => {
-    const merged = keepLastGoodFeatureRevenue(undefined as unknown as RevenueOverview, withContacted);
-    expect(merged.outreachContacted?.total).toBe(9);
-  });
-});
-
-describe("single-source wiring (revenue-parse reads /revenue outreachContacted)", () => {
-  const parse = read("../src/lib/revenue-parse.ts");
-  const view = read("../src/lib/revenue-view.ts");
-
-  it("revenue-parse declares optional, coercing signal-series schemas (new + legacy names)", () => {
-    // features-service#416 renames + the new `sequences` series — both kept optional
-    // for rollout tolerance.
-    expect(parse).toContain("sequences: SignalSeriesSchema.optional()");
-    expect(parse).toContain("recipientsContacted: SignalSeriesSchema.optional()");
-    expect(parse).toContain("recipientsClicked: SignalSeriesSchema.optional()");
-    expect(parse).toContain("recipientsRepliesPositive: SignalSeriesSchema.optional()");
-    expect(parse).toContain("outreachContacted: SignalSeriesSchema.optional()");
-    expect(parse).toContain("clicked: SignalSeriesSchema.optional()");
-    expect(parse).toContain("meetingsBooked: SignalSeriesSchema.optional()");
-    expect(parse).toContain("purchased: SignalSeriesSchema.optional()");
-    expect(parse).toContain("total: z.coerce.number()");
-    expect(parse).toContain("count: z.coerce.number()");
-    expect(parse).toContain("undatedCount: z.coerce.number()");
-    // flatten prefers the new name, falls back to the legacy one
-    expect(parse).toContain("outreachContacted: d.recipientsContacted ?? d.outreachContacted");
-    expect(parse).toContain("clicked: d.recipientsClicked ?? d.clicked");
-    expect(parse).toContain("repliedPositive: d.recipientsRepliesPositive ?? d.repliedPositive");
-    expect(view).toContain("outreachContacted?: OutreachContacted");
-    expect(view).toContain("sequences?: SignalSeries");
-    expect(view).toContain("clicked?: SignalSeries");
-    expect(parse).toContain("meetingsBooked: d.meetingsBooked");
+describe("keepLastGoodFeatureRevenue: a ledger null replaces an older count", () => {
+  it("does not pin a stale series when the ledger now serves null", () => {
+    const prev = parseFeatureRevenue(rawRevenue({ purchased: { total: 9, daily: [], undatedCount: 9 } }), "test");
+    const next = parseFeatureRevenue(rawRevenue({ purchased: null }), "test");
+    expect(keepLastGoodFeatureRevenue(prev, next).purchased).toBeUndefined();
   });
 });

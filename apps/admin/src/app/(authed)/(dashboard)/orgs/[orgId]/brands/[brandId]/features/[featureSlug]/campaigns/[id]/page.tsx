@@ -191,7 +191,7 @@ export default function CampaignOverviewPage() {
         Object.entries(stats).filter((e): e is [string, number] => typeof e[1] === "number")
       )
     : {};
-  const statsRecord: Record<string, number> = { ...campaignStatsRecord, ...featureStats };
+  const statsRecord: Record<string, number | null> = { ...campaignStatsRecord, ...featureStats };
 
   // Loading: no campaign yet, still fetching → page shell + placeholder header + skeleton body
   if (!campaign && loading) {

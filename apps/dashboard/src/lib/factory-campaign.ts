@@ -104,7 +104,8 @@ const JourneyTransitionSchema = z
     fromLabel: z.string(),
     toStep: z.string(),
     toLabel: z.string(),
-    people: z.number(),
+    // LEDGER-ONLY-1107-P2: the ledger's Units of the step; null when the ledger holds none (never 0).
+    people: z.number().nullable(),
     scripts: z.array(JourneyScriptSchema),
     scriptsUnavailableReason: z.string().nullable(),
   })

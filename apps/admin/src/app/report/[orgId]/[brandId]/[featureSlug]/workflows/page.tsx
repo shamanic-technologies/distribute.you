@@ -98,8 +98,9 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
       version: w.version,
       status: w.status ?? "active",
       description: w.description ?? "",
-      emailsSent: typeof stats.leadsSent === "number" ? stats.leadsSent : 0,
-      positiveReplies: typeof stats.leadsRepliesPositive === "number" ? stats.leadsRepliesPositive : 0,
+      // LEDGER-ONLY-1107-P2: a count the ledger does not hold is null and reads "—", never 0.
+      emailsSent: typeof stats.leadsSent === "number" ? stats.leadsSent : null,
+      positiveReplies: typeof stats.leadsRepliesPositive === "number" ? stats.leadsRepliesPositive : null,
       totalCostCents: cost,
       createdAt: w.createdAt,
     };
@@ -111,19 +112,19 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
   // because their CAC is treated as +Infinity. User can still click a
   // column header to override with a single-column sort.
   rows.sort((a, b) => {
-    const aCac = a.positiveReplies > 0 ? a.totalCostCents / a.positiveReplies : Number.POSITIVE_INFINITY;
-    const bCac = b.positiveReplies > 0 ? b.totalCostCents / b.positiveReplies : Number.POSITIVE_INFINITY;
+    const aCac = a.positiveReplies != null && a.positiveReplies > 0 ? a.totalCostCents / a.positiveReplies : Number.POSITIVE_INFINITY;
+    const bCac = b.positiveReplies != null && b.positiveReplies > 0 ? b.totalCostCents / b.positiveReplies : Number.POSITIVE_INFINITY;
     if (aCac !== bCac) return aCac - bCac;
-    if (a.emailsSent !== b.emailsSent) return b.emailsSent - a.emailsSent;
+    if (a.emailsSent !== b.emailsSent) return (b.emailsSent ?? -1) - (a.emailsSent ?? -1);
     return b.createdAt.localeCompare(a.createdAt);
   });
 
   // Brand-level totals for header card
   const brandStats = totalStats?.stats ?? {};
   const brandTotalCost = Number(totalStats?.systemStats?.totalCostInUsdCents ?? 0);
-  const brandPositiveReplies = typeof brandStats.leadsRepliesPositive === "number" ? brandStats.leadsRepliesPositive : 0;
-  const brandCacPerReply = brandPositiveReplies > 0 ? formatUsd(brandTotalCost / brandPositiveReplies) : "—";
-  const brandEmailsSent = typeof brandStats.leadsSent === "number" ? brandStats.leadsSent : 0;
+  const brandPositiveReplies = typeof brandStats.leadsRepliesPositive === "number" ? brandStats.leadsRepliesPositive : null;
+  const brandCacPerReply = brandPositiveReplies != null && brandPositiveReplies > 0 ? formatUsd(brandTotalCost / brandPositiveReplies) : "—";
+  const brandEmailsSent = typeof brandStats.leadsSent === "number" ? brandStats.leadsSent : null;
   // The brand's REALIZED return (ROI-CONSISTENCY-1103): Paid clients over money spent.
   // The pipeline ("expected revenue") and its ROI are retired from this report.
   const realized = brandRevenue?.costEconomics.realizedReturn ?? null;
@@ -131,8 +132,8 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
   interface FlatRow {
     workflow: string;
     version: number;
-    emailsSent: number;
-    positiveReplies: number;
+    emailsSent: number | string;
+    positiveReplies: number | string;
     totalCostUsd: string;
     cacPerReply: string;
   }
@@ -140,10 +141,10 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
   const csvRows: FlatRow[] = rows.map((r) => ({
     workflow: r.name,
     version: r.version,
-    emailsSent: r.emailsSent,
-    positiveReplies: r.positiveReplies,
+    emailsSent: r.emailsSent ?? "",
+    positiveReplies: r.positiveReplies ?? "",
     totalCostUsd: formatUsd(r.totalCostCents),
-    cacPerReply: r.positiveReplies > 0 ? formatUsd(r.totalCostCents / r.positiveReplies) : "",
+    cacPerReply: r.positiveReplies != null && r.positiveReplies > 0 ? formatUsd(r.totalCostCents / r.positiveReplies) : "",
   }));
 
   const csvColumns: CsvColumn<FlatRow>[] = [
@@ -163,8 +164,8 @@ async function WorkflowsSection({ orgId, brandId, featureSlug }: { orgId: string
       >
         <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           <SummaryTile label="Workflows used" value={workflows.length.toLocaleString("en-US")} />
-          <SummaryTile label={leadsSentLabel} value={brandEmailsSent.toLocaleString("en-US")} />
-          <SummaryTile label={leadsPositiveLabel} value={brandPositiveReplies.toLocaleString("en-US")} />
+          <SummaryTile label={leadsSentLabel} value={brandEmailsSent != null ? brandEmailsSent.toLocaleString("en-US") : "\u2014"} />
+          <SummaryTile label={leadsPositiveLabel} value={brandPositiveReplies != null ? brandPositiveReplies.toLocaleString("en-US") : "\u2014"} />
           {revenueEnabled && (
             <SummaryTile label="Realized return" value={realizedMultipleText(realized)} sub={realizedLineText(realized)} highlight />
           )}

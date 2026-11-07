@@ -147,7 +147,7 @@ function GenericFeaturePage({
   );
 
   const campaignStatsMap = useMemo(() => {
-    const map: Record<string, Record<string, number>> = {};
+    const map: Record<string, Record<string, number | null>> = {};
     for (const g of campaignStatsData?.groups ?? []) {
       if (g.campaignId) map[g.campaignId] = g.stats;
     }
@@ -357,7 +357,7 @@ function CampaignRow({
   brandId: string;
   featureSlug: string;
   revenueEnabled: boolean;
-  cStats: Record<string, number> | undefined;
+  cStats: Record<string, number | null> | undefined;
   costCents: number;
   statsReady: boolean;
   campaignRowOutputs: { key: string }[];
@@ -439,7 +439,7 @@ function CampaignRow({
         ) : (
           campaignRowOutputs.map((o) => (
             <span key={o.key}>
-              {formatStatValue(cStats?.[o.key] ?? 0, registry[o.key])} {registry[o.key]?.label ?? o.key}
+              {formatStatValue(cStats?.[o.key] ?? null, registry[o.key])} {registry[o.key]?.label ?? o.key}
             </span>
           ))
         )}

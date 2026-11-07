@@ -98,7 +98,7 @@ export default function FeatureCampaignsPage() {
   );
 
   const campaignStatsMap = useMemo(() => {
-    const map: Record<string, { stats: Record<string, number>; costCents: number }> = {};
+    const map: Record<string, { stats: Record<string, number | null>; costCents: number }> = {};
     for (const g of campaignStatsData?.groups ?? []) {
       if (g.campaignId) {
         map[g.campaignId] = { stats: g.stats, costCents: g.systemStats.totalCostInUsdCents };
@@ -289,7 +289,7 @@ function CampaignCard({
   registry: reg,
 }: {
   campaign: Campaign;
-  stats?: Record<string, number>;
+  stats?: Record<string, number | null>;
   costCents: number;
   outputs: import("@/lib/api").FeatureOutput[];
   registry: import("@/lib/api").StatsRegistry;

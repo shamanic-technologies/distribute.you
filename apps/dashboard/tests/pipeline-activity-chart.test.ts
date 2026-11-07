@@ -59,7 +59,9 @@ describe("outcome + return-on-spend charts and the pipeline-activity reader", ()
     expect(revenueParse).toContain("repliedPositive: SignalSeriesSchema.optional()");
     // features-service#416 rename: flatten prefers the new name, falls back to legacy.
     expect(revenueParse).toContain("repliedPositive: d.recipientsRepliesPositive ?? d.repliedPositive");
-    expect(api).toContain('"repliedPositive"');
+    // LEDGER-ONLY-1107-P2: a null series is the ledger's answer, so keep-last-good no longer
+    // pins count series (it would hold an older count over the null): only `spend` is kept.
+    expect(api).toContain('["spend"],');
   });
 });
 

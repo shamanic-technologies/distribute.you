@@ -146,8 +146,9 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
         result[entity.name] = "loading";
       } else if (listingFallback[entity.name] != null) {
         result[entity.name] = listingFallback[entity.name];
-      } else if (entity.countKey && fStats[entity.countKey] != null) {
-        result[entity.name] = fStats[entity.countKey];
+      } else if (entity.countKey) {
+        const served = fStats[entity.countKey];
+        if (served != null) result[entity.name] = served;
       }
     }
     return result;

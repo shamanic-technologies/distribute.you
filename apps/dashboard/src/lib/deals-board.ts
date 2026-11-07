@@ -64,8 +64,12 @@ const DealsLifecycleRungSchema = z
     valueUsd: z.number().nullable(),
     expected: z.boolean(),
     cardCount: z.number(),
-    leadCount: z.number(),
-    organizationCount: z.number(),
+    // LEDGER-ONLY-1107-P2: people / companies per rung have no ledger twin (null); the rung's
+    // ledger count is `units`, null with `unitsUnavailableReason` when the ledger holds none.
+    leadCount: z.number().nullable(),
+    organizationCount: z.number().nullable(),
+    units: z.number().nullish(),
+    unitsUnavailableReason: z.string().nullish(),
     cards: z.array(DealsLifecycleCardSchema),
   })
   .passthrough();

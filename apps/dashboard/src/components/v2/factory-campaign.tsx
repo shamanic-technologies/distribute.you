@@ -14,6 +14,7 @@ import {
 import { milestoneReasonWords, planLegsFromTarget, strategyOfPlace, type PlanNode } from "@/lib/factory-campaign";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
+import { reasonWords } from "@/lib/campaign-targets";
 import { getFunnelCampaignPeopleJourneys } from "@/lib/api";
 import { StepMark } from "@/components/marks/step-mark";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
@@ -69,7 +70,8 @@ export function FactoryJourneys({ brandId, campaignId }: { brandId: string; camp
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   const rows = q.data?.transitions ?? [];
   // The busiest step scales each row's people bar (display only, served counts).
-  const peopleMax = Math.max(0, ...rows.map((t) => t.people));
+  // A step the ledger holds no Unit of is null (LEDGER-ONLY-1107-P2): no bar, never a 0.
+  const peopleMax = Math.max(0, ...rows.map((t) => t.people ?? 0));
   return (
     <section>
       <SectionTitle right={<span>Since it started, share by what each script spent</span>}>What its people went through</SectionTitle>
@@ -92,9 +94,9 @@ export function FactoryJourneys({ brandId, campaignId }: { brandId: string; camp
                 <span className="truncate font-medium">{t.toLabel}</span>
               </span>
               <span className="tabular-nums md:text-right">
-                {formatCount(t.people)} {t.people === 1 ? "person" : "people"}
+                {t.people == null ? <span className="k-fg3">{reasonWords("outcome_not_declared_in_ledger")}</span> : <>{formatCount(t.people)} {t.people === 1 ? "person" : "people"}</>}
               </span>
-              <ShareBar value={t.people} max={peopleMax} className="hidden w-full md:block" />
+              {t.people == null ? <span className="hidden md:block" /> : <ShareBar value={t.people} max={peopleMax} className="hidden w-full md:block" />}
               <span className="k-fg2 min-w-0 space-y-1.5 text-[12px]">
                 {t.scripts.length > 1 && <ScriptSplit shares={t.scripts.map((sc) => sc.sharePct)} />}
                 {t.scripts.length > 0

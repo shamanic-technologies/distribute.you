@@ -72,7 +72,7 @@ export function LeadsStatsPanel({
     },
   );
 
-  const stats: Record<string, number> = data?.stats ?? {};
+  const stats: Record<string, number | null> = data?.stats ?? {};
   const loading = pending || (isPending && !data);
 
   return (
@@ -119,7 +119,7 @@ function Section({
 }: {
   title: string;
   keys: readonly string[];
-  stats: Record<string, number>;
+  stats: Record<string, number | null>;
   registry: StatsRegistry;
   pending: boolean;
 }) {
@@ -142,7 +142,7 @@ function Tile({
   pending,
 }: {
   statKey: string;
-  stats: Record<string, number>;
+  stats: Record<string, number | null>;
   registry: StatsRegistry;
   pending?: boolean;
 }) {

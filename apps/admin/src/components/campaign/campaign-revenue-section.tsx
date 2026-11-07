@@ -31,7 +31,7 @@ export function CampaignRevenueSection({
   pending: boolean;
   statsPending: boolean;
   funnelSteps?: FunnelStep[];
-  statsRecord: Record<string, number>;
+  statsRecord: Record<string, number | null>;
   registry: StatsRegistry;
   costBreakdown: CostByName[];
   campaign: Campaign;

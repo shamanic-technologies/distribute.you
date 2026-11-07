@@ -70,7 +70,8 @@ export interface StepWalk {
   name: string;
   committedSpentCents: number;
   /** DISTINCT leads contacted — the base the FIRST step converts from. */
-  contactedRecipients: number;
+  /** Null since LEDGER-ONLY-1107-P2: people contacted is not a ledger outcome. */
+  contactedRecipients?: number | null;
   steps: StepWalkRow[];
 }
 
@@ -335,10 +336,10 @@ export interface Spend {
   /** REAL tracked signup count (attributed + deduped) from the brand's live conversion
    *  tracker — features-service sources it from lead-service. Additive/optional: absent on a
    *  pre-rollout payload → the beta Signups card renders "—" + setup CTA. `0` is a real value. */
-  signupsCount?: number;
+  signupsCount?: number | null;
   /** REAL tracked sales-meeting-booked count (attributed + deduped) from the live tracker.
    *  Additive/optional; absent → the beta Sales Meetings card renders "—" + setup CTA. */
-  salesMeetingsCount?: number;
+  salesMeetingsCount?: number | null;
   /** REAL cost per signup, USD cents = committed spend (actual+provisioned) ÷ `signupsCount`.
    *  Recomputed from live tracker data (the old PROJECTED cpsCents was removed in
    *  features-service#406). null when `signupsCount` is 0 (no denominator) → CPS card "—". */
@@ -349,7 +350,7 @@ export interface Spend {
   /** REAL attributed positive-reply count for the brand (single-step `positive_replies` goal).
    *  Additive/optional — absent until features-service ships it (spawned in lockstep); until
    *  then the Positive Replies card renders "—". `0` is a real value. */
-  positiveRepliesCount?: number;
+  positiveRepliesCount?: number | null;
   /** REAL cost per positive reply, USD cents = committed spend ÷ `positiveRepliesCount`.
    *  Additive/optional; null when the count is 0 (no denominator) → the card renders "—",
    *  never a false $0. */
@@ -357,14 +358,14 @@ export interface Spend {
   /** REAL tracked form-submission count (attributed + deduped) from the live conversion
    *  tracker — the form_submissions goal outcome, sibling of `signupsCount`. Additive/optional;
    *  absent → the beta Form submissions card renders "—" + setup CTA. `0` is a real value. */
-  formSubmissionsCount?: number;
+  formSubmissionsCount?: number | null;
   /** REAL cost per form submission, USD cents = committed spend ÷ `formSubmissionsCount`.
    *  null when `formSubmissionsCount` is 0 (no denominator) → the CPFS card renders "—". */
   cpfsCents?: number | null;
   /** REAL tracked SALE (paying-client won) count — terminal outcome of the website_purchase
    *  goal (multi-step close) AND the combined sales goal. Additive/optional; absent → the
    *  Sales card renders "—". */
-  salesCount?: number;
+  salesCount?: number | null;
   /** REAL cost per sale, USD cents = committed spend ÷ `salesCount`.
    *  null when `salesCount` is 0 → the cost card renders "—". */
   cpSaleCents?: number | null;
@@ -415,13 +416,6 @@ export interface RevenueOverview {
    *  Null = not served / not measured, never "nothing happened". */
   sending?: RevenueSending | null;
   /**
-   * Server-computed contacted aggregate — the single source for the Outreach stat
-   * card + the 7-day graph actual. Optional: absent on a cold / pre-rollout payload
-   * (degrade the card to the legacy /stats outreach count, the graph to /pipeline-
-   * activity actual). Populated in prod (features-service v0.62.0).
-   */
-  outreachContacted?: OutreachContacted;
-  /**
    * Per-day outreach VOLUME — email sequences launched per day, UNDEDUPED by lead
    * (instantly campaigns-created, features-service#416). The single source for the
    * Overview "Outreach" stat card (`total`) AND the 7-day graph's ACTUAL outreach
@@ -432,12 +426,6 @@ export interface RevenueOverview {
    * response only (null on a lensed response, absent on a grouped one).
    */
   sequences?: SignalSeries;
-  /**
-   * Positive/negative-agnostic OPEN actual series (features-service#416
-   * `recipientsOpened`, normalized from the legacy `opened`). Optional during
-   * rollout; no per-day-opens consumer wired yet, carried for completeness.
-   */
-  opened?: SignalSeries;
   /**
    * Server-computed actual series from the SAME `/revenue` `leads[]` snapshot as
    * `outreachContacted`: Clicks and observed goal outcomes. Optional
@@ -549,10 +537,10 @@ export interface RevenueOverview {
 export interface LegOutcomeFigures {
   /** Committed spend on the request's pricing. */
   spentUsd: number;
-  /** Distinct leads reached. */
-  contacted: number;
+  /** Distinct leads reached. Null since LEDGER-ONLY-1107-P2 (no ledger twin). */
+  contacted: number | null;
   /** Distinct leads that reached the leg's own outcome signal. */
-  outcomes: number;
+  outcomes: number | null;
   /** `spentUsd / outcomes`. Null at 0 outcomes or 0 spend, never a floor. */
   costPerOutcomeUsd: number | null;
   /** `100 × outcomes / contacted`. Null only at 0 contacted. */
@@ -576,8 +564,8 @@ export interface ScopeMaturity {
 
 /** One basis of a scope's conversion (features-service#1196). */
 export interface ConversionRateFigures {
-  contacted: number;
-  outcomes: number;
+  contacted: number | null;
+  outcomes: number | null;
   conversionRatePct: number | null;
 }
 
@@ -663,7 +651,7 @@ export interface ConversionRateHistory {
    *  producer's fields to obtain it. Null when there is no denominator at all. */
   scopeConversionRatePct: number | null;
   /** The scope's conversion on both bases and its verdict. The headline states `mature`. */
-  maturity?: MaturityPair<ConversionRateFigures>;
+  maturity?: MaturityPair<ConversionRateFigures> | null;
 }
 
 /**

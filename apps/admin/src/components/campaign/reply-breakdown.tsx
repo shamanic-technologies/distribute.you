@@ -5,7 +5,7 @@ import type { BreakdownSegment, StatsRegistry } from "@/lib/api";
 
 interface ReplyBreakdownProps {
   segments: BreakdownSegment[];
-  stats: Record<string, number>;
+  stats: Record<string, number | null>;
   registry: StatsRegistry;
   pending?: boolean;
 }
@@ -58,10 +58,14 @@ export function ReplyBreakdown({ segments, stats, registry, pending = false }: R
     .map((seg) => ({
       key: seg.key,
       label: registry?.[seg.key]?.label ?? seg.key,
-      value: stats?.[seg.key] ?? 0,
+      // LEDGER-ONLY-1107-P2: a reply kind with no ledger figure is null: left out, never a 0 slice.
+      value: stats?.[seg.key] ?? null,
       colors: COLOR_MAP[seg.color] ?? COLOR_MAP.gray,
     }))
-    .filter((c) => pending || c.value > 0);
+    .filter((c): c is typeof c & { value: number } => pending || (c.value != null && c.value > 0))
+    .map((c) => ({ ...c, value: c.value ?? 0 }));
+  // Every kind null = the ledger counts none of them: say so rather than "No replies yet".
+  const notCounted = !pending && source.length > 0 && source.every((seg) => stats?.[seg.key] == null);
 
   const total = resolved.reduce((sum, c) => sum + c.value, 0);
 
@@ -69,7 +73,7 @@ export function ReplyBreakdown({ segments, stats, registry, pending = false }: R
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6 min-h-[200px] flex flex-col">
         <h3 className="font-medium text-gray-800 mb-4">Reply Breakdown</h3>
-        <p className="text-sm text-gray-500 text-center py-4 flex-1 flex items-center justify-center">No replies yet</p>
+        <p className="text-sm text-gray-500 text-center py-4 flex-1 flex items-center justify-center">{notCounted ? "Not counted" : "No replies yet"}</p>
       </div>
     );
   }

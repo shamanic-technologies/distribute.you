@@ -279,7 +279,7 @@ function ContactedBody({
     <>
       <div>
         <h2 className="text-[20px] font-medium leading-7 tracking-[-0.01em]">People contacted</h2>
-        <p className="k-fg2 mt-1 text-[13px] tabular-nums">{formatCount(contacted.count)} contacted, no step reached yet</p>
+        <p className="k-fg2 mt-1 text-[13px] tabular-nums">{contacted.count != null ? `${formatCount(contacted.count)} contacted, no step reached yet` : "No step reached yet"}</p>
       </div>
       {/* No $ pipeline here: it is a forecast that lives on Deals only (owner 2026-11-03). */}
       <div className="k-card">

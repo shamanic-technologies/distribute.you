@@ -34,8 +34,9 @@ const SpendMaturitySchema = maturityPairSchema(
  */
 const LegOutcomeFiguresSchema = z.object({
   spentUsd: z.coerce.number(),
-  contacted: z.coerce.number(),
-  outcomes: z.coerce.number(),
+  // LEDGER-ONLY-1107-P2: people contacted has no ledger twin; a null stays null, never 0.
+  contacted: z.coerce.number().nullable(),
+  outcomes: z.coerce.number().nullable(),
   costPerOutcomeUsd: z.coerce.number().nullable(),
   conversionRatePct: z.coerce.number().nullable(),
 });
@@ -270,11 +271,11 @@ const ConversionRateHistorySchema = z.object({
    */
   maturity: maturityPairSchema(
     z.object({
-      contacted: z.coerce.number(),
-      outcomes: z.coerce.number(),
+      contacted: z.coerce.number().nullable(),
+      outcomes: z.coerce.number().nullable(),
       conversionRatePct: z.coerce.number().nullable(),
     }),
-  ).optional(),
+  ).nullish(),
 });
 
 // Server-computed signal aggregate. `.optional()` on the response fields decouples
@@ -345,8 +346,8 @@ const SpendSchema = z.object({
   // conversion tracker — features-service sources them from lead-service. Optional
   // for rollout tolerance (absent on a pre-rollout payload → the Signups/Meetings
   // cards render "—" + the setup CTA). Must be declared here or Zod strips them.
-  signupsCount: z.coerce.number().optional(),
-  salesMeetingsCount: z.coerce.number().optional(),
+  signupsCount: z.coerce.number().nullish(),
+  salesMeetingsCount: z.coerce.number().nullish(),
   // REAL cost-per-signup / cost-per-meeting = committed spend (actual+provisioned)
   // ÷ the REAL tracked count above (no projection — projected cpsCents/cpsmCents
   // were removed in features-service#406 and are now recomputed from live tracker
@@ -357,17 +358,17 @@ const SpendSchema = z.object({
   // REAL attributed positive-reply count + cost-per-positive-reply for the single-step
   // `positive_replies` goal (mirrors signupsCount/cpsCents). Additive/optional — absent
   // until features-service ships the field (spawned in lockstep); cost null when count 0.
-  positiveRepliesCount: z.coerce.number().optional(),
+  positiveRepliesCount: z.coerce.number().nullish(),
   cpprCents: z.coerce.number().nullable().optional(),
   // REAL tracked form-submission count + cost-per-form-submission (form_submissions
   // goal, the visit-driven sibling of signups). Same committed-spend denominator as
   // cpsCents. Optional for rollout tolerance; cpfsCents null when the count is 0.
-  formSubmissionsCount: z.coerce.number().optional(),
+  formSubmissionsCount: z.coerce.number().nullish(),
   cpfsCents: z.coerce.number().nullable().optional(),
   // REAL tracked SALE (paying-client won) count + cost-per-sale — the terminal outcome
   // of BOTH the website_purchase goal (multi-step close) and the combined sales goal
   // (event=sale, RENAMED from purchase). Same rollout tolerance; cpSaleCents null at 0.
-  salesCount: z.coerce.number().optional(),
+  salesCount: z.coerce.number().nullish(),
   cpSaleCents: z.coerce.number().nullable().optional(),
   maturity: SpendMaturitySchema.nullish(),
 });
@@ -423,7 +424,8 @@ const StepWalkSchema = z.object({
   name: z.string(),
   committedSpentCents: z.number(),
   /** DISTINCT leads contacted — the base the FIRST step converts from. */
-  contactedRecipients: z.number(),
+  // Null since LEDGER-ONLY-1107-P2: people contacted is not a ledger outcome.
+  contactedRecipients: z.number().nullish(),
   steps: z.array(StepWalkRowSchema),
 });
 
@@ -481,7 +483,7 @@ const LearningPhaseSchema = z.object({
   campaigns: z.array(LearningPhaseCampaignSchema),
 });
 
-const FeatureRevenueResponseSchema = z.object({
+export const FeatureRevenueResponseSchema = z.object({
   // OPTIONAL because this parser is shared by all THREE money grains, and only the
   // per-feature one names a channel. A feature IS an acquisition channel here, so the
   // brand and offer bodies carry no such name by construction — a brand runs several
@@ -505,17 +507,18 @@ const FeatureRevenueResponseSchema = z.object({
   // added `sequences`. BOTH the new (`recipients*`) and legacy names are `.optional()`
   // so the parse succeeds on current prod features (old names) AND post-#416 (new
   // names); the flatten below prefers the new name, falls back to the legacy one.
-  sequences: SignalSeriesSchema.optional(),
-  recipientsContacted: SignalSeriesSchema.optional(),
-  recipientsOpened: SignalSeriesSchema.optional(),
-  recipientsClicked: SignalSeriesSchema.optional(),
-  recipientsRepliesPositive: SignalSeriesSchema.optional(),
-  outreachContacted: SignalSeriesSchema.optional(),
-  opened: SignalSeriesSchema.optional(),
+  //
+  // LEDGER-ONLY-1107-P2 (features-service #2324): every series is the ledger's Units, and
+  // NULL when the ledger holds no Unit of that outcome (reason in `ledgerCounts.nullFields`).
+  // `recipientsContacted` / `recipientsOpened` have no ledger twin and are always null: not
+  // read any more (deleted figures stay deleted). Null stays null, never a 0 series.
+  sequences: SignalSeriesSchema.nullish(),
+  recipientsClicked: SignalSeriesSchema.nullish(),
+  recipientsRepliesPositive: SignalSeriesSchema.nullish(),
   clicked: SignalSeriesSchema.optional(),
   repliedPositive: SignalSeriesSchema.optional(),
-  meetingsBooked: SignalSeriesSchema.optional(),
-  purchased: SignalSeriesSchema.optional(),
+  meetingsBooked: SignalSeriesSchema.nullish(),
+  purchased: SignalSeriesSchema.nullish(),
   // THE STEPS WALKED IN ORDER. Required AND NULLABLE on the wire: null wherever there is
   // no one path to walk. `.nullish()` for the required-and-nullable rule. The key is the
   // PRODUCER's historical field name (features-service#854), read here and nowhere else:
@@ -681,13 +684,11 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     // change. `sequences` (new per-day outreach VOLUME, undeduped) is a distinct
     // series — the Outreach card + graph bars prefer it; grain differs from
     // `outreachContacted` (distinct leads reached) BY DESIGN.
-    sequences: d.sequences,
-    outreachContacted: d.recipientsContacted ?? d.outreachContacted,
-    opened: d.recipientsOpened ?? d.opened,
+    sequences: d.sequences ?? undefined,
     clicked: d.recipientsClicked ?? d.clicked,
     repliedPositive: d.recipientsRepliesPositive ?? d.repliedPositive,
-    meetingsBooked: d.meetingsBooked,
-    purchased: d.purchased,
+    meetingsBooked: d.meetingsBooked ?? undefined,
+    purchased: d.purchased ?? undefined,
     organizations: d.organizations,
     events: d.events,
     // NARROWED, and the presence answer is taken BEFORE the narrowing — see
