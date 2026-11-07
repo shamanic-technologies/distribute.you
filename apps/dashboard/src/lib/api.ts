@@ -1460,6 +1460,8 @@ const LinkedinAccountSchema = z.object({
   id: z.string(),
   brandId: z.string(),
   name: z.string().nullable(),
+  // The page's own name (social-service v0.1.15+): "Distribute.you" for a company page; `name` is the member who connected it.
+  displayName: z.string().nullish(),
   pictureUrl: z.string().nullable(),
   profileUrl: z.string(),
   pageKind: z.enum(["profile", "company"]),

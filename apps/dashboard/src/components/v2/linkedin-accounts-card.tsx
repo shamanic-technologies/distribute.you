@@ -80,7 +80,7 @@ export function LinkedinAccountsCard({ bare = false }: { bare?: boolean }) {
     mutationFn: (input: { code: string; state: string }) => finishLinkedinConnect(input),
     onSuccess: async (done) => {
       setError(null);
-      setNotice(`${done.account.name?.trim() || "Your LinkedIn account"} is connected. We are bringing in its posts.`);
+      setNotice(`${done.account.displayName?.trim() || done.account.name?.trim() || "Your LinkedIn account"} is connected. We are bringing in its posts.`);
       await reread();
     },
     onError: (err: Error) => {
@@ -282,7 +282,7 @@ function LinkedinAccountRow({
     },
   });
 
-  const shownName = account.name?.trim() || account.profileUrl.replace(/^https?:\/\/(www\.)?/, "");
+  const shownName = account.displayName?.trim() || account.name?.trim() || account.profileUrl.replace(/^https?:\/\/(www\.)?/, "");
 
   return (
     <li className="flex flex-wrap items-center gap-3 py-2.5">
