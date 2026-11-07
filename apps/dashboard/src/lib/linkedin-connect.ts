@@ -19,6 +19,7 @@
  */
 
 import { type AccountType } from "./account-types";
+import { isOrgDesyncError, orgDesyncMessage } from "./org-desync";
 
 export const LINKEDIN_CALLBACK_PATH = "/connections/linkedin/callback";
 
@@ -96,6 +97,8 @@ export function isLinkedinNotConfigured(err: unknown): boolean {
  * (`linkedin_not_configured`), said plainly, never the producer's own message. A page link LinkedIn cannot be = 400.
  */
 export function linkedinStartErrorMessage(err: unknown): string {
+  // The page's org is not the session's: say which org is open (apiCall's message names it).
+  if (isOrgDesyncError(err)) return err instanceof Error && err.message ? err.message : orgDesyncMessage(null);
   if (isLinkedinNotConfigured(err)) return "LinkedIn is not set up on our side yet. Try again soon.";
   const e = err as { status?: unknown } | null;
   if (e?.status === 400) return "Paste a LinkedIn profile or company page link, like linkedin.com/in/your-name.";
@@ -104,6 +107,8 @@ export function linkedinStartErrorMessage(err: unknown): string {
 
 /** What the card says when finishing the login failed (expired, reused, refused by LinkedIn). */
 export function linkedinFinishErrorMessage(err: unknown): string {
+  // The page's org is not the session's: say which org is open (apiCall's message names it).
+  if (isOrgDesyncError(err)) return err instanceof Error && err.message ? err.message : orgDesyncMessage(null);
   if (isLinkedinNotConfigured(err)) return "LinkedIn is not set up on our side yet. Try again soon.";
   const e = err as { status?: unknown } | null;
   if (e?.status === 400) return "This LinkedIn login expired. Connect the account again.";
