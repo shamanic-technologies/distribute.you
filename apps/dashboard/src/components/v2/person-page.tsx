@@ -7,7 +7,7 @@ import { leadSourceTags } from "@/lib/source-overlap";
 import { ownQueryData } from "@/lib/own-query-data";
 import { getLeadDetail, getLeadHistory, getLeadTimeline, getLeadUniboxState, getLeadConsolidatedStatus, leadDateForStatus, type Lead } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions } from "@/lib/query-options";
+import { pollOptions, leadReadOptions } from "@/lib/query-options";
 import { friendlyDate, timeAgo } from "@/lib/friendly-datetime";
 import { leadStateTag } from "@/lib/unibox-leads";
 import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
@@ -53,7 +53,7 @@ export function PersonPage() {
   const leadQ = useAuthQuery(["leadDetail", leadRowId, brandId], () => getLeadDetail(leadRowId, brandId), pollOptions);
   const stateLeadId = ownQueryData(leadQ)?.leadId ?? null;
   const stateQ = useAuthQuery(["leadUniboxState", stateLeadId, brandId], () => getLeadUniboxState(stateLeadId!, brandId), {
-    ...pollOptions,
+    ...leadReadOptions,
     enabled: Boolean(stateLeadId) && Boolean(brandId),
   });
   // Everything this person went through at the brand: a person in several campaigns (cold email,
@@ -69,7 +69,7 @@ export function PersonPage() {
   const timelineQ = useAuthQuery(
     ["leadTimeline", leadRowId, brandId, null],
     () => getLeadTimeline(leadRowId, { brandId }),
-    { ...pollOptions, enabled: Boolean(leadRowId) },
+    { ...leadReadOptions, enabled: Boolean(leadRowId) },
   );
   const [closing, setClosing] = useState(false);
   const setStep = useSetAnyLeadStepStatement();

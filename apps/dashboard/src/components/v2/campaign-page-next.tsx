@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions, pollIntervalFor } from "@/lib/query-options";
+import { pollOptions, leadReadOptions } from "@/lib/query-options";
 import {
   getConversationCounts,
   getOfferUserFields,
@@ -264,7 +264,7 @@ function FunnelStrip({
   const catalogue = useLegCatalogue();
   const countsQ = useReachedCounts(brandId, coldEmail ? [EMAIL_SENT_STEP, WEBSITE_VISIT_STEP, CONVERSATION_STEP] : [], coldEmail?.campaignId ?? null);
   const convQ = useAuthQuery(["conversationCounts", conversationCampaignId ?? ""], () => getConversationCounts(conversationCampaignId!), {
-    ...pollOptions,
+    ...leadReadOptions,
     enabled: !!conversationCampaignId,
   });
   const win = useCampaignWindow(brandId, coldEmail?.campaignId ?? "", coldEmail?.featureSlug ?? null);
@@ -415,7 +415,7 @@ function LatestActivity({ orgId, brandId, campaignId }: { orgId: string; brandId
   const pageQ = useAuthQuery(
     ["reachedRows", brandId, "", campaignId, filter, "", ""],
     () => listUniboxLeads(brandId, {}, { campaignId, reachedStep: filter, limit: LEADS_PAGE_SIZE, cursor: null }),
-    { refetchInterval: pollIntervalFor },
+    leadReadOptions,
   );
   const counts = useReachedCounts(brandId, ACTIVITY_STEPS, campaignId).data ?? null;
   const rows = pageQ.data?.rows ?? null;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getBrandDealsLifecycle, getOfferDealsLifecycle, listUniboxLeads } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollIntervalFor } from "@/lib/query-options";
+import { pollIntervalFor, leadReadOptions } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
@@ -155,7 +155,7 @@ function DealColumn({
   const q = useAuthQuery(
     ["dealsLifecycleRows", brandId, "", campaignId ?? "", filtersKey(filters), rung.key, limit],
     () => listUniboxLeads(brandId, { ...filters, lifecycle: [rung.key] }, { limit, campaignId }),
-    { refetchInterval: pollIntervalFor, enabled: !!brandId && (total === null || total > 0) },
+    { ...leadReadOptions, enabled: !!brandId && (total === null || total > 0) },
   );
   const rows = total === 0 ? [] : (q.data?.rows ?? null);
   const color = TONE_COLOR[uniboxValueTone("lifecycle", rung.key)];

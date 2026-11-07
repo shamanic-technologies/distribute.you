@@ -9,7 +9,7 @@ import { rulingErrorMessage } from "@/lib/crm-pairings";
 import { ownQueryData } from "@/lib/own-query-data";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { useStaffMode } from "@/lib/use-staff-mode";
-import { pollIntervalFor } from "@/lib/query-options";
+import { pollIntervalFor, leadReadOptions } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { friendlyDate, friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
 import {
@@ -133,7 +133,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     initialPageParam: null as string | null,
     getNextPageParam: (last: UniboxPage) => last.nextCursor ?? undefined,
     enabled: gate && !!brandId,
-    refetchInterval: pollIntervalFor,
+    ...leadReadOptions,
     // While a new search is asked, the last answer for the SAME filters stays on screen,
     // never a blank list; a filter click never shows another filter's rows.
     placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[3] === fKey ? prev : undefined),
