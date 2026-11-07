@@ -3,7 +3,7 @@
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { friendlyDate } from "@/lib/friendly-datetime";
-import { nextExpectedWords, reasonWords, targetsOfOffer, type CampaignTargetRow, type MilestoneCard } from "@/lib/campaign-targets";
+import { nextExpectedWords, reasonWords, targetsOfOffer, type CampaignTargetRow, type MilestoneCard, type OfferTargetEntry } from "@/lib/campaign-targets";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { StepMark } from "@/components/marks/step-mark";
 import { RoiLabel } from "@/components/v2/roi-label";
@@ -11,14 +11,15 @@ import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components
 import { useCampaignTargetRow, useCampaignTargets } from "@/components/v2/data";
 
 /**
- * Today, one row of cards per campaign Target (owner 2026-11-06, LEAD-GENERIC-1106): how many so far,
+ * Today, ONE row of cards per Target of the offer, its campaigns merged by features-service (owner 2026-11-07,
+ * TARGET-ROWS-UNIQUE-1107; rows since 2026-11-06, LEAD-GENERIC-1106): how many so far,
  * $ each, the measured return when features-service says it means something, and the count over time
  * with its projection. The Target's NAME is served: no outcome word is written here. The past never
  * moves with the Plan; the dotted part is the current Plan's projection.
  */
 export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string | null }) {
   const q = useCampaignTargets(brandId);
-  const rows = q.data ? targetsOfOffer(q.data.targets, offerId) : [];
+  const rows = q.data ? targetsOfOffer(q.data.offerTargets, offerId) : [];
   return (
     <section>
       <SectionTitle count={q.data ? rows.length : null}>Targets</SectionTitle>
@@ -35,7 +36,7 @@ export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brand
       ) : (
         <div className="space-y-6">
           {rows.map((r) => (
-            <TargetRow key={r.salesFunnelCampaignId} row={r} />
+            <TargetRow key={r.target?.key ?? r.salesFunnelCampaignIds.join(",")} row={r} />
           ))}
         </div>
       )}
@@ -43,7 +44,7 @@ export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brand
   );
 }
 
-function TargetRow({ row }: { row: CampaignTargetRow }) {
+function TargetRow({ row }: { row: OfferTargetEntry }) {
   const label = row.target?.label ?? null;
   const roi = row.measuredReturn.roiMultiple;
   const next = nextExpectedWords(row.projection.nextExpectedInHours);

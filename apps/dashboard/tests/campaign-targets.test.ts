@@ -31,9 +31,26 @@ const row = (offerId: string, id: string) => ({
 
 describe("campaign targets (LEAD-GENERIC-1106)", () => {
   it("parses the served body and keeps the selected offer's rows in served order", () => {
-    const body = CampaignTargetsSchema.parse({ brandId: "b", pricing: "net", costBasis: "charged", computedAt: "x", targets: [row("o1", "a"), row("o2", "b"), row("o1", "c")] });
+    const body = CampaignTargetsSchema.parse({ brandId: "b", pricing: "net", costBasis: "charged", computedAt: "x", targets: [row("o1", "a"), row("o2", "b"), row("o1", "c")], offerTargets: [] });
     expect(targetsOfOffer(body.targets, "o1").map((r) => r.salesFunnelCampaignId)).toEqual(["a", "c"]);
     expect(targetsOfOffer(body.targets, null)).toHaveLength(3);
+  });
+  it("reads one served entry per Target of the offer (TARGET-ROWS-UNIQUE-1107)", () => {
+    const entry = (offerId: string, ids: string[]) => {
+      const { salesFunnelCampaignId: _id, name: _name, ...rest } = row(offerId, ids[0]!);
+      return { ...rest, salesFunnelCampaignIds: ids };
+    };
+    const body = CampaignTargetsSchema.parse({
+      brandId: "b",
+      pricing: "net",
+      computedAt: "x",
+      targets: [row("o1", "a"), row("o1", "c"), row("o2", "b")],
+      offerTargets: [entry("o1", ["a", "c"]), entry("o2", ["b"])],
+    });
+    const o1 = targetsOfOffer(body.offerTargets, "o1");
+    expect(o1).toHaveLength(1);
+    expect(o1[0]!.salesFunnelCampaignIds).toEqual(["a", "c"]);
+    expect(o1[0]!.target?.label).toBe("Paid client");
   });
   it("says when the next one is expected, from the served hours", () => {
     expect(nextExpectedWords(48)).toBe("Next one expected in about 2 days.");
