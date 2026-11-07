@@ -50,6 +50,11 @@ describe("Today: one row of cards per campaign Target (LEAD-GENERIC-1106)", () =
     expect(rowFn).not.toContain("v2CampaignHref");
   });
 
+  it("reads ONE entry per Target, merged by features-service (owner 2026-11-07: « Les rows target doivent être uniques »)", () => {
+    expect(targets).toContain("targetsOfOffer(q.data.offerTargets, offerId)");
+    expect(targets).not.toContain("targetsOfOffer(q.data.targets");
+  });
+
   it("prints served figures only: count, $ each, measured return, past then projection", () => {
     expect(targets).toContain("row.outcomesToDate");
     expect(targets).toContain("row.costPerOutcomeUsd");

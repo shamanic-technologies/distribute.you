@@ -581,8 +581,11 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * "10": `researchPerformance` rows gained the REQUIRED `untested` + `sortCostUsd` and each pipe
  * the REQUIRED `servedNow` (PERF-COST-ORDER-1024). An older snapshot hid no row and read
  * `servedNow.row` off undefined.
+ *
+ * "11": `campaignTargets` gained the REQUIRED `offerTargets` (TARGET-ROWS-UNIQUE-1107). An older
+ * snapshot read `.filter` off undefined on Today.
  */
-const PERSIST_CACHE_VERSION = "10";
+const PERSIST_CACHE_VERSION = "11";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
