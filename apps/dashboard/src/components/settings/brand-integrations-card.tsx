@@ -21,7 +21,9 @@ import {
   recheckCrmBookingAccess,
   getGhlScopes,
   setBrandKey,
+  type SourceConnection,
 } from "@/lib/api";
+import { timeUntil } from "@/lib/friendly-datetime";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { CompanyLogo } from "@/components/company-logo";
 import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
@@ -76,6 +78,24 @@ interface Connection {
   account?: { id: string; name: string | null } | null;
   /** GoHighLevel: can our AI book meetings on this account's calendar (crm-service). */
   booking?: GhlBooking;
+  /** PostHog: the sync state crm-service serves (a wait on PostHog's read limit vs a failure). */
+  sync?: SourceConnection["sync"];
+}
+
+/**
+ * crm-service's `catching_up`: behind ON PURPOSE and reading again on its own (PostHog's
+ * hourly read limit is used up, or older visits are still being read). Nothing is
+ * broken and nothing is asked of the customer, so it never reads "Needs attention".
+ */
+function catchingUpLine(connection: Connection): string | null {
+  const sync = connection.sync;
+  if (sync?.state !== "catching_up") return null;
+  if (sync.reason === "reading_history") {
+    const left = sync.historyBacklog;
+    return left ? `Reading older visits. ${left.toLocaleString("en-US")} people left.` : "Reading older visits.";
+  }
+  const next = sync.retryAt ? ` We read again ${timeUntil(sync.retryAt)}.` : " We read again shortly.";
+  return `PostHog caps how much we read each hour.${next}`;
 }
 
 /**
@@ -281,6 +301,8 @@ function StatusPill({
     const paused = connection.status === "paused";
     const cfg = paused
       ? { box: "border-gray-200 bg-gray-50 text-gray-600", label: "Paused" }
+      : connection.sync?.state === "catching_up"
+        ? { box: "border-gray-200 bg-gray-50 text-gray-600", label: "Catching up" }
       : connection.lastError || connection.status !== "active"
         ? { box: "border-amber-200 bg-amber-50 text-amber-700", label: "Needs attention" }
         : { box: "border-green-200 bg-green-50 text-green-700", label: "Connected" };
@@ -433,7 +455,9 @@ function IntegrationRow({
             </p>
           ) : null}
 
-          {connection?.lastError ? (
+          {connection && catchingUpLine(connection) ? (
+            <p className="mt-2 text-sm text-gray-600">{catchingUpLine(connection)}</p>
+          ) : connection?.lastError ? (
             <p className="mt-2 text-sm text-amber-700">{connection.lastError}</p>
           ) : null}
 
