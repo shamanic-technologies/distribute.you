@@ -69,9 +69,9 @@ describe("no v2 brand page reads a sidebar-selected offer", () => {
   });
 
   it("an offer-grain-only read is asked for the brand's one offer, never summed across offers", () => {
-    const data = read("components/v2/data.ts");
-    expect(data).toContain("getOfferCompanyLifecycle(soleOfferId!, brandId)");
-    expect(read("components/v2/deals-page.tsx")).toContain(": soleOfferId;");
+    // Deals + Companies read features-service's BRAND grain since v0.179.548.
+    expect(read("components/v2/data.ts")).toContain("getBrandCompanyLifecycle(brandId)");
+    expect(read("components/v2/deals-page.tsx")).toContain(": getBrandDealsLifecycle(brandId)");
     expect(read("components/v2/outcomes-page.tsx")).toContain("useBrandScope().soleOfferId");
     expect(read("components/v2/today-page.tsx")).toContain("offerId={scope.soleOfferId}");
   });

@@ -14,7 +14,7 @@ import {
   getLeadHistory,
   getOrgUsage,
   getUniboxLifecycleCounts,
-  getOfferCompanyLifecycle,
+  getBrandCompanyLifecycle,
   keepLastGoodFeatureRevenue,
   type AwaitingReplyPerson,
   type LeadScope,
@@ -142,15 +142,13 @@ export function useDealsLifecycleCounts(brandId: string, campaignId: string | nu
 
 /**
  * Each company's lifecycle rung (features-service), and the companies per rung: the Companies
- * page's tabs and Stage column, the company page's stage. features-service serves it at the
- * OFFER grain only, so it is asked while every campaign of the brand sells ONE offer (that read
- * IS the brand's); a brand selling several offers waits for the brand-grain read (not asked).
+ * page's tabs and Stage column, the company page's stage. Read at the BRAND grain (v0.179.548):
+ * every offer of the brand, each company once.
  */
 export function useCompanyLifecycle(brandId: string) {
-  const { soleOfferId } = useBrandScope();
-  return useAuthQuery(["companyLifecycle", brandId, soleOfferId ?? ""], () => getOfferCompanyLifecycle(soleOfferId!, brandId), {
+  return useAuthQuery(["companyLifecycle", brandId, "brand"], () => getBrandCompanyLifecycle(brandId), {
     ...pollOptions,
-    enabled: !!brandId && !!soleOfferId,
+    enabled: !!brandId,
   });
 }
 

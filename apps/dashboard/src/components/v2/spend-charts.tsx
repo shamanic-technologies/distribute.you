@@ -3,7 +3,7 @@
 import { Bar, BarChart, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getFunnelCampaignSpendCharts, getOfferSpendCharts } from "@/lib/api";
+import { getBrandSpendCharts, getFunnelCampaignSpendCharts, getOfferSpendCharts } from "@/lib/api";
 import { formatUsdAdaptive, formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { stepLabel, stepPluralLabel } from "@/lib/legs";
@@ -80,14 +80,23 @@ export interface BilledSpend {
   spend: { actualSpentCents: number; totalSpentCents: number } | null;
 }
 
-/** Today: one offer's block (the brand's one offer). Renders nothing with no offer named (none, or several: no brand-grain chart yet). */
+/**
+ * Today: the brand's block. With one offer named (the brand sells one) it reads that offer's chart;
+ * with none (several offers) it reads the BRAND chart (features-service v0.179.548), never a sum here.
+ */
 export function OfferSpendChartsSection({ brandId, offerId, billed }: { brandId: string; offerId: string | null; billed?: BilledSpend }) {
-  const q = useAuthQuery(["spendCharts", "offer", brandId, offerId ?? ""], () => getOfferSpendCharts(offerId!, brandId), {
+  const offerQ = useAuthQuery(["spendCharts", "offer", brandId, offerId ?? ""], () => getOfferSpendCharts(offerId!, brandId), {
     ...pollOptions,
     enabled: !!offerId,
   });
-  if (!offerId || q.data === null) return null;
-  const state = spendChartState(q, (d) => d?.offer ?? null);
+  const brandQ = useAuthQuery(["spendCharts", "brand", brandId], () => getBrandSpendCharts(brandId), {
+    ...pollOptions,
+    enabled: !!brandId && !offerId,
+  });
+  const offerState = spendChartState(offerQ, (d) => d?.offer ?? null);
+  const brandState = spendChartState(brandQ, (d) => d?.brand ?? null);
+  if ((offerId ? offerQ.data : brandQ.data) === null) return null;
+  const state = offerId ? offerState : brandState;
   return (
     <section>
       <SectionTitle right={<span>Since you started</span>}>Your spend, day by day</SectionTitle>

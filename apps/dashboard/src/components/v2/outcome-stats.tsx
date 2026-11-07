@@ -3,7 +3,7 @@
 import { Bar, BarChart, Cell, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getOfferOutcomeCostSeries } from "@/lib/api";
+import { getBrandOutcomeCostSeries, getOfferOutcomeCostSeries } from "@/lib/api";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { costStepOf, monthLabel, monthTick, outcomeCountWords, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
 import type { OutcomeStepStat } from "@/lib/v2/outcome-people";
@@ -25,11 +25,13 @@ const EVERYONE = "var(--data-teal)";
 const OURS = "var(--accent)";
 const LEARNING = "var(--fg-4)";
 
+/** The brand's one offer when it sells one; with none named, the BRAND series (v0.179.548), never a sum here. */
 export function useOutcomeCostSeries(brandId: string, offerId: string | null) {
-  return useAuthQuery(["outcomeCostSeries", brandId, offerId ?? ""], () => getOfferOutcomeCostSeries(offerId!, brandId), {
-    ...pollOptions,
-    enabled: !!offerId,
-  });
+  return useAuthQuery(
+    ["outcomeCostSeries", brandId, offerId ?? "brand"],
+    () => (offerId ? getOfferOutcomeCostSeries(offerId, brandId) : getBrandOutcomeCostSeries(brandId)),
+    { ...pollOptions, enabled: !!brandId },
+  );
 }
 
 export function OutcomeStats({

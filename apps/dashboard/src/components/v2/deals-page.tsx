@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { getOfferDealsLifecycle, listUniboxLeads } from "@/lib/api";
+import { getBrandDealsLifecycle, getOfferDealsLifecycle, listUniboxLeads } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollIntervalFor } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
@@ -13,7 +13,6 @@ import { filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxValueTone,
 import { DEALS_FILTER_DIMENSIONS, DEALS_PAGE_SIZE, dealCardChips, dealsBoardRungs, servedRungValues, type ServedRungValue } from "@/lib/deals-board";
 import { useLeadCampaigns } from "@/components/v2/lead-campaigns";
 import { FunnelFace, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
-import { useBrandScope } from "@/components/v2/brand-scope";
 import { useDealsLifecycleCounts } from "@/components/v2/data";
 import { TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { UniboxFilterBar } from "@/components/v2/unibox-lead-card";
@@ -34,7 +33,6 @@ const MAX_ROWS = 200;
  */
 export function DealsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const { soleOfferId } = useBrandScope();
   const funnels = useFunnelCampaigns(brandId, null);
   const { campaigns } = useLeadCampaigns(orgId, brandId);
   const [campaignFilter, setCampaignFilter] = useState<string | null>(null);
@@ -44,14 +42,13 @@ export function DealsPage() {
   const rungs = ladder ? dealsBoardRungs(ladder) : null;
   const count = (key: string): number | null => (counts.data ? (counts.data.byLifecycle[key] ?? 0) : null);
   const biggest = Math.max(1, ...(rungs ?? []).map((r) => count(r.key) ?? 0));
-  // What each rung holds, priced by features-service. It prices the board per OFFER only, so it is
-  // asked for the picked campaign's own offer, else for the brand's one offer (that read IS the
-  // brand's); a brand selling several offers shows its columns unpriced until the brand-grain read.
-  const valueOfferId = campaignFilter ? (funnels.data?.find((f) => f.id === campaignFilter)?.offerId ?? null) : soleOfferId;
+  // What each rung holds, priced by features-service: the BRAND's board (v0.179.548, every offer's
+  // people on their own offer's terms), or the picked campaign's own offer.
+  const valueOfferId = campaignFilter ? (funnels.data?.find((f) => f.id === campaignFilter)?.offerId ?? null) : null;
   const dealsValue = useAuthQuery(
-    ["dealsLifecycle", brandId, valueOfferId ?? "", campaignFilter ?? ""],
-    () => getOfferDealsLifecycle(valueOfferId!, brandId, campaignFilter),
-    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!valueOfferId },
+    ["dealsLifecycle", brandId, valueOfferId ?? "brand", campaignFilter ?? ""],
+    () => (campaignFilter ? getOfferDealsLifecycle(valueOfferId!, brandId, campaignFilter) : getBrandDealsLifecycle(brandId)),
+    { refetchInterval: pollIntervalFor, enabled: !!brandId && (!campaignFilter || !!valueOfferId) },
   );
   const served = useMemo(() => servedRungValues(dealsValue.data), [dealsValue.data]);
   const pipeline = dealsValue.data?.expectedPipelineUsd ?? null;
