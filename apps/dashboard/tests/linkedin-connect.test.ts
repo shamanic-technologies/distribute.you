@@ -8,6 +8,7 @@ import {
   isLinkedinNotConfigured,
   linkedinCallbackUrl,
   linkedinFinishErrorMessage,
+  linkedinDeniedMessage,
   linkedinReturnUrl,
   linkedinStartErrorMessage,
   looksLikeLinkedinPage,
@@ -45,6 +46,9 @@ describe("LinkedIn connect round trip (LINKEDIN-ACCOUNTS-1106)", () => {
     expect(linkedinStartErrorMessage(missing)).toBe("LinkedIn is not set up on our side yet. Try again soon.");
     expect(isLinkedinNotConfigured({ status: 502, body: { type: "upstream", error: "LinkedIn down" } })).toBe(false);
     expect(linkedinFinishErrorMessage({ status: 400, body: { type: "linkedin_login_invalid" } })).toBe("This LinkedIn login expired. Connect the account again.");
+    // LINKEDIN-PAGES-1107: what LinkedIn refused, named by social-service, is shown as is.
+    const named = "This LinkedIn login is not an admin of linkedin.com/company/acme. Log in with a super or content admin of the page.";
+    expect(linkedinFinishErrorMessage({ status: 400, body: { type: "linkedin_login_invalid", error: named } })).toBe(named);
   });
 
   it("sits right after X on Integrations, with its history import shown on each row", () => {
@@ -53,5 +57,16 @@ describe("LinkedIn connect round trip (LINKEDIN-ACCOUNTS-1106)", () => {
     const linkedin = read("src/components/v2/linkedin-accounts-card.tsx");
     expect(linkedin).toContain("importLine(account)");
     expect(linkedin).toContain("Reconnect");
+  });
+});
+
+describe("LinkedIn sent the browser back without a code (LINKEDIN-PAGES-1107)", () => {
+  it("a cancel, a permission LinkedIn refuses our app (named), anything else", () => {
+    expect(linkedinDeniedMessage("access_denied", null)).toBe("You cancelled the LinkedIn login.");
+    expect(linkedinDeniedMessage("user_cancelled_login", null)).toBe("You cancelled the LinkedIn login.");
+    expect(linkedinDeniedMessage("unauthorized_scope_error", "Scope &quot;w_organization_social&quot; is not authorized for your application")).toBe(
+      'LinkedIn refused a permission our app asked (Scope "w_organization_social" is not authorized for your application). Our team has to enable it on LinkedIn: contact us.',
+    );
+    expect(linkedinDeniedMessage("server_error", null)).toBe("LinkedIn did not finish the login. Try again.");
   });
 });
