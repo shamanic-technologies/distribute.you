@@ -1552,6 +1552,18 @@ const SourceConnectionSchema = z.object({
   // provider holding this account's key, and the account it reads.
   credentialProvider: z.string().optional(),
   account: z.object({ id: z.string(), name: z.string().nullable() }).nullish(),
+  // PostHog only (crm-service POSTHOG-429-1107): the sync state in plain terms, a
+  // read-budget wait (`catching_up`) apart from a real failure (`failed`). States
+  // stay plain strings: the producer owns that vocabulary.
+  sync: z
+    .object({
+      state: z.string(),
+      reason: z.string().nullable(),
+      retryAt: z.string().nullable(),
+      behindSince: z.string().nullable(),
+      historyBacklog: z.number().nullable(),
+    })
+    .nullish(),
 });
 
 export type SourceConnection = z.infer<typeof SourceConnectionSchema>;

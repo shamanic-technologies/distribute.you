@@ -18,3 +18,15 @@ describe("connection Paused label", () => {
     });
   }
 });
+
+describe("PostHog catching up (crm-service POSTHOG-429-1107)", () => {
+  const src = readFileSync(join(__dirname, "..", "src/components/settings/brand-integrations-card.tsx"), "utf8");
+  it("a read-budget wait reads Catching up, never Needs attention", () => {
+    const pill = src.slice(src.indexOf("function StatusPill("), src.indexOf("function IntegrationRow("));
+    expect(pill.indexOf('"catching_up"')).toBeGreaterThan(-1);
+    expect(pill.indexOf('"catching_up"')).toBeLessThan(pill.indexOf('label: "Needs attention"'));
+  });
+  it("the wait line replaces the raw vendor error at the call site", () => {
+    expect(src).toContain("catchingUpLine(connection) ? (");
+  });
+});
