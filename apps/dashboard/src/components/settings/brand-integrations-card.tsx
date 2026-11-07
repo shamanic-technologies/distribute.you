@@ -275,10 +275,13 @@ function StatusPill({
     return <span className="h-5 w-24 animate-pulse rounded-full bg-gray-100" />;
   }
   if (connection) {
-    const paused = connection.status !== "active";
+    // Only a connection someone PAUSED reads Paused. A sync that failed (status
+    // "error") is still on and retried every pass: calling it Paused told the
+    // customer they had switched it off (PostHog 429s, 2026-11-07).
+    const paused = connection.status === "paused";
     const cfg = paused
       ? { box: "border-gray-200 bg-gray-50 text-gray-600", label: "Paused" }
-      : connection.lastError
+      : connection.lastError || connection.status !== "active"
         ? { box: "border-amber-200 bg-amber-50 text-amber-700", label: "Needs attention" }
         : { box: "border-green-200 bg-green-50 text-green-700", label: "Connected" };
     return (
