@@ -136,6 +136,8 @@ export function expectedReasonWords(reason: string | null): string {
       return "No value set";
     case "nothing_spent_yet":
       return "Nothing spent yet";
+    case "no_pipe_prices_outcome":
+      return "No price yet";
     case null:
       return "—";
     default:

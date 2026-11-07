@@ -10,8 +10,9 @@ import { PublishedUnitsSchema, costPerSignupReasonWords, publishedRoiToShow, vis
 const src = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 const breakdown = { likes: 3, replies: 1, reposts: 0, quotes: null, shares: null, bookmarks: 2, clicks: null };
 const totals = { rows: 1, units: 1, views: 120, engagements: 6, visits: 0, signups: 0, spentUsd: 0.01, viewsReportedRows: 1, engagementBreakdown: breakdown, rowsEngagementsAboveViews: 0, valueUsd: 0.4, unvaluedRows: 0 };
-const measured = (learning: boolean, roiMultiple: number | null) => ({ roiMultiple, valueUsd: 0.4, spentUsd: 0.01, learning, unavailableReason: null });
-const body = (m: ReturnType<typeof measured>) => ({
+type Measured = { roiMultiple: number | null; valueUsd: number | null; spentUsd: number | null; learning: boolean; unavailableReason: string | null };
+const measured = (learning: boolean, roiMultiple: number | null): Measured => ({ roiMultiple, valueUsd: 0.4, spentUsd: 0.01, learning, unavailableReason: null });
+const body = (m: Measured) => ({
   brandId: "b1",
   pricing: "net",
   outcomeKey: "x_post_published",
@@ -48,6 +49,12 @@ describe("published outcomes: breakdown, value, ROI (SOCIAL-OUTCOMES-1107)", () 
     expect(publishedRoiToShow(PublishedUnitsSchema.parse(body(measured(false, 40))))).toEqual({ value: 40, expected: false, reason: null });
     expect(publishedRoiToShow(PublishedUnitsSchema.parse(body(measured(true, 40))))).toMatchObject({ value: 40, learning: true, expectedValue: 12 });
     expect(publishedRoiToShow(PublishedUnitsSchema.parse(body(measured(true, null))))).toEqual({ value: 12, expected: true, reason: null });
+  });
+
+  it("nothing spent and no expected price: the measured reason wins (real X body, 2026-11-07)", () => {
+    const b = body({ roiMultiple: null, valueUsd: 40, spentUsd: 0, learning: false, unavailableReason: "nothing_spent_yet" });
+    const p = PublishedUnitsSchema.parse({ ...b, expectedReturn: { ...b.expectedReturn, roiMultiple: null, unavailableReason: "no_pipe_prices_outcome" } });
+    expect(publishedRoiToShow(p)).toEqual({ value: null, expected: false, reason: "nothing_spent_yet" });
   });
 
   it("an older body (no return blocks) shows no ROI tile", () => {

@@ -176,7 +176,9 @@ export function publishedRoiToShow(data: PublishedUnits): RoiToShow | undefined 
   if (!m && !data.expectedReturn) return undefined;
   const shown = { learning: m?.learning ?? true, value: m && !m.learning ? m.roiMultiple : null, toDate: m?.learning ? m.roiMultiple : null };
   const exp = data.expectedReturn;
-  return roiToShow(shown, exp ? { roiMultiple: exp.roiMultiple, basis: exp.basis, unavailableReason: exp.unavailableReason ?? m?.unavailableReason ?? null } : null);
+  // Neither figure: the measured block's reason first (« nothing spent yet » on free posts says more than the expected
+  // model's « no pipe prices this outcome »).
+  return roiToShow(shown, exp ? { roiMultiple: exp.roiMultiple, basis: exp.basis, unavailableReason: m?.unavailableReason ?? exp.unavailableReason ?? null } : null);
 }
 
 /** Why a visits/signups figure is absent, in the words the page prints. */
