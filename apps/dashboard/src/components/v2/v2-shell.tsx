@@ -23,7 +23,7 @@ import { useOwnOutcomePins, useOwnPins, usePublishPins, usePublishShownPins } fr
 import { formatCount } from "@/lib/format-number";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
-import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
+import { BrandScopeProvider } from "@/components/v2/brand-scope";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { BRAND_WHY } from "@/lib/brand-why";
 import { CopilotPanel } from "@/components/v2/copilot-panel";
@@ -82,8 +82,8 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
       </CopilotDockContext.Provider>
     </V2NavContext.Provider>
   );
-  // Every brand page reads ONE offer, the one the sidebar's switcher picked.
-  return brandId ? <SelectedOfferProvider brandId={brandId}>{shell}</SelectedOfferProvider> : shell;
+  // Every brand page reads the BRAND (every offer); Offers is a list on Setup > Offers.
+  return brandId ? <BrandScopeProvider brandId={brandId}>{shell}</BrandScopeProvider> : shell;
 }
 
 function Count({ n }: { n: number | null | undefined }) {
@@ -192,14 +192,13 @@ function V2Sidebar() {
   const orgId = params.orgId ?? "";
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
-  const { offerId } = useSelectedOffer();
   // The same read and the same order as the Sales path page's Campaigns section
   // (proactive first, ROI high to low), so the two lists never disagree. Today reads it too.
   // Campaigns that are sales funnels (owner 2026-10-10) come with it, the ON ones listed once by
   // name and face; their parts are never campaigns of their own (`ongoing` holds none).
-  const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId, offerId);
+  const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId);
   // Every outcome of the brand, campaigns or not (owner 2026-10-11), the Overview's own list.
-  const { outcomes } = useBrandOutcomeList(orgId, brandId, offerId);
+  const { outcomes } = useBrandOutcomeList(orgId, brandId);
   const stepIcons = useStepIcons();
   // Published outcomes (posts, newsletter emails; SOCIAL-OUTCOMES-1107): one entry each once the brand has a row, read
   // through the Overview's own query keys so the sidebar count and the card agree.
@@ -227,7 +226,7 @@ function V2Sidebar() {
   const ownCampaignPins = useOwnPins("campaign", brandId);
   const pinnedCampaigns = shownPinsInOrder(
     ownCampaignPins,
-    offerId ? [...funnelCampaigns.map((c) => c.id), ...ongoing.map(({ m }) => m.row.campaign.id)] : [],
+    [...funnelCampaigns.map((c) => c.id), ...ongoing.map(({ m }) => m.row.campaign.id)],
   );
   usePublishPins("campaign", brandId, pinnedCampaigns);
   // Deals badge = the people on the Deals board's columns (every lifecycle rung but Lead found),
@@ -314,7 +313,7 @@ function V2Sidebar() {
           />
         </div>
 
-        {/* Campaigns (owner 2026-10-10): the Overview, then EVERY campaign of the offer that
+        {/* Campaigns (owner 2026-10-10): the Overview, then EVERY campaign of the brand that
             is ON, whatever it does (finds leads, writes, answers), with its name and face.
             No category headers. Same left edge as every other entry. */}
         <Group title="Campaigns">
@@ -324,8 +323,7 @@ function V2Sidebar() {
             icon={<I d={ICONS.overview} />}
             active={section === "campaigns" && /\/campaigns\/?$/.test(pathname)}
           />
-          {offerId &&
-            funnelCampaigns.map((c) => {
+          {funnelCampaigns.map((c) => {
               const href = v2CampaignHref(orgId, brandId, c.id);
               if (!pinnedCampaigns.includes(c.id) && !pathname.startsWith(href)) return null;
               return (
@@ -341,8 +339,7 @@ function V2Sidebar() {
                 />
               );
             })}
-          {offerId &&
-            ongoing
+          {ongoing
               .filter(({ m }) => pinnedCampaigns.includes(m.row.campaign.id) || pathname.startsWith(m.href))
               .map(({ m, name }) => (
               <NavItem
@@ -442,8 +439,8 @@ function V2Sidebar() {
 
         {/* Staff mode only, below the client's nav (owner 2026-10-10): one section per business
             object, each its Overview then the ONGOING ones (used by a running campaign of this
-            offer), each opening its own page. Campaigns comes last: the sales funnel campaigns with their staff detail. */}
-        {staffMode && <StaffObjectSections orgId={orgId} brandId={brandId} offerId={offerId} pathname={pathname} />}
+            brand), each opening its own page. Campaigns comes last: the sales funnel campaigns with their staff detail. */}
+        {staffMode && <StaffObjectSections orgId={orgId} brandId={brandId} pathname={pathname} />}
       </nav>
       <BrandWhyLine />
       {/* What is left to spend, always in view (owner 2026-10-11). */}
@@ -499,15 +496,15 @@ function OutcomeMark({ outcomeKey, label, stepIcons }: { outcomeKey: string; lab
 }
 
 /**
- * The staff section (owner 2026-10-10): the offer's sales funnel campaigns with their staff detail. Steps left the menu
+ * The staff section (owner 2026-10-10): the brand's sales funnel campaigns with their staff detail. Steps left the menu
  * on 2026-11-07: the Catalogue page every client reads (Production) lists the outcomes, owner « la page catalogue ».
  * Mounted only in staff mode, so a customer makes none of these reads.
  */
-function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: string; brandId: string; offerId: string | null; pathname: string }) {
-  const campaigns = useOngoingFunnelFaces(brandId, offerId);
+function StaffObjectSections({ orgId, brandId, pathname }: { orgId: string; brandId: string; pathname: string }) {
+  const campaigns = useOngoingFunnelFaces(brandId);
   return (
     <>
-      {/* Campaigns (owner 2026-10-10): the offer's SALES FUNNEL campaigns, staff detail (units, workflows, caps). */}
+      {/* Campaigns (owner 2026-10-10): the brand's SALES FUNNEL campaigns, staff detail (units, workflows, caps). */}
       <Group title="Campaigns">
         <NavItem
           href={v2CatalogueHref(orgId, brandId, "campaigns")}
@@ -515,8 +512,7 @@ function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: str
           icon={<I d={ICONS.overview} />}
           active={pathname === v2CatalogueHref(orgId, brandId, "campaigns")}
         />
-        {offerId &&
-          campaigns.map(({ campaign, face }) => {
+        {campaigns.map(({ campaign, face }) => {
             const href = v2CatalogueHref(orgId, brandId, "campaigns", campaign.id);
             return (
               <NavItem

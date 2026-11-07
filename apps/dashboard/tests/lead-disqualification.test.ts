@@ -96,7 +96,7 @@ describe("where the mark is drawn", () => {
     expect(board).toContain("leadVerdictTag(row.leadState)");
     expect(board).toContain('"fit"');
     expect(page).not.toContain("DisqualifiedColumn");
-    expect(src("components", "v2", "data.ts")).toContain("getBrandDisqualifications({ brandId, offerId })");
+    expect(src("components", "v2", "data.ts")).toContain("getBrandDisqualifications({ brandId })");
   });
 
   it("the person page sets and removes it, and the step tags stay beside it", () => {

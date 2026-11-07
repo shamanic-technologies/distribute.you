@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
-import { getOfferSalesPaths, getStaffCatalogueObject, getWorkflowRankLadder, listSalesFunnelCampaigns, listStaffCatalogue, listStaffCatalogueTriggers } from "@/lib/api";
+import { getStaffCatalogueObject, getWorkflowRankLadder, listSalesFunnelCampaigns, listStaffCatalogue, listStaffCatalogueTriggers } from "@/lib/api";
 import { isOngoingFunnelCampaign, type SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { CATALOGUE_REFRESH_MS, pollOptions } from "@/lib/query-options";
 import {
@@ -16,7 +16,7 @@ import {
   type ServedTrigger,
 } from "@/lib/staff-catalogue";
 import { featureLegId } from "@/lib/outbound-leg-key";
-import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
+import { useOfferSalesPathsOf, useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 
 // The catalogue's economics are recomputed by features-service every ~15 minutes (warmed off
 // the request path), so a minute is fresh enough and keeps a staff tab from hammering it with
@@ -79,11 +79,11 @@ function useObjects<K extends CatalogueReadObject>(object: K, ids: string[], ena
   return { data, settled };
 }
 
-/** The selected offer's SALES FUNNEL campaigns (campaign-service), each with its units. */
-export function useFunnelCampaigns(brandId: string, offerId: string | null, enabled = true) {
-  return useAuthQuery(["salesFunnelCampaigns", brandId, offerId], () => listSalesFunnelCampaigns(brandId, offerId as string), {
+/** The brand's SALES FUNNEL campaigns, every offer (campaign-service), each with its units. */
+export function useFunnelCampaigns(brandId: string, enabled = true) {
+  return useAuthQuery(["salesFunnelCampaigns", brandId, "all"], () => listSalesFunnelCampaigns(brandId, null), {
     ...pollOptions,
-    enabled: enabled && !!brandId && !!offerId,
+    enabled: enabled && !!brandId,
   });
 }
 
@@ -96,14 +96,14 @@ export interface OngoingFunnelCampaign {
 }
 
 /**
- * The staff sidebar's Campaigns entries: the offer's ONGOING funnel campaigns with their funnel's
+ * The staff sidebar's Campaigns entries: the brand's ONGOING funnel campaigns with their funnel's
  * face, and nothing else. The sidebar mounts on every page, so it must not pay for
  * `useOngoingCatalogue` (every pipe, channel, step, sales funnel, path, trigger and workflow
  * ranking of the offer: ~200 reads per page view in staff mode, 2026-11-07) to print a name and
  * a face. Same keys as `useOngoingCatalogue`, so the Catalogue pages reuse these answers.
  */
-export function useOngoingFunnelFaces(brandId: string, offerId: string | null): OngoingFunnelCampaign[] {
-  const funnelCampaigns = useFunnelCampaigns(brandId, offerId);
+export function useOngoingFunnelFaces(brandId: string): OngoingFunnelCampaign[] {
+  const funnelCampaigns = useFunnelCampaigns(brandId);
   const ongoing = useMemo(() => (funnelCampaigns.data ?? []).filter(isOngoingFunnelCampaign), [funnelCampaigns.data]);
   const funnels = useObjects("sales-funnels", [...new Set(ongoing.map((c) => c.salesFunnelId))], true);
   const funnelById = new Map(funnels.data.map((f) => [f.id, f] as const));
@@ -141,19 +141,16 @@ export interface OngoingCatalogue {
 }
 
 /**
- * What the selected offer's ON campaigns use, per business object (owner 2026-10-10: a
+ * What the brand's ON campaigns (every offer) use, per business object (owner 2026-10-10: a
  * Staff section lists the ONGOING ones). Every name, mark and figure is the catalogue's own
  * read of that object; this only joins ids (`lib/staff-catalogue.ts`).
  */
-export function useOngoingCatalogue(orgId: string, brandId: string, offerId: string | null, enabled: boolean): OngoingCatalogue {
+export function useOngoingCatalogue(orgId: string, brandId: string, enabled: boolean): OngoingCatalogue {
   // What actually runs: the parts of sales-funnel campaigns are pipes too.
-  const { running: campaigns, settled: campaignsSettled } = useOngoingCampaigns(orgId, brandId, offerId);
-  // The same read (and key) the ongoing campaigns already make: the offer's paths, ticked or not.
-  const salesPaths = useAuthQuery(
-    ["offerSalesPaths", brandId, offerId, "catalogue"],
-    () => getOfferSalesPaths(brandId, offerId as string, "catalogue"),
-    { enabled: enabled && !!brandId && !!offerId },
-  );
+  const { running: campaigns, settled: campaignsSettled } = useOngoingCampaigns(orgId, brandId);
+  // The same reads (and keys) the ongoing campaigns already make: each running offer's paths, ticked or not.
+  const runningOfferIds = useMemo(() => [...new Set(campaigns.map((c) => c.m.offerId))].sort(), [campaigns]);
+  const salesPaths = useOfferSalesPathsOf(brandId, enabled ? runningOfferIds : []);
 
   const pipeIds = useMemo(() => ongoingPipeIds(campaigns.map((c) => c.m.row.campaign)), [campaigns]);
   const campaignsByPipe = useMemo(() => {
@@ -172,7 +169,7 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
   const channels = useObjects("channels", channelIds, enabled);
   const steps = useObjects("steps", stepIds, enabled);
 
-  const funnelIds = useMemo(() => ongoingFunnelIds(salesPaths.data?.paths ?? [], pipeIds), [salesPaths.data, pipeIds]);
+  const funnelIds = useMemo(() => ongoingFunnelIds(salesPaths.data.flatMap((d) => d.paths ?? []), pipeIds), [salesPaths.data, pipeIds]);
   const funnels = useObjects("sales-funnels", funnelIds, enabled);
   const pathIds = useMemo(() => [...new Set(funnels.data.map((f) => f.salesPathId))], [funnels.data]);
   const paths = useObjects("sales-paths", pathIds, enabled);
@@ -219,7 +216,7 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
     detail: workflowDetails[i]?.data ?? null,
   }));
 
-  const funnelCampaigns = useFunnelCampaigns(brandId, offerId, enabled);
+  const funnelCampaigns = useFunnelCampaigns(brandId, enabled);
   const ongoingFunnelCampaigns = useMemo(() => (funnelCampaigns.data ?? []).filter(isOngoingFunnelCampaign), [funnelCampaigns.data]);
   const campaignFunnels = useObjects("sales-funnels", [...new Set(ongoingFunnelCampaigns.map((c) => c.salesFunnelId))], enabled);
   const funnelById = new Map(campaignFunnels.data.map((f) => [f.id, f] as const));
@@ -231,10 +228,10 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
   // funnel (ticked on the offer, or run by a funnel campaign), never a pipe's mode.
   const triggerIds = useMemo(() => ongoingTriggerIds([...funnels.data, ...campaignFunnels.data]), [funnels.data, campaignFunnels.data]);
   const triggers = useObjects("triggers", triggerIds, enabled);
-  const funnelCampaignsSettled = !offerId || funnelCampaigns.data !== undefined || funnelCampaigns.isFetchedAfterMount;
+  const funnelCampaignsSettled = funnelCampaigns.data !== undefined || funnelCampaigns.isFetchedAfterMount;
 
   const laddersSettled = ladders.every((r) => r.data !== undefined || r.isFetchedAfterMount || r.isError);
-  const offerSettled = !offerId || salesPaths.data !== undefined || salesPaths.isError;
+  const offerSettled = salesPaths.settled;
   return {
     steps: steps.data,
     "sales-paths": paths.data,

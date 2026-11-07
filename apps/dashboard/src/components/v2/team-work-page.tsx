@@ -13,7 +13,6 @@ import { timeAgo } from "@/lib/friendly-datetime";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useCampaigns } from "@/components/v2/use-campaigns";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { LeadStatus } from "@/components/v2/today-roi-panel";
@@ -35,7 +34,6 @@ export function V2TeamWork() {
   const { allCampaigns, settled } = useCampaigns(orgId, brandId);
   const channels = useAcquisitionChannels();
   const steps = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000 });
-  const { offerId } = useSelectedOffer();
   const outcomes = useMemo(
     () =>
       teamOutcomes(
@@ -50,7 +48,7 @@ export function V2TeamWork() {
       ),
     [allCampaigns, channels],
   );
-  return <TeamWorkBody brandId={brandId} outcomes={outcomes} settled={settled} offerPicked={offerId !== null} steps={steps.data} />;
+  return <TeamWorkBody brandId={brandId} outcomes={outcomes} settled={settled} steps={steps.data} />;
 }
 
 /** The page under its hooks: the outcomes the team makes, each with its people and weekly moves. */
@@ -58,13 +56,11 @@ export function TeamWorkBody({
   brandId,
   outcomes,
   settled,
-  offerPicked,
   steps,
 }: {
   brandId: string;
   outcomes: TeamOutcome[];
   settled: boolean;
-  offerPicked: boolean;
   steps: PublicCatalogueStep[] | undefined;
 }) {
   const [open, setOpen] = useState<{ person: PipeQueuePerson; outcome: TeamOutcome } | null>(null);
@@ -87,7 +83,7 @@ export function TeamWorkBody({
           </div>
         ) : outcomes.length === 0 ? (
           <div className="k-card mt-6">
-            <EmptyNote>{offerPicked ? "No running campaign of this offer is worked by the client's own team." : "Pick an offer to see its team's work."}</EmptyNote>
+            <EmptyNote>No running campaign of this brand is worked by the client&apos;s own team.</EmptyNote>
           </div>
         ) : (
           <div className="mt-6 space-y-6">

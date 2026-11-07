@@ -8,14 +8,13 @@ import { useQueries } from "@tanstack/react-query";
 import { EmptyNote, KeyHint, MarkLines, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRowKeys } from "@/components/v2/records";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { PipeStatsSection, SameLegSection } from "@/components/v2/pipe-stats-section";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { useOngoingCatalogue, useStaffCatalogueList, useStaffCatalogueObject, staffCatalogueObjectKey } from "@/components/v2/staff-catalogue-data";
 import { getStaffCatalogueObject } from "@/lib/api";
 import { useOrgQueryGate } from "@/lib/use-auth-query";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { v2CatalogueHref, v2OfferHref, v2Href, v2WorkflowHref } from "@/lib/v2/routes";
+import { v2CatalogueHref, v2Href, v2WorkflowHref } from "@/lib/v2/routes";
 import {
   CATALOGUE_OBJECT_LABELS,
   catalogueStatusLabel,
@@ -158,10 +157,10 @@ export function TableSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-/** Where the offer's own setup of an object lives, linked from its overview. */
-function manageLinks(object: CatalogueObject, orgId: string, brandId: string, offerId: string | null) {
-  const salesPath = offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path");
-  const sourcing = offerId ? v2OfferHref(orgId, brandId, offerId, "sourcing") : v2Href(orgId, brandId, "sourcing");
+/** Where an offer's own setup of an object lives, linked from its overview (one offer: its tab, else the Offers list). */
+function manageLinks(object: CatalogueObject, orgId: string, brandId: string) {
+  const salesPath = v2Href(orgId, brandId, "sales-path");
+  const sourcing = v2Href(orgId, brandId, "sourcing");
   if (object === "sales-paths" || object === "sales-funnels") return [{ label: "This offer's sales paths", href: salesPath }];
   if (object === "channels") return [{ label: "This offer's channels", href: `${salesPath}#channels` }, { label: "Posts", href: v2Href(orgId, brandId, "posts") }];
   if (object === "pipes") return [{ label: "Sourcing", href: sourcing }];
@@ -169,15 +168,14 @@ function manageLinks(object: CatalogueObject, orgId: string, brandId: string, of
 }
 
 /**
- * A business object's OVERVIEW (owner 2026-10-10, staff monitoring): the ones the selected
- * offer's ON campaigns use, then the whole catalogue in the producer's order, searchable.
+ * A business object's OVERVIEW (owner 2026-10-10, staff monitoring): the ones the brand's
+ * ON campaigns use, then the whole catalogue in the producer's order, searchable.
  */
 export function CatalogueOverviewPage({ object }: { object: CatalogueObject }) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const router = useRouter();
-  const { offerId } = useSelectedOffer();
   const labels = CATALOGUE_OBJECT_LABELS[object];
-  const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
+  const ongoing = useOngoingCatalogue(orgId, brandId, true);
   const ongoingRows = useMemo(() => (ongoing[object] as Array<Parameters<typeof rowOf>[0]>).map(rowOf), [ongoing, object]);
   const ongoingIds = useMemo(() => new Set(ongoingRows.map((r) => r.id)), [ongoingRows]);
 
@@ -201,7 +199,7 @@ export function CatalogueOverviewPage({ object }: { object: CatalogueObject }) {
     searchRef,
   });
   const cursorKey = cursor >= 0 ? flat[cursor] ?? null : null;
-  const links = manageLinks(object, orgId, brandId, offerId);
+  const links = manageLinks(object, orgId, brandId);
 
   return (
     <>
@@ -350,10 +348,9 @@ function pct(v: number | null | undefined): React.ReactNode {
  */
 export function CatalogueObjectPage({ object, id }: { object: CatalogueObject; id: string }) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const { offerId } = useSelectedOffer();
   const labels = CATALOGUE_OBJECT_LABELS[object];
   const q = useStaffCatalogueObject(object, id);
-  const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
+  const ongoing = useOngoingCatalogue(orgId, brandId, true);
   const isOngoing = (ongoing[object] as Array<{ id: string }>).some((o) => o.id === id);
   const d = q.data as (Parameters<typeof rowOf>[0] & { learningReason: string | null; costUnit: string }) | undefined;
   const row = d ? rowOf(d) : null;
@@ -431,7 +428,7 @@ export function CatalogueObjectPage({ object, id }: { object: CatalogueObject; i
 
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0 space-y-8">
-                <ObjectBody object={object} d={d as unknown as Record<string, unknown>} id={id} href={href} ongoing={ongoing} orgId={orgId} brandId={brandId} offerId={offerId} />
+                <ObjectBody object={object} d={d as unknown as Record<string, unknown>} id={id} href={href} ongoing={ongoing} orgId={orgId} brandId={brandId} offerId={null} />
               </div>
               <aside className="k-card h-fit p-4">
                 <dl>
@@ -614,7 +611,7 @@ function ObjectBody({
       </section>
     );
   }
-  if (object === "pipes") return <PipeBody id={id} legKey={typeof d.legKey === "string" ? d.legKey : null} ongoing={ongoing} orgId={orgId} brandId={brandId} offerId={offerId} />;
+  if (object === "pipes") return <PipeBody id={id} legKey={typeof d.legKey === "string" ? d.legKey : null} ongoing={ongoing} orgId={orgId} brandId={brandId} offerId={null} />;
   if (object === "sales-paths") return <PathBody id={id} d={d} href={href} ongoing={ongoing} orgId={orgId} brandId={brandId} />;
   return <FunnelBody d={d} href={href} ongoing={ongoingPipes} />;
 }

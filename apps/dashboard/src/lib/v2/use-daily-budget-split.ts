@@ -6,7 +6,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { splitDailyBudget } from "@/lib/v2/budget-split";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 
 /**
@@ -15,8 +14,9 @@ import { isProactiveFrom } from "@/lib/outbound-leg-key";
  * booking a meeting off a positive reply), which spend only when that step is reached.
  * The top bar states the first; the second is stated beside it, never added.
  *
- * Both are the SELECTED offer's (owner 2026-10-03: the dashboard reads one offer), and
- * `null` until the served budget, the campaigns, the leg catalogue and the offer are in.
+ * Both are the BRAND's, every offer (owner 2026-11-07, AUDIENCE-PER-OFFER-1107: the brand is
+ * the scope): the served brand total is the base. `null` until the served budget, the
+ * campaigns and the leg catalogue are in.
  */
 export function useDailyBudgetSplit(
   brandId: string,
@@ -31,15 +31,12 @@ export function useDailyBudgetSplit(
     enabled: enabled && !!brandId,
   });
   const catalogue = useLegCatalogue();
-  const { offerId } = useSelectedOffer();
 
   const split = useMemo(() => {
-    if (!spendableQ.data || !campaignsQ.data || catalogue.legs.size === 0 || !offerId) return null;
+    if (!spendableQ.data || !campaignsQ.data || catalogue.legs.size === 0) return null;
     const legKeyById = new Map<string, string | null>();
-    const offerById = new Map<string, string | null>();
     for (const c of campaignsQ.data.campaigns) {
       legKeyById.set(c.id, c.legKey ?? null);
-      offerById.set(c.id, c.offerId ?? null);
     }
     return splitDailyBudget(
       spendableQ.data,
@@ -47,9 +44,8 @@ export function useDailyBudgetSplit(
         const leg = legFor(catalogue, legKeyById.get(id) ?? null);
         return leg !== null && !isProactiveFrom(leg.fromKey);
       },
-      (id) => offerById.get(id) === offerId,
     );
-  }, [spendableQ.data, campaignsQ.data, catalogue, offerId]);
+  }, [spendableQ.data, campaignsQ.data, catalogue]);
 
   return {
     dailyCents: split?.dailyCents ?? null,

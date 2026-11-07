@@ -6,10 +6,8 @@ import {
   getBrand,
   getBrandOutcomes,
   getBrandDisqualifications,
-  getOfferRevenue,
-  getOfferRevenueWindow,
-  getOfferOutcomes,
-  getOfferContactedValue,
+  getBrandRevenue,
+  getBrandRevenueWindow,
   getAwaitingReply,
   getReachedCounts,
   getLeadDetail,
@@ -21,7 +19,7 @@ import {
   type AwaitingReplyPerson,
   type LeadScope,
 } from "@/lib/api";
-import { useSelectedOffer, useSelectedOfferIfAny } from "@/components/v2/selected-offer";
+import { useBrandScope } from "@/components/v2/brand-scope";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
 import { pollOptions, pollIntervalFor } from "@/lib/query-options";
@@ -33,27 +31,19 @@ import { filtersKey, type UniboxFilters } from "@/lib/unibox-leads";
 import { getBrandCampaignTargets, getCampaignTargetRow } from "@/lib/api";
 
 /**
- * The reads every v2 page shares. Each is about the ONE offer the sidebar's switcher
- * picked (`useSelectedOffer`, owner 2026-10-03): no v2 page states a brand-wide total.
- * The keys keep v1's prefixes with the offer appended, so a prefix invalidation of the
- * brand still reaches them. Nothing here derives a metric.
+ * The reads every v2 page shares. Each is about the BRAND (owner 2026-11-07,
+ * AUDIENCE-PER-OFFER-1107: Offers are a list, never a top-level pick): money through
+ * features-service's brand grain, leads through lead-service's brand scope. The keys keep
+ * v1's prefixes, so a prefix invalidation of the brand still reaches them. Nothing here
+ * derives a metric.
  */
 
-/** v1's lead scope key for a brand (`engaged-leads-page.tsx`), narrowed to one offer. */
-export const brandLeadScopeKey = (brandId: string, offerId?: string | null) =>
-  offerId ? `brand:${brandId}:offer:${offerId}` : `brand:${brandId}`;
+/** v1's lead scope key for a brand (`engaged-leads-page.tsx`). */
+export const brandLeadScopeKey = (brandId: string) => `brand:${brandId}`;
 
-/**
- * The lead scope every v2 people read sends: the brand, narrowed to the selected offer.
- * `ready` is false until an offer is picked, so no read ever asks for the whole brand.
- */
+/** The lead scope every v2 people read sends: the whole brand, every offer. */
 export function useLeadScope(brandId: string): { scope: LeadScope; key: string; ready: boolean } {
-  const { offerId } = useSelectedOffer();
-  return {
-    scope: offerId ? { brandId, offerId } : { brandId },
-    key: brandLeadScopeKey(brandId, offerId),
-    ready: !!brandId && !!offerId,
-  };
+  return { scope: { brandId }, key: brandLeadScopeKey(brandId), ready: !!brandId };
 }
 
 export function useBrandInfo(brandId: string) {
@@ -61,47 +51,28 @@ export function useBrandInfo(brandId: string) {
 }
 
 /**
- * The selected offer's money (features-service's offer grain). Not asked while the offer
- * has no campaign: that offer has no money yet, and features-service answers it with a
- * 404 rather than an empty body, so `enabled` is false and pages show their no-data state.
+ * The brand's money (features-service's brand grain, every offer and channel, net). Not asked
+ * while the brand has no campaign: there is no money yet, and pages show their no-data state.
  */
 export function useBrandRevenue(brandId: string) {
-  const { offerId, campaignIds, scopeSettled } = useSelectedOffer();
-  const { q, enabled } = useOfferRevenueQuery(brandId, offerId, campaignIds);
-  // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton. While the
-  // offer and its campaigns load, `enabled` is false for want of data, not for want of an
-  // offer: that is pending too, or every reload flashes the page's no-data note.
-  return { ...q, enabled, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
-}
-
-/** The ONE query behind the offer's money: `useBrandRevenue` and the auto basis share its cache. */
-function useOfferRevenueQuery(brandId: string, offerId: string | null, campaignIds: string[] | null) {
+  const { campaignIds, scopeSettled } = useBrandScope();
   const featureSlug = useSoleFeatureSlug();
-  const enabled = isRevenueFeature(featureSlug) && !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0;
-  const q = useAuthQuery(["brandRevenue", brandId, "offer", offerId], () => getOfferRevenue(offerId!, brandId), {
+  const enabled = isRevenueFeature(featureSlug) && !!brandId && (campaignIds?.length ?? 0) > 0;
+  const q = useAuthQuery(["brandRevenue", brandId, "brand"], () => getBrandRevenue(brandId), {
     enabled,
     ...pollOptions,
     structuralSharing: (prev, next) =>
       keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
   });
-  return { q, enabled };
-}
-
-/** The selected offer's outcomes, one row per step (features-service), same gate as `useBrandRevenue`. */
-export function useOfferOutcomes(brandId: string) {
-  const featureSlug = useSoleFeatureSlug();
-  const { offerId, campaignIds, scopeSettled } = useSelectedOffer();
-  const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
-  const q = useAuthQuery(["offerStepOutcomes", brandId, offerId], () => getOfferOutcomes(offerId!, brandId), {
-    enabled,
-    ...pollOptions,
-  });
-  return { ...q, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
+  // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton. While the
+  // campaigns load, `enabled` is false for want of data: that is pending too, or every reload
+  // flashes the page's no-data note.
+  return { ...q, enabled, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
 }
 
 /**
  * Today's Target rows (LEAD-GENERIC-1106): one per ongoing campaign of the brand, on its Target,
- * served by features-service; the page keeps the selected offer's rows.
+ * served by features-service.
  */
 export function useCampaignTargets(brandId: string) {
   const q = useAuthQuery(["campaignTargets", brandId], () => getBrandCampaignTargets(brandId), pollOptions);
@@ -114,24 +85,12 @@ export function useCampaignTargetRow(brandId: string, salesFunnelCampaignId: str
   return { ...q, answered: q.data !== undefined || (q.isFetchedAfterMount && q.isError) };
 }
 
-/**
- * What the selected offer's contacted people are worth (features-service contacted-value,
- * the Deals board's Contacted column read without lead ids): per person and in all.
- */
-export function useOfferContactedValue(brandId: string) {
-  const { offerId } = useSelectedOffer();
-  return useAuthQuery(["contactedValue", brandId, "offer", offerId, ""], () => getOfferContactedValue(offerId!, brandId, []), {
-    enabled: !!offerId,
-    ...pollOptions,
-  });
-}
-
-/** Today's stat row over the last `days` UTC days, same offer and gate as `useBrandRevenue`. */
+/** Today's stat row over the last `days` UTC days, the brand read's `window` block, same gate as `useBrandRevenue`. */
 export function useBrandRevenueWindow(brandId: string, days: RevenueWindowDays) {
   const featureSlug = useSoleFeatureSlug();
-  const { offerId, campaignIds, scopeSettled } = useSelectedOffer();
-  const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
-  const q = useAuthQuery(["brandRevenueWindow", brandId, "offer", offerId, days], () => getOfferRevenueWindow(offerId!, brandId, days), {
+  const { campaignIds, scopeSettled } = useBrandScope();
+  const enabled = isRevenueFeature(featureSlug) && !!brandId && (campaignIds?.length ?? 0) > 0;
+  const q = useAuthQuery(["brandRevenueWindow", brandId, "brand", days], () => getBrandRevenueWindow(brandId, days), {
     enabled,
     ...pollOptions,
   });
@@ -154,59 +113,56 @@ export function useBrandOutcomes(brandId: string) {
 }
 
 /**
- * How many people of the selected offer (one campaign when named) REACHED each step, by catalogue
- * step key: lead-service's Unibox `total` filtered on `reachedStep` (LEAD-REACHED-STEP-1106), the
- * same rows the outcome's people list shows, so a count and its list agree.
+ * How many people of the brand (one campaign when named) REACHED each step, by catalogue step key:
+ * lead-service's Unibox `total` filtered on `reachedStep` (LEAD-REACHED-STEP-1106), the same rows
+ * the outcome's people list shows, so a count and its list agree.
  */
 export function useReachedCounts(brandId: string, steps: readonly string[], campaignId: string | null = null) {
-  const { offerId } = useSelectedOffer();
   const list = [...new Set(steps)].sort();
-  const scope = campaignId ? { campaignId } : { offerId };
+  const scope = campaignId ? { campaignId } : {};
   return useAuthQuery(
-    ["reachedCounts", brandId, campaignId ? "" : (offerId ?? ""), campaignId ?? "", list.join(",")],
+    ["reachedCounts", brandId, "", campaignId ?? "", list.join(",")],
     () => getReachedCounts(brandId, list, scope),
-    { ...pollOptions, enabled: !!brandId && (!!campaignId || !!offerId) && list.length > 0 },
+    { ...pollOptions, enabled: !!brandId && list.length > 0 },
   );
 }
 
 /**
- * How many of the selected offer's people stand on each lifecycle rung (lead-service), one
- * campaign when named: the Deals board's column sizes and the sidebar's Deals count read the SAME
- * key, so the two agree. Filters narrow the counts exactly as they narrow the cards.
+ * How many of the brand's people stand on each lifecycle rung (lead-service), one campaign when
+ * named: the Deals board's column sizes and the sidebar's Deals count read the SAME key, so the two
+ * agree. Filters narrow the counts exactly as they narrow the cards.
  */
 export function useDealsLifecycleCounts(brandId: string, campaignId: string | null = null, filters: UniboxFilters = {}) {
-  const { offerId } = useSelectedOffer();
   return useAuthQuery(
-    ["dealsLifecycleCounts", brandId, offerId ?? "", campaignId ?? "", filtersKey(filters)],
-    () => getUniboxLifecycleCounts(brandId, filters, { offerId, campaignId }),
-    { ...pollOptions, enabled: !!brandId && !!offerId },
+    ["dealsLifecycleCounts", brandId, "", campaignId ?? "", filtersKey(filters)],
+    () => getUniboxLifecycleCounts(brandId, filters, { campaignId }),
+    { ...pollOptions, enabled: !!brandId },
   );
 }
 
 /**
- * Each company's lifecycle rung for the selected offer (features-service), and the companies per
- * rung: the Companies page's tabs and Stage column, the company page's stage. Not asked while the
- * offer has no campaign (features-service 404s it).
+ * Each company's lifecycle rung (features-service), and the companies per rung: the Companies
+ * page's tabs and Stage column, the company page's stage. features-service serves it at the
+ * OFFER grain only, so it is asked while every campaign of the brand sells ONE offer (that read
+ * IS the brand's); a brand selling several offers waits for the brand-grain read (not asked).
  */
 export function useCompanyLifecycle(brandId: string) {
-  const { offerId, campaignIds } = useSelectedOffer();
-  return useAuthQuery(["companyLifecycle", brandId, offerId ?? ""], () => getOfferCompanyLifecycle(offerId!, brandId), {
+  const { soleOfferId } = useBrandScope();
+  return useAuthQuery(["companyLifecycle", brandId, soleOfferId ?? ""], () => getOfferCompanyLifecycle(soleOfferId!, brandId), {
     ...pollOptions,
-    enabled: !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0,
+    enabled: !!brandId && !!soleOfferId,
   });
 }
 
 /**
- * The people marked Disqualified for the selected offer (its own mark or a brand-wide one),
- * with their notes: lead-service's list, its `total` the length of the same list. The mark is
- * its own tag beside the step tags.
+ * The people marked Disqualified at the brand (any offer's mark or a brand-wide one), with their
+ * notes: lead-service's list, its `total` the length of the same list.
  */
 export function useLeadDisqualifications(brandId: string) {
-  const { offerId } = useSelectedOffer();
   return useAuthQuery(
-    ["leadDisqualifications", brandId, offerId],
-    () => getBrandDisqualifications({ brandId, offerId }),
-    { ...pollOptions, enabled: !!brandId && !!offerId },
+    ["leadDisqualifications", brandId, null],
+    () => getBrandDisqualifications({ brandId }),
+    { ...pollOptions, enabled: !!brandId },
   );
 }
 

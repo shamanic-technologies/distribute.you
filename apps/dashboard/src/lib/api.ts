@@ -2432,8 +2432,10 @@ export async function listSalesFunnelCampaigns(brandId: string, offerId: string 
  * The Campaigns table rows (owner 2026-10-11): features-service's read of the brand's (offer's) sales
  * funnel campaigns with their type label, path, invested since inception and ROI, net of discount.
  */
-export async function listFunnelCampaignRows(brandId: string, offerId: string): Promise<FunnelCampaignRow[]> {
-  const qs = new URLSearchParams({ offerId, pricing: "net" });
+export async function listFunnelCampaignRows(brandId: string, offerId: string | null): Promise<FunnelCampaignRow[]> {
+  // offerId null = every offer of the brand (the route's `offerId` is optional).
+  const qs = new URLSearchParams({ pricing: "net" });
+  if (offerId) qs.set("offerId", offerId);
   const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?${qs.toString()}`);
   return parseStaff("listFunnelCampaignRows", FunnelCampaignRowsSchema, raw).salesFunnelCampaigns;
 }
@@ -2442,8 +2444,9 @@ export async function listFunnelCampaignRows(brandId: string, offerId: string): 
  * The Campaigns table's COPY (name, Type label, path), no money: features-service's fast live read
  * (`?fields=copy`), so a campaign created since the cached rows paints its path at once.
  */
-export async function listFunnelCampaignCopies(brandId: string, offerId: string): Promise<FunnelCampaignCopy[]> {
-  const qs = new URLSearchParams({ offerId, fields: "copy" });
+export async function listFunnelCampaignCopies(brandId: string, offerId: string | null): Promise<FunnelCampaignCopy[]> {
+  const qs = new URLSearchParams({ fields: "copy" });
+  if (offerId) qs.set("offerId", offerId);
   const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?${qs.toString()}`);
   return parseStaff("listFunnelCampaignCopies", FunnelCampaignCopiesSchema, raw).salesFunnelCampaigns;
 }
@@ -6935,6 +6938,22 @@ export async function getOfferRevenueWindow(
       issues: parsed.error.issues,
     });
     throw new Error("[dashboard] getOfferRevenueWindow: invalid response shape");
+  }
+  return parsed.data.window;
+}
+
+/**
+ * The brand read asked for its `window` block (features-service `/brands/:brandId/revenue?windowDays=`):
+ * every Today stat over the last `days` UTC days, every offer of the brand. Only the window is
+ * kept; the rest of the body is read by `getBrandRevenue` under its own key.
+ */
+export async function getBrandRevenueWindow(brandId: string, days: RevenueWindowDays, token?: string): Promise<RevenueWindow> {
+  const query = new URLSearchParams({ pricing: "net", windowDays: String(days) });
+  const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/revenue?${query.toString()}`, { token });
+  const parsed = RevenueWindowResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandRevenueWindow: response shape mismatch", { brandId, days, issues: parsed.error.issues });
+    throw new Error("[dashboard] getBrandRevenueWindow: invalid response shape");
   }
   return parsed.data.window;
 }

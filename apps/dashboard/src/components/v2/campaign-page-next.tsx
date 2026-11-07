@@ -94,7 +94,7 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
   const { orgId } = useParams<{ orgId: string }>();
   const params = useSearchParams();
   const catalogue = useLegCatalogue();
-  const { campaignById } = useCampaigns(orgId, campaign.brandId, { allOffers: true });
+  const { campaignById } = useCampaigns(orgId, campaign.brandId);
   const units = orderPipesByFunnel(campaign.units, (u) => legFor(catalogue, u.legKey));
   const coldEmail = units.find((u) => isColdEmailChannel(u.featureSlug) && isProactiveFrom(legFor(catalogue, u.legKey)?.fromKey)) ?? null;
   const conversation = units.find((u) => {

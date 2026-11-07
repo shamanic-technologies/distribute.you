@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useQueries } from "@tanstack/react-query";
+import { useOrgQueryGate } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getOfferEnginePicks } from "@/lib/api";
-import { pickStateWords } from "@/lib/engine-picks";
+import { picksNewestFirst, pickStateWords } from "@/lib/engine-picks";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { useClientClock } from "@/lib/use-client-clock";
 import { v2CampaignHref } from "@/lib/v2/routes";
@@ -15,27 +17,39 @@ import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 const SHOWN = 8;
 
 /**
- * "Why each one was picked" (the GTM Factory Today page, FACTORY-USER-DASHBOARD-1102): for the selected offer, the
- * latest pick of each Engine of each live campaign, newest first: the outcome, the script picked, the campaign, and the
+ * "Why each one was picked" (the GTM Factory Today page, FACTORY-USER-DASHBOARD-1102): for every offer the brand's
+ * campaigns sell (served per offer, one read each, the lists joined newest first), the latest pick of each Engine of each live campaign, newest first: the outcome, the script picked, the campaign, and the
  * sentence features-service writes for the client. Opens the campaign, where the whole Plan is.
  */
-export function EnginePicksSection({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string | null }) {
-  const q = useAuthQuery(["offerEnginePicks", brandId, offerId], () => getOfferEnginePicks(brandId, offerId!), { ...pollOptions, enabled: !!offerId });
+export function EnginePicksSection({ orgId, brandId, offerIds }: { orgId: string; brandId: string; offerIds: readonly string[] | null }) {
+  const gate = useOrgQueryGate();
+  const qs = useQueries({
+    queries: (offerIds ?? []).map((offerId) => ({
+      queryKey: ["offerEnginePicks", brandId, offerId],
+      queryFn: () => getOfferEnginePicks(brandId, offerId),
+      ...pollOptions,
+      enabled: gate,
+    })),
+  });
   const clock = useClientClock();
-  const picks = q.data?.picks ?? [];
-  const settled = q.data !== undefined || q.isFetchedAfterMount;
+  const stamp = qs.map((x) => x.dataUpdatedAt).join(",");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const picks = useMemo(() => picksNewestFirst(qs.flatMap((x) => x.data?.picks ?? [])), [stamp]);
+  const answered = qs.every((x) => x.data !== undefined || x.isFetchedAfterMount);
+  const settled = offerIds !== null && answered;
+  const failed = qs.length > 0 && qs.every((x) => x.isError && !x.data);
   return (
     <section>
-      <SectionTitle count={settled && q.data ? picks.length : null} right={<span>Newest first</span>}>
+      <SectionTitle count={settled && !failed ? picks.length : null} right={<span>Newest first</span>}>
         Why each one was picked
       </SectionTitle>
       <div className="k-card divide-y divide-[var(--line-subtle)]">
-        {!offerId || !settled ? (
+        {!settled ? (
           <div className="space-y-2 p-4">
             <Shimmer className="h-12 w-full" />
             <Shimmer className="h-12 w-full" />
           </div>
-        ) : q.isError && !q.data ? (
+        ) : failed ? (
           <EmptyNote>Could not read your Engines&apos; picks. Retrying.</EmptyNote>
         ) : picks.length === 0 ? (
           <EmptyNote>No pick yet. Each Engine picks a script for your campaigns every 3 hours.</EmptyNote>

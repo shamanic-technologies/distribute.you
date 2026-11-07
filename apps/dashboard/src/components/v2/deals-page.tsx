@@ -12,8 +12,8 @@ import { timeAgo } from "@/lib/friendly-datetime";
 import { filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxValueTone, type LifecycleRung, type UniboxDimension, type UniboxFilters, type UniboxRow } from "@/lib/unibox-leads";
 import { DEALS_FILTER_DIMENSIONS, DEALS_PAGE_SIZE, dealCardChips, dealsBoardRungs, servedRungValues, type ServedRungValue } from "@/lib/deals-board";
 import { useLeadCampaigns } from "@/components/v2/lead-campaigns";
-import { FunnelFace } from "@/components/v2/funnel-campaigns";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { FunnelFace, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
+import { useBrandScope } from "@/components/v2/brand-scope";
 import { useDealsLifecycleCounts } from "@/components/v2/data";
 import { TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { UniboxFilterBar } from "@/components/v2/unibox-lead-card";
@@ -34,7 +34,8 @@ const MAX_ROWS = 200;
  */
 export function DealsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const { offerId, campaignIds } = useSelectedOffer();
+  const { soleOfferId } = useBrandScope();
+  const funnels = useFunnelCampaigns(brandId, null);
   const { campaigns } = useLeadCampaigns(orgId, brandId);
   const [campaignFilter, setCampaignFilter] = useState<string | null>(null);
   const [filters, setFilters] = useState<UniboxFilters>({});
@@ -43,12 +44,14 @@ export function DealsPage() {
   const rungs = ladder ? dealsBoardRungs(ladder) : null;
   const count = (key: string): number | null => (counts.data ? (counts.data.byLifecycle[key] ?? 0) : null);
   const biggest = Math.max(1, ...(rungs ?? []).map((r) => count(r.key) ?? 0));
-  // What each rung holds, priced by features-service (the offer's own columns, owner 2026-10-03).
-  // Not asked while the offer has no campaign: features-service 404s it, there is nothing to price.
+  // What each rung holds, priced by features-service. It prices the board per OFFER only, so it is
+  // asked for the picked campaign's own offer, else for the brand's one offer (that read IS the
+  // brand's); a brand selling several offers shows its columns unpriced until the brand-grain read.
+  const valueOfferId = campaignFilter ? (funnels.data?.find((f) => f.id === campaignFilter)?.offerId ?? null) : soleOfferId;
   const dealsValue = useAuthQuery(
-    ["dealsLifecycle", brandId, offerId ?? "", campaignFilter ?? ""],
-    () => getOfferDealsLifecycle(offerId!, brandId, campaignFilter),
-    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0 },
+    ["dealsLifecycle", brandId, valueOfferId ?? "", campaignFilter ?? ""],
+    () => getOfferDealsLifecycle(valueOfferId!, brandId, campaignFilter),
+    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!valueOfferId },
   );
   const served = useMemo(() => servedRungValues(dealsValue.data), [dealsValue.data]);
   const pipeline = dealsValue.data?.expectedPipelineUsd ?? null;
@@ -117,7 +120,6 @@ export function DealsPage() {
                   key={r.key}
                   orgId={orgId}
                   brandId={brandId}
-                  offerId={offerId}
                   campaignId={campaignFilter}
                   filters={filters}
                   rung={r}
@@ -135,7 +137,6 @@ export function DealsPage() {
 function DealColumn({
   orgId,
   brandId,
-  offerId,
   campaignId,
   filters,
   rung,
@@ -145,7 +146,6 @@ function DealColumn({
 }: {
   orgId: string;
   brandId: string;
-  offerId: string | null;
   campaignId: string | null;
   filters: UniboxFilters;
   rung: LifecycleRung;
@@ -156,9 +156,9 @@ function DealColumn({
   const [shown, setShown] = useState(DEALS_PAGE_SIZE);
   const limit = Math.min(shown, MAX_ROWS);
   const q = useAuthQuery(
-    ["dealsLifecycleRows", brandId, offerId ?? "", campaignId ?? "", filtersKey(filters), rung.key, limit],
-    () => listUniboxLeads(brandId, { ...filters, lifecycle: [rung.key] }, { limit, offerId, campaignId }),
-    { refetchInterval: pollIntervalFor, enabled: !!brandId && !!offerId && (total === null || total > 0) },
+    ["dealsLifecycleRows", brandId, "", campaignId ?? "", filtersKey(filters), rung.key, limit],
+    () => listUniboxLeads(brandId, { ...filters, lifecycle: [rung.key] }, { limit, campaignId }),
+    { refetchInterval: pollIntervalFor, enabled: !!brandId && (total === null || total > 0) },
   );
   const rows = total === 0 ? [] : (q.data?.rows ?? null);
   const color = TONE_COLOR[uniboxValueTone("lifecycle", rung.key)];

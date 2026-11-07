@@ -77,7 +77,7 @@ describe("Sourcing page wiring (owner 2026-10-07: off the Sales path page, its o
   });
 
   it("the staff Pipes overview opens Sourcing (owner 2026-10-10); the brand Audience entry is gone (now Targeting's Lists tab)", () => {
-    expect(read("src/components/v2/staff-catalogue-pages.tsx")).toContain('v2OfferHref(orgId, brandId, offerId, "sourcing")');
+    expect(read("src/components/v2/staff-catalogue-pages.tsx")).toContain('const sourcing = v2Href(orgId, brandId, "sourcing");');
     expect(shell).not.toContain('v2Href(orgId, brandId, "audience")');
     expect(setup).toContain('{ label: "Lists", href: `${base}/lists`, active: view === "lists" }');
     expect(setup).toContain("<AudienceLists />");

@@ -183,10 +183,10 @@ describe("sales funnel campaigns: wiring", () => {
   });
 
   it("Campaigns lists funnel campaigns: the overview section and the sidebar's ON ones", () => {
-    expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("<CampaignList orgId={orgId} brandId={brandId} offerId={offerId} />");
+    expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("<CampaignList orgId={orgId} brandId={brandId} />");
     const shell = src("src/components/v2/v2-shell.tsx");
-    expect(shell).toContain("const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId, offerId);");
-    expect(shell).toContain("funnelCampaigns.map((c) => {");
+    expect(shell).toContain("const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId);");
+    expect(shell).toContain("{funnelCampaigns.map((c) => {");
   });
 
   it("a part is never LISTED as a campaign: filtered once at the source every listing surface reads", () => {
@@ -270,9 +270,9 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
     const overview = src("src/components/v2/campaigns-overview-page.tsx");
     expect(overview).not.toContain("StaffPipeCampaigns");
     // Staff mode adds ONLY the Suggested funnels, never a pipe table.
-    expect(overview).toContain("{staffMode && <Suggested brandId={brandId} offerId={offerId} campaigns={q.data ?? null} />}");
+    expect(overview).toContain("{staffMode && soleOfferId && <Suggested brandId={brandId} offerId={soleOfferId} campaigns={q.data ?? null} />}");
     // Until campaign-service has converted it, a RUNNING old-style campaign stays in view, and only it.
-    expect(overview).toContain("<UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />");
+    expect(overview).toContain("<UnconvertedRunningCampaigns key={id} orgId={orgId} brandId={brandId} offerId={id} />");
     expect(overview).toContain("if (running.size === 0) return null;");
     const page = overview.slice(overview.indexOf("export function CampaignsOverviewPage()"), overview.indexOf("function UnconvertedRunningCampaigns("));
     expect(page).not.toContain("<OfferCampaigns");

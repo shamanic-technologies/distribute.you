@@ -6,7 +6,6 @@ import { useParams, useRouter } from "next/navigation";
 import { EmptyNote, KeyHint, MarkLines, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRowKeys } from "@/components/v2/records";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useOngoingCatalogue, useStaffCatalogueObject, useStaffCatalogueTriggers, type OngoingFunnelCampaign } from "@/components/v2/staff-catalogue-data";
 import { CatalogueTable, Fact, OngoingDot, TableSkeleton } from "@/components/v2/staff-catalogue-pages";
 import { v2CatalogueHref } from "@/lib/v2/routes";
@@ -134,14 +133,13 @@ function TriggerTable({
 }
 
 /**
- * TRIGGERS overview (owner 2026-10-11, staff): the ones the selected offer's running campaigns
+ * TRIGGERS overview (owner 2026-10-11, staff): the ones the brand's running campaigns
  * use (an ongoing funnel's served trigger, its head), then every trigger, searchable.
  */
 export function TriggersOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const router = useRouter();
-  const { offerId } = useSelectedOffer();
-  const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
+  const ongoing = useOngoingCatalogue(orgId, brandId, true);
   const ongoingRows = ongoing.triggers;
   const ongoingIds = useMemo(() => new Set(ongoingRows.map((r) => r.id)), [ongoingRows]);
   const campaignsOf = (r: CatalogueTriggerRow) => campaignsStartedBy(ongoing.campaigns, r.id);
@@ -242,9 +240,8 @@ export function TriggersOverviewPage() {
 /** ONE trigger's page: its mark and name, the reactive pipes it starts, and this offer's campaigns running on them. */
 export function TriggerPage({ id }: { id: string }) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const { offerId } = useSelectedOffer();
   const q = useStaffCatalogueObject("triggers", id);
-  const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
+  const ongoing = useOngoingCatalogue(orgId, brandId, true);
   const d = q.data;
   const isOngoing = ongoing.triggers.some((t) => t.id === id);
   const ongoingPipes = useMemo(() => new Set(ongoing.pipes.map((p) => p.id)), [ongoing.pipes]);

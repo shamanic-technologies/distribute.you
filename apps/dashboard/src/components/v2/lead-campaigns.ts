@@ -7,7 +7,6 @@ import { pollOptions } from "@/lib/query-options";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { campaignNameFor } from "@/lib/legs";
 import { useCampaigns } from "@/components/v2/use-campaigns";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 
 /** The campaign a record was reached by, as the customer knows it: its served name (its face is drawn from it). */
 export interface LeadCampaign {
@@ -25,11 +24,10 @@ export interface LeadCampaign {
  */
 export function useLeadCampaigns(orgId: string, brandId: string) {
   const { campaignById } = useCampaigns(orgId, brandId);
-  const { offerId } = useSelectedOffer();
   const legCatalogue = useLegCatalogue();
-  // Same key as every other reader of the offer's funnel campaigns (sidebar, Campaigns page).
-  const funnelQ = useAuthQuery(["salesFunnelCampaigns", brandId, offerId ?? "all"], () => listSalesFunnelCampaigns(brandId, offerId), {
-    enabled: !!brandId && !!offerId,
+  // Same key as every other brand-wide reader of the funnel campaigns (sidebar, Today).
+  const funnelQ = useAuthQuery(["salesFunnelCampaigns", brandId, "all"], () => listSalesFunnelCampaigns(brandId, null), {
+    enabled: !!brandId,
     ...pollOptions,
   });
   const funnelById = useMemo(() => new Map((funnelQ.data ?? []).map((f) => [f.id, f])), [funnelQ.data]);

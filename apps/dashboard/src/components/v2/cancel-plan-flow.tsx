@@ -7,7 +7,6 @@ import { ConfettiBurst } from "@/components/confetti-burst";
 import posthog from "posthog-js";
 import { useReachedCounts } from "@/components/v2/data";
 import { useBrandOutcomeList } from "@/components/v2/brand-outcomes";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { EMAIL_SENT_STEP } from "@/lib/outbound-leg-key";
 import { monthlyUsd } from "@/lib/subscription-plan";
 import {
@@ -108,8 +107,7 @@ export function CancelPlanFlow({
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   // What the outreach brought: the people emailed, then the brand's two furthest outcomes, each
   // named as features-service serves it (a brand whose Target is Signups reads Signups).
-  const { offerId } = useSelectedOffer();
-  const shownOutcomes = useBrandOutcomeList(orgId, brandId, offerId)
+  const shownOutcomes = useBrandOutcomeList(orgId, brandId)
     .outcomes.flatMap((o) => (o.outcome.items.kind === "people" ? [{ label: o.outcome.label, step: o.outcome.items.step }] : []))
     .slice(0, 2);
   const counts = useReachedCounts(brandId, [EMAIL_SENT_STEP, ...shownOutcomes.map((o) => o.step)]).data;

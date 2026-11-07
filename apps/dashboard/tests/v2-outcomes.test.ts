@@ -135,8 +135,8 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
   it("the Overview and the sidebar read ONE list: running campaigns' steps plus every step the brand's tools state", () => {
     const page = read("src/components/v2/outcomes-page.tsx");
     const shell = read("src/components/v2/v2-shell.tsx");
-    expect(page).toContain("useBrandOutcomeList(orgId, brandId, offerId)");
-    expect(shell).toContain("useBrandOutcomeList(orgId, brandId, offerId)");
+    expect(page).toContain("useBrandOutcomeList(orgId, brandId)");
+    expect(shell).toContain("useBrandOutcomeList(orgId, brandId)");
     // Everyone first, then the ones we contacted (lead-service's bucket, the column's figure).
     expect(page).toContain('{ key: "all", label: "Everyone", count: listed.all.people }');
     expect(page).toContain("<EveryoneTable crmStep={outcome.items.crmStep} />");

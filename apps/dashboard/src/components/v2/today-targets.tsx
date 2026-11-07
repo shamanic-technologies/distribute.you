@@ -9,17 +9,24 @@ import { StepMark } from "@/components/marks/step-mark";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { useCampaignTargetRow, useCampaignTargets } from "@/components/v2/data";
+import { useBrandScope } from "@/components/v2/brand-scope";
 
 /**
- * Today, ONE row of cards per Target of the offer, its campaigns merged by features-service (owner 2026-11-07,
+ * Today, ONE row of cards per Target of each offer of the brand (owner 2026-11-07, AUDIENCE-PER-OFFER-1107:
+ * the brand is the scope; served per offer, so a brand selling several offers shows each offer's row,
+ * named, never a sum made here), its campaigns merged by features-service (owner 2026-11-07,
  * TARGET-ROWS-UNIQUE-1107; rows since 2026-11-06, LEAD-GENERIC-1106): how many so far,
  * $ each, the measured return when features-service says it means something, and the count over time
  * with its projection. The Target's NAME is served: no outcome word is written here. The past never
  * moves with the Plan; the dotted part is the current Plan's projection.
  */
-export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string | null }) {
+export function TodayTargets({ orgId, brandId }: { orgId: string; brandId: string }) {
   const q = useCampaignTargets(brandId);
-  const rows = q.data ? targetsOfOffer(q.data.offerTargets, offerId) : [];
+  const { offers } = useBrandScope();
+  const rows = q.data ? targetsOfOffer(q.data.offerTargets, null) : [];
+  // Several offers on the page: each row names its offer.
+  const named = new Set(rows.map((r) => r.offerId)).size > 1;
+  const offerName = (id: string) => (named ? (offers.find((o) => o.offerId === id)?.name ?? null) : null);
   return (
     <section>
       <SectionTitle count={q.data ? rows.length : null}>Targets</SectionTitle>
@@ -36,7 +43,7 @@ export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brand
       ) : (
         <div className="space-y-6">
           {rows.map((r) => (
-            <TargetRow key={r.target?.key ?? r.salesFunnelCampaignIds.join(",")} row={r} />
+            <TargetRow key={`${r.offerId}:${r.target?.key ?? r.salesFunnelCampaignIds.join(",")}`} row={r} offerName={offerName(r.offerId)} />
           ))}
         </div>
       )}
@@ -44,7 +51,7 @@ export function TodayTargets({ orgId, brandId, offerId }: { orgId: string; brand
   );
 }
 
-function TargetRow({ row }: { row: OfferTargetEntry }) {
+function TargetRow({ row, offerName }: { row: OfferTargetEntry; offerName: string | null }) {
   const label = row.target?.label ?? null;
   const roi = row.measuredReturn.roiMultiple;
   const next = nextExpectedWords(row.projection.nextExpectedInHours);
@@ -53,6 +60,7 @@ function TargetRow({ row }: { row: OfferTargetEntry }) {
       <div className="mb-2 flex min-w-0 items-center gap-2">
         {row.target && <StepMark stepKey={row.target.key} />}
         <span className="truncate text-[14px] font-medium">{label ?? "No target yet"}</span>
+        {offerName && <span className="k-fg3 truncate text-[13px]">{offerName}</span>}
       </div>
       <div className="grid grid-cols-3 gap-3 md:grid-cols-5">
         <StatTile label="So far">

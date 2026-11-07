@@ -10,7 +10,7 @@ import { OfferMark } from "@/components/marks/offer-mark";
 import { v2Base, v2Href, v2OfferHref } from "@/lib/v2/routes";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { useBrandScope } from "@/components/v2/brand-scope";
 import { OfferIdentityTitle } from "@/components/v2/offer-identity-title";
 import { BrandIdentityTitle } from "@/components/v2/brand-identity-title";
 import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
@@ -195,26 +195,25 @@ function OfferListCard({ brandId, offer, href }: { brandId: string; offer: Offer
   );
 }
 
-function SelectedOfferRedirect({
-  title,
-  tab,
-  subPath = "",
-}: {
-  title: string;
-  tab?: "sales-path" | "sourcing" | "targeting";
-  /** Below the tab: `/lists` opens Targeting's Lists tab. */
-  subPath?: string;
-}) {
+/**
+ * A brand-level URL of a page that lives under ONE offer (Targeting, Sourcing, Sales path): the
+ * brand is the scope and no offer is picked at the top (owner 2026-11-07, AUDIENCE-PER-OFFER-1107),
+ * so a brand selling one offer opens that offer's tab and any other brand opens the Offers list.
+ */
+function OfferTabRedirect({ title, tab }: { title: string; tab?: "sales-path" | "sourcing" | "targeting" }) {
   const { orgId, brandId } = useIds();
   const router = useRouter();
-  const { offerId, settled } = useSelectedOffer();
+  const { offers, settled } = useBrandScope();
   const [creating, setCreating] = useState(false);
+  const sole = offers.length === 1 ? offers[0].offerId : null;
+  const leaving = settled && offers.length > 0;
   useEffect(() => {
-    if (offerId) router.replace(`${v2OfferHref(orgId, brandId, offerId, tab)}${subPath}`);
-  }, [offerId, orgId, brandId, tab, subPath, router]);
+    if (!leaving) return;
+    router.replace(sole ? v2OfferHref(orgId, brandId, sole, tab) : v2Href(orgId, brandId, "offers"));
+  }, [leaving, sole, orgId, brandId, tab, router]);
   return (
     <V2Page crumbs={[{ label: title }]} title={title}>
-      {!settled || offerId ? (
+      {!settled || leaving ? (
         <Shimmer className="h-10 w-full" />
       ) : (
         <div className="k-card flex items-center justify-between gap-3 p-4">
@@ -339,29 +338,24 @@ export function V2TargetingPage({ view = "audiences" }: { view?: TargetingView }
   );
 }
 
-/** Targeting from the sidebar or an old link: the selected offer's Targeting. */
+/** Targeting from an old link: the offer's Targeting (one offer), else the Offers list. */
 export function V2TargetingIndexPage() {
-  return <SelectedOfferRedirect title="Targeting" tab="targeting" />;
+  return <OfferTabRedirect title="Targeting" tab="targeting" />;
 }
 
-/** Sourcing from the sidebar before an offer is picked: the selected offer's Sourcing. */
+/** Sourcing from an old link: the offer's Sourcing (one offer), else the Offers list. */
 export function V2SourcingIndexPage() {
-  return <SelectedOfferRedirect title="Sourcing" tab="sourcing" />;
+  return <OfferTabRedirect title="Sourcing" tab="sourcing" />;
 }
 
-/** The old brand Audience page (links, bookmarks): the selected offer's Targeting, Lists tab. */
-export function V2AudienceIndexPage() {
-  return <SelectedOfferRedirect title="Lists" tab="targeting" subPath="/lists" />;
-}
-
-/** Sales path from the sidebar before an offer is picked: the selected offer's Sales path. */
+/** Sales path from an old link: the offer's Sales path (one offer), else the Offers list. */
 export function V2SalesPathIndexPage() {
-  return <SelectedOfferRedirect title="Sales path" tab="sales-path" />;
+  return <OfferTabRedirect title="Sales path" tab="sales-path" />;
 }
 
-/** The brand Channels URL (staff): the selected offer's Sales path page, which holds the channels. */
+/** The brand Channels URL (staff): the offer's Sales path page (one offer), which holds the channels, else the Offers list. */
 export function V2ChannelsIndexPage() {
-  return <SelectedOfferRedirect title="Sales path" tab="sales-path" />;
+  return <OfferTabRedirect title="Sales path" tab="sales-path" />;
 }
 
 // ─── Integrations and brand settings ────────────────────────────────────────

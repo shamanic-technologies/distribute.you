@@ -50,7 +50,7 @@ export function OfferSourcesTab({
     () => getLeadSourcingSources(brandId, offerId),
     { enabled: !!offerId, ...pollOptions },
   );
-  const { allCampaigns } = useCampaigns(orgId, brandId, { allOffers: true });
+  const { allCampaigns } = useCampaigns(orgId, brandId);
   const chosenByLeadSourcing = useMemo(
     () => new Set(leadSourcing.data?.leadSourcingOn ? leadSourcing.data.chosenOriginSlugs : []),
     [leadSourcing.data],

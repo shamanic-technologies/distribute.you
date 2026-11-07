@@ -16,7 +16,6 @@ export type V2Section =
   | "offers"
   | "targeting"
   | "channels"
-  | "audience"
   | "integrations"
   | "settings"
   | "relationships"
@@ -113,7 +112,6 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "offers",
     "targeting",
     "channels",
-    "audience",
     "integrations",
     "settings",
     "relationships",

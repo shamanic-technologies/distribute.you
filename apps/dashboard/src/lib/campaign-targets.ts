@@ -103,7 +103,7 @@ export const CampaignTargetsSchema = z
   .passthrough();
 export type CampaignTargets = z.infer<typeof CampaignTargetsSchema>;
 
-/** The entries of one offer (the dashboard shows the selected offer only), in the served order. */
+/** The entries of one offer (null = every offer of the brand), in the served order. */
 export function targetsOfOffer<T extends { offerId: string }>(rows: readonly T[], offerId: string | null): T[] {
   return offerId ? rows.filter((r) => r.offerId === offerId) : [...rows];
 }

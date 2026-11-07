@@ -37,7 +37,7 @@ import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { v2CampaignHref } from "@/lib/v2/routes";
 import { CampaignPinButton } from "@/components/v2/outcome-pins";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { useBrandScope } from "@/components/v2/brand-scope";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
 import { EmptyNote, MarkLines, SectionTitle, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
@@ -68,10 +68,11 @@ function useKeepCampaignPreview(): boolean {
 
 export function CampaignsOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const { offerId, settled } = useSelectedOffer();
+  // Every campaign of the brand, every offer (owner 2026-11-07, AUDIENCE-PER-OFFER-1107); each row names its offer.
+  const { offers, settled, soleOfferId, campaignOfferIds } = useBrandScope();
   // Create and Suggested are staff previews (owner decisions: Suggested as before 2026-10-17, Create 2026-10-22).
   const { staffMode } = useStaffMode();
-  const q = useFunnelCampaigns(brandId, offerId ?? null, { enabled: !!offerId });
+  const q = useFunnelCampaigns(brandId, null, { enabled: offers.length > 0 });
   const listSettled = q.data !== undefined || q.isFetchedAfterMount;
   const running = (q.data ?? []).filter(isOngoingFunnelCampaign).length;
   return (
@@ -95,16 +96,19 @@ export function CampaignsOverviewPage() {
         </header>
         {!settled ? (
           <Shimmer className="h-10 w-full" />
-        ) : !offerId ? (
+        ) : offers.length === 0 ? (
           <div className="k-card">
             <EmptyNote>This brand has no offer yet.</EmptyNote>
           </div>
         ) : (
           <div className="space-y-10">
             {staffMode && <CreateBox />}
-            {staffMode && <Suggested brandId={brandId} offerId={offerId} campaigns={q.data ?? null} />}
-            <CampaignList orgId={orgId} brandId={brandId} offerId={offerId} />
-            <UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />
+            {/* Fitted to ONE offer's steps: shown while the brand's campaigns sell one offer. */}
+            {staffMode && soleOfferId && <Suggested brandId={brandId} offerId={soleOfferId} campaigns={q.data ?? null} />}
+            <CampaignList orgId={orgId} brandId={brandId} />
+            {(campaignOfferIds ?? []).map((id) => (
+              <UnconvertedRunningCampaigns key={id} orgId={orgId} brandId={brandId} offerId={id} />
+            ))}
           </div>
         )}
       </div>
@@ -213,11 +217,14 @@ type SortKey = "default" | "roi" | "invested";
 const TYPE_LABEL: Record<TypeFilter, string> = { all: "Every type", proactive: "Daily", reactive: "Triggered" };
 const SORT_LABEL: Record<SortKey, string> = { default: "Default", roi: "Expected ROI", invested: "$ Invested" };
 
-function CampaignList({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
-  const q = useFunnelCampaigns(brandId, offerId);
-  // The current table's own reads and keys: the rows (money), the fast copy (path, type), the caps.
-  const rowsQ = useAuthQuery(["funnelCampaignRows", brandId, offerId], () => listFunnelCampaignRows(brandId, offerId), pollOptions);
-  const copyQ = useAuthQuery(["funnelCampaignCopies", brandId, offerId], () => listFunnelCampaignCopies(brandId, offerId), pollOptions);
+function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
+  const q = useFunnelCampaigns(brandId, null);
+  // The current table's own reads and keys: the rows (money), the fast copy (path, type), the caps. Brand grain.
+  const rowsQ = useAuthQuery(["funnelCampaignRows", brandId, "all"], () => listFunnelCampaignRows(brandId, null), pollOptions);
+  const copyQ = useAuthQuery(["funnelCampaignCopies", brandId, "all"], () => listFunnelCampaignCopies(brandId, null), pollOptions);
+  // Each row names its offer once the brand holds several.
+  const { offers } = useBrandScope();
+  const offerNameOf = (id: string) => (offers.length > 1 ? (offers.find((o) => o.offerId === id)?.name ?? null) : null);
   const rowById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r])), [rowsQ.data]);
   const copyById = useMemo(() => new Map((copyQ.data ?? []).map((r) => [r.id, r])), [copyQ.data]);
   const gate = useOrgQueryGate();
@@ -270,7 +277,7 @@ function CampaignList({ orgId, brandId, offerId }: { orgId: string; brandId: str
   // The biggest served $ Spent in view scales each row's bar (display only).
   const spentMax = Math.max(0, ...shown.map((c) => rowById.get(c.id)?.investedUsd ?? 0));
   const settled = q.data !== undefined || q.isFetchedAfterMount;
-  if (settled && !q.data && q.isError) return <p className="text-[13px] text-[var(--data-rose)]">Could not read this offer&apos;s campaigns.</p>;
+  if (settled && !q.data && q.isError) return <p className="text-[13px] text-[var(--data-rose)]">Could not read this brand&apos;s campaigns.</p>;
   return (
     <section>
       <div className="k-line-subtle mb-3 flex flex-wrap items-end justify-between gap-3 border-b">
@@ -326,6 +333,7 @@ function CampaignList({ orgId, brandId, offerId }: { orgId: string; brandId: str
               copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ, c.createdAt)}
               caps={capsById.get(c.id) ?? null}
               spentMax={spentMax}
+              offerName={offerNameOf(c.offerId)}
             />
           ))}
         </div>
@@ -366,6 +374,7 @@ export function CampaignLine({
   copySettled,
   caps,
   spentMax = null,
+  offerName = null,
 }: {
   orgId: string;
   campaign: SalesFunnelCampaign;
@@ -376,6 +385,8 @@ export function CampaignLine({
   copySettled: boolean;
   caps: SalesFunnelCaps | null;
   spentMax?: number | null;
+  /** The offer it sells, named when the brand holds several. */
+  offerName?: string | null;
 }) {
   const router = useRouter();
   const prefetch = useRoutePrefetch();
@@ -418,6 +429,7 @@ export function CampaignLine({
       <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-[14px] font-medium">{campaign.salesFunnelName}</span>
+          {offerName && <span className="k-fg3 truncate text-[12px]">{offerName}</span>}
           {/* Pin / Unpin in the sidebar (owner 2026-11-07); the button stops the row's click. */}
           <CampaignPinButton brandId={campaign.brandId} campaignId={campaign.id} compact />
         </span>
@@ -504,7 +516,7 @@ function RealizedRoi({ row }: { row: FunnelCampaignRow }) {
  * it) stays listed here, and only it. Renders nothing once every running campaign is converted.
  */
 function UnconvertedRunningCampaigns({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
-  const { campaigns: records } = useCampaigns(orgId, brandId, { allOffers: true });
+  const { campaigns: records } = useCampaigns(orgId, brandId);
   const { running, other } = useMemo(() => {
     const run = new Set<string>();
     const all = new Set<string>();

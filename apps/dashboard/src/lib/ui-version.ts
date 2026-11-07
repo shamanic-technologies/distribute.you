@@ -38,6 +38,17 @@ export const NO_ORG_HREF = "/session-tasks/choose-organization";
  * them under a brand, so they need the last brand opened in that org. Without one
  * they land on the org's v2 page (the brand picker).
  */
+/**
+ * A v2 page that no longer exists, mapped to the page that took its place, or null. The brand
+ * Audiences page (`/v2/orgs/:orgId/brands/:brandId/audience`) is gone (owner 2026-11-07,
+ * AUDIENCE-PER-OFFER-1107: each offer holds its ONE audience): old links land on Offers.
+ */
+export function v2PathForRetired(pathname: string, search: string): string | null {
+  const m = pathname.replace(/\/+$/, "").match(/^\/v2\/orgs\/([^/]+)\/brands\/([^/]+)\/audience$/);
+  if (!m) return null;
+  return `/v2/orgs/${m[1]}/brands/${m[2]}/offers${search && search !== "?" ? (search.startsWith("?") ? search : `?${search}`) : ""}`;
+}
+
 export function v2PathForV1(
   pathname: string,
   search: string,

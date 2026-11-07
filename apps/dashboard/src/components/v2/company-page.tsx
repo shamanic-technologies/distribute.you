@@ -15,7 +15,6 @@ import { leadsSearchParam } from "@/lib/leads-server-page";
 import { v2Href } from "@/lib/v2/routes";
 import { useLeadCampaigns, type LeadCampaign } from "@/components/v2/lead-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
 import { useLeadScope, useBrandRevenue, useCompanyLifecycle } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
@@ -39,7 +38,7 @@ interface TimelineEntry {
  * One company: Keel's record page. The header and the stage come off the
  * organisation features-service values on the brand's revenue read; the people are
  * lead-service's own search on the company name; the timeline is each person's stored,
- * labelled conversation (lead-service, the Unibox's facts) at the selected offer, merged
+ * labelled conversation (lead-service, the Unibox's facts) at the brand, every offer, merged
  * newest first. Nothing is derived.
  */
 export function CompanyPage() {
@@ -48,7 +47,6 @@ export function CompanyPage() {
   const router = useRouter();
   const revenue = useBrandRevenue(brandId);
   const { campaignOf } = useLeadCampaigns(orgId, brandId);
-  const { offerId, settled: offerSettled } = useSelectedOffer();
   const gate = useOrgQueryGate();
   const sorted = useMemo(
     () => [...(revenue.data?.organizations ?? [])].sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd),
@@ -80,10 +78,10 @@ export function CompanyPage() {
   // Each person's conversation, same key as their person page (one read per person here, ≤50).
   const timelines = useQueries({
     queries: people.map((l) => ({
-      queryKey: ["leadTimeline", l.id, brandId, offerId],
-      queryFn: () => getLeadTimeline(l.id, { brandId, offerId }),
+      queryKey: ["leadTimeline", l.id, brandId, null],
+      queryFn: () => getLeadTimeline(l.id, { brandId }),
       ...pollOptions,
-      enabled: gate && offerSettled,
+      enabled: gate,
     })),
   });
   const timelinesSettled = timelines.every((t) => t.data !== undefined || t.isError);

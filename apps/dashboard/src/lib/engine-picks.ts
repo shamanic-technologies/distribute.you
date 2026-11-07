@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * Today's "Why each one was picked" (FACTORY-USER-DASHBOARD-1102, the GTM Factory Today page): the latest Engine picks
- * across the selected offer's live campaigns, newest first, each with the plain sentence features-service writes for the
+ * across one offer's live campaigns, newest first, each with the plain sentence features-service writes for the
  * client. Read through api-service `GET /v1/offers/:offerId/engine-picks?brandId=` (features-service
  * `/offers/:offerId/engine-picks`, org-scoped). Alias-free so vitest reads it directly; nothing is computed here.
  */
@@ -32,6 +32,18 @@ export const EnginePicksSchema = z
   .object({ offerId: z.string(), brandId: z.string(), computedAt: z.string().nullable(), picks: z.array(EnginePickSchema) })
   .passthrough();
 export type EnginePicks = z.infer<typeof EnginePicksSchema>;
+
+/**
+ * Several offers' picks joined into ONE list, newest first (a list, nothing counted or priced): the
+ * brand is the scope (owner 2026-11-07, AUDIENCE-PER-OFFER-1107) and features-service serves picks per
+ * offer. A pick with no date goes last, in served order.
+ */
+export function picksNewestFirst<T extends { pickedAt: string | null }>(picks: readonly T[]): T[] {
+  return picks
+    .map((p, i) => ({ p, i, t: p.pickedAt ? Date.parse(p.pickedAt) : Number.NEGATIVE_INFINITY }))
+    .sort((a, b) => (b.t === a.t ? a.i - b.i : b.t - a.t))
+    .map((x) => x.p);
+}
 
 /** A pick the Engine took back (its guard rolled it back) reads so; a running one reads nothing extra. */
 export function pickStateWords(state: string): string | null {

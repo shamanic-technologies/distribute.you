@@ -48,7 +48,7 @@ describe("campaigns list: GA layout", () => {
   it("renders for everyone, Suggested only in staff mode, rows open the normal campaign page", () => {
     const page = read("components/v2/campaigns-overview-page.tsx");
     expect(page).not.toContain("CampaignsOverviewPageCurrent");
-    expect(page).toContain("{staffMode && <Suggested brandId={brandId} offerId={offerId} campaigns={q.data ?? null} />}");
+    expect(page).toContain("{staffMode && soleOfferId && <Suggested brandId={brandId} offerId={soleOfferId} campaigns={q.data ?? null} />}");
     expect(page).toContain("const href = keepPreview ? withLayoutNext(plain) : plain;");
     expect(page).toContain("return isCampaignLayoutPreview(staffMode, layout);");
     expect(page).not.toMatch(/\.reduce\(/);

@@ -13,7 +13,7 @@ import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { v2CampaignHref, v2Href } from "@/lib/v2/routes";
 import { useClientClock } from "@/lib/use-client-clock";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
-import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
+import { useBrandScope } from "@/components/v2/brand-scope";
 import {
   EmptyNote,
   Figure,
@@ -98,15 +98,15 @@ export function TodayPage() {
   const w = win.data ?? null;
   const data = rev.data;
   const { campaignById } = useCampaigns(orgId, brandId);
-  // Runs today: runs-service's own roll-up, kept to the selected offer's campaigns.
+  // Runs today: runs-service's own roll-up, kept to the brand's campaigns.
   const { runsToday, settled: runsSettled } = useCampaignRunsToday(brandId, campaignById);
   // "Needs your call" opens the Inbox, where those replies are answered.
   const callHref = `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;
-  const selectedOfferId = useSelectedOfferIfAny()?.offerId ?? null;
-  // The offer's ON campaigns, and the steps their legs touch: a step no ON campaign
+  const scope = useBrandScope();
+  // The brand's ON campaigns, every offer, and the steps their legs touch: a step no ON campaign
   // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
   // that nothing aims at.
-  const ongoing = useOngoingCampaigns(orgId, brandId, selectedOfferId);
+  const ongoing = useOngoingCampaigns(orgId, brandId);
   // ROI, Revenue generated (the main chart, two columns wide) and Spent: every outcome lives in its
   // campaign's Target row below (owner 2026-11-06, LEAD-GENERIC-1106).
   const statTiles = 4 as const;
@@ -155,7 +155,10 @@ export function TodayPage() {
         // No campaign on/off switch here: cancelling lives in Billing (owner 2026-10-05).
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        <OfferPlanBanner brandId={brandId} offerId={selectedOfferId} />
+        {/* One banner per offer with no plan (plan orgs only), each naming its offer. */}
+        {scope.offers.map((o) => (
+          <OfferPlanBanner key={o.offerId} brandId={brandId} offerId={o.offerId} offerName={scope.offers.length > 1 ? (o.name ?? null) : null} />
+        ))}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
@@ -232,11 +235,11 @@ export function TodayPage() {
 
             {/* One row of cards per campaign Target (owner 2026-11-06, LEAD-GENERIC-1106): names served. */}
             <div className="mt-8">
-              <TodayTargets orgId={orgId} brandId={brandId} offerId={selectedOfferId} />
+              <TodayTargets orgId={orgId} brandId={brandId} />
             </div>
             {/* Why each day costs what it costs, and where the cost is heading (owner 2026-10-19). */}
             <div className="mt-6">
-              <OfferSpendChartsSection brandId={brandId} offerId={selectedOfferId} billed={{ pending: win.pending, spend: winSpend }} />
+              <OfferSpendChartsSection brandId={brandId} offerId={scope.soleOfferId} billed={{ pending: win.pending, spend: winSpend }} />
             </div>
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <section>
@@ -288,18 +291,18 @@ export function TodayPage() {
                 </div>
                 {/* The GTM Factory Today feed (FACTORY-USER-DASHBOARD-1102): what each Engine picked and why. */}
                 <div className="mt-8">
-                  <EnginePicksSection orgId={orgId} brandId={brandId} offerId={selectedOfferId} />
+                  <EnginePicksSection orgId={orgId} brandId={brandId} offerIds={scope.campaignOfferIds} />
                 </div>
               </section>
 
               <aside className="space-y-6">
-                {/* The offer's ON campaigns, named and ordered as the sidebar. Budgets opens the
+                {/* The brand's ON campaigns, named and ordered as the sidebar. Budgets opens the
                     campaign's own page (its max budget and volume, owner 2026-10-10), or the
-                    Campaigns overview when the offer runs several. */}
+                    Campaigns overview when the brand runs several. */}
                 <section>
                   <SectionTitle
                     count={ongoing.settled ? ongoing.campaigns.length + ongoing.funnelCampaigns.length : null}
-                    right={selectedOfferId ? (
+                    right={scope.offers.length > 0 ? (
                       <Link
                         href={
                           ongoing.funnelCampaigns.length === 1

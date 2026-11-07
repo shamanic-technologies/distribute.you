@@ -47,7 +47,8 @@ describe("where a plan is chosen", () => {
 
   it("the offer page and Today carry the banner", () => {
     expect(read("src/components/v2/setup-pages.tsx")).toContain("<OfferPlanBanner brandId={brandId} offerId={offerId} />");
-    expect(read("src/components/v2/today-page.tsx")).toContain("<OfferPlanBanner brandId={brandId} offerId={selectedOfferId} />");
+    // Today: one banner per offer of the brand (AUDIENCE-PER-OFFER-1107), each naming its offer.
+    expect(read("src/components/v2/today-page.tsx")).toContain("<OfferPlanBanner key={o.offerId} brandId={brandId} offerId={o.offerId}");
   });
 
   it("a started plan funds the offer's campaigns through their caps, never a per-campaign ceiling", () => {
