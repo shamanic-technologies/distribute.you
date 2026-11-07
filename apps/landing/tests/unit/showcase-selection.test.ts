@@ -61,6 +61,12 @@ const shockwave: ShowcaseBrand = {
   unmeasuredReason: null,
 };
 
+/** A third drawable client, so a pick can fill the three hero slots. */
+const third: ShowcaseBrand = {
+  ...shockwave,
+  brand: { id: "7a1", name: "PressBeat", domain: "pressbeat.io" },
+};
+
 /** A client with a few interested leads and no meeting. */
 const labcritics: ShowcaseBrand = {
   brand: { id: "9f0", name: "Labcritics", domain: "labcritics.com" },
@@ -94,10 +100,11 @@ describe("the producer picks, this page renders", () => {
     expect(pickedBrands(undefined, "recentlyStarted")).toBeNull();
   });
 
-  it("renders a SHORT group rather than refusing it", () => {
-    // The producer states how many qualified, so fewer than three is an answer, not a gap.
+  it("never renders a SHORT group: the hero always names three clients (owner 2026-11-07)", () => {
     const short = { ...measured([shockwave]), qualifyingCount: 1 };
-    expect(pickedBrands(short, "recentlyStarted")).toEqual([shockwave]);
+    expect(pickedBrands(short, "recentlyStarted")).toBeNull();
+    expect(pickedBrands(measured([docDinners, shockwave]), "recentlyStarted")).toBeNull();
+    expect(pickedBrands(measured([docDinners, shockwave, third, docDinners]), "recentlyStarted")).toHaveLength(3);
   });
 
   it("takes a client with ONE meeting booked, never a visits-only one", () => {
@@ -110,7 +117,7 @@ describe("the producer picks, this page renders", () => {
         { key: "meeting_booked", label: "Meeting booked", peopleReached: 1, costPerReachUsd: 60 },
       ],
     };
-    expect(pickedBrands(measured([oneMeeting]), "recentlyStarted", hasHeroOutcome)).toEqual([oneMeeting]);
+    expect(pickedBrands(measured([oneMeeting, docDinners, shockwave]), "recentlyStarted", hasHeroOutcome)).toEqual([oneMeeting, docDinners, shockwave]);
     expect(pickedBrands(measured([opsfolio]), "recentlyStarted", hasHeroOutcome)).toBeNull();
   });
 
@@ -232,7 +239,7 @@ describe("rendering the pick into the page", () => {
       </div>`;
 
   it("replaces the client cards and keeps Your company last", () => {
-    const out = renderShowcaseSelection(page, [docDinners, shockwave, opsfolio]);
+    const out = renderShowcaseSelection(page, [docDinners, shockwave, opsfolio, third]);
     expect(out).toContain('data-brand="docdinners.com"');
     expect(out).toContain('data-brand="shockwavecenters.com"');
     // Visits only: never a hero client.
@@ -246,6 +253,10 @@ describe("rendering the pick into the page", () => {
     // A payload naming clients we cannot draw leaves the page exactly as it ships: the
     // last answer we know landed beats an empty hero.
     expect(renderShowcaseSelection(page, [])).toBe(page);
+  });
+
+  it("keeps the shipped page when fewer than three cards render (owner 2026-11-07)", () => {
+    expect(renderShowcaseSelection(page, [docDinners, shockwave])).toBe(page);
   });
 });
 
@@ -284,6 +295,6 @@ describe("regressions from the first ship of the pick (#4353)", () => {
       unmeasuredReason: null,
     };
     expect(hasHeroOutcome(legistai)).toBe(true);
-    expect(renderShowcaseSelection(page, [legistai, docDinners])).toContain('data-brand="legistai.com"');
+    expect(renderShowcaseSelection(page, [legistai, docDinners, shockwave])).toContain('data-brand="legistai.com"');
   });
 });

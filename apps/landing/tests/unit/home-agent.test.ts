@@ -88,16 +88,18 @@ describe("the price before every action", () => {
 });
 
 describe("the agent command and the open source repo", () => {
+  // SECTIONS-TRIM-1107 (owner 2026-11-07: fewer sections): the agent command lives in the
+  // "One agent, every tool" card and the repo in the Open source pricing card.
   it("prints the Claude Code command the docs print, byte for byte", () => {
-    expect(section("agent")).toContain(`<code>${CLAUDE_CODE_MCP_COMMAND}</code>`);
+    expect(section("why")).toContain(`<code>${CLAUDE_CODE_MCP_COMMAND}</code>`);
     expect(js).toContain('document.querySelectorAll("[data-copy]")');
-    expect(section("agent").match(/data-copy/g)).toHaveLength(2);
+    expect(section("why").match(/data-copy/g)).toHaveLength(1);
+    expect(html).not.toContain('id="agent"');
   });
 
   it("links the public gtm-factory repo, MIT", () => {
-    expect(section("open-source")).toContain('href="https://github.com/distribute-you/gtm-factory"');
-    expect(section("open-source")).toContain("git clone https://github.com/distribute-you/gtm-factory");
-    expect(section("open-source")).toContain("MIT");
+    expect(section("pricing")).toContain('href="https://github.com/distribute-you/gtm-factory"');
+    expect(section("pricing")).toContain("MIT");
   });
 });
 
