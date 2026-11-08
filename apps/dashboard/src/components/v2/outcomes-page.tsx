@@ -26,7 +26,7 @@ import { v2CampaignHref } from "@/lib/v2/routes";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
-import { AudienceLists } from "@/components/v2/audience-page";
+import { LeadsFoundPeople } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
 import { CostPerUnit, NetworkLogo, PublishedBody, PublishedOutcomePage, usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
 import { ResearchDrawer } from "@/components/v2/research-template-outputs";
@@ -702,7 +702,7 @@ function OutcomeDetail({ stepKey }: { stepKey: string }) {
           <PeoplePage step={outcome.items.step} />
         </div>
       ) : outcome.items.kind === "leads-found" ? (
-        <AudienceLists />
+        <LeadsFoundPeople />
       ) : (
         <div className="k-card">
           <EmptyNote>Not available yet. We cannot list each one here yet.</EmptyNote>
