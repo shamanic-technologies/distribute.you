@@ -112,8 +112,15 @@ function AllCount({ o, counts, peopleHeld }: { o: BrandOutcome; counts: Record<s
   return <Num n={counts[o.outcome.items.step]} />;
 }
 
-/** The ones we contacted: lead-service's people who reached the step, the same figure the Contacted by us tab states. */
+/**
+ * The ones we contacted. A people outcome reads crm-service's served `contactedByUs` (OUTCOMES-CONTACTED-1027: people
+ * OUR campaigns brought to the step), the outcome page's tile and tab figure; lead-service's reached count holds every
+ * lead the brand knows on that step, Stripe payers never written to included (16 vs 1 on Paid clients, 2026-11-08).
+ * Leads found keeps the leads lead-service saw reach their first email (`reachedStepOf`): those we did write to.
+ */
 function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, number> | null }) {
+  if (o.all) return <Num n={o.all.contactedByUs} />;
+  if (o.outcome.items.kind === "people") return <Num n={null} />;
   const step = reachedStepOf(o.outcome);
   if (!step) return <Num n={null} />;
   if (!counts) return <Shimmer className="ml-auto h-4 w-10" />;
@@ -383,8 +390,6 @@ export function OutcomePage() {
   const offerId = useBrandScope().soleOfferId;
   const { outcomes, settled } = useBrandOutcomeList(orgId, brandId);
   const catalogue = useLegCatalogue();
-  const shownStep = (outcomes.find((o) => o.outcome.key === stepKey)?.outcome ?? (stepKey ? outcomeOf(catalogue, null, stepKey) : null))?.key ?? null;
-  const counts = useReachedCounts(brandId, shownStep ? [shownStep] : []).data ?? null;
   const { staffMode } = useStaffMode();
   const [tab, setTab] = useState<"all" | "ours">("all");
   const listed = outcomes.find((o) => o.outcome.key === stepKey) ?? null;
@@ -431,7 +436,7 @@ export function OutcomePage() {
             <RecordsTabs
               tabs={[
                 { key: "all", label: "Everyone", count: listed.all.people },
-                { key: "ours", label: "Contacted by us", count: counts?.[outcome.items.step] ?? null },
+                { key: "ours", label: "Contacted by us", count: listed.all.contactedByUs },
               ]}
               active={tab}
               onPick={(k) => setTab(k === "ours" ? "ours" : "all")}
