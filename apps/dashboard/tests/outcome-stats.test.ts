@@ -71,11 +71,13 @@ describe("outcome page wiring", () => {
     expect(page.indexOf("<OutcomeStats")).toBeGreaterThan(-1);
     expect(page.indexOf("<OutcomeStats")).toBeLessThan(page.indexOf("<RecordsTabs"));
   });
-  it("the Overview is one row per outcome, in the producer's order, no return below a Target (ROI-CONSISTENCY-1103)", () => {
+  it("the Overview is one row per outcome, in the producer's order, a return only at a campaign Target (ROI-CONSISTENCY-1103, BRAND-VALUE-ROI-1108)", () => {
     const overview = page.slice(page.indexOf("export function OutcomesOverviewPage()"), page.indexOf("function OutcomeCostFigure("));
     expect(overview).toContain("inServedOrder(outcomes, costQ.data)");
+    // A return only where the outcome IS a campaign Target, off features-service's offerMix (BRAND-VALUE-ROI-1108).
+    expect(overview).toContain("useOutcomeCostSeries(brandId, null)");
+    expect(page).toContain("if (!mix || !mix.isCampaignTarget) return <span className=\"k-fg4\">—</span>;");
     expect(overview).not.toContain("RoiValue");
-    expect(overview).not.toContain("<RoiLabel");
     expect(overview).not.toMatch(/\.reduce\(|valuePerOutcomeUsd \/|\/ cost\./);
     expect(stats).not.toContain("RoiValue");
     expect(stats).not.toContain("<RoiLabel");

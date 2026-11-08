@@ -31,6 +31,62 @@ export const OutcomeCostMonthSchema = z.object({
 });
 export type OutcomeCostMonth = z.infer<typeof OutcomeCostMonthSchema>;
 
+const ReturnSchema = z.object({ roiMultiple: z.number().nullable(), unavailableReason: z.string().nullable() });
+
+/**
+ * BRAND-VALUE-ROI-1108 (features-service v0.179.556, brand read only): one outcome row across the brand's offers, value
+ * TRACED per offer (each Unit carries the value of the offer its campaign states), expected figures = a flexible budget at
+ * the actual spend mix. A return only where the outcome IS a campaign Target (ROI-CONSISTENCY-1103). An expected figure
+ * has no history: the chart's dotted line is today's figure. Optional: not served on the offer read.
+ */
+export const OfferMixSchema = z.object({
+  rule: z.string(),
+  weightBasis: z.string(),
+  offers: z.array(
+    z.object({
+      offerId: z.string(),
+      weightUsd: z.number().nullable(),
+      weightShare: z.number().nullable(),
+      valuePerOutcomeUsd: z.number().nullable(),
+      expectedCostPerOutcomeUsd: z.number().nullable(),
+      isCampaignTarget: z.boolean(),
+      expectedReturn: ReturnSchema,
+      measuredReturn: z.object({
+        roiMultiple: z.number().nullable(),
+        targetUnits: z.number().nullable(),
+        valueUsd: z.number().nullable(),
+        spentUsd: z.number().nullable(),
+        unavailableReason: z.string().nullable(),
+      }),
+      unavailableReason: z.string().nullable(),
+    }),
+  ),
+  valuePerOutcomeUsd: z.number().nullable(),
+  valueUnavailableReason: z.string().nullable(),
+  expectedCostPerOutcomeUsd: z.number().nullable(),
+  expectedCostUnavailableReason: z.string().nullable(),
+  isCampaignTarget: z.boolean(),
+  expectedReturn: ReturnSchema,
+  measuredReturn: z.object({
+    roiMultiple: z.number().nullable(),
+    targetUnits: z.number().nullable(),
+    valueUsd: z.number().nullable(),
+    spentUsd: z.number().nullable(),
+    learning: z.boolean(),
+    unavailableReason: z.string().nullable(),
+    months: z.array(
+      z.object({
+        month: z.string(),
+        spentUsd: z.number(),
+        targetUnits: z.number(),
+        valueUsd: z.number().nullable(),
+        roiMultiple: z.number().nullable(),
+      }),
+    ),
+  }),
+});
+export type OfferMix = z.infer<typeof OfferMixSchema>;
+
 export const OutcomeCostStepSchema = z.object({
   /** The producer's canonical step key (`signup`, `website_visit`, `paid_client`…): a string, the producer adds steps. */
   stepKey: z.string(),
@@ -51,6 +107,7 @@ export const OutcomeCostStepSchema = z.object({
   months: z.array(OutcomeCostMonthSchema),
   /** OUTCOME-ACCOUNTING-1107: the step's cost-accounting report, actual beside expected. */
   accounting: OutcomeAccountingSchema.nullish(),
+  offerMix: OfferMixSchema.optional(),
 });
 export type OutcomeCostStep = z.infer<typeof OutcomeCostStepSchema>;
 
