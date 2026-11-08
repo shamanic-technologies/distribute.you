@@ -3053,19 +3053,20 @@ export async function getSourcingInvestment(brandId: string, staff: boolean): Pr
 }
 
 /** $ invested per person, keyed by provider person id (the join key onto the held people). Keys <= 500. */
-export async function getSourcingPeople(brandId: string, staff: boolean, apolloPersonIds: string[]): Promise<Map<string, InvestedMoney>> {
-  if (apolloPersonIds.length === 0) return new Map();
+// A plain object, never a Map: the read is persisted to IndexedDB as JSON, and a Map came back from disk as `{}`.
+export async function getSourcingPeople(brandId: string, staff: boolean, apolloPersonIds: string[]): Promise<Record<string, InvestedMoney>> {
+  if (apolloPersonIds.length === 0) return {};
   const q = new URLSearchParams({ limit: String(apolloPersonIds.length), apolloPersonIds: apolloPersonIds.join(",") });
   const body = parseStaff("getSourcingPeople", SourcingPeopleSchema, await apiCall<unknown>(`${investmentPath(brandId, staff)}/people?${q}`));
-  return new Map(body.people.filter((p) => p.apolloPersonId).map((p) => [p.apolloPersonId as string, p.invested]));
+  return Object.fromEntries(body.people.filter((p) => p.apolloPersonId).map((p) => [p.apolloPersonId as string, p.invested]));
 }
 
 /** $ invested per company, keyed by human-service's `companyKey` (the held-companies key). Keys <= 500. */
-export async function getSourcingCompanies(brandId: string, staff: boolean, companyKeys: string[]): Promise<Map<string, InvestedMoney>> {
-  if (companyKeys.length === 0) return new Map();
+export async function getSourcingCompanies(brandId: string, staff: boolean, companyKeys: string[]): Promise<Record<string, InvestedMoney>> {
+  if (companyKeys.length === 0) return {};
   const q = new URLSearchParams({ limit: String(companyKeys.length), companyKeys: companyKeys.join(",") });
   const body = parseStaff("getSourcingCompanies", SourcingCompaniesSchema, await apiCall<unknown>(`${investmentPath(brandId, staff)}/companies?${q}`));
-  return new Map(body.companies.map((c) => [c.companyKey, c.invested]));
+  return Object.fromEntries(body.companies.map((c) => [c.companyKey, c.invested]));
 }
 
 /** Every brand of every org (staff), to name the comparison's org and brand ids. */

@@ -6,13 +6,13 @@ import { useParams } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import { ProviderLogo } from "@/components/provider-logo";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listOutcomePeople } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
 import { integrationFor } from "@/lib/integrations";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { OUTCOME_PEOPLE_PAGE_SIZE, type OutcomeStepStat } from "@/lib/v2/outcome-people";
 import { useAudienceSnapshot, useBrandOutcomeList, useCatalogueSteps, useStepIcons, type BrandOutcome } from "@/components/v2/brand-outcomes";
 import { RecordsTabs } from "@/components/v2/records";
+import { fetchOutcomePeople, outcomePeopleKey, useOutcomePrefetch } from "@/components/v2/outcome-prefetch";
 import { formatCount } from "@/lib/format-number";
 import { v2Href, v2OutcomeHref } from "@/lib/v2/routes";
 import { outcomeOf, reachedStepOf, type Outcome } from "@/lib/v2/outcomes";
@@ -459,12 +459,13 @@ function OutcomeRow({
   selected: boolean;
   onOpen: () => void;
 }) {
+  const warm = useOutcomePrefetch(brandId);
   // The running $ / outcome (features-service's cumulative months), its served expected dotted beside it.
   const curve = cost ? cost.months.map((m) => m.cumulativeCostPerOutcomeUsd).filter((v): v is number => v != null) : null;
   const mix = cost?.offerMix ?? null;
   const name = o.outcome.label;
   return (
-    <tr {...rowProps(onOpen, selected)}>
+    <tr {...rowProps(onOpen, selected)} onMouseEnter={() => warm(o.outcome)} onFocus={() => warm(o.outcome)}>
       <td className={OTD}>
         <RowName
           icon={icon}
@@ -649,11 +650,11 @@ function OutcomeCostFigure({ answered, cost }: { answered: boolean; cost: Outcom
 function EveryoneTable({ crmStep, contactedOnly = false }: { crmStep: string; contactedOnly?: boolean }) {
   const { orgId, brandId } = useIds();
   const [offset, setOffset] = useState(0);
-  const q = useAuthQuery(
-    ["outcomePeople", brandId, crmStep, contactedOnly ? "contacted" : "all", offset],
-    () => listOutcomePeople(brandId, crmStep, { limit: OUTCOME_PEOPLE_PAGE_SIZE, offset, contactedByUs: contactedOnly }),
-    { ...pollOptions, enabled: !!brandId, placeholderData: keepPreviousData },
-  );
+  const q = useAuthQuery(outcomePeopleKey(brandId, crmStep, contactedOnly, offset), () => fetchOutcomePeople(brandId, crmStep, contactedOnly, offset), {
+    ...pollOptions,
+    enabled: !!brandId,
+    placeholderData: keepPreviousData,
+  });
   if (!q.data) {
     if (q.isError) return <EmptyNote>We could not read this list right now.</EmptyNote>;
     return (

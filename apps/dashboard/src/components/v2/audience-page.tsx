@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import {
   getSourcingOrigins,
   getHeldCompanies,
-  getHeldPeople,
   getSourcingCompanies,
   getSourcingInvestment,
   getSourcingPeople,
@@ -31,6 +30,7 @@ import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import { pollOptions } from "@/lib/query-options";
 import { OfferMark } from "@/components/marks/offer-mark";
+import { brandOffersKey, fetchHeldPeople, heldPeopleKey, HELD_PEOPLE_PAGE } from "@/components/v2/outcome-prefetch";
 
 /**
  * The brand's audiences as human-service holds them: the LISTS we source people from
@@ -110,7 +110,7 @@ const isActive = (a: AudienceWire) => a.status === "active";
 const statusWord = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type Tab = "audiences" | "people" | "companies";
-const PAGE = 100;
+const PAGE = HELD_PEOPLE_PAGE;
 
 /** The source of a snapshot audience ref, keyed on its served `list`. */
 function refSource(r: SnapshotAudienceRef): { label: string; domain: string | null } | null {
@@ -208,12 +208,14 @@ function Skeleton({ cols }: { cols: number }) {
 export function LeadsFoundPeople() {
   const { brandId } = useParams<{ brandId: string }>();
   const { staffMode: staff } = useStaffMode();
-  const snapshot = useAudienceSnapshot(brandId);
+  // The Everyone count is the first page's served `total` (same key as the table's page 1, so one read): the whole
+  // audience snapshot took 1.5-7.7s just for this number (owner 2026-11-08 « tu peux le rendre instant? »).
+  const firstPage = useAuthQuery(heldPeopleKey(brandId, staff, 0, false), () => fetchHeldPeople(brandId, staff, 0, false));
   return (
     <>
       <OfferAudienceLines brandId={brandId} />
       <div className="k-card overflow-hidden">
-        <RecordsTabs tabs={[{ key: "people", label: "Everyone", count: snapshot.data?.totals.people.held ?? null }]} active="people" onPick={() => {}} />
+        <RecordsTabs tabs={[{ key: "people", label: "Everyone", count: firstPage.data?.total ?? null }]} active="people" onPick={() => {}} />
         <PeopleTab brandId={brandId} staff={staff} />
       </div>
     </>
@@ -222,7 +224,7 @@ export function LeadsFoundPeople() {
 
 /** One line per offer: its mark, name and Audience text (same reads as Setup > Offers, so no extra cost). */
 function OfferAudienceLines({ brandId }: { brandId: string }) {
-  const q = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
+  const q = useAuthQuery(brandOffersKey(brandId), () => listBrandOffers(brandId), { enabled: !!brandId });
   const offers = q.data?.offers ?? null;
   if (!offers || offers.length === 0) return null;
   return (
@@ -507,9 +509,7 @@ function AudiencesTab({
 function PeopleTab({ brandId, staff }: { brandId: string; staff: boolean }) {
   const [offset, setOffset] = useState(0);
   const [acceptedOnly, setAcceptedOnly] = useState(false);
-  const q = useAuthQuery(["staffHeldPeople", brandId, staff, offset, acceptedOnly], () =>
-    getHeldPeople(brandId, staff, { limit: PAGE, offset, acceptedOnly }),
-  );
+  const q = useAuthQuery(heldPeopleKey(brandId, staff, offset, acceptedOnly), () => fetchHeldPeople(brandId, staff, offset, acceptedOnly));
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const rows = q.data?.people ?? [];
   const ids = rows.flatMap((p) => (p.revealed && p.providerPersonId ? [p.providerPersonId] : []));
@@ -558,7 +558,7 @@ function PeopleTab({ brandId, staff }: { brandId: string; staff: boolean }) {
                   <td className="pr-4 text-right tabular-nums md:pr-6">
                     {/* Only a revealed person was paid for; a teaser cost nothing on its own. */}
                     {!p.revealed || !p.providerPersonId || cost.error ? dash : (
-                      <Invested loading={costLoading} m={cost.data?.get(p.providerPersonId)} />
+                      <Invested loading={costLoading} m={cost.data?.[p.providerPersonId]} />
                     )}
                   </td>
                 </tr>
@@ -622,7 +622,7 @@ function CompaniesTab({ brandId, staff }: { brandId: string; staff: boolean }) {
                   <td className="max-w-[260px] px-3"><AudienceChips refs={c.sources} staff={staff} /></td>
                   <td className="max-w-[320px] px-3"><AudienceChips refs={c.acceptedBy} accepted staff={staff} /></td>
                   <td className="pr-4 text-right tabular-nums md:pr-6">
-                    {cost.error ? dash : <Invested loading={costLoading} m={cost.data?.get(c.companyKey)} />}
+                    {cost.error ? dash : <Invested loading={costLoading} m={cost.data?.[c.companyKey]} />}
                   </td>
                 </tr>
               ))
