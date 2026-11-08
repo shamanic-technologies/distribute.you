@@ -300,13 +300,16 @@ function OutcomeCostFigure({ answered, cost }: { answered: boolean; cost: Outcom
   return <>{formatUsdAdaptive(measured)}</>;
 }
 
-/** Everyone who reached one step, any source, earliest first; a row opens the person in the Unibox. */
-function EveryoneTable({ crmStep }: { crmStep: string }) {
+/**
+ * Everyone who reached one step, any source, earliest first; a row opens the person in the Unibox. `contactedOnly` =
+ * the Contacted by us tab: crm-service narrows to the people our campaigns brought there, its `total` the tab's count.
+ */
+function EveryoneTable({ crmStep, contactedOnly = false }: { crmStep: string; contactedOnly?: boolean }) {
   const { orgId, brandId } = useIds();
   const [offset, setOffset] = useState(0);
   const q = useAuthQuery(
-    ["outcomePeople", brandId, crmStep, offset],
-    () => listOutcomePeople(brandId, crmStep, { limit: OUTCOME_PEOPLE_PAGE_SIZE, offset }),
+    ["outcomePeople", brandId, crmStep, contactedOnly ? "contacted" : "all", offset],
+    () => listOutcomePeople(brandId, crmStep, { limit: OUTCOME_PEOPLE_PAGE_SIZE, offset, contactedByUs: contactedOnly }),
     { ...pollOptions, enabled: !!brandId, placeholderData: keepPreviousData },
   );
   if (!q.data) {
@@ -443,7 +446,11 @@ export function OutcomePage() {
               active={tab}
               onPick={(k) => setTab(k === "ours" ? "ours" : "all")}
             />
-            {tab === "all" ? <EveryoneTable crmStep={outcome.items.crmStep} /> : <PeoplePage step={outcome.items.step} />}
+            {tab === "all" ? (
+              <EveryoneTable key="all" crmStep={outcome.items.crmStep} />
+            ) : (
+              <EveryoneTable key="ours" crmStep={outcome.items.crmStep} contactedOnly />
+            )}
           </div>
         ) : outcome.items.kind === "people" ? (
           <div className="k-card overflow-hidden">

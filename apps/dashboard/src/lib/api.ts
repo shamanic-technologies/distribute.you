@@ -777,10 +777,12 @@ export async function getBrandOutcomes(brandId: string, token?: string): Promise
 export async function listOutcomePeople(
   brandId: string,
   step: string,
-  opts: { limit: number; offset: number },
+  opts: { limit: number; offset: number; contactedByUs?: boolean },
   token?: string,
 ): Promise<OutcomePeople> {
   const qs = new URLSearchParams({ brandId, step, limit: String(opts.limit), offset: String(opts.offset) });
+  // Only the people OUR campaigns brought to the step (crm-service v0.122.0, OUTCOME-CONTACTED-LIST-1108): `total` = the step's served `contactedByUs`.
+  if (opts.contactedByUs) qs.set("contactedByUs", "true");
   const raw = await apiCall<unknown>(`/orgs/people/outcomes/people?${qs.toString()}`, { token });
   const parsed = OutcomePeopleSchema.safeParse(raw);
   if (!parsed.success) {
