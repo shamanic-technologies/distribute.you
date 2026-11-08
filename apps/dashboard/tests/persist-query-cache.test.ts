@@ -236,7 +236,8 @@ describe("query-provider wiring — local-first per-query persisted cache", () =
 
   it("keeps the global SWR defaults intact (keepPreviousData, silent refetch)", () => {
     expect(src).toContain("placeholderData: keepPreviousData");
-    expect(src).toContain("refetchOnWindowFocus: true");
+    // Silent refetch on return, except a failed read with no data (tests/refetch-on-return.test.ts).
+    expect(src).toContain("refetchOnWindowFocus: refetchOnReturn");
   });
 });
 
