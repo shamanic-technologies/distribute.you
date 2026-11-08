@@ -11,9 +11,12 @@ import {
   disconnectSource,
   disconnectGoogleAccount,
   disconnectGoogleCalendar,
+  disconnectSearchConsole,
   deleteBrandKey,
   listGoogleAccounts,
   listGoogleCalendars,
+  listSearchConsoleAccounts,
+  listBrands,
   startGoogleConnect,
   listBrandKeys,
   listCrmConnections,
@@ -40,6 +43,7 @@ import {
 } from "@/lib/integrations";
 import { GOOGLE_RETURN_KEY, OUTCOME_PARAMS, googleCallbackUrl, withLoginHint } from "@/lib/google-connect";
 import { GoogleCalendarLine } from "@/components/settings/google-calendar-line";
+import { SearchConsoleLine } from "@/components/settings/search-console-line";
 import { GmailMailboxLine } from "@/components/settings/gmail-mailbox-line";
 import { GhlBookingLine, ghlScopeLabel, ghlScopesToGrant, type GhlBooking } from "@/components/settings/ghl-booking-line";
 import {
@@ -176,6 +180,9 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
   // Google Calendar next to Gmail: booked meetings and who joined them. Open to every
   // customer since 2026-10-28 (owner: "Google Calendar doit être en GA").
   rows.splice(1, 0, <GoogleCalendarRow key="google-calendar" orgId={orgId} />);
+  // Google Search Console beside them (GSC-CONNECTOR-1108, owner 2026-11-08): each site's Google search
+  // clicks count as an outcome of the brand owning it, every client, ours included.
+  rows.splice(2, 0, <SearchConsoleRow key="google-search-console" orgId={orgId} />);
   rows.push(<MessagingLinkRows key="messaging" brandId={brandId} />);
   // Threads accounts sit with the other accounts (owner 2026-10-28: "under your Account like
   // other connection" = this "Accounts and AI" tab, never the Profile page).
@@ -892,6 +899,116 @@ function GoogleCalendarRow({ orgId }: { orgId: string | null }) {
             className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
           >
             {connect.isPending && connect.variables === null ? "Opening Google..." : calendars.length > 0 ? "Add a calendar" : "Connect with Google"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Google Search Console, per ORGANIZATION, on its OWN Google consent (GSC-CONNECTOR-1108): google-service
+ * reads each site's daily Google search clicks and counts them as the outcome « Google search click » of
+ * the brand owning the site. Same callback as Gmail; the trip remembers it is Search Console so the
+ * outcome lands on this row. Each site says whether it counts and for which brand, or why not.
+ */
+function SearchConsoleRow({ orgId }: { orgId: string | null }) {
+  const queryClient = useQueryClient();
+  const search = useSearchParams();
+  const accountsQ = useAuthQuery(["searchConsoleAccounts"], () => listSearchConsoleAccounts());
+  useRefetchOnConnected(OUTCOME_PARAMS.search_console.connected, accountsQ);
+  const brandsQ = useAuthQuery(["brands"], () => listBrands());
+  const brandNames = brandsQ.data
+    ? new Map(brandsQ.data.brands.flatMap((b) => (b.name ? [[b.id, b.name] as const] : [])))
+    : null;
+  const [error, setError] = useState<string | null>(search?.get(OUTCOME_PARAMS.search_console.error) ?? null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const accounts = accountsQ.data?.accounts ?? [];
+  const settled = !accountsQ.isPending || accountsQ.isError;
+
+  // `email` set = Reconnect that account: the same consent, preselecting its address.
+  const connect = useMutation({
+    mutationFn: async (email: string | null) => {
+      if (!orgId) throw new Error("Open this page inside an organization to connect Google Search Console.");
+      const { url } = await startGoogleConnect(googleCallbackUrl(window.location.origin), undefined, "search_console");
+      const returnTo = `${window.location.pathname}${window.location.search}#integrations`;
+      window.sessionStorage.setItem(GOOGLE_RETURN_KEY, JSON.stringify({ orgId, returnTo, connection: "search_console" }));
+      window.location.assign(email ? withLoginHint(url, email) : url);
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] starting the Search Console sign-in failed", err);
+      setError(err.message.startsWith("Open this page") ? err.message : "Could not start the Google sign-in. Try again.");
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: (email: string) => disconnectSearchConsole(email),
+    onSuccess: async () => {
+      setConfirming(null);
+      setError(null);
+      await queryClient.refetchQueries({ queryKey: ["searchConsoleAccounts"] });
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] disconnecting Search Console failed", err);
+      setError("Could not disconnect this account. Try again.");
+    },
+  });
+
+  return (
+    <div className="p-5" data-testid="search-console-row">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-1">
+          <ProductMark src="/integration-logos/google-search-console.svg" />
+        </span>
+        <div className="min-w-0 flex-1 basis-[calc(100%-52px)] sm:basis-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-gray-900">Google Search Console</span>
+            {!settled ? (
+              <span className="h-5 w-24 animate-pulse rounded-full bg-gray-100" />
+            ) : accounts.length > 0 ? (
+              <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
+            ) : (
+              <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600">Not connected</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-sm text-gray-500">
+            See your Google search clicks every day as an outcome of your brand. Shared by every brand of this organization.
+          </p>
+          {accounts.length > 0 ? (
+            <ul className="mt-2 space-y-2">
+              {accounts.map((a) => (
+                <SearchConsoleLine
+                  key={a.email}
+                  account={a}
+                  brandNames={brandNames}
+                  confirming={confirming === a.email}
+                  removing={remove.isPending}
+                  reconnecting={connect.isPending && connect.variables === a.email}
+                  onReconnect={() => {
+                    setError(null);
+                    setConfirming(null);
+                    connect.mutate(a.email);
+                  }}
+                  onAskDisconnect={() => setConfirming(a.email)}
+                  onConfirmDisconnect={() => remove.mutate(a.email)}
+                  onKeep={() => setConfirming(null)}
+                />
+              ))}
+            </ul>
+          ) : null}
+          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              connect.mutate(null);
+            }}
+            disabled={connect.isPending}
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            {connect.isPending && connect.variables === null ? "Opening Google..." : accounts.length > 0 ? "Add an account" : "Connect with Google"}
           </button>
         </div>
       </div>

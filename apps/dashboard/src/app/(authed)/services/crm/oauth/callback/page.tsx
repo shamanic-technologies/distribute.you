@@ -5,7 +5,7 @@ import { finishGoogleConnect, setApiActiveOrgOverride } from "@/lib/api";
 import { GOOGLE_RETURN_KEY, finishErrorMessage, parseGoogleReturn, returnWithOutcome } from "@/lib/google-connect";
 
 /**
- * Where Google sends the browser back after a Gmail or Google Calendar sign-in. This exact path is the
+ * Where Google sends the browser back after a Gmail, Google Calendar or Search Console sign-in. This exact path is the
  * one registered on the Google OAuth client (see `lib/google-connect.ts`), so it
  * cannot move without a Cloud console change.
  *
@@ -41,7 +41,13 @@ export default function GoogleOAuthCallbackPage() {
       return;
     }
     setApiActiveOrgOverride(trip.orgId);
-    setMessage(trip.connection === "calendar" ? "Connecting your Google Calendar…" : "Connecting your Gmail…");
+    setMessage(
+      trip.connection === "calendar"
+        ? "Connecting your Google Calendar…"
+        : trip.connection === "search_console"
+          ? "Connecting Google Search Console…"
+          : "Connecting your Gmail…",
+    );
     finishGoogleConnect(code, state)
       .then((done) => {
         if (done.connection && done.connection !== trip.connection) {
