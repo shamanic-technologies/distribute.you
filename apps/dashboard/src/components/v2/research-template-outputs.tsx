@@ -298,6 +298,7 @@ export function ResearchDrawer({
   head,
   right,
   footer,
+  wide = false,
   children,
 }: {
   label: string;
@@ -305,6 +306,8 @@ export function ResearchDrawer({
   head: React.ReactNode;
   right?: React.ReactNode;
   footer?: React.ReactNode;
+  /** A whole page's content (an Outcome's stats and people), not one row's detail. */
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -313,7 +316,7 @@ export function ResearchDrawer({
         <div
           role="dialog"
           aria-label={label}
-          className="k-popover k-drawer-in fixed inset-y-0 right-0 flex w-full flex-col overflow-hidden rounded-none md:inset-y-2 md:right-2 md:w-[30rem] md:max-w-[94vw] md:rounded-[12px]"
+          className={`k-popover k-drawer-in fixed inset-y-0 right-0 flex w-full flex-col overflow-hidden rounded-none md:inset-y-2 md:right-2 md:max-w-[94vw] md:rounded-[12px] ${wide ? "md:w-[60rem]" : "md:w-[30rem]"}`}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-3 border-b border-[var(--line-subtle)] px-4 py-2.5">

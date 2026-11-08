@@ -71,7 +71,7 @@ describe("outcome page wiring", () => {
     expect(page.indexOf("<OutcomeStats")).toBeGreaterThan(-1);
     expect(page.indexOf("<OutcomeStats")).toBeLessThan(page.indexOf("<RecordsTabs"));
   });
-  it("the Overview is one card per outcome, in the producer's order, no return below a Target (ROI-CONSISTENCY-1103)", () => {
+  it("the Overview is one row per outcome, in the producer's order, no return below a Target (ROI-CONSISTENCY-1103)", () => {
     const overview = page.slice(page.indexOf("export function OutcomesOverviewPage()"), page.indexOf("function OutcomeCostFigure("));
     expect(overview).toContain("inServedOrder(outcomes, costQ.data)");
     expect(overview).not.toContain("RoiValue");

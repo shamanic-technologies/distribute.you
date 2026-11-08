@@ -28,13 +28,14 @@ import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
 import { AudienceLists } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
-import { PublishedOutcomeCard, PublishedOutcomePage, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
-import { isPublishedOutcomeKey } from "@/lib/v2/published-units";
-import { BarSpark, EmptyNote, Shimmer, SparkLine, TopBar } from "@/components/v2/ui";
+import { CostPerUnit, NetworkLogo, PublishedBody, PublishedOutcomePage, usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
+import { ResearchDrawer } from "@/components/v2/research-template-outputs";
+import { opensDrawer } from "@/components/v2/research-live-workflows";
+import { isPublishedOutcomeKey, type PublishedOutcomeKey, type PublishedUnits } from "@/lib/v2/published-units";
+import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { OutcomePinButton } from "@/components/v2/outcome-pins";
 import { OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { Arrow } from "@/components/v2/research-bits";
 import { LearningFigure } from "@/components/v2/roi-label";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { costStepOf, type OfferOutcomeCostSeries, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
@@ -128,13 +129,19 @@ function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, numb
 }
 
 /**
- * THE OUTCOMES OVERVIEW (P5, owner 2026-10-31: outcomes are the dashboard's main entry, « what did I
- * get, and what did it cost? »): one card per outcome the brand reaches, in the producer's order
- * (features-service's outcome-cost-series `steps[]`, the brand's path from Paid client down to Lead
- * found). Anatomy = the Research hub card: mark + name, an inset of two cells (how many, with its
- * months as bars; $ per outcome, with its running curve), then a footer line with the ROI. Every
- * figure is served (crm-service people, lead-service reached-step counts, features-service cost and ROI).
+ * THE OUTCOMES OVERVIEW (owner 2026-11-08, OUTCOMES-TABLE-1108: « reprends l'UI … en t'inspirant du Catalogue »): the
+ * Catalogue's anatomy, a live-sentence title then ONE table, a row per outcome the brand reaches, in the producer's order
+ * (features-service's outcome-cost-series `steps[]`). Columns: Outcome (mark, name, how many with "N from us" in
+ * discreet), $ / outcome (measured, expected small, the running curve solid with the served expected dotted), $ Spent.
+ * A click on a row opens the outcome's page in the right panel; its name opens the page itself. Every figure is served
+ * (crm-service people, lead-service reached-step counts, features-service cost); ROI and value wait on features-service
+ * (BRAND-VALUE-ROI-1108: what a value and a return mean once the page reads the whole brand, several offers).
  */
+const OTH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
+const OTD = "px-3 py-3 align-middle first:pl-4 last:pr-4";
+
+type OpenRow = { kind: "outcome"; key: string } | { kind: "published"; key: PublishedOutcomeKey };
+
 export function OutcomesOverviewPage() {
   const { orgId, brandId } = useIds();
   // $ per outcome: the brand's one offer when it sells one, else the BRAND series (features-service v0.179.548).
@@ -146,13 +153,16 @@ export function OutcomesOverviewPage() {
   const costQ = useOutcomeCostSeries(brandId, offerId);
   const costAnswered = costQ.data !== undefined || (costQ.isFetchedAfterMount && costQ.isError);
   const stepIcons = useStepIcons();
-  // The published outcomes (posts, newsletter emails): one card each once the brand has a row (OUTCOME-FINEST-1106).
+  // The published outcomes (posts, newsletter emails): one row each once the brand has a row (OUTCOME-FINEST-1106).
   const published = usePublishedOutcomes(brandId);
-  // One card per outcome: a published outcome with a row is shown by its own card, never a second generic one beside it.
+  // One row per outcome: a published outcome with a row is shown by its own row, never a second generic one beside it.
   const publishedKeys = new Set<string>(published.withRows.map((p) => p.key));
   const ordered = inServedOrder(outcomes, costQ.data).filter((o) => !publishedKeys.has(o.outcome.key));
   const ready = settled && published.settled;
   const count = ordered.length + published.withRows.length;
+  const [open, setOpen] = useState<OpenRow | null>(null);
+  const openOutcome = open?.kind === "outcome" ? ordered.find((o) => o.outcome.key === open.key) ?? null : null;
+  const openPublished = open?.kind === "published" ? published.withRows.find((p) => p.key === open.key) ?? null : null;
   return (
     <div>
       <TopBar crumbs={[{ label: "Outcomes" }, { label: "Overview" }]} />
@@ -164,9 +174,11 @@ export function OutcomesOverviewPage() {
         {allError && <p className="mb-3 text-[13px] text-[var(--data-rose)]">We could not read your own tools right now. Only your campaigns show.</p>}
         {published.failed.length > 0 && <p className="mb-3 text-[13px] text-[var(--data-rose)]">We could not read some of your posts or newsletters right now. Retrying.</p>}
         {!ready ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <Shimmer key={i} className="h-[212px] rounded-[12px]" />
+          <div className="k-card overflow-hidden">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="k-row flex h-16 items-center px-4">
+                <Shimmer className="h-4 w-full" />
+              </div>
             ))}
           </div>
         ) : count === 0 ? (
@@ -174,28 +186,101 @@ export function OutcomesOverviewPage() {
             <EmptyNote>Turn a campaign on, or connect PostHog, Clerk or Stripe, and what you get shows here.</EmptyNote>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {ordered.map((o) => (
-              <OutcomeCard
-                key={o.outcome.key}
-                o={o}
-                href={v2OutcomeHref(orgId, brandId, o.outcome.key)}
-                counts={counts}
-                peopleHeld={peopleHeld}
-                cost={costStepOf(costQ.data, o.outcome.key)}
-                costAnswered={costAnswered}
-                icon={stepIcons?.get(o.outcome.key) ?? null}
-                brandId={brandId}
-              />
-            ))}
-            {published.withRows.map((p) => (
-              <PublishedOutcomeCard key={p.key} outcomeKey={p.key} data={p.data} icon={stepIcons?.get(p.key) ?? null} />
-            ))}
+          <div className="k-card overflow-hidden">
+            <div className="k-scroll overflow-x-auto">
+              <table className="w-full min-w-[720px] text-[13px]">
+                <thead>
+                  <tr className="k-line-subtle border-b">
+                    <th className={`${OTH} w-full`}>Outcome</th>
+                    <th className={`${OTH} min-w-[220px]`}>$ / outcome</th>
+                    <th className={`${OTH} text-right`}>$ Spent</th>
+                    <th className={OTH}>
+                      <span className="sr-only">Pin</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordered.map((o) => (
+                    <OutcomeRow
+                      key={o.outcome.key}
+                      o={o}
+                      href={v2OutcomeHref(orgId, brandId, o.outcome.key)}
+                      counts={counts}
+                      peopleHeld={peopleHeld}
+                      cost={costStepOf(costQ.data, o.outcome.key)}
+                      costAnswered={costAnswered}
+                      icon={stepIcons?.get(o.outcome.key) ?? null}
+                      brandId={brandId}
+                      selected={open?.kind === "outcome" && open.key === o.outcome.key}
+                      onOpen={() => setOpen({ kind: "outcome", key: o.outcome.key })}
+                    />
+                  ))}
+                  {published.withRows.map((p) => (
+                    <PublishedOutcomeRow
+                      key={p.key}
+                      outcomeKey={p.key}
+                      data={p.data}
+                      icon={stepIcons?.get(p.key) ?? null}
+                      selected={open?.kind === "published" && open.key === p.key}
+                      onOpen={() => setOpen({ kind: "published", key: p.key })}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">An outcome is one thing you got. Open a row to see who reached it.</div>
           </div>
         )}
       </div>
+      {openOutcome && (
+        <ResearchDrawer
+          wide
+          label={openOutcome.outcome.label}
+          onClose={() => setOpen(null)}
+          head={<DrawerHead icon={stepIcons?.get(openOutcome.outcome.key) ?? null} name={openOutcome.outcome.label} />}
+          right={
+            <Link href={v2OutcomeHref(orgId, brandId, openOutcome.outcome.key)} className="k-btn">
+              Open page
+            </Link>
+          }
+        >
+          <div className="p-4">
+            <OutcomeDetail stepKey={openOutcome.outcome.key} />
+          </div>
+        </ResearchDrawer>
+      )}
+      {openPublished && (
+        <ResearchDrawer
+          wide
+          label={openPublished.key}
+          onClose={() => setOpen(null)}
+          head={<PublishedDrawerHead outcomeKey={openPublished.key} icon={stepIcons?.get(openPublished.key) ?? null} />}
+          right={
+            <Link href={v2OutcomeHref(orgId, brandId, openPublished.key)} className="k-btn">
+              Open page
+            </Link>
+          }
+        >
+          <div className="p-4">
+            <PublishedBody outcomeKey={openPublished.key} data={openPublished.data} />
+          </div>
+        </ResearchDrawer>
+      )}
     </div>
   );
+}
+
+function DrawerHead({ icon, name }: { icon: string | null; name: string }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <CatalogueMark icon={icon} name={name} size={24} />
+      <span className="truncate text-[14px] font-medium">{name}</span>
+    </span>
+  );
+}
+
+function PublishedDrawerHead({ outcomeKey, icon }: { outcomeKey: PublishedOutcomeKey; icon: string | null }) {
+  return <DrawerHead icon={icon} name={usePublishedOutcomeLabel(outcomeKey)} />;
 }
 
 /** The producer's step order (outcome-cost-series `steps[]`); a step it does not serve (posts) keeps its place after. */
@@ -206,7 +291,31 @@ function inServedOrder(list: BrandOutcome[], series: OfferOutcomeCostSeries | nu
   return [...list].sort((a, b) => rank(a) - rank(b));
 }
 
-function OutcomeCard({
+/** The name opens the outcome's page; a click anywhere else on the row opens it in the right panel. */
+function RowName({ icon, name, href, sub }: { icon: string | null; name: string; href: string; sub: React.ReactNode }) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <CatalogueMark icon={icon} name={name} size={32} />
+      <span className="min-w-0">
+        <Link href={href} className="block truncate font-medium hover:underline">
+          {name}
+        </Link>
+        <span className="k-fg3 flex items-center gap-1 truncate text-[12px] tabular-nums">{sub}</span>
+      </span>
+    </span>
+  );
+}
+
+function rowProps(onOpen: () => void, selected: boolean) {
+  return {
+    className: `k-row k-line-subtle cursor-pointer border-b last:border-b-0 ${selected ? "k-selected" : ""}`,
+    onClick: (e: React.MouseEvent<HTMLTableRowElement>) => {
+      if (opensDrawer(e.target, e.currentTarget)) onOpen();
+    },
+  };
+}
+
+function OutcomeRow({
   o,
   href,
   counts,
@@ -215,6 +324,8 @@ function OutcomeCard({
   costAnswered,
   icon,
   brandId,
+  selected,
+  onOpen,
 }: {
   o: BrandOutcome;
   href: string;
@@ -224,59 +335,104 @@ function OutcomeCard({
   costAnswered: boolean;
   icon: string | null;
   brandId: string;
+  selected: boolean;
+  onOpen: () => void;
 }) {
-  // How many per month: crm-service's months (everyone), else what features-service counted from people we contacted.
-  // A month the ledger holds no count for is null, never 0 (LEDGER-ONLY-1107): no bars then rather than a false zero.
-  const ourMonths = cost?.months.map((m) => m.outcomes) ?? null;
-  const bars = o.all?.months?.length
-    ? o.all.months.map((m) => m.people)
-    : ourMonths && ourMonths.every((n): n is number => n != null)
-      ? ourMonths
-      : null;
+  // The running $ / outcome (features-service's cumulative months), its served expected dotted beside it.
   const curve = cost ? cost.months.map((m) => m.cumulativeCostPerOutcomeUsd).filter((v): v is number => v != null) : null;
   const name = o.outcome.label;
   return (
-    <div className="k-card relative flex min-w-0 flex-col p-4 transition-shadow hover:shadow-[var(--elev-popover)]">
-      <div className="flex items-center gap-3">
-        <CatalogueMark icon={icon} name={name} size={28} />
-        <Link href={href} className="min-w-0 flex-1 truncate text-[14px] font-medium leading-5 after:absolute after:inset-0 after:content-['']">
-          {name}
-        </Link>
-        <OutcomePinButton brandId={brandId} outcomeKey={o.outcome.key} compact />
-      </div>
-
-      <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
-        <div className="min-w-0 border-r border-[var(--line-subtle)] p-3">
-          <p className="k-label">How many</p>
-          <div className="mt-1.5 flex h-7 items-center text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
-            <AllCount o={o} counts={counts} peopleHeld={peopleHeld} />
-          </div>
-          <div className="k-fg3 mt-0.5 flex items-center gap-1 truncate text-[11px] tabular-nums">
-            <OursCount o={o} counts={counts} /> contacted by us
-          </div>
-          <BarSpark values={bars ? bars.slice(-12) : null} className="mt-2" />
-        </div>
-        <div className="min-w-0 p-3">
-          <p className="k-label">$ / outcome</p>
-          <div className="mt-1.5 text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
+    <tr {...rowProps(onOpen, selected)}>
+      <td className={OTD}>
+        <RowName
+          icon={icon}
+          name={name}
+          href={href}
+          sub={
+            <>
+              <AllCount o={o} counts={counts} peopleHeld={peopleHeld} />
+              <span>·</span>
+              <OursCount o={o} counts={counts} /> from us
+            </>
+          }
+        />
+      </td>
+      <td className={OTD}>
+        <span className="flex items-center gap-3">
+          <span className="min-w-[88px] text-[14px] font-medium tabular-nums">
             <OutcomeCostFigure answered={costAnswered} cost={cost} />
-          </div>
-          <p className="k-fg3 mt-0.5 truncate text-[11px] tabular-nums">
-            {cost ? `${formatUsdAdaptive(cost.sinceInception.spendUsd)} spent` : "\u00a0"}
-          </p>
-          <div className="mt-2 h-6">{curve && curve.length >= 2 ? <SparkLine values={curve} className="h-6" /> : null}</div>
-        </div>
-      </div>
+          </span>
+          <MeasuredExpectedSpark measured={curve} expected={cost?.expected.costPerOutcomeUsd ?? null} />
+        </span>
+      </td>
+      <td className={`${OTD} whitespace-nowrap text-right tabular-nums`}>
+        {!costAnswered ? <Shimmer className="ml-auto h-4 w-12" /> : cost ? formatUsdAdaptive(cost.sinceInception.spendUsd) : <span className="k-fg4">—</span>}
+      </td>
+      <td className={`${OTD} w-8`}>
+        <OutcomePinButton brandId={brandId} outcomeKey={o.outcome.key} compact />
+      </td>
+    </tr>
+  );
+}
 
-      <div className="mt-auto flex items-center gap-2 pt-3 text-[13px]">
-        {/* No return below a Target (ROI-CONSISTENCY-1103): the card opens its outcome's page. */}
-        <span className="k-fg3 min-w-0 flex-1 truncate">See who reached it</span>
-        <Arrow />
-      </div>
-      <div className="relative z-10 mt-2 min-w-0 text-[12px]">
-        <ProducedBy campaigns={o.campaigns} funnelCampaigns={o.funnelCampaigns} sources={o.all?.sources} />
-      </div>
-    </div>
+/** A published outcome (posts, newsletter emails) in the same table: features-service `published-units`, nothing divided here. */
+function PublishedOutcomeRow({ outcomeKey, data, icon, selected, onOpen }: { outcomeKey: PublishedOutcomeKey; data: PublishedUnits; icon: string | null; selected: boolean; onOpen: () => void }) {
+  const { orgId, brandId } = useIds();
+  const name = usePublishedOutcomeLabel(outcomeKey);
+  const expected = data.accounting?.costPerUnit.expectedUsd ?? null;
+  return (
+    <tr {...rowProps(onOpen, selected)}>
+      <td className={OTD}>
+        <RowName
+          icon={icon}
+          name={name}
+          href={v2OutcomeHref(orgId, brandId, outcomeKey)}
+          sub={
+            <>
+              <NetworkLogo outcomeKey={outcomeKey} size={12} />
+              <span>
+                {formatCount(data.totals.all.units)} · {formatCount(data.totals.ours.units)} from us
+              </span>
+            </>
+          }
+        />
+      </td>
+      <td className={OTD}>
+        <span className="flex items-center gap-3">
+          <span className="min-w-[88px] text-[14px] font-medium tabular-nums">
+            <CostPerUnit data={data} />
+            {expected != null && <span className="k-fg3 ml-1 whitespace-nowrap text-[11px] font-normal">{formatUsdAdaptive(expected)} expected</span>}
+          </span>
+        </span>
+      </td>
+      <td className={`${OTD} whitespace-nowrap text-right tabular-nums`}>{formatUsdAdaptive(data.totals.ours.spentUsd)}</td>
+      <td className={`${OTD} w-8`}>
+        <OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} compact />
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * The running figure as a solid line (measured so far) and the served expected as a dotted level on the same scale
+ * (owner 2026-10-19: a curve never hides behind Learning). Display only: every point is served.
+ */
+function MeasuredExpectedSpark({ measured, expected }: { measured: number[] | null; expected: number | null }) {
+  const pts = measured ?? [];
+  if (pts.length < 2 && expected == null) return <span className="h-7 w-[120px]" />;
+  const w = 120;
+  const h = 28;
+  const all = expected != null ? [...pts, expected] : pts;
+  const max = Math.max(...all);
+  const min = Math.min(...all, 0);
+  const span = max - min || 1;
+  const y = (v: number) => h - 3 - ((v - min) / span) * (h - 6);
+  const line = pts.length >= 2 ? pts.map((v, i) => `${i ? "L" : "M"}${((i / (pts.length - 1)) * w).toFixed(1)},${y(v).toFixed(1)}`).join(" ") : null;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-7 w-[120px] shrink-0 text-[var(--accent)]" aria-hidden="true">
+      {expected != null && <line x1="0" x2={w} y1={y(expected)} y2={y(expected)} stroke="var(--fg-3)" strokeWidth="1.25" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />}
+      {line && <path d={line} fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+    </svg>
   );
 }
 
@@ -330,7 +486,7 @@ function EveryoneTable({ crmStep }: { crmStep: string }) {
             <tr className="k-line-subtle border-b">
               <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Person</th>
               <th className="k-label px-3 py-2.5 text-left font-normal">From</th>
-              <th className="k-label px-3 py-2.5 text-left font-normal">Contacted by us</th>
+              <th className="k-label px-3 py-2.5 text-left font-normal">From us</th>
               <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">When</th>
             </tr>
           </thead>
@@ -357,7 +513,7 @@ function EveryoneTable({ crmStep }: { crmStep: string }) {
                       ))}
                     </span>
                   </td>
-                  <td className="px-3 py-2">{p.contactedByUs ? <span className="k-chip">Contacted by us</span> : <span className="k-fg4">—</span>}</td>
+                  <td className="px-3 py-2">{p.contactedByUs ? <span className="k-chip">From us</span> : <span className="k-fg4">—</span>}</td>
                   <td className="k-mono k-fg2 px-3 py-2 pr-4 text-right text-[12px]">{p.reachedAt ? timeAgo(p.reachedAt) : <span className="k-fg4">—</span>}</td>
                 </tr>
               );
@@ -389,11 +545,9 @@ function EveryoneTable({ crmStep }: { crmStep: string }) {
 
 export function OutcomePage() {
   const { orgId, brandId, stepKey } = useIds();
-  const offerId = useBrandScope().soleOfferId;
-  const { outcomes, settled } = useBrandOutcomeList(orgId, brandId);
+  const { outcomes } = useBrandOutcomeList(orgId, brandId);
   const catalogue = useLegCatalogue();
   const { staffMode } = useStaffMode();
-  const [tab, setTab] = useState<"all" | "ours">("all");
   const listed = outcomes.find((o) => o.outcome.key === stepKey) ?? null;
   // A step nothing produces today still opens (an old link): its items are read the same way.
   const outcome = listed?.outcome ?? (stepKey ? outcomeOf(catalogue, null, stepKey) : null);
@@ -402,7 +556,6 @@ export function OutcomePage() {
   if (!outcome) return null;
   // The posts are a staff read today (social-service behind the gateway's staff gate).
   if (outcome.items.kind === "posts" && staffMode) return <PostsPage />;
-  const producing = listed && (listed.campaigns.length > 0 || listed.funnelCampaigns.length > 0 || (listed.all?.people ?? 0) > 0);
   return (
     <div>
       <TopBar crumbs={[{ label: "Outcomes", href: v2OutcomeHref(orgId, brandId) }, { label: outcome.label }]} />
@@ -411,52 +564,73 @@ export function OutcomePage() {
           <h1 className="min-w-0 flex-1 text-[28px] font-semibold leading-[34px] tracking-[-0.01em]">{outcome.label}</h1>
           <OutcomePinButton brandId={brandId} outcomeKey={outcome.key} />
         </div>
-        <div className="k-fg2 mb-6 mt-1 flex flex-wrap items-center gap-x-2 text-[14px]">
-          {!settled ? (
-            <Shimmer className="h-5 w-56" />
-          ) : producing && listed ? (
-            <>
-              <span>From</span>
-              <ProducedBy campaigns={listed.campaigns} funnelCampaigns={listed.funnelCampaigns} sources={listed.all?.sources} />
-            </>
-          ) : (
-            <span>Nothing brings this in today.</span>
-          )}
-        </div>
-        {outcome.items.kind === "people" && listed?.all && (
-          <OutcomeStats
-            brandId={brandId}
-            offerId={offerId}
-            stepKey={outcome.key}
-            label={stepLabel(catalogue, outcome.key) ?? outcome.label}
-            plural={outcome.label}
-            all={listed.all}
-          />
-        )}
-        {outcome.items.kind === "people" && listed?.all ? (
-          <div className="k-card overflow-hidden">
-            <RecordsTabs
-              tabs={[
-                { key: "all", label: "Everyone", count: listed.all.people },
-                { key: "ours", label: "Contacted by us", count: listed.all.contactedByUs },
-              ]}
-              active={tab}
-              onPick={(k) => setTab(k === "ours" ? "ours" : "all")}
-            />
-            {tab === "all" ? <EveryoneTable crmStep={outcome.items.crmStep} /> : <PeoplePage step={outcome.items.step} />}
-          </div>
-        ) : outcome.items.kind === "people" ? (
-          <div className="k-card overflow-hidden">
-            <PeoplePage step={outcome.items.step} />
-          </div>
-        ) : outcome.items.kind === "leads-found" ? (
-          <AudienceLists />
-        ) : (
-          <div className="k-card">
-            <EmptyNote>Not available yet. We cannot list each one here yet.</EmptyNote>
-          </div>
-        )}
+        <OutcomeDetail stepKey={outcome.key} />
       </div>
     </div>
+  );
+}
+
+/**
+ * One outcome's content, under its title: where it comes from, its stats, then everyone who reached it and the ones
+ * from us. The outcome's page and the Overview's right panel (OUTCOMES-TABLE-1108) render the same body.
+ */
+function OutcomeDetail({ stepKey }: { stepKey: string }) {
+  const { orgId, brandId } = useIds();
+  const offerId = useBrandScope().soleOfferId;
+  const { outcomes, settled } = useBrandOutcomeList(orgId, brandId);
+  const catalogue = useLegCatalogue();
+  const [tab, setTab] = useState<"all" | "ours">("all");
+  const listed = outcomes.find((o) => o.outcome.key === stepKey) ?? null;
+  const outcome = listed?.outcome ?? outcomeOf(catalogue, null, stepKey);
+  if (!outcome) return null;
+  const producing = listed && (listed.campaigns.length > 0 || listed.funnelCampaigns.length > 0 || (listed.all?.people ?? 0) > 0);
+  return (
+    <>
+      <div className="k-fg2 mb-6 mt-1 flex flex-wrap items-center gap-x-2 text-[14px]">
+        {!settled ? (
+          <Shimmer className="h-5 w-56" />
+        ) : producing && listed ? (
+          <>
+            <span>From</span>
+            <ProducedBy campaigns={listed.campaigns} funnelCampaigns={listed.funnelCampaigns} sources={listed.all?.sources} />
+          </>
+        ) : (
+          <span>Nothing brings this in today.</span>
+        )}
+      </div>
+      {outcome.items.kind === "people" && listed?.all && (
+        <OutcomeStats
+          brandId={brandId}
+          offerId={offerId}
+          stepKey={outcome.key}
+          label={stepLabel(catalogue, outcome.key) ?? outcome.label}
+          plural={outcome.label}
+          all={listed.all}
+        />
+      )}
+      {outcome.items.kind === "people" && listed?.all ? (
+        <div className="k-card overflow-hidden">
+          <RecordsTabs
+            tabs={[
+              { key: "all", label: "Everyone", count: listed.all.people },
+              { key: "ours", label: "From us", count: listed.all.contactedByUs },
+            ]}
+            active={tab}
+            onPick={(k) => setTab(k === "ours" ? "ours" : "all")}
+          />
+          {tab === "all" ? <EveryoneTable crmStep={outcome.items.crmStep} /> : <PeoplePage step={outcome.items.step} />}
+        </div>
+      ) : outcome.items.kind === "people" ? (
+        <div className="k-card overflow-hidden">
+          <PeoplePage step={outcome.items.step} />
+        </div>
+      ) : outcome.items.kind === "leads-found" ? (
+        <AudienceLists />
+      ) : (
+        <div className="k-card">
+          <EmptyNote>Not available yet. We cannot list each one here yet.</EmptyNote>
+        </div>
+      )}
+    </>
   );
 }

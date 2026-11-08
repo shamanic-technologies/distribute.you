@@ -39,14 +39,14 @@ describe("published outcomes (OUTCOME-FINEST-1106)", () => {
     expect(isPublishedOutcomeKey(null)).toBe(false);
   });
 
-  it("the outcome page opens a published outcome on its own page for EVERY customer, and the overview lists one card each", () => {
+  it("the outcome page opens a published outcome on its own page for EVERY customer, and the overview lists one row each", () => {
     const page = src("src/components/v2/outcomes-page.tsx");
     const at = page.indexOf("export function OutcomePage(");
     const body = page.slice(at);
     expect(body).toContain("if (isPublishedOutcomeKey(stepKey)) return <PublishedOutcomePage outcomeKey={stepKey} />;");
     // Before the staff-only posts feed: no staff gate on it.
     expect(body.indexOf("isPublishedOutcomeKey(stepKey)")).toBeLessThan(body.indexOf("staffMode) return <PostsPage />"));
-    expect(page).toContain("<PublishedOutcomeCard key={p.key}");
+    expect(page).toContain("<PublishedOutcomeRow");
   });
 
   it("reads features-service net, and the page divides or sums nothing", () => {
@@ -61,17 +61,17 @@ describe("published outcomes (OUTCOME-FINEST-1106)", () => {
   });
 });
 
-describe("Outcomes overview: one card per outcome, $ / outcome on every card (OUTCOME-CARD-1108)", () => {
+describe("Outcomes overview: one row per outcome, $ / outcome on every row (OUTCOME-CARD-1108, OUTCOMES-TABLE-1108)", () => {
   const card = src("src/components/v2/published-outcome-page.tsx");
   const overview = src("src/components/v2/outcomes-page.tsx");
-  it("the published card prints the served cost per Unit under $ / outcome, never $ / signup", () => {
-    const body = card.slice(card.indexOf("export function PublishedOutcomeCard("), card.indexOf("export function PublishedOutcomePage("));
-    expect(body).toContain(`<p className="k-label">$ / outcome</p>`);
+  it("the published row prints the served cost per Unit under $ / outcome, never $ / signup", () => {
+    const body = overview.slice(overview.indexOf("function PublishedOutcomeRow("), overview.indexOf("function MeasuredExpectedSpark("));
+    expect(overview).toContain("min-w-[220px]`}>$ / outcome</th>");
     expect(body).toContain("<CostPerUnit data={data} />");
     expect(body).not.toContain("$ / signup");
     expect(card).toContain("data.accounting?.costPerUnit");
   });
-  it("a published outcome with a row is never listed a second time as a generic card", () => {
+  it("a published outcome with a row is never listed a second time as a generic row", () => {
     expect(overview).toContain(".filter((o) => !publishedKeys.has(o.outcome.key))");
     expect(overview).toContain("const count = ordered.length + published.withRows.length;");
   });

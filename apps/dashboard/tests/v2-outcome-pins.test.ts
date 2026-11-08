@@ -49,13 +49,14 @@ describe("outcome pins (owner 2026-11-07: pin outcomes in the sidebar instead of
     expect(group).toContain("pinned.includes(key) || pathname === v2OutcomeHref(orgId, brandId, key)");
   });
 
-  it("every outcome page and Overview card carries the Pin button", () => {
+  it("every outcome page and Overview row carries the Pin button", () => {
     const outcomes = read("src/components/v2/outcomes-page.tsx");
     expect(outcomes).toContain("<OutcomePinButton brandId={brandId} outcomeKey={outcome.key} />");
     expect(outcomes).toContain("<OutcomePinButton brandId={brandId} outcomeKey={o.outcome.key} compact />");
     const published = read("src/components/v2/published-outcome-page.tsx");
     expect(published).toContain("<OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} />");
-    expect(published).toContain("<OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} compact />");
+    // The Overview's published rows (OUTCOMES-TABLE-1108) carry it too.
+    expect(outcomes).toContain("<OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} compact />");
   });
 });
 

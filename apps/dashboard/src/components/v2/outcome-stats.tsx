@@ -62,7 +62,7 @@ export function OutcomeStats({
         <StatTile label="People" note={<Wide>Everyone</Wide>}>
           <Figure value={formatCount(all.people)} unit={all.people === 1 ? "person" : "people"} />
         </StatTile>
-        <StatTile label="Contacted by us">
+        <StatTile label="From us">
           <Figure value={formatCount(all.contactedByUs)} unit={all.contactedByUs === 1 ? "person" : "people"} />
         </StatTile>
         <StatTile label={`$ / ${label}`} note={<Wide>Since you started</Wide>}>
@@ -79,7 +79,7 @@ export function OutcomeStats({
           {thisMonth ? (
             <>
               <Figure value={formatCount(thisMonth.people)} unit={thisMonth.people === 1 ? "person" : "people"} />
-              <p className="k-fg3 mt-0.5 truncate text-[12px]">{formatCount(thisMonth.contactedByUs)} contacted by us</p>
+              <p className="k-fg3 mt-0.5 truncate text-[12px]">{formatCount(thisMonth.contactedByUs)} from us</p>
             </>
           ) : (
             <Figure value={DASH} />
@@ -98,7 +98,7 @@ export function OutcomeStats({
                 <YAxis tick={TICK} tickLine={false} axisLine={false} width={36} tickCount={4} allowDecimals={false} />
                 <Tooltip cursor={{ fill: "var(--data-track)" }} content={({ active, payload }) => (active && payload?.length ? <PeopleTip row={payload[0].payload as PeopleRow} /> : null)} />
                 <Bar dataKey="people" name="Everyone" fill={EVERYONE} isAnimationActive={false} />
-                <Bar dataKey="contactedByUs" name="Contacted by us" fill={OURS} isAnimationActive={false} />
+                <Bar dataKey="contactedByUs" name="From us" fill={OURS} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -130,7 +130,7 @@ function PeopleTip({ row, cumulative = false }: { row: PeopleRow; cumulative?: b
         <Dot color={EVERYONE} /> {formatCount(everyone)} everyone
       </p>
       <p className="tabular-nums">
-        <Dot color={OURS} /> {formatCount(ours)} contacted by us
+        <Dot color={OURS} /> {formatCount(ours)} from us
       </p>
     </div>
   );
@@ -288,7 +288,7 @@ function PeopleLegend() {
         <Dot color={EVERYONE} /> Everyone
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <Dot color={OURS} /> Contacted by us
+        <Dot color={OURS} /> From us
       </span>
     </span>
   );

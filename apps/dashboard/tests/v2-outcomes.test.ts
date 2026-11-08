@@ -140,9 +140,9 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     // Everyone first, then the ones we contacted (lead-service's bucket, the column's figure).
     expect(page).toContain('{ key: "all", label: "Everyone", count: listed.all.people }');
     expect(page).toContain("<EveryoneTable crmStep={outcome.items.crmStep} />");
-    // Contacted by us = crm-service's served figure on the card, the tile and the tab alike (2026-11-08: the card read
+    // From us (owner 2026-11-08, was "Contacted by us") = crm-service's served figure on the row, the tile and the tab alike (the row read
     // lead-service's reached count, 16 Stripe payers, while the page said 1).
-    expect(page).toContain('{ key: "ours", label: "Contacted by us", count: listed.all.contactedByUs }');
+    expect(page).toContain('{ key: "ours", label: "From us", count: listed.all.contactedByUs }');
     expect(page).toContain("if (o.all) return <Num n={o.all.contactedByUs} />;");
   });
   it("the Overview's Leads row states its figures, never a dash (owner 2026-10-21: 72 leads read as none)", () => {

@@ -26,10 +26,8 @@ import {
   type PublishedUnitRow,
   type PublishedUnits,
 } from "@/lib/v2/published-units";
-import { BarSpark, EmptyNote, Figure, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
+import { EmptyNote, Figure, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { OutcomePinButton } from "@/components/v2/outcome-pins";
-import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { Arrow } from "@/components/v2/research-bits";
 import { OutcomeAccountingCard } from "@/components/v2/outcome-accounting-card";
 import { accountingReasonWords } from "@/lib/v2/outcome-accounting";
 
@@ -78,12 +76,12 @@ function useLabel(key: PublishedOutcomeKey): string {
   return outcomeOf(catalogue, null, key)?.label ?? key;
 }
 
-function NetworkLogo({ outcomeKey, size = 16 }: { outcomeKey: PublishedOutcomeKey; size?: number }) {
+export function NetworkLogo({ outcomeKey, size = 16 }: { outcomeKey: PublishedOutcomeKey; size?: number }) {
   return <ProviderLogo domain={PUBLISHED_OUTCOME_DOMAIN[outcomeKey]} size={size} className="rounded-[3px]" />;
 }
 
 /** $ per Unit we made (per post, per newsletter email): features-service's cost-accounting figure, its reason when absent. */
-function CostPerUnit({ data }: { data: PublishedUnits }) {
+export function CostPerUnit({ data }: { data: PublishedUnits }) {
   const c = data.accounting?.costPerUnit;
   if (!c) return DASH;
   if (c.actualUsd == null) return <span className="k-fg3 text-[13px] font-normal">{accountingReasonWords(c.actualUnavailableReason)}</span>;
@@ -94,55 +92,6 @@ function CostPerUnit({ data }: { data: PublishedUnits }) {
 function CostPerSignup({ data }: { data: PublishedUnits }) {
   if (data.costPerSignupUsd == null) return <span className="k-fg3 text-[13px] font-normal">{costPerSignupReasonWords(data.costPerSignupUnavailableReason)}</span>;
   return <>{formatUsdAdaptive(data.costPerSignupUsd)}</>;
-}
-
-/** The Outcomes overview card of one published outcome: the Research hub card anatomy, like its siblings. */
-export function PublishedOutcomeCard({ outcomeKey, data, icon }: { outcomeKey: PublishedOutcomeKey; data: PublishedUnits; icon: string | null }) {
-  const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const name = useLabel(outcomeKey);
-  const copy = PUBLISHED_OUTCOME_COPY[outcomeKey];
-  const all = data.totals.all;
-  return (
-    <div className="k-card relative flex min-w-0 flex-col p-4 transition-shadow hover:shadow-[var(--elev-popover)]">
-      <div className="flex items-center gap-3">
-        <CatalogueMark icon={icon} name={name} size={28} />
-        <Link href={v2OutcomeHref(orgId, brandId, outcomeKey)} className="min-w-0 flex-1 truncate text-[14px] font-medium leading-5 after:absolute after:inset-0 after:content-['']">
-          {name}
-        </Link>
-        <OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} compact />
-      </div>
-      <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
-        <div className="min-w-0 border-r border-[var(--line-subtle)] p-3">
-          <p className="k-label">How many</p>
-          <div className="mt-1.5 flex h-7 items-center text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">{formatCount(all.units)}</div>
-          <p className="k-fg3 mt-0.5 truncate text-[11px] tabular-nums">
-            {formatCount(data.totals.ours.units)} by us
-          </p>
-          <BarSpark values={data.daily.slice(-12).map((d) => d.units)} className="mt-2" />
-        </div>
-        <div className="min-w-0 p-3">
-          <p className="k-label">$ / outcome</p>
-          <div className="mt-1.5 text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
-            <CostPerUnit data={data} />
-          </div>
-          <p className="k-fg3 mt-0.5 truncate text-[11px] tabular-nums">{formatUsdAdaptive(data.totals.ours.spentUsd)} spent</p>
-          <BarSpark values={data.daily.slice(-12).map((d) => d.visits)} className="mt-2" />
-        </div>
-      </div>
-      <div className="mt-auto flex items-center gap-2 pt-3 text-[13px]">
-        <span className="k-fg3 min-w-0 flex-1 truncate">See each {copy.row}</span>
-        <Arrow />
-      </div>
-      <div className="relative z-10 mt-2 flex min-w-0 items-center gap-1.5 text-[12px]">
-        <NetworkLogo outcomeKey={outcomeKey} />
-        <span className="k-fg2 truncate">
-          {data.visitsMeasured === false
-            ? "Visits not tracked yet"
-            : `${formatCount(all.visits)} visit${all.visits === 1 ? "" : "s"}, ${formatCount(all.signups)} signup${all.signups === 1 ? "" : "s"}`}
-        </span>
-      </div>
-    </div>
-  );
 }
 
 export function PublishedOutcomePage({ outcomeKey }: { outcomeKey: PublishedOutcomeKey }) {
