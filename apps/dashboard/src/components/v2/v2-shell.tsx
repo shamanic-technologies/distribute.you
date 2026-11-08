@@ -122,10 +122,13 @@ function NavItem({
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, staff, children }: { title: string; staff?: true; children: React.ReactNode }) {
   return (
     <div className="mt-5">
-      <p className="k-fg3 mb-1 px-2 text-[12px]">{title}</p>
+      <p className="k-fg3 mb-1 flex items-center gap-1.5 px-2 text-[12px]">
+        {title}
+        {staff && <span className="k-chip">Staff</span>}
+      </p>
       <div className="space-y-px">{children}</div>
     </div>
   );
@@ -395,9 +398,11 @@ function V2Sidebar() {
           ))}
         </Group>
 
-        {/* Production (the GTM Factory sidebar, FACTORY-USER-DASHBOARD-1102, every client): the work the client's own
-            team does for its campaigns, and the accounts the campaigns send and read from. */}
-        <Group title="Production">
+        {/* Production (the GTM Factory sidebar, FACTORY-USER-DASHBOARD-1102): the work the client's own team does for its
+            campaigns, and the accounts the campaigns send and read from. Staff mode only for now (owner 2026-11-08), tagged
+            Staff; the pages stay reachable by URL and Connected accounts also lives in Brand settings. */}
+        {staffMode && (
+        <Group title="Production" staff>
           <NavItem href={v2Href(orgId, brandId, "ledger")} label="Ledger" icon={<I d={ICONS.ledger} />} active={pathname.startsWith(v2Href(orgId, brandId, "ledger"))} />
           <NavItem
             href={v2Href(orgId, brandId, "team-work")}
@@ -419,6 +424,7 @@ function V2Sidebar() {
             active={pathname === v2CatalogueHome(orgId, brandId)}
           />
         </Group>
+        )}
 
         <Group title="Setup">
           {/* The brand's offers, each with its one audience (owner 2026-11-07, AUDIENCE-PER-OFFER-1107). */}

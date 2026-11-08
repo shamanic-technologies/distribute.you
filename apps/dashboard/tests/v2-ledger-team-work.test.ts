@@ -86,11 +86,11 @@ describe("Done by your team: the outcomes the client's own team makes, lead-serv
 });
 
 describe("Ledger and Done by your team are client pages (FACTORY-USER-DASHBOARD-1102)", () => {
-  it("no StaffOnly; both in the client sidebar's Production group; the Ledger reads the org-scoped route", () => {
+  it("no StaffOnly on the pages; both in the sidebar's Production group (staff mode only, owner 2026-11-08); the Ledger reads the org-scoped route", () => {
     for (const p of ["ledger/page.tsx", "team-work/page.tsx"]) expect(read(`${BRAND}/${p}`)).not.toContain("StaffOnly");
     const shell = read("components/v2/v2-shell.tsx");
     const client = shell.slice(0, shell.indexOf("function StaffObjectSections("));
-    const production = client.slice(client.indexOf('<Group title="Production">'), client.indexOf('<Group title="Setup">'));
+    const production = client.slice(client.indexOf('<Group title="Production" staff>'), client.indexOf('<Group title="Setup">'));
     for (const r of ['"ledger"', '"team-work"', 'label="Connected accounts"']) expect(production).toContain(r);
     const api = read("lib/api.ts");
     expect(api).toContain("apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/ledger`)");
