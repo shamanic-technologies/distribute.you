@@ -93,9 +93,12 @@ describe("the H1 says what we are, read on its own", () => {
   // 24h") leaves an answer engine unable to say what distribute.you IS. The category
   // rides inside the H1, in plain text, rendered server-side.
   it("names the category inside the h1", () => {
-    // PAGE-REVENUE-AGENT-1029: "AI sales agent" is the page's search target (1,300/month US).
+    // HOME-INDUSTRIAL-1108 (owner 2026-11-08): the H1 states the category ("Revenue
+    // Automation") and the owner's subtitle; "AI sales agent" (1,300/month US, the
+    // PAGE-REVENUE-AGENT-1029 target) stays in the <title>.
     const h1 = html.slice(html.indexOf("<h1"), html.indexOf("</h1>"));
-    expect(h1).toContain("distribute.you is the AI sales agent that does done-for-you revenue automation");
+    expect(h1).toContain("Revenue Automation");
+    expect(h1).toContain("Meet your distribution teammate.");
     expect(html).toMatch(/<title>AI Sales Agent[^<]*<\/title>/);
   });
 });
@@ -155,7 +158,7 @@ describe("the offer the page states", () => {
     // x1, a prepaid first top-up of $10. Owner 2026-10-31: the $9/user Team tier is gone and
     // the page never states a member count (the 5-member cap lives in the Terms only). The first-$100 match,
     // the referral program, post-paid and the $99/month plan ended for new signups.
-    for (const line of ["Revenue Automation", "Done For You", "0% markup", "start with $10", 'href="/catalog"']) {
+    for (const line of ["Revenue Automation", "Industrial-Grade", "0% markup", "start with $10", 'href="/catalog"']) {
       expect(html, line).toContain(line);
     }
     expect(html).not.toContain("promo-bar");

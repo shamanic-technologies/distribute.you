@@ -181,15 +181,9 @@ describe("hotLeadBandHtml", () => {
 });
 
 describe("the hero proof row on the homepage", () => {
-  it("is a server-rendered token, so a failed read drops the row instead of freezing a number", () => {
-    expect(html).toContain("__HOT_LEAD_ROW__");
-    // No hardcoded twin: the figures exist in exactly one place.
+  it("is gone since the Industrial-Grade hero (owner 2026-11-08: sell the value, never the cost)", () => {
+    expect(html).not.toContain("__HOT_LEAD_ROW__");
     expect(html).not.toContain("cost per booked meeting");
-  });
-
-  it("sits ABOVE the headline - the proof you walk past on the way to it", () => {
-    expect(html.indexOf("__HOT_LEAD_ROW__")).toBeLessThan(html.indexOf("<h1>"));
-    expect(html.indexOf("__HOT_LEAD_ROW__")).toBeGreaterThan(html.indexOf('class="hero-inner"'));
   });
 
   it("bumps the asset cache-busters, or the edge keeps serving the old css and js", () => {
