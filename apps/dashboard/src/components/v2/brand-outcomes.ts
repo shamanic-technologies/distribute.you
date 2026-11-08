@@ -59,6 +59,18 @@ export function useStepIcons(): Map<string, string> | undefined {
 }
 
 /**
+ * Each step's catalogue name, plural and the lead state its Units are declared under, keyed by step key (same public read
+ * as `useStepIcons`). The Outcomes overview names a ledger outcome by it (GSC-CONNECTOR-1108).
+ */
+export function useCatalogueSteps(): Map<string, { name: string; pluralName: string | null; leadState: string | null }> | undefined {
+  const q = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000 });
+  return useMemo(
+    () => (q.data ? new Map(q.data.map((s) => [s.key, { name: s.name, pluralName: s.pluralName ?? null, leadState: s.leadState ?? null }] as const)) : undefined),
+    [q.data],
+  );
+}
+
+/**
  * The brand's list snapshot (lists, people and companies held), one query key for the
  * Leads found page and its sidebar entry, so the entry's count is the page's People tab
  * (owner 2026-10-11: « leads found n'affiche pas de nombre »). `enabled` lets the sidebar
