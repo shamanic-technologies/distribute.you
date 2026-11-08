@@ -210,9 +210,9 @@ describe("Campaign rows (useCampaignRows)", () => {
   it("reveals on settle (resolved OR errored) so a failed query can't eternal-skeleton", () => {
     expect(table).toContain("campaignsQ.isError");
     expect(table).toContain("groupsQ.isError");
-    // The per-channel fan-out is in the gate too: one channel's read failing must
-    // not hold the table, and one still loading must not let it paint half its money.
-    expect(table).toContain("channelGroupQs.every");
+    // The brand-wide money read is in the gate too: one still loading must not let the
+    // table paint half its money, and a failure must not hold it.
+    expect(table).toContain("brandMoneyQ.data !== undefined || brandMoneyQ.isError");
   });
 
   it("lists an offer's campaigns across CHANNELS, not one feature slug", () => {
@@ -233,20 +233,17 @@ describe("Campaign rows (useCampaignRows)", () => {
     expect(table).toContain("c.featureSlug === featureSlug");
   });
 
-  it("reads each channel's money from its own channel, and never adds channels up", () => {
-    // That endpoint prices ONE channel at a time and a campaign is paced and priced
-    // on its own channel's money, so the rows are merged by campaign id. A sum here
-    // would be a browser-computed metric AND would drift from what billing charges.
-    expect(table).toContain("useQueries");
-    expect(table).toContain('["featureRevenueByCampaign", brandId, slug]');
+  it("reads every channel's money in ONE brand read, and never adds channels up", () => {
+    // One read per channel (~15 per page view, each every 5 s) kept the box saturated
+    // (CAMPAIGN-MONEY-ONE-READ-1108); the brand read serves each channel's rows byte-equal.
+    expect(table).not.toContain("useQueries");
+    expect(table).toContain('useAuthQuery(["brandCampaignRevenue", brandId], () => getBrandCampaignRevenue(brandId)');
+    expect(api).toContain("/campaign-revenue?pricing=net");
     // Merged by campaign id — a campaign IS a channel, so it appears in exactly one
     // channel's answer and the merge can never make two sources disagree on a row.
     expect(table).toContain("m.set(g.campaignId, g)");
-    // Measured: 902 chars from the memo that names the channels to the closing brace
-    // of the queries call. Do NOT pad — this is a not-toContain guard, so a slice
-    // running past the block would read neighbouring code and fail on correct code.
-    const fanoutAt = table.indexOf("const channelSlugs = useMemo(");
-    const fanout = table.slice(fanoutAt, fanoutAt + 902);
+    const fanoutAt = table.indexOf("const moneyChannelSlugs = useMemo(");
+    const fanout = table.slice(fanoutAt, table.indexOf("// ONE LINE PER IDENTITY", fanoutAt));
     expect(fanout).not.toContain("reduce");
     expect(fanout).not.toContain("+=");
   });

@@ -7188,7 +7188,12 @@ export async function getFeatureRevenueByCampaign(
     });
     throw new Error("[dashboard] getFeatureRevenueByCampaign: invalid response shape");
   }
-  return parsed.data.groups.map((g) => ({
+  return campaignRevenueGroupsOf(parsed.data.groups);
+}
+
+/** One channel's lean groups, as `getFeatureRevenueByCampaign` and `getBrandCampaignRevenue` both serve them. */
+function campaignRevenueGroupsOf(groups: z.infer<typeof FeatureRevenueByCampaignSchema>["groups"]): CampaignRevenueGroup[] {
+  return groups.map((g) => ({
     campaignId: g.campaignId,
     committedCostUsd: g.costEconomics.committedCostUsd ?? null,
     actualCostUsd: g.costEconomics.actualCostUsd ?? null,
@@ -7205,6 +7210,46 @@ export async function getFeatureRevenueByCampaign(
     realizedReturn: g.costEconomics.realizedReturn ?? null,
     outcomesMaturity: g.outcomes?.maturity ?? null,
   }));
+}
+
+/**
+ * A channel slot of the brand-wide read: that channel's per-campaign body, or the channel's own
+ * failure stated in its slot (the other channels still answer).
+ */
+const BrandCampaignRevenueChannelSchema = z.union([
+  FeatureRevenueByCampaignSchema.extend({ featureSlug: z.string() }),
+  z.object({ featureSlug: z.string(), error: z.string(), reason: z.string().nullish() }),
+]);
+const BrandCampaignRevenueSchema = z.object({ brandId: z.string(), channels: z.array(BrandCampaignRevenueChannelSchema) });
+
+export interface BrandCampaignRevenue {
+  /** Each channel's lean groups, keyed by channel slug: the same rows its per-channel read serves. */
+  bySlug: Record<string, CampaignRevenueGroup[]>;
+  /** Channels whose read failed this time, with features-service's reason. */
+  failed: { featureSlug: string; reason: string | null }[];
+}
+
+/**
+ * GET /brands/:brandId/campaign-revenue — every campaign's money for one brand across all its
+ * channels in ONE read (features-service CAMPAIGN-MONEY-ONE-READ-1108). Replaces one
+ * `/features/:slug/revenue?groupBy=campaignId` read per channel (~15 per page view, each re-asked
+ * every 5 s); each channel's rows are byte-equal to that per-channel read (probed on prod 2026-11-08,
+ * 17 of 17 channels).
+ */
+export async function getBrandCampaignRevenue(brandId: string, token?: string): Promise<BrandCampaignRevenue> {
+  const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/campaign-revenue?pricing=net`, { token });
+  const parsed = BrandCampaignRevenueSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandCampaignRevenue: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[dashboard] getBrandCampaignRevenue: invalid response shape");
+  }
+  const bySlug: Record<string, CampaignRevenueGroup[]> = {};
+  const failed: BrandCampaignRevenue["failed"] = [];
+  for (const c of parsed.data.channels) {
+    if ("error" in c) failed.push({ featureSlug: c.featureSlug, reason: c.reason ?? null });
+    else bySlug[c.featureSlug] = campaignRevenueGroupsOf(c.groups);
+  }
+  return { bySlug, failed };
 }
 
 // ─── The WORKFLOWS a campaign's channel runs ─────────────────────────────────

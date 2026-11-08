@@ -434,6 +434,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "contactedValue",
   "dealsValue",
   "featureRevenueByCampaign",
+  "brandCampaignRevenue",
   "brandOfferMoney",
   "featureAudienceStats",
   // Audiences.
