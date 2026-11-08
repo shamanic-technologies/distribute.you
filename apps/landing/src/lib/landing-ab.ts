@@ -44,28 +44,25 @@
 // Owner 2026-10-14: 100% on `postpaid`. `control` and `subscription` leave the draw (still
 // reachable with `?variant=`); a returning visitor whose cookie names either is redrawn,
 // so the cookie the dashboard reads becomes `postpaid` on their next visit.
-// Owner 2026-11-08 (HOME-INDUSTRIAL-1108): 50/50 between `postpaid` (the homepage as it
-// is) and `industrial` (the same page, hero "Revenue Automation / Industrial-Grade", see
-// `lib/pages/home-industrial.ts`). The dashboard sells both arms the same onboarding
-// (`offerArm` reads anything but `subscription` as the default). Read: the share of
-// human visitors per arm who start the onboarding within 24h.
+// Owner 2026-11-08 (HOME-INDUSTRIAL-1108): the Industrial-Grade hero, A/B tested 50/50 for an
+// hour, became THE homepage ("switche direct à 100%"): it lives in `index-v2.html` itself,
+// so crawlers see it too. A cookie still naming `industrial` is redrawn onto `postpaid`.
 export const AB_TEST_ENABLED = true;
 
-export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct", "subscription", "postpaid", "industrial"] as const;
+export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct", "subscription", "postpaid"] as const;
 export type LandingVariant = (typeof LANDING_VARIANTS)[number];
 
 export const VARIANT_COOKIE = "lp_variant";
 const COOKIE_MAX_AGE_S = 90 * 24 * 60 * 60;
 
 /**
- * Share of first visits drawn into each variant. Owner-set 2026-11-08: half on `postpaid`
- * (the homepage as it is), half on `industrial` (the Industrial-Grade hero). A variant at weight 0
+ * Share of first visits drawn into each variant. Owner-set 2026-10-14: everyone on
+ * `postpaid` (the homepage, which carries the Industrial-Grade hero since 2026-11-08). A variant at weight 0
  * has left the test: a visitor whose cookie names it is drawn again rather than kept on a
  * page nobody else is being shown, so the live arms stay comparable.
  */
 export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
-  postpaid: 0.5,
-  industrial: 0.5,
+  postpaid: 1,
   control: 0,
   subscription: 0,
   instinct: 0,
