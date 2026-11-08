@@ -114,14 +114,14 @@ export const REC_TH = "k-label h-9 px-3 text-left font-medium border-b border-[v
 
 export function RecordsFooter({ left, right }: { left: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="k-fg3 sticky bottom-0 z-[2] flex h-10 items-center gap-4 border-t border-[var(--line-subtle)] bg-[var(--bg-surface)]/95 px-4 text-[12px] backdrop-blur md:px-6">
+    <div className="k-fg3 sticky bottom-0 z-[2] flex h-10 [@media(max-height:500px)]:static items-center gap-4 border-t border-[var(--line-subtle)] bg-[var(--bg-surface)]/95 px-4 text-[12px] backdrop-blur md:px-6">
       <span className="min-w-0 truncate tabular-nums">{left}</span>
       <span className="ml-auto flex shrink-0 items-center gap-3">
         {right}
-        <span className="hidden items-center gap-1 md:inline-flex">
+        <span className="hidden items-center gap-1 md:pointer-fine:inline-flex">
           <span className="k-kbd">J</span><span className="k-kbd">K</span> move
         </span>
-        <span className="hidden items-center gap-1 md:inline-flex">
+        <span className="hidden items-center gap-1 md:pointer-fine:inline-flex">
           <span className="k-kbd">↵</span> open
         </span>
       </span>

@@ -320,7 +320,7 @@ function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
           <EmptyNote>{base.length === 0 ? "No campaign running yet." : "No campaign matches."}</EmptyNote>
         </div>
       ) : (
-        <div className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
+        <div className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden @container">
           {shown.map((c) => (
             <CampaignLine
               key={c.id}
@@ -424,7 +424,7 @@ export function CampaignLine({
       }}
       onMouseEnter={() => prefetch(href)}
       onFocus={() => prefetch(href)}
-      className="k-row grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 px-4 py-4 md:grid-cols-[minmax(0,1fr)_104px_120px_116px_120px_76px_170px]"
+      className="k-row grid cursor-pointer grid-cols-1 items-center @md:grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-2 px-4 py-4 @[68rem]:grid-cols-[minmax(0,1fr)_104px_120px_116px_120px_76px_170px]"
     >
       <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
         <span className="flex min-w-0 items-center gap-2">
@@ -444,36 +444,36 @@ export function CampaignLine({
           <Shimmer className="h-3 w-48 rounded" />
         )}
       </MarkLines>
-      <div className="hidden min-w-0 md:block">
+      <div className="hidden min-w-0 @[68rem]:block">
         <div className="k-label">Starts from</div>
         <div className="mt-0.5">{copy ? <TypeTag row={copy} /> : copySettled ? DASH : <Shimmer className="h-4 w-14 rounded" />}</div>
       </div>
-      <div className="hidden min-w-0 md:block">
+      <div className="hidden min-w-0 @[68rem]:block">
         <div className="k-label">Target</div>
         <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px]">
           {targetLabel && <StepMark stepKey={campaign.target} size="xs" />}
           <span className="truncate">{targetLabel ?? (campaign.target && !catalogueReady ? <Shimmer className="h-4 w-16 rounded" /> : DASH)}</span>
         </div>
       </div>
-      <div className="hidden text-right md:block">
+      <div className="hidden text-right @[68rem]:block">
         <div className="k-label">
           <RoiLabel>Expected ROI</RoiLabel>
         </div>
         <div className="mt-0.5 text-[13px] tabular-nums">{!rowSettled ? wait : row ? <ExpectedRoi row={row} /> : DASH}</div>
       </div>
-      <div className="hidden text-right md:block">
+      <div className="hidden text-right @[68rem]:block">
         <div className="k-label">
           <RoiLabel>Realized ROI</RoiLabel>
         </div>
         <div className="mt-0.5 text-[13px] font-medium tabular-nums">{!rowSettled ? wait : row ? <RealizedRoi row={row} /> : DASH}</div>
       </div>
-      <div className="hidden text-right md:block">
+      <div className="hidden text-right @[68rem]:block">
         <div className="k-label">$ Spent</div>
         <div className="mt-0.5 text-[13px] tabular-nums">{!rowSettled ? wait : row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH}</div>
         {rowSettled && row?.investedUsd != null && spentMax ? <ShareBar value={row.investedUsd} max={spentMax} className="ml-auto mt-1.5 w-full" /> : null}
       </div>
-      <div className="flex justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-        <div className="text-right">
+      <div className="flex @md:justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <div className="@md:text-right">
           <FunnelCampaignStatus campaign={campaign} onLabel={on ? onLabel : null} />
           {on && notFunded && (
             <button type="button" onClick={() => setEditing(true)} className="mt-1 block w-full text-right text-[11.5px] text-[var(--data-amber)] hover:underline">
