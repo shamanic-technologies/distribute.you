@@ -9,7 +9,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import type { Agency, AgencyFact } from "../agencies";
+import { searchName, type Agency, type AgencyFact } from "../agencies";
 import { esc } from "../fleet-indexes";
 import { CS_AGENCIES, CS_ALTERNATIVES_PATH, CS_PAGE_PATH, OUR_CS_ROW, csVsPath } from "../customer-success-agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
@@ -108,7 +108,7 @@ export function renderCsVsPage(a: Agency): string {
 </section>
 ${callHtml()}`;
   return shell({
-    title: `distribute.you vs ${a.name}: customer success agency price and results compared`,
+    title: `distribute.you vs ${searchName(a)}: customer success agency price and results compared`,
     description,
     path,
     head: csHead(),

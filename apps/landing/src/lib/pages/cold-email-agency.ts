@@ -472,7 +472,7 @@ const DESCRIPTION =
 export function renderColdEmailAgencyPage(list: IndexList | null, sending: SendingVolume | null): string {
   const url = `${SITE}${COLD_EMAIL_PAGE_PATH}`;
   return shell({
-    title: "Cold Email Agency: emails written, sent and answered for you | distribute.you",
+    title: "Cold Email Agency: get a quote for emails written, sent and answered for you",
     description: DESCRIPTION,
     path: COLD_EMAIL_PAGE_PATH,
     head: coldEmailHead(),

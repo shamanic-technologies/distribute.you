@@ -9,7 +9,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import type { Agency, AgencyFact } from "../agencies";
+import { searchName, type Agency, type AgencyFact } from "../agencies";
 import { esc } from "../fleet-indexes";
 import {
   OUR_TRAFFIC_AGENCY_ROW,
@@ -112,7 +112,7 @@ export function renderTrafficAgencyVsPage(a: Agency): string {
 </section>
 ${callHtml(TRAFFIC_AUTOMATION_PATH)}`;
   return shell({
-    title: `distribute.you vs ${a.name}: website traffic agency price and results compared`,
+    title: `distribute.you vs ${searchName(a)}: website traffic agency price and results compared`,
     description,
     path,
     head: trafficAgencyHead(),

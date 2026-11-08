@@ -14,6 +14,17 @@
 
 export type AgencyFact = { readonly text: string; readonly sourceUrl: string };
 
+/**
+ * How a provider is named where people SEARCH for it (page titles): its brand, plus its
+ * domain when searchers can know it by the domain instead ("South (hireinsouth.com)":
+ * Google showed our South page for "hireinsouth.com alternatives", SEO-TITLES-1108).
+ */
+export function searchName(a: { readonly name: string; readonly domain: string }): string {
+  const stem = a.domain.split(".")[0].toLowerCase();
+  const name = a.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return stem === name ? a.name : `${a.name} (${a.domain})`;
+}
+
 export type Agency = {
   readonly slug: string;
   readonly name: string;
