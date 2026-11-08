@@ -19,14 +19,19 @@ const q = (s = "") => new URLSearchParams(s);
 const HOMEPAGE_SRC = readFileSync(path.join(__dirname, "../../public/landing/index-v2.html"), "utf8");
 
 describe("the split rule", () => {
-  it("draws every first-time human onto the post-paid arm", () => {
-    // Owner 2026-10-14: 100% post-paid.
-    expect(VARIANT_WEIGHTS).toEqual({ postpaid: 1, control: 0, subscription: 0, instinct: 0, assistant: 0, concierge: 0 });
-    for (const r of [0, 0.12, 0.5, 0.9, 0.9999]) {
-      expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: r, enabled: true })).toEqual({
-        variant: "postpaid", setCookie: true, inTest: true,
+  it("draws first-time humans half on the homepage as it is, half on the Industrial-Grade hero", () => {
+    // Owner 2026-11-08 (HOME-INDUSTRIAL-1108): 50/50 postpaid vs industrial.
+    expect(VARIANT_WEIGHTS).toEqual({ postpaid: 0.5, industrial: 0.5, control: 0, subscription: 0, instinct: 0, assistant: 0, concierge: 0 });
+    for (const [r, variant] of [[0, "postpaid"], [0.12, "postpaid"], [0.4999, "postpaid"], [0.5, "industrial"], [0.9, "industrial"], [0.9999, "industrial"]] as const) {
+      expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: r, enabled: true }), String(r)).toEqual({
+        variant, setCookie: true, inTest: true,
       });
     }
+  });
+
+  it("keeps a returning visitor on the industrial arm", () => {
+    const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=industrial`, userAgent: CHROME, query: q(), random: 0.05, enabled: true });
+    expect(d).toEqual({ variant: "industrial", setCookie: false, inTest: true });
   });
 
   it("keeps a returning visitor on the post-paid arm", () => {

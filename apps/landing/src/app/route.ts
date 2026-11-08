@@ -5,6 +5,7 @@ import { renderAssistantPage } from "@/lib/pages/assistant";
 import { renderConciergePage } from "@/lib/pages/concierge";
 import { renderInstinctPage } from "@/lib/pages/instinct";
 import { withHomeWhy } from "@/lib/pages/home-agent";
+import { withIndustrialHero } from "@/lib/pages/home-industrial";
 import { fetchPlatformPrices } from "@/lib/platform-prices";
 import { withSiteChrome } from "@/lib/site-chrome";
 import {
@@ -42,7 +43,8 @@ export async function GET(request: Request) {
   // source. Served to `control`, `postpaid` and crawlers. Its price list is READ from the
   // public cost catalogue at render (`lib/pages/home-agent.ts`). The first-$100 match
   // banner ended with the offer reset. `index-v2-subscription.html` is the retired
-  // $99/month page, reachable only by `?variant=subscription`.
+  // $99/month page, reachable only by `?variant=subscription`. `industrial` gets the same
+  // page with the Industrial-Grade hero (HOME-INDUSTRIAL-1108, 50/50 with `postpaid`).
   const homepage = async () => {
     const prices = await fetchPlatformPrices("/");
     return withHomeWhy(readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"), prices);
@@ -58,7 +60,9 @@ export async function GET(request: Request) {
         ? renderConciergePage(undefined, { at: "homepage" })
         : decision.variant === "instinct"
           ? renderInstinctPage()
-          : await homepage();
+          : decision.variant === "industrial"
+            ? withIndustrialHero(await homepage())
+            : await homepage();
   // The hand-written pages carry `<!--site-nav-->` / `<!--site-footer-->`: the nav and
   // footer are drawn from the page catalogue, like every other page's.
   const chromed = withSiteChrome(page, "/");
