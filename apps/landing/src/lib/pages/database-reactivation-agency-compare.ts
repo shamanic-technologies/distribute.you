@@ -9,7 +9,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import type { Agency, AgencyFact } from "../agencies";
+import { searchName, type Agency, type AgencyFact } from "../agencies";
 import { esc } from "../fleet-indexes";
 import {
   REACTIVATION_AGENCIES,
@@ -114,7 +114,7 @@ export function renderReactivationVsPage(a: Agency): string {
 </section>
 ${callHtml()}`;
   return shell({
-    title: `distribute.you vs ${a.name}: database reactivation agency price and results compared`,
+    title: `distribute.you vs ${searchName(a)}: database reactivation agency price and results compared`,
     description,
     path,
     head: reactivationHead(),

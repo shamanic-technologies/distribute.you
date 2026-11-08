@@ -9,7 +9,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import type { Agency, AgencyFact } from "../agencies";
+import { searchName, type Agency, type AgencyFact } from "../agencies";
 import { esc } from "../fleet-indexes";
 import { OUR_UA_ROW, UA_AGENCIES, UA_ALTERNATIVES_PATH, UA_PAGE_PATH, uaVsPath } from "../user-acquisition-agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
@@ -108,7 +108,7 @@ export function renderUaVsPage(a: Agency): string {
 </section>
 ${callHtml(uaAgentTwin())}`;
   return shell({
-    title: `distribute.you vs ${a.name}: user acquisition agency price and results compared`,
+    title: `distribute.you vs ${searchName(a)}: user acquisition agency price and results compared`,
     description,
     path,
     head: uaHead(),

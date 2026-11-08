@@ -6,7 +6,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import { AGENCIES, ALTERNATIVES_PATH, AGENCY_PAGE_PATH, OUR_AGENCY_ROW, agencyVsPath, type Agency, type AgencyFact } from "../agencies";
+import { AGENCIES, ALTERNATIVES_PATH, AGENCY_PAGE_PATH, OUR_AGENCY_ROW, agencyVsPath, type Agency, type AgencyFact, searchName } from "../agencies";
 import { esc } from "../fleet-indexes";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
 import { agencyHead, callHtml } from "./gtm-agency";
@@ -105,7 +105,7 @@ export function renderAgencyVsPage(a: Agency): string {
 </section>
 ${callHtml()}`;
   return shell({
-    title: `distribute.you vs ${a.name}: GTM agency price, contract and results compared`,
+    title: `distribute.you vs ${searchName(a)}: GTM agency price, contract and results compared`,
     description,
     path,
     head: agencyHead(),

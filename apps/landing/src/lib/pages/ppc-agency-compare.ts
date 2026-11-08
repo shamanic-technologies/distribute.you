@@ -8,7 +8,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import type { Agency, AgencyFact } from "../agencies";
+import { searchName, type Agency, type AgencyFact } from "../agencies";
 import { esc } from "../fleet-indexes";
 import { OUR_PPC_ROW, PPC_AGENCIES, PPC_ALTERNATIVES_PATH, PPC_PAGE_PATH, ppcVsPath } from "../ppc-agencies";
 import { SITE, WHY, breadcrumb, shell } from "../v2-shell";
@@ -108,7 +108,7 @@ export function renderPpcVsPage(a: Agency): string {
 </section>
 ${callHtml(AD_MANAGEMENT_PATH)}`;
   return shell({
-    title: `distribute.you vs ${a.name}: PPC agency price and results compared`,
+    title: `distribute.you vs ${searchName(a)}: PPC agency price and results compared`,
     description,
     path,
     head: ppcHead(),

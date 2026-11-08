@@ -9,7 +9,7 @@
  *
  * Alias-free: the unit tests render it directly.
  */
-import type { Agency, AgencyFact } from "../agencies";
+import { searchName, type Agency, type AgencyFact } from "../agencies";
 import { esc } from "../fleet-indexes";
 import {
   COLD_EMAIL_AGENCIES,
@@ -122,7 +122,7 @@ export function renderColdEmailVsPage(a: Agency): string {
 </section>
 ${callHtml()}`;
   return shell({
-    title: `distribute.you vs ${a.name}: cold email agency price and results compared`,
+    title: `distribute.you vs ${searchName(a)}: cold email agency price and results compared`,
     description,
     path,
     head: coldEmailHead(),
