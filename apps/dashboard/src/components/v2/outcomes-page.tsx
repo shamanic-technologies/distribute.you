@@ -36,9 +36,10 @@ import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { OutcomePinButton } from "@/components/v2/outcome-pins";
 import { OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { LearningFigure } from "@/components/v2/roi-label";
+import { LearningFigure, RoiLabel } from "@/components/v2/roi-label";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { costStepOf, type OfferOutcomeCostSeries, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
+import { costStepOf, type OfferMix, type OfferOutcomeCostSeries, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { stepLabel } from "@/lib/legs";
 
 /**
@@ -144,13 +145,13 @@ type OpenRow = { kind: "outcome"; key: string } | { kind: "published"; key: Publ
 
 export function OutcomesOverviewPage() {
   const { orgId, brandId } = useIds();
-  // $ per outcome: the brand's one offer when it sells one, else the BRAND series (features-service v0.179.548).
-  const offerId = useBrandScope().soleOfferId;
   const { outcomes, settled, allError } = useBrandOutcomeList(orgId, brandId);
   const counts = useReachedCounts(brandId, outcomes.flatMap((o) => reachedStepOf(o.outcome) ?? [])).data ?? null;
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held ?? null;
-  const costQ = useOutcomeCostSeries(brandId, offerId);
+  // The BRAND series, one offer or several: its rows carry `offerMix` (BRAND-VALUE-ROI-1108), value and returns traced
+  // per offer; a brand selling one offer reads that offer's figures byte for byte.
+  const costQ = useOutcomeCostSeries(brandId, null);
   const costAnswered = costQ.data !== undefined || (costQ.isFetchedAfterMount && costQ.isError);
   const stepIcons = useStepIcons();
   // The published outcomes (posts, newsletter emails): one row each once the brand has a row (OUTCOME-FINEST-1106).
@@ -192,7 +193,11 @@ export function OutcomesOverviewPage() {
                 <thead>
                   <tr className="k-line-subtle border-b">
                     <th className={`${OTH} w-full`}>Outcome</th>
+                    <th className={`${OTH} min-w-[200px]`}>
+                      <RoiLabel />
+                    </th>
                     <th className={`${OTH} min-w-[220px]`}>$ / outcome</th>
+                    <th className={`${OTH} text-right`}>$ Value</th>
                     <th className={`${OTH} text-right`}>$ Spent</th>
                     <th className={OTH}>
                       <span className="sr-only">Pin</span>
@@ -340,6 +345,7 @@ function OutcomeRow({
 }) {
   // The running $ / outcome (features-service's cumulative months), its served expected dotted beside it.
   const curve = cost ? cost.months.map((m) => m.cumulativeCostPerOutcomeUsd).filter((v): v is number => v != null) : null;
+  const mix = cost?.offerMix ?? null;
   const name = o.outcome.label;
   return (
     <tr {...rowProps(onOpen, selected)}>
@@ -358,12 +364,18 @@ function OutcomeRow({
         />
       </td>
       <td className={OTD}>
+        <OutcomeRoiCell answered={costAnswered} mix={mix} />
+      </td>
+      <td className={OTD}>
         <span className="flex items-center gap-3">
           <span className="min-w-[88px] text-[14px] font-medium tabular-nums">
             <OutcomeCostFigure answered={costAnswered} cost={cost} />
           </span>
-          <MeasuredExpectedSpark measured={curve} expected={cost?.expected.costPerOutcomeUsd ?? null} />
+          <MeasuredExpectedSpark measured={curve} expected={mix?.expectedCostPerOutcomeUsd ?? null} />
         </span>
+      </td>
+      <td className={`${OTD} whitespace-nowrap text-right tabular-nums`}>
+        <OutcomeValueCell answered={costAnswered} mix={mix} />
       </td>
       <td className={`${OTD} whitespace-nowrap text-right tabular-nums`}>
         {!costAnswered ? <Shimmer className="ml-auto h-4 w-12" /> : cost ? formatUsdAdaptive(cost.sinceInception.spendUsd) : <span className="k-fg4">—</span>}
@@ -398,6 +410,9 @@ function PublishedOutcomeRow({ outcomeKey, data, icon, selected, onOpen }: { out
         />
       </td>
       <td className={OTD}>
+        <span className="k-fg4">—</span>
+      </td>
+      <td className={OTD}>
         <span className="flex items-center gap-3">
           <span className="min-w-[88px] text-[14px] font-medium tabular-nums">
             <CostPerUnit data={data} />
@@ -405,11 +420,65 @@ function PublishedOutcomeRow({ outcomeKey, data, icon, selected, onOpen }: { out
           </span>
         </span>
       </td>
+      <td className={`${OTD} text-right`}>
+        <span className="k-fg4">—</span>
+      </td>
       <td className={`${OTD} whitespace-nowrap text-right tabular-nums`}>{formatUsdAdaptive(data.totals.ours.spentUsd)}</td>
       <td className={`${OTD} w-8`}>
         <OutcomePinButton brandId={brandId} outcomeKey={outcomeKey} compact />
       </td>
     </tr>
+  );
+}
+
+/**
+ * The outcome's return (BRAND-VALUE-ROI-1108): only where it IS a campaign Target (ROI-CONSISTENCY-1103), else `—`.
+ * Measured big (greyed while Learning), the served expected small, the measured curve solid with the expected dotted flat
+ * (an expected figure has no history). Every figure is features-service's `offerMix`.
+ */
+function OutcomeRoiCell({ answered, mix }: { answered: boolean; mix: OfferMix | null }) {
+  if (!answered) return <Shimmer className="h-4 w-16" />;
+  if (!mix || !mix.isCampaignTarget) return <span className="k-fg4">—</span>;
+  const measured = mix.measuredReturn.roiMultiple;
+  const expected = mix.expectedReturn.roiMultiple;
+  const curve = mix.measuredReturn.months.map((m) => m.roiMultiple).filter((v): v is number => v != null);
+  return (
+    <span className="flex items-center gap-3">
+      <span className="min-w-[72px] text-[14px] font-medium tabular-nums">
+        {measured != null ? (
+          mix.measuredReturn.learning ? (
+            <LearningFigure measured={formatRoi(measured)} expected={expected != null ? formatRoi(expected) : null} />
+          ) : (
+            <span className="whitespace-nowrap">
+              <span className={roiIsGood(measured) ? "text-[var(--run)]" : ""}>{formatRoi(measured)}</span>
+              {expected != null && <span className="k-fg3 ml-1 text-[11px] font-normal">{formatRoi(expected)} expected</span>}
+            </span>
+          )
+        ) : expected != null ? (
+          <span className="whitespace-nowrap">
+            {formatRoi(expected)}
+            <span className="k-fg3 ml-1 text-[11px] font-normal">expected</span>
+          </span>
+        ) : (
+          <span className="k-fg3 text-[13px] font-normal">Learning</span>
+        )}
+      </span>
+      <MeasuredExpectedSpark measured={curve} expected={expected} />
+    </span>
+  );
+}
+
+/** What it is worth: the traced value of our Target outcomes (beside $ Spent), else what one is worth. */
+function OutcomeValueCell({ answered, mix }: { answered: boolean; mix: OfferMix | null }) {
+  if (!answered) return <Shimmer className="ml-auto h-4 w-12" />;
+  const total = mix?.measuredReturn.valueUsd ?? null;
+  const each = mix?.valuePerOutcomeUsd ?? null;
+  if (total == null && each == null) return <span className="k-fg4">—</span>;
+  return (
+    <span className="block">
+      {total != null ? formatUsdAdaptive(total) : formatUsdAdaptive(each!)}
+      <span className="k-fg3 block text-[11px]">{total != null && each != null ? `${formatUsdAdaptive(each)} each` : total == null ? "each" : "\u00a0"}</span>
+    </span>
   );
 }
 
@@ -441,7 +510,8 @@ function OutcomeCostFigure({ answered, cost }: { answered: boolean; cost: Outcom
   if (!answered) return <Shimmer className="h-7 w-20" />;
   if (!cost) return <span className="k-fg4">—</span>;
   const measured = cost.sinceInception.costPerOutcomeUsd;
-  const expected = cost.expected.costPerOutcomeUsd;
+  // Expected at the brand's actual spend mix (BRAND-VALUE-ROI-1108), never one offer's figure under a brand label.
+  const expected = cost.offerMix?.expectedCostPerOutcomeUsd ?? null;
   if (measured == null) {
     return expected != null ? (
       <span className="whitespace-nowrap">
