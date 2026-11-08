@@ -29,6 +29,7 @@ import {
   valuesForKeys,
 } from "@/lib/idb-bucket";
 import { installIdleFocusManager } from "@/lib/idle-focus-manager";
+import { refetchOnReturn } from "@/lib/query-options";
 
 /**
  * Ask the browser to make the origin's storage PERSISTENT (best-effort → durable).
@@ -183,8 +184,9 @@ function makeQueryClient(orgId: string | null) {
         // Local-first: restore each query from IndexedDB before the network.
         persister: persister.persisterFn,
         placeholderData: keepPreviousData,
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        // A failed read with no data is not refetched on return: see refetchOnReturn.
+        refetchOnWindowFocus: refetchOnReturn,
+        refetchOnReconnect: refetchOnReturn,
         retry: 1,
       },
       mutations: { retry: 0 },

@@ -37,9 +37,10 @@ describe("Catalogue page (owner 2026-11-07, every client)", () => {
     expect(catalogueTabOf("nope")).toBe("outcomes");
   });
 
-  it("the sidebar's Production group lists Catalogue for every client, never behind staff mode", () => {
+  it("the sidebar's Production group lists Catalogue, staff mode only with a Staff tag for now (owner 2026-11-08)", () => {
     const shell = read("src/components/v2/v2-shell.tsx");
-    const production = shell.slice(shell.indexOf('<Group title="Production">'), shell.indexOf('<Group title="Setup">'));
+    expect(shell).toContain('{staffMode && (\n        <Group title="Production" staff>');
+    const production = shell.slice(shell.indexOf('<Group title="Production" staff>'), shell.indexOf('<Group title="Setup">'));
     expect(production).toContain('label="Catalogue"');
     expect(production).toContain("href={v2CatalogueHome(orgId, brandId)}");
     expect(production.indexOf('label="Connected accounts"')).toBeLessThan(production.indexOf('label="Catalogue"'));
