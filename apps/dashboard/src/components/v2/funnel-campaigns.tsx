@@ -53,7 +53,7 @@ import {
 import { paymentHoldKind } from "@/lib/payment-declined";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
-import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { v2CampaignHref, v2Href, type V2CampaignTab } from "@/lib/v2/routes";
@@ -64,7 +64,7 @@ import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { CampaignHoldNote, useCampaignHolds } from "@/components/v2/campaign-hold";
 import { holdOutlivesLimitChange } from "@/lib/campaign-hold";
 import { FactoryCampaignSections } from "@/components/v2/factory-campaign";
-import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts } from "@/components/v2/spend-charts";
+import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts, type BilledSpend } from "@/components/v2/spend-charts";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { EmptyNote, Figure, HoverScroll, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
@@ -491,6 +491,44 @@ export function FunnelRoi({ row, compact = false }: { row: FunnelCampaignRow; co
   return <ExpectedReturnValue expected={row.expectedReturn} compact={compact} />;
 }
 
+/**
+ * A funnel campaign's money, billed first (owner 2026-11-08): the served billed-only cost
+ * (`costEconomics.actualCostUsd`) as the figure, the served committed total (`investedUsd`, open
+ * holds included) beside it when larger, like the brand page's $ Spent. Both served; nothing summed here.
+ */
+export function funnelBilledSpend(row: FunnelCampaignRow | null, settled: boolean): BilledSpend {
+  const actual = row?.costEconomics?.actualCostUsd;
+  if (row && actual == null) console.error("[funnel-campaigns] costEconomics.actualCostUsd not served", { id: row.id });
+  return {
+    pending: !settled,
+    spend: row && actual != null && row.investedUsd != null ? { actualSpentCents: Math.round(actual * 100), totalSpentCents: Math.round(row.investedUsd * 100) } : null,
+  };
+}
+
+/** $ Invested: billed as the figure, "$X with provisioned costs" beside it when holds are open. */
+export function InvestedFigure({ row, compact = false }: { row: FunnelCampaignRow | null; compact?: boolean }) {
+  const spend = funnelBilledSpend(row, true).spend;
+  if (!spend) return compact ? <>{DASH}</> : <Figure value={DASH} />;
+  if (compact) {
+    return (
+      <>
+        {formatCentsAsUsdAdaptive(spend.actualSpentCents)}
+        {spend.totalSpentCents > spend.actualSpentCents && (
+          <span className="k-fg3 block text-[12px] font-normal">{formatCentsAsUsdAdaptive(spend.totalSpentCents)} with provisioned costs</span>
+        )}
+      </>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2">
+      <Figure value={formatCentsAsUsdAdaptive(spend.actualSpentCents)} />
+      {spend.totalSpentCents > spend.actualSpentCents && (
+        <span className="k-fg3 text-[12px] tabular-nums">{formatCentsAsUsdAdaptive(spend.totalSpentCents)} with provisioned costs</span>
+      )}
+    </div>
+  );
+}
+
 /** A funnel campaign's REALIZED line (Paid clients, money spent), when the row serves it. */
 export function FunnelRealized({ row, className = "" }: { row: FunnelCampaignRow; className?: string }) {
   return <RealizedReturnLine realized={row.costEconomics?.realizedReturn} className={className} />;
@@ -742,7 +780,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
               <div className="min-w-0 px-4 pb-3.5 pt-3">
                 <span className="k-label">$ Invested</span>
                 <div className="mt-2">
-                  {!rowsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH} />}
+                  {!rowsSettled ? <Shimmer className="h-7 w-16" /> : <InvestedFigure row={row} />}
                 </div>
               </div>
             </div>
@@ -787,7 +825,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
 
         <section>
           <SectionTitle right={<span>Since it started</span>}>Spend, day by day</SectionTitle>
-          <SpendChartsBlock {...spendChartState(spendQ, (d) => d.campaign)} />
+          <SpendChartsBlock {...spendChartState(spendQ, (d) => d.campaign)} billed={funnelBilledSpend(row, rowsSettled)} />
         </section>
 
         {/* The GTM Factory campaign page (FACTORY-USER-DASHBOARD-1102, every client): its milestones, its plan of

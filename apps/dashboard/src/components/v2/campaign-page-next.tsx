@@ -58,7 +58,7 @@ import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, MarkLines, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostValue, RoiLabel } from "@/components/v2/roi-label";
-import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi } from "@/components/v2/funnel-campaigns";
+import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi, InvestedFigure } from "@/components/v2/funnel-campaigns";
 import { CampaignPinButton } from "@/components/v2/outcome-pins";
 
 /**
@@ -612,7 +612,7 @@ function ResultsCard({
     <SideCard title="Results">
       <dl>
         <Line label={<RoiLabel />}>{!rowsSettled ? wait : row ? <FunnelRoi row={row} /> : DASH}</Line>
-        <Line label="$ Invested">{!rowsSettled ? wait : row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH}</Line>
+        <Line label="$ Invested">{!rowsSettled ? wait : <InvestedFigure row={row} compact />}</Line>
         {revenue && (
           <Line label={`$ / ${replyWord}`}>
             <CostValue cost={costShown} learning={cost.learning} />

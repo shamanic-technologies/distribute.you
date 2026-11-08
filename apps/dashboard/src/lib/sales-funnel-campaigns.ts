@@ -400,7 +400,11 @@ export const FunnelCampaignRowSchema = z
     investedUsd: z.coerce.number().nullable(),
     moneyUnavailableReason: z.string().nullish(),
     // `realizedReturn` (ROI-CONSISTENCY-1103): Paid clients over money actually spent, when the row serves it.
-    costEconomics: z.object({ unmeasuredReason: z.string().nullish(), realizedReturn: RealizedReturnSchema.nullish() }).passthrough().nullable(),
+    // `actualCostUsd` = billed only (open holds excluded): the $ Invested headline, `investedUsd` (committed) beside it.
+    costEconomics: z
+      .object({ unmeasuredReason: z.string().nullish(), actualCostUsd: z.coerce.number().nullish(), realizedReturn: RealizedReturnSchema.nullish() })
+      .passthrough()
+      .nullable(),
     // The producer's maturity verdict on the campaign's return (read, never re-graded). Null when the
     // campaign has no graded leg (features-service `isMature: boolean | null`): a strict boolean
     // rejected the WHOLE table, so every row read "—" (2026-10-16).
