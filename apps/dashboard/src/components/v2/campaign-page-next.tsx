@@ -54,7 +54,7 @@ import { useNeedsYourCall, useReachedCounts } from "@/components/v2/data";
 import { useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { giveListsFrom } from "@/components/v2/offer-give-lists";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
-import { V2AudiencesTable } from "@/components/v2/audiences-table";
+import { CampaignAudience } from "@/components/v2/campaign-audience";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, MarkLines, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostValue, RoiLabel } from "@/components/v2/roi-label";
@@ -101,7 +101,7 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
     const leg = campaignById.get(u.campaignId)?.leg ?? legFor(catalogue, u.legKey);
     return leg != null && !isProactiveFrom(leg.fromKey);
   }) ?? null;
-  const visible = NEXT_TABS.filter((t) => t.key === "overview" || coldEmail);
+  const visible = NEXT_TABS;
   const tab = visible.find((t) => t.key === params.get("tab"))?.key ?? "overview";
 
   const rowsQ = useAuthQuery(["funnelCampaignRows", campaign.brandId, campaign.offerId], () => listFunnelCampaignRows(campaign.brandId, campaign.offerId), pollOptions);
@@ -157,10 +157,8 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
           ))}
         </nav>
 
-        {tab === "targeting" && coldEmail ? (
-          <div className="v2-embed">
-            <V2AudiencesTable campaignId={coldEmail.campaignId} offerId={campaign.offerId} />
-          </div>
+        {tab === "targeting" ? (
+          <CampaignAudience orgId={orgId} brandId={campaign.brandId} offerId={campaign.offerId} />
         ) : (
           <div className="space-y-6">
             {notFunded && (

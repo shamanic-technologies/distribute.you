@@ -66,7 +66,7 @@ import { holdOutlivesLimitChange } from "@/lib/campaign-hold";
 import { FactoryCampaignSections } from "@/components/v2/factory-campaign";
 import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts, type BilledSpend } from "@/components/v2/spend-charts";
 import { PeoplePage } from "@/components/v2/people-page";
-import { V2AudiencesTable } from "@/components/v2/audiences-table";
+import { CampaignAudience } from "@/components/v2/campaign-audience";
 import { EmptyNote, Figure, HoverScroll, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { ExpectedReturnValue, RealizedReturnLine } from "@/components/v2/return-figures";
@@ -637,7 +637,7 @@ const FUNNEL_TABS: { key: V2CampaignTab; label: string; needsColdEmail: boolean 
   { key: "overview", label: "Overview", needsColdEmail: false },
   { key: "inbox", label: "Inbox", needsColdEmail: true },
   { key: "sent", label: "Sent", needsColdEmail: true },
-  { key: "targeting", label: "Targeting", needsColdEmail: true },
+  { key: "targeting", label: "Targeting", needsColdEmail: false },
 ];
 
 export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign }) {
@@ -719,8 +719,9 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
         <div className="k-card overflow-hidden">
           <PeoplePage step={EMAIL_SENT_STEP} campaignId={coldEmail.campaignId} />
         </div>
-      ) : tab === "targeting" && coldEmail ? (
-        <V2AudiencesTable campaignId={coldEmail.campaignId} offerId={campaign.offerId} />
+      ) : tab === "targeting" ? (
+        // A campaign sells one offer, built for one audience (AUDIENCE-PER-OFFER-1107): its text, edited on the offer.
+        <CampaignAudience orgId={orgId} brandId={campaign.brandId} offerId={campaign.offerId} />
       ) : (
       <div className="space-y-8">
         {/* P5.1 (owner 2026-10-31): every customer's page opens on what the campaign aims at and the path it runs now. */}
