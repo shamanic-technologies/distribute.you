@@ -11,7 +11,7 @@ import { pollOptions } from "@/lib/query-options";
 import { integrationFor } from "@/lib/integrations";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { OUTCOME_PEOPLE_PAGE_SIZE, type OutcomeStepStat } from "@/lib/v2/outcome-people";
-import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons, type BrandOutcome } from "@/components/v2/brand-outcomes";
+import { useAudienceSnapshot, useBrandOutcomeList, useCatalogueSteps, useStepIcons, type BrandOutcome } from "@/components/v2/brand-outcomes";
 import { RecordsTabs } from "@/components/v2/records";
 import { formatCount } from "@/lib/format-number";
 import { v2Href, v2OutcomeHref } from "@/lib/v2/routes";
@@ -32,13 +32,22 @@ import { CostPerUnit, NetworkLogo, PublishedBody, PublishedOutcomePage, usePubli
 import { ResearchDrawer } from "@/components/v2/research-template-outputs";
 import { opensDrawer } from "@/components/v2/research-live-workflows";
 import { isPublishedOutcomeKey, type PublishedOutcomeKey, type PublishedUnits } from "@/lib/v2/published-units";
-import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
+import { BarSpark, EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { OutcomePinButton } from "@/components/v2/outcome-pins";
-import { OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
+import { LedgerOutcomeStats, OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { LearningFigure, RoiLabel } from "@/components/v2/roi-label";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { costStepOf, type OfferMix, type OfferOutcomeCostSeries, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
+import {
+  costStepOf,
+  lastDays,
+  ledgerOutcomeOf,
+  unlistedLedgerOutcomes,
+  type LedgerOutcome,
+  type OfferMix,
+  type OfferOutcomeCostSeries,
+  type OutcomeCostStep,
+} from "@/lib/v2/outcome-cost-series";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { stepLabel } from "@/lib/legs";
 
@@ -141,7 +150,14 @@ function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, numb
 const OTH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 const OTD = "px-3 py-3 align-middle first:pl-4 last:pr-4";
 
-type OpenRow = { kind: "outcome"; key: string } | { kind: "published"; key: PublishedOutcomeKey };
+type OpenRow = { kind: "outcome"; key: string } | { kind: "published"; key: PublishedOutcomeKey } | { kind: "ledger"; key: string };
+
+/** A ledger outcome's names off the public catalogue; a key the catalogue does not name reads as its key, loudly. */
+function ledgerNames(steps: ReturnType<typeof useCatalogueSteps>, key: string): { label: string; plural: string } {
+  const st = steps?.get(key);
+  if (steps && !st) console.error("[v2] the brand ledger holds an outcome the public catalogue does not name", { key });
+  return { label: st?.name ?? key, plural: st?.pluralName ?? st?.name ?? key };
+}
 
 export function OutcomesOverviewPage() {
   const { orgId, brandId } = useIds();
@@ -159,11 +175,20 @@ export function OutcomesOverviewPage() {
   // One row per outcome: a published outcome with a row is shown by its own row, never a second generic one beside it.
   const publishedKeys = new Set<string>(published.withRows.map((p) => p.key));
   const ordered = inServedOrder(outcomes, costQ.data).filter((o) => !publishedKeys.has(o.outcome.key));
+  // GSC-CONNECTOR-1108: every other outcome the brand's ledger holds (a connector's, « Google search click » included),
+  // one row each in the producer's order, never a second row for an outcome shown above.
+  const catalogueSteps = useCatalogueSteps();
+  const ledgerOnly = unlistedLedgerOutcomes(
+    costQ.data,
+    new Set([...outcomes.map((o) => o.outcome.key), ...publishedKeys]),
+    (k) => catalogueSteps?.get(k)?.leadState ?? null,
+  );
   const ready = settled && published.settled;
-  const count = ordered.length + published.withRows.length;
+  const count = ordered.length + published.withRows.length + ledgerOnly.length;
   const [open, setOpen] = useState<OpenRow | null>(null);
   const openOutcome = open?.kind === "outcome" ? ordered.find((o) => o.outcome.key === open.key) ?? null : null;
   const openPublished = open?.kind === "published" ? published.withRows.find((p) => p.key === open.key) ?? null : null;
+  const openLedger = open?.kind === "ledger" ? ledgerOnly.find((l) => l.outcomeKey === open.key) ?? null : null;
   return (
     <div>
       <TopBar crumbs={[{ label: "Outcomes" }, { label: "Overview" }]} />
@@ -230,6 +255,18 @@ export function OutcomesOverviewPage() {
                       onOpen={() => setOpen({ kind: "published", key: p.key })}
                     />
                   ))}
+                  {ledgerOnly.map((l) => (
+                    <LedgerOutcomeRow
+                      key={l.outcomeKey}
+                      lo={l}
+                      name={ledgerNames(catalogueSteps, l.outcomeKey).plural}
+                      href={v2OutcomeHref(orgId, brandId, l.outcomeKey)}
+                      icon={stepIcons?.get(l.outcomeKey) ?? null}
+                      brandId={brandId}
+                      selected={open?.kind === "ledger" && open.key === l.outcomeKey}
+                      onOpen={() => setOpen({ kind: "ledger", key: l.outcomeKey })}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -251,6 +288,23 @@ export function OutcomesOverviewPage() {
         >
           <div className="p-4">
             <OutcomeDetail stepKey={openOutcome.outcome.key} />
+          </div>
+        </ResearchDrawer>
+      )}
+      {openLedger && (
+        <ResearchDrawer
+          wide
+          label={ledgerNames(catalogueSteps, openLedger.outcomeKey).plural}
+          onClose={() => setOpen(null)}
+          head={<DrawerHead icon={stepIcons?.get(openLedger.outcomeKey) ?? null} name={ledgerNames(catalogueSteps, openLedger.outcomeKey).plural} />}
+          right={
+            <Link href={v2OutcomeHref(orgId, brandId, openLedger.outcomeKey)} className="k-btn">
+              Open page
+            </Link>
+          }
+        >
+          <div className="p-4">
+            <LedgerOutcomeStats lo={openLedger} {...ledgerNames(catalogueSteps, openLedger.outcomeKey)} />
           </div>
         </ResearchDrawer>
       )}
@@ -318,6 +372,68 @@ function rowProps(onOpen: () => void, selected: boolean) {
       if (opensDrawer(e.target, e.currentTarget)) onOpen();
     },
   };
+}
+
+/**
+ * An outcome only the brand's ledger states (GSC-CONNECTOR-1108: a connector's, « Google search click »), in the same
+ * table: its Units since inception and from us, the last 28 days as bars, $ each and what it cost to produce, all
+ * served by features-service's `ledgerOutcomes`; nothing summed here. No ROI or value: no campaign aims at it.
+ */
+function LedgerOutcomeRow({
+  lo,
+  name,
+  href,
+  icon,
+  brandId,
+  selected,
+  onOpen,
+}: {
+  lo: LedgerOutcome;
+  name: string;
+  href: string;
+  icon: string | null;
+  brandId: string;
+  selected: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <tr {...rowProps(onOpen, selected)}>
+      <td className={OTD}>
+        <span className="flex items-center justify-between gap-4">
+          <RowName
+            icon={icon}
+            name={name}
+            href={href}
+            sub={
+              <>
+                <Num n={lo.units} />
+                <span>·</span>
+                <Num n={lo.ourUnits} /> from us
+              </>
+            }
+          />
+          <BarSpark values={lastDays(lo.daily, 28).map((d) => d.units ?? 0)} className="hidden shrink-0 md:flex" />
+        </span>
+      </td>
+      <td className={OTD}>
+        <span className="k-fg4">—</span>
+      </td>
+      <td className={OTD}>
+        <span className="min-w-[88px] text-[14px] font-medium tabular-nums">
+          {lo.costPerUnitUsd != null ? formatUsdAdaptive(lo.costPerUnitUsd) : <span className="k-fg4">—</span>}
+        </span>
+      </td>
+      <td className={`${OTD} whitespace-nowrap text-right tabular-nums`}>
+        <span className="k-fg4">—</span>
+      </td>
+      <td className={`${OTD} whitespace-nowrap text-right tabular-nums`}>
+        {lo.productionCostUsd != null ? formatUsdAdaptive(lo.productionCostUsd) : <span className="k-fg4">—</span>}
+      </td>
+      <td className={`${OTD} w-8`}>
+        <OutcomePinButton brandId={brandId} outcomeKey={lo.outcomeKey} compact />
+      </td>
+    </tr>
+  );
 }
 
 function OutcomeRow({
@@ -655,8 +771,16 @@ function OutcomeDetail({ stepKey }: { stepKey: string }) {
   const [tab, setTab] = useState<"all" | "ours">("all");
   const listed = outcomes.find((o) => o.outcome.key === stepKey) ?? null;
   const outcome = listed?.outcome ?? outcomeOf(catalogue, null, stepKey);
+  // GSC-CONNECTOR-1108: an outcome only the brand's ledger states (a connector's) opens on its served Units.
+  const costQ = useOutcomeCostSeries(brandId, null);
+  const catalogueSteps = useCatalogueSteps();
+  const ledger = ledgerOutcomeOf(costQ.data, stepKey);
   if (!outcome) return null;
   const producing = listed && (listed.campaigns.length > 0 || listed.funnelCampaigns.length > 0 || (listed.all?.people ?? 0) > 0);
+  const ledgerOnly = ledger !== null && outcome.items.kind !== "people" && outcome.items.kind !== "leads-found";
+  if (ledgerOnly) return <LedgerOutcomeStats lo={ledger} {...ledgerNames(catalogueSteps, stepKey)} />;
+  // Not listed anywhere else and the ledger has not answered yet: wait for it rather than say "not available".
+  if (!listed && outcome.items.kind === "unavailable" && costQ.data === undefined && !costQ.isError) return <Shimmer className="h-24 w-full" />;
   return (
     <>
       <div className="k-fg2 mb-6 mt-1 flex flex-wrap items-center gap-x-2 text-[14px]">

@@ -4589,7 +4589,18 @@ function parsePublicCatalogue(raw: unknown, label: string): PublicCatalogue {
 /** One catalogue step as the public step vocabulary serves it (features-service `GET /public/catalogue/steps`). */
 const PublicCatalogueStepsSchema = z
   .object({
-    rows: z.array(z.object({ key: z.string(), name: z.string(), icon: z.string(), pluralName: z.string().nullish() }).passthrough()),
+    rows: z.array(
+      z
+        .object({
+          key: z.string(),
+          name: z.string(),
+          icon: z.string(),
+          pluralName: z.string().nullish(),
+          // The lead state a step's Units are declared under in the ledger (`website_visit` → `lead_visited`), null for most.
+          leadState: z.string().nullish(),
+        })
+        .passthrough(),
+    ),
   })
   .passthrough();
 export type PublicCatalogueStep = z.infer<typeof PublicCatalogueStepsSchema>["rows"][number];

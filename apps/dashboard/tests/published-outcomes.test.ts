@@ -73,6 +73,6 @@ describe("Outcomes overview: one row per outcome, $ / outcome on every row (OUTC
   });
   it("a published outcome with a row is never listed a second time as a generic row", () => {
     expect(overview).toContain(".filter((o) => !publishedKeys.has(o.outcome.key))");
-    expect(overview).toContain("const count = ordered.length + published.withRows.length;");
+    expect(overview).toContain("const count = ordered.length + published.withRows.length + ledgerOnly.length;");
   });
 });

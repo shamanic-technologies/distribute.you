@@ -5,7 +5,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getBrandOutcomeCostSeries, getOfferOutcomeCostSeries } from "@/lib/api";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { costStepOf, monthLabel, monthTick, outcomeCountWords, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
+import { costStepOf, lastDays, monthLabel, monthTick, outcomeCountWords, type LedgerOutcome, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
 import type { OutcomeStepStat } from "@/lib/v2/outcome-people";
 import { EmptyNote, Figure, Shimmer, StatTile } from "@/components/v2/ui";
 import { LearningFigure } from "@/components/v2/roi-label";
@@ -309,5 +309,62 @@ function CostLegend({ expected = false }: { expected?: boolean }) {
         </span>
       )}
     </span>
+  );
+}
+
+/** The ledger-outcome chart window: the last 28 UTC days, as served. */
+export const LEDGER_OUTCOME_DAYS = 28;
+
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "2026-11-03" reads "Nov 3" (a UTC day, formatted only). */
+function dayTick(day: string): string {
+  const [, m, d] = day.split("-");
+  return `${SHORT_MONTHS[Number(m) - 1] ?? m} ${Number(d)}`;
+}
+
+/**
+ * ONE OUTCOME ONLY THE LEDGER STATES (GSC-CONNECTOR-1108: a connector's, « Google search click »): its Units since you
+ * started, from us, $ each, then one bar per day over the last 28 days. Every figure is features-service's
+ * `ledgerOutcomes` (the brand's general ledger); a day runs-service has not computed yet has no bar, never a 0.
+ */
+export function LedgerOutcomeStats({ lo, label, plural }: { lo: LedgerOutcome; /** "Google search click" */ label: string; /** "Google search clicks" */ plural: string }) {
+  const days = lastDays(lo.daily, LEDGER_OUTCOME_DAYS);
+  return (
+    <div className="mb-6 space-y-3" data-ledger-outcome={lo.outcomeKey}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile label={plural} note={<Wide>Since you started</Wide>}>
+          <Figure value={formatCount(lo.units)} />
+        </StatTile>
+        <StatTile label="From us">
+          <Figure value={formatCount(lo.ourUnits)} />
+        </StatTile>
+        <StatTile label={`$ / ${label}`}>
+          <Figure value={lo.costPerUnitUsd != null ? formatUsdAdaptive(lo.costPerUnitUsd) : DASH} />
+          {lo.productionCostUsd != null && <p className="k-fg3 mt-0.5 truncate text-[12px]">{formatUsdAdaptive(lo.productionCostUsd)} spent</p>}
+        </StatTile>
+      </div>
+      <ChartCard title={`${plural} per day, last ${LEDGER_OUTCOME_DAYS} days`}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={days} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="20%">
+            <XAxis dataKey="date" tick={TICK} tickLine={false} axisLine={false} minTickGap={24} tickFormatter={dayTick} />
+            <YAxis tick={TICK} tickLine={false} axisLine={false} width={36} tickCount={4} allowDecimals={false} />
+            <Tooltip
+              cursor={{ fill: "var(--data-track)" }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const row = payload[0].payload as LedgerOutcome["daily"][number];
+                return (
+                  <div className="k-popover px-2.5 py-1.5 text-[12px]">
+                    <div className="k-fg3">{dayTick(row.date)}</div>
+                    <div className="tabular-nums">{row.units == null ? "Not counted yet" : `${formatCount(row.units)} ${row.units === 1 ? label : plural}`}</div>
+                  </div>
+                );
+              }}
+            />
+            <Bar dataKey="units" name={plural} fill={EVERYONE} isAnimationActive={false} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </div>
   );
 }

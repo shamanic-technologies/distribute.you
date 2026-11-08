@@ -111,6 +111,22 @@ export const OutcomeCostStepSchema = z.object({
 });
 export type OutcomeCostStep = z.infer<typeof OutcomeCostStepSchema>;
 
+/**
+ * GSC-CONNECTOR-1108: ONE outcome the brand's general ledger holds Units of, whatever its key (a connector's outcome,
+ * « Google search click », included), served beside `steps[]` by features-service on the same ledger. `daily` = one
+ * point per UTC day, at least the last 28; `units` null = runs-service has not computed that day yet (never a 0).
+ */
+export const LedgerOutcomeSchema = z.object({
+  outcomeKey: z.string(),
+  units: z.number(),
+  ourUnits: z.number(),
+  costPerUnitUsd: z.number().nullable(),
+  costPerUnitUnavailableReason: z.string().nullable(),
+  productionCostUsd: z.number().nullable(),
+  daily: z.array(z.object({ date: z.string(), units: z.number().nullable(), ourUnits: z.number().nullable() })),
+});
+export type LedgerOutcome = z.infer<typeof LedgerOutcomeSchema>;
+
 export const OfferOutcomeCostSeriesSchema = z.object({
   // Shared by the offer read and the BRAND read (features-service v0.179.548): the brand body
   // carries `offerIds` and no `offerId`.
@@ -120,6 +136,8 @@ export const OfferOutcomeCostSeriesSchema = z.object({
   pricing: z.string(),
   firstSpendDay: z.string().nullable(),
   steps: z.array(OutcomeCostStepSchema),
+  /** Every outcome the brand's ledger holds (features-service GSC-CONNECTOR-1108); absent on a body served before it. */
+  ledgerOutcomes: z.array(LedgerOutcomeSchema).optional(),
 });
 export type OfferOutcomeCostSeries = z.infer<typeof OfferOutcomeCostSeriesSchema>;
 
@@ -152,4 +170,32 @@ export function monthTick(month: string, index: number): string {
   const i = Number(m) - 1;
   if (!(i >= 0 && i < 12)) return month;
   return index === 0 || i === 0 ? monthLabel(month) : MONTHS[i];
+}
+
+/** One outcome as the brand's ledger states it, or null when the ledger holds no Unit of it. */
+export function ledgerOutcomeOf(series: OfferOutcomeCostSeries | null | undefined, key: string): LedgerOutcome | null {
+  return series?.ledgerOutcomes?.find((o) => o.outcomeKey === key) ?? null;
+}
+
+/**
+ * The ledger outcomes no other row of the Outcomes overview already shows, in the producer's order. A key is shown
+ * already when a row carries it, or when it is the lead state a shown step's Units are declared under (the public
+ * catalogue's `leadState`: a website visit's Units sit under `lead_visited`). Joins only, nothing counted.
+ */
+export function unlistedLedgerOutcomes(
+  series: OfferOutcomeCostSeries | null | undefined,
+  listedKeys: ReadonlySet<string>,
+  leadStateOf: (stepKey: string) => string | null,
+): LedgerOutcome[] {
+  const shown = new Set(listedKeys);
+  for (const k of listedKeys) {
+    const state = leadStateOf(k);
+    if (state) shown.add(state);
+  }
+  return (series?.ledgerOutcomes ?? []).filter((o) => !shown.has(o.outcomeKey));
+}
+
+/** The last `days` points of a served daily series, as served (a display window, nothing summed). */
+export function lastDays<T>(daily: readonly T[], days: number): T[] {
+  return daily.slice(Math.max(0, daily.length - days));
 }
