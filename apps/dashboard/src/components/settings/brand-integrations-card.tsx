@@ -436,7 +436,7 @@ function IntegrationRow({
           <CompanyLogo domain={def.domain} name={def.name} size={28} />
         </span>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[calc(100%-52px)] sm:basis-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-gray-900">{addAnother ? `Another ${def.name} account` : def.name}</span>
             {addAnother ? null : <StatusPill settled={settled} connection={connection} credentialStored={credentialStored} />}
@@ -739,7 +739,7 @@ function GmailRow({ orgId }: { orgId: string | null }) {
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-1">
           <ProductMark src="/integration-logos/gmail.svg" />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[calc(100%-52px)] sm:basis-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-gray-900">Gmail</span>
             {!settled ? (
@@ -844,7 +844,7 @@ function GoogleCalendarRow({ orgId }: { orgId: string | null }) {
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-1">
           <ProductMark src="/integration-logos/google-calendar.svg" />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[calc(100%-52px)] sm:basis-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-gray-900">Google Calendar</span>
             {!settled ? (
