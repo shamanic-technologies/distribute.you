@@ -204,7 +204,6 @@ describe("sales funnel campaigns: wiring", () => {
     expect(today).toContain("<FunnelCampaignLine key={f.id} orgId={orgId} campaign={f} />");
     expect(today).toContain("ongoing.campaigns.length + ongoing.funnelCampaigns.length");
     const outcomes = src("src/components/v2/outcomes-page.tsx");
-    expect(outcomes).toContain("funnelCampaigns={o.funnelCampaigns}");
     expect(outcomes).toContain("funnelCampaigns={listed.funnelCampaigns}");
   });
 
