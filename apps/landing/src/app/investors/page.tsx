@@ -167,22 +167,21 @@ export default function InvestorsPage() {
           </div>
         </section>
 
-        {/* Who We Serve: ICP #1 */}
+        {/* Who We Serve: ICP #1 (owner 2026-11-08: the Scaling Service Founder) */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-2 text-gray-900">
               Who We Serve: ICP #1
             </h2>
             <p className="text-sm text-gray-500 mb-6">
-              The Serial Builder. The single user persona we optimize the product, pricing, and roadmap for.
+              The Scaling Service Founder. The one persona we build the product, pricing and roadmap for.
             </p>
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-600 text-sm leading-relaxed space-y-6">
               <blockquote className="bg-white border border-gray-200 rounded-lg p-4 italic text-gray-600">
-                &quot;16-40 years old. CEO-founder, mostly solo. I always have several products on the
-                bench. I have no time between newsletter, content, campaigns, meetings, replies,
-                and refining who I sell to. I want someone close to me, founder reachable, bugs
-                fixed fast, features shipped fast.&quot;
+                &quot;I run a B2B service that makes over $100k a year with a team of 1 to 3. Now I want
+                to scale. I need revenue automation I can trust: easy to run, measured, auditable, solid
+                and fast, built on the best tools of the moment.&quot;
               </blockquote>
 
               <div className="rounded-lg bg-linear-to-br from-brand-500/10 to-blue-500/10 border border-brand-500/30 p-4">
@@ -190,46 +189,51 @@ export default function InvestorsPage() {
                   The dream
                 </p>
                 <p className="text-gray-900 italic">
-                  &quot;One of my products is going to take off. I need to know what a customer
-                  costs me on every channel, because I am looking for the one that scales.
-                  distribute.you is the lever that makes that math actionable, whether I stay
-                  1 person or grow to 10.&quot;
+                  &quot;I know what each new client brings me back, on the path that pays best this month.
+                  My agent keeps testing, switches to what works and keeps me posted on WhatsApp.&quot;
                 </p>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-gray-500 text-xs mb-1">Age</p>
-                  <p className="text-gray-900">16-40</p>
+                  <p className="text-gray-500 text-xs mb-1">Business</p>
+                  <p className="text-gray-900">B2B service</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs mb-1">Status</p>
-                  <p className="text-gray-900">Solo CEO-founder, 1-3 ppl max</p>
+                  <p className="text-gray-500 text-xs mb-1">Team</p>
+                  <p className="text-gray-900">Solo founder, 1-3 people</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs mb-1">Portfolio</p>
-                  <p className="text-gray-900">3-10 products active</p>
+                  <p className="text-gray-500 text-xs mb-1">Revenue</p>
+                  <p className="text-gray-900">$100k+ a year</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs mb-1">Monthly budget</p>
-                  <p className="text-gray-900">$50-$500 across products</p>
+                  <p className="text-gray-500 text-xs mb-1">Goal</p>
+                  <p className="text-gray-900">Scale</p>
                 </div>
+              </div>
+
+              <div>
+                <h3 className="text-gray-900 font-semibold text-base mb-3">What the founder wants</h3>
+                <p className="text-gray-600">
+                  Easy, measurable, auditable, solid, robust, fast and state of the art. A serious
+                  teammate for distribution, run from WhatsApp or email.
+                </p>
               </div>
 
               <div>
                 <h3 className="text-gray-900 font-semibold text-base mb-3">Time poverty</h3>
                 <p className="text-gray-600 mb-2">No time between:</p>
                 <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-gray-500">
-                  <li>Writing the newsletter</li>
+                  <li>Delivering for today&apos;s clients</li>
+                  <li>Selling to the next ones</li>
+                  <li>Answering replies and booking calls</li>
+                  <li>Following up past leads</li>
                   <li>Producing content</li>
-                  <li>Running acquisition across several products</li>
-                  <li>The meetings those campaigns generate</li>
-                  <li>Reading and answering replies</li>
-                  <li>Refining who each product sells to</li>
                 </ul>
                 <p className="text-gray-600 mt-3">
                   Buys <span className="text-gray-900 font-medium">time</span> and{" "}
-                  <span className="text-gray-900 font-medium">leverage</span>, not a tool.
+                  <span className="text-gray-900 font-medium">leverage</span>.
                 </p>
               </div>
 
@@ -237,10 +241,10 @@ export default function InvestorsPage() {
                 <div>
                   <h3 className="text-gray-900 font-semibold text-base mb-3">Refuses</h3>
                   <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-red-500/60">
-                    <li>Buying a sending domain</li>
-                    <li>SPF / DKIM / DMARC setup</li>
-                    <li>Warming mailboxes for 6 weeks</li>
+                    <li>Hiring an SDR team before a path is proven</li>
+                    <li>Buying domains and warming mailboxes</li>
                     <li>Triaging raw replies (spam vs lead)</li>
+                    <li>Results nobody can audit</li>
                     <li>Lock-in / opaque pricing</li>
                   </ul>
                 </div>
@@ -249,9 +253,9 @@ export default function InvestorsPage() {
                   <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-blue-500/60">
                     <li>A team sending on their behalf, from domains it owns</li>
                     <li>Interested replies answered and handed over with the meeting</li>
-                    <li>Every action at the API price, the cost per outcome shown</li>
-                    <li>A free AI agent, cancel anytime</li>
-                    <li>Every brand, offer, channel and audience in one dashboard, ranked by return</li>
+                    <li>Every action at the API price, the return of each outcome shown</li>
+                    <li>New LLMs and prompts tested as they come out</li>
+                    <li>Every offer and audience in one dashboard, ranked by return</li>
                   </ul>
                 </div>
               </div>
@@ -259,8 +263,8 @@ export default function InvestorsPage() {
               <div>
                 <h3 className="text-gray-900 font-semibold text-base mb-3">North-star metric</h3>
                 <p className="text-gray-600">
-                  Real <span className="text-gray-900 font-medium">CAC</span> ($ per sales meeting, $ per
-                  paying customer) per offer, per channel and per audience. Kills losers under 4 weeks.
+                  Real <span className="text-gray-900 font-medium">CAC</span> ($ per booked meeting, $ per
+                  paying client) per offer and per audience. Kills losers under 4 weeks.
                   Scales winners 10x when CAC &lt; LTV/3.
                 </p>
               </div>
@@ -268,19 +272,17 @@ export default function InvestorsPage() {
               <div>
                 <h3 className="text-gray-900 font-semibold text-base mb-3">Founder proximity</h3>
                 <p className="text-gray-600">
-                  Wants the founder reachable. Twitter DM, GitHub issue, direct email,
-                  all acceptable. Bug fixed fast, feature shipped fast, roadmap public.
-                  No enterprise support, no ticketing system.
+                  Wants the founder reachable. WhatsApp, email or a call, all accepted.
+                  Bug fixed fast, feature shipped fast, roadmap public.
                 </p>
               </div>
 
               <div>
                 <h3 className="text-gray-900 font-semibold text-base mb-3">Roadmap expectation</h3>
                 <p className="text-gray-600">
-                  More channels, same measurement. <span className="text-gray-900 font-medium">Public roadmap:</span>{" "}
-                  every channel and audience we add is ranked by return on the customer&apos;s own
-                  dashboard, and the fleet&apos;s figures are published live on the homepage.
-                  No lock-in.
+                  More outcomes, same measurement. <span className="text-gray-900 font-medium">Public roadmap:</span>{" "}
+                  every outcome we add (meetings, signups, purchases) is ranked by return on the
+                  client&apos;s own dashboard. No lock-in.
                 </p>
               </div>
             </div>
