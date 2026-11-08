@@ -75,7 +75,7 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
   it("each outcome page lists served items: people table, source lists, or says not available", () => {
     const page = read("src/components/v2/outcomes-page.tsx");
     expect(page).toContain("<PeoplePage step={outcome.items.step} />");
-    expect(page).toContain("<AudienceLists />");
+    expect(page).toContain("<LeadsFoundPeople />");
     expect(page).toContain("Not available yet.");
     // Counts are lead-service's, never added up here.
     expect(page).toContain("useReachedCounts(brandId, outcomes.flatMap((o) => reachedStepOf(o.outcome) ?? []))");

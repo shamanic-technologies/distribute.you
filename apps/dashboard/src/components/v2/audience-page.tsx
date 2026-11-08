@@ -11,6 +11,7 @@ import {
   getSourcingPeople,
   type InvestedMoney,
   listAudiences,
+  listBrandOffers,
   type AudienceChannelWire,
   type AudienceWire,
   type BrandAudienceSnapshot,
@@ -28,6 +29,8 @@ import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { ProviderLogo } from "@/components/provider-logo";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
+import { pollOptions } from "@/lib/query-options";
+import { OfferMark } from "@/components/marks/offer-mark";
 
 /**
  * The brand's audiences as human-service holds them: the LISTS we source people from
@@ -193,6 +196,63 @@ function Skeleton({ cols }: { cols: number }) {
         <tr key={i} className="k-row h-10"><td colSpan={cols} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
       ))}
     </>
+  );
+}
+
+/**
+ * The Lead found outcome's body (owner 2026-11-08, LEAD-FOUND-PEOPLE-1108: « ca donne des outcomes qui ne sont pas
+ * LEAD. Comme des audiences. Ou des companies »): each offer's ONE Audience as a line (the text the people were
+ * judged against, AUDIENCE-PER-OFFER-1107), then the people found, nothing else. Lists stay on the offer's
+ * Targeting > Lists; a company is not a lead.
+ */
+export function LeadsFoundPeople() {
+  const { brandId } = useParams<{ brandId: string }>();
+  const { staffMode: staff } = useStaffMode();
+  const snapshot = useAudienceSnapshot(brandId);
+  return (
+    <>
+      <OfferAudienceLines brandId={brandId} />
+      <div className="k-card overflow-hidden">
+        <RecordsTabs tabs={[{ key: "people", label: "Everyone", count: snapshot.data?.totals.people.held ?? null }]} active="people" onPick={() => {}} />
+        <PeopleTab brandId={brandId} staff={staff} />
+      </div>
+    </>
+  );
+}
+
+/** One line per offer: its mark, name and Audience text (same reads as Setup > Offers, so no extra cost). */
+function OfferAudienceLines({ brandId }: { brandId: string }) {
+  const q = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
+  const offers = q.data?.offers ?? null;
+  if (!offers || offers.length === 0) return null;
+  return (
+    <div className="k-card mb-4 divide-y divide-[var(--line-subtle)]">
+      {offers.map((o) => (
+        <OfferAudienceLine key={o.offerId} brandId={brandId} offerId={o.offerId} name={o.name} imageUrl={o.imageUrl} />
+      ))}
+    </div>
+  );
+}
+
+function OfferAudienceLine({ brandId, offerId, name, imageUrl }: { brandId: string; offerId: string; name: string; imageUrl?: string | null }) {
+  const q = useAuthQuery(["audiences", brandId, "active", offerId], () => listAudiences(brandId, { status: "active", offerId }), pollOptions);
+  const settled = q.data !== undefined || q.isFetchedAfterMount;
+  const first = q.data?.audiences?.[0] ?? null;
+  const text = first ? (first.targetText ?? first.description ?? first.name) : null;
+  return (
+    <div className="flex min-w-0 items-start gap-3 px-4 py-3">
+      <OfferMark size="title" imageUrl={imageUrl ?? undefined} />
+      <div className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-medium">{name}</span>
+        {!settled ? (
+          <Shimmer className="mt-1 h-4 w-2/3" />
+        ) : text ? (
+          <p className="k-fg2 mt-0.5 line-clamp-2 text-[13px]">{text}</p>
+        ) : (
+          <p className="k-fg3 mt-0.5 text-[12px]">No audience yet.</p>
+        )}
+      </div>
+    </div>
   );
 }
 
