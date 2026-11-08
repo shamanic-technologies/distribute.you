@@ -29,6 +29,18 @@ export function pollIntervalFor(query: { state: { status: string; data: unknown 
   return query.state.status === "error" && query.state.data === undefined ? false : POLL_INTERVAL;
 }
 
+/**
+ * Whether a read refetches when the user comes back to the tab (window focus) or the
+ * network comes back: always, EXCEPT a read that failed and holds no data. Same reason as
+ * `pollIntervalFor`: the refetch resets it to `pending`, and every page that reveals once
+ * its reads have answered (`data !== undefined || isError`) goes back to its skeleton until
+ * the failure comes back again (owner 2026-11-08: Outcomes re-showed its skeleton on every
+ * return from another macOS desktop). Such a read retries on the next navigation.
+ */
+export function refetchOnReturn(query: { state: { status: string; data: unknown } }): boolean {
+  return !(query.state.status === "error" && query.state.data === undefined);
+}
+
 export const pollOptions = {
   refetchInterval: pollIntervalFor,
 } as const;
