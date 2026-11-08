@@ -82,6 +82,14 @@ function NetworkLogo({ outcomeKey, size = 16 }: { outcomeKey: PublishedOutcomeKe
   return <ProviderLogo domain={PUBLISHED_OUTCOME_DOMAIN[outcomeKey]} size={size} className="rounded-[3px]" />;
 }
 
+/** $ per Unit we made (per post, per newsletter email): features-service's cost-accounting figure, its reason when absent. */
+function CostPerUnit({ data }: { data: PublishedUnits }) {
+  const c = data.accounting?.costPerUnit;
+  if (!c) return DASH;
+  if (c.actualUsd == null) return <span className="k-fg3 text-[13px] font-normal">{accountingReasonWords(c.actualUnavailableReason)}</span>;
+  return <>{formatUsdAdaptive(c.actualUsd)}</>;
+}
+
 /** $ per signup on what we did: Learning while no signup came from it yet. */
 function CostPerSignup({ data }: { data: PublishedUnits }) {
   if (data.costPerSignupUsd == null) return <span className="k-fg3 text-[13px] font-normal">{costPerSignupReasonWords(data.costPerSignupUnavailableReason)}</span>;
@@ -113,9 +121,9 @@ export function PublishedOutcomeCard({ outcomeKey, data, icon }: { outcomeKey: P
           <BarSpark values={data.daily.slice(-12).map((d) => d.units)} className="mt-2" />
         </div>
         <div className="min-w-0 p-3">
-          <p className="k-label">$ / signup</p>
+          <p className="k-label">$ / outcome</p>
           <div className="mt-1.5 text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
-            <CostPerSignup data={data} />
+            <CostPerUnit data={data} />
           </div>
           <p className="k-fg3 mt-0.5 truncate text-[11px] tabular-nums">{formatUsdAdaptive(data.totals.ours.spentUsd)} spent</p>
           <BarSpark values={data.daily.slice(-12).map((d) => d.visits)} className="mt-2" />
