@@ -28,6 +28,7 @@ import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { BRAND_WHY } from "@/lib/brand-why";
 import { CopilotPanel } from "@/components/v2/copilot-panel";
 import { CopilotDockContext, useCopilotDockState } from "@/components/v2/copilot-dock";
+import { useOutcomePrefetch } from "@/components/v2/outcome-prefetch";
 
 /**
  * Keel's frame: a grey canvas, a one-level sidebar sitting ON it, and every page in one
@@ -98,6 +99,7 @@ function NavItem({
   active,
   trailing,
   indent = false,
+  onWarm,
 }: {
   href: string;
   label: string;
@@ -105,11 +107,15 @@ function NavItem({
   active?: boolean;
   trailing?: React.ReactNode;
   indent?: boolean;
+  /** Warms the page's first data read on hover / focus (the route itself is already prefetched). */
+  onWarm?: () => void;
 }) {
   return (
     <Link
       href={href}
       prefetch
+      onMouseEnter={onWarm}
+      onFocus={onWarm}
       aria-current={active ? "page" : undefined}
       className={`group flex h-7 min-w-0 items-center gap-2 rounded-[8px] pr-1.5 text-[13px] outline-none transition-colors duration-100 focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
         indent ? "pl-[30px]" : "pl-2"
@@ -202,6 +208,7 @@ function V2Sidebar() {
   const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId);
   // Every outcome of the brand, campaigns or not (owner 2026-10-11), the Overview's own list.
   const { outcomes } = useBrandOutcomeList(orgId, brandId);
+  const warmOutcome = useOutcomePrefetch(brandId);
   const stepIcons = useStepIcons();
   // Published outcomes (posts, newsletter emails; SOCIAL-OUTCOMES-1107): one entry each once the brand has a row, read
   // through the Overview's own query keys so the sidebar count and the card agree.
@@ -383,6 +390,7 @@ function V2Sidebar() {
                   icon={<OutcomeMark outcomeKey={outcome.key} label={outcome.label} stepIcons={stepIcons} />}
                   active={pathname === href}
                   trailing={<Count n={n} />}
+                  onWarm={() => warmOutcome(outcome)}
                 />
               );
             })}
