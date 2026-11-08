@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { pollIntervalFor } from "@/lib/query-options";
@@ -9,6 +8,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listCampaignsByBrand,
   getFeatureRevenueByCampaign,
+  getBrandCampaignRevenue,
   type Campaign,
   type CampaignRevenueGroup,
 } from "@/lib/api";
@@ -147,37 +147,33 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     [campaigns, featureSlug, offerId, channels],
   );
 
-  // One revenue read PER CHANNEL present in the list, because that endpoint prices
-  // one channel at a time and a campaign is paced and priced on its own channel's
-  // money. The rows are merged by campaign id, never added up: each row shows the
-  // figures its own channel's group carries, so this is a display union and not a
+  // The channels present in the list. Each campaign row shows the figures its OWN channel's
+  // group carries, merged by campaign id and never added up: a display union, not a
   // browser-computed metric.
-  //
-  // `useQueries` rather than `useAuthQuery`, because the SIZE of this fan-out is
-  // decided at render and a hook cannot be called per member. It therefore carries
-  // the org gate explicitly (`useOrgQueryGate`) — the one thing `useAuthQuery` would
-  // have done for it, and the one that must not be lost.
-  //
-  // Each key is byte-equal to the single-channel key above, so the channel the page
-  // is already reading costs no second request.
   const channelSlugs = useMemo(() => {
     const slugs = new Set<string>();
     for (const c of featureCampaigns) if (c.featureSlug) slugs.add(c.featureSlug);
     return [...slugs].sort();
   }, [featureCampaigns]);
 
-  // Gated on the channel catalogue, NOT on `isRevenueFeature`: that set decides which
-  // features get a revenue PAGE, and this is a data read. A channel performs legs,
-  // so it has money to report; if it has none yet the groups come back empty
-  // and the row reads `—`, which is the honest answer rather than a withheld one.
-  const channelGroupQs = useQueries({
-    queries: channelSlugs.map((slug) => ({
-      queryKey: ["featureRevenueByCampaign", brandId, slug] as const,
-      queryFn: () => getFeatureRevenueByCampaign(slug, brandId),
-      enabled: orgConsistent && acquisitionChannelForFeatureSlug(slug, channels) !== null,
-      refetchInterval: pollIntervalFor,
-    })),
+  // ONE read for every channel's per-campaign money (features-service CAMPAIGN-MONEY-ONE-READ-1108,
+  // owner 2026-11-07 "every page instant"): it used to be one read PER channel (~15 per page view,
+  // each re-asked every 5 s) and the box sat CPU-saturated. Each channel's rows are byte-equal to
+  // its per-channel read. Only the channels the catalogue calls acquisition channels are read from
+  // it (a channel performs legs, so it has money; none yet = empty groups and the row reads `—`).
+  const moneyChannelSlugs = useMemo(
+    () => channelSlugs.filter((slug) => acquisitionChannelForFeatureSlug(slug, channels) !== null),
+    [channelSlugs, channels],
+  );
+  const brandMoneyQ = useAuthQuery(["brandCampaignRevenue", brandId], () => getBrandCampaignRevenue(brandId), {
+    enabled: orgConsistent && !!brandId && moneyChannelSlugs.length > 0,
+    refetchInterval: pollIntervalFor,
   });
+  useEffect(() => {
+    for (const f of brandMoneyQ.data?.failed ?? []) {
+      console.error("[dashboard] a channel's campaign money could not be read", { brandId, ...f });
+    }
+  }, [brandMoneyQ.data, brandId]);
   // ONE LINE PER IDENTITY, running or paused.
   //
   // A campaign IS (offer x leg x channel) — the address billing funds and the one
@@ -217,7 +213,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // Every channel's groups in one lookup, keyed by campaign. A campaign appears in
   // exactly one channel's answer (it IS a channel), so this merge can never make two
   // sources disagree about one row.
-  const channelGroupData = channelGroupQs.map((q) => q.data);
+  const channelGroupData = moneyChannelSlugs.map((slug) => brandMoneyQ.data?.bySlug[slug]);
   const groupsById = useMemo(() => {
     const m = new Map<string, CampaignRevenueGroup>();
     for (const g of groupsQ.data ?? []) m.set(g.campaignId, g);
@@ -276,7 +272,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const settled =
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
     (groupsQ.data !== undefined || groupsQ.isError) &&
-    channelGroupQs.every((q) => q.data !== undefined || q.isError);
+    (moneyChannelSlugs.length === 0 || brandMoneyQ.data !== undefined || brandMoneyQ.isError);
 
   return { rows, activeRows, settled };
 }

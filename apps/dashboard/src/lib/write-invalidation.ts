@@ -40,6 +40,7 @@ export const LEAD_OUTCOME_ROOTS = [
   // page scoped to one of them polls only its own key — so all four have to be told.
   "featureRevenue",
   "featureRevenueByCampaign",
+  "brandCampaignRevenue",
   "brandRevenue",
   "brandRevenueWindow",
   "brandOfferMoney",
