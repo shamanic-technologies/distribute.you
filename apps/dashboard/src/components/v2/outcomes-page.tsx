@@ -139,11 +139,13 @@ export function OutcomesOverviewPage() {
   const costQ = useOutcomeCostSeries(brandId, offerId);
   const costAnswered = costQ.data !== undefined || (costQ.isFetchedAfterMount && costQ.isError);
   const stepIcons = useStepIcons();
-  const ordered = inServedOrder(outcomes, costQ.data);
   // The published outcomes (posts, newsletter emails): one card each once the brand has a row (OUTCOME-FINEST-1106).
   const published = usePublishedOutcomes(brandId);
+  // One card per outcome: a published outcome with a row is shown by its own card, never a second generic one beside it.
+  const publishedKeys = new Set<string>(published.withRows.map((p) => p.key));
+  const ordered = inServedOrder(outcomes, costQ.data).filter((o) => !publishedKeys.has(o.outcome.key));
   const ready = settled && published.settled;
-  const count = outcomes.length + published.withRows.length;
+  const count = ordered.length + published.withRows.length;
   return (
     <div>
       <TopBar crumbs={[{ label: "Outcomes" }, { label: "Overview" }]} />

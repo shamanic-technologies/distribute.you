@@ -60,3 +60,19 @@ describe("published outcomes (OUTCOME-FINEST-1106)", () => {
     expect(page).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl/);
   });
 });
+
+describe("Outcomes overview: one card per outcome, $ / outcome on every card (OUTCOME-CARD-1108)", () => {
+  const card = src("src/components/v2/published-outcome-page.tsx");
+  const overview = src("src/components/v2/outcomes-page.tsx");
+  it("the published card prints the served cost per Unit under $ / outcome, never $ / signup", () => {
+    const body = card.slice(card.indexOf("export function PublishedOutcomeCard("), card.indexOf("export function PublishedOutcomePage("));
+    expect(body).toContain(`<p className="k-label">$ / outcome</p>`);
+    expect(body).toContain("<CostPerUnit data={data} />");
+    expect(body).not.toContain("$ / signup");
+    expect(card).toContain("data.accounting?.costPerUnit");
+  });
+  it("a published outcome with a row is never listed a second time as a generic card", () => {
+    expect(overview).toContain(".filter((o) => !publishedKeys.has(o.outcome.key))");
+    expect(overview).toContain("const count = ordered.length + published.withRows.length;");
+  });
+});
