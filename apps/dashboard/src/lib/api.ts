@@ -969,9 +969,9 @@ export async function listGoogleAccounts(token?: string): Promise<{ accounts: Go
 export async function startGoogleConnect(
   redirectUri: string,
   token?: string,
-  connection: "mailbox" | "calendar" = "mailbox",
+  connection: "mailbox" | "calendar" | "search_console" = "mailbox",
 ): Promise<{ url: string }> {
-  const body = connection === "calendar" ? { redirectUri, connection } : { redirectUri };
+  const body = connection === "mailbox" ? { redirectUri } : { redirectUri, connection };
   const raw = await apiCall<unknown>(`/orgs/google/auth/start`, { token, method: "POST", body });
   const parsed = z.object({ url: z.string().url() }).safeParse(raw);
   if (!parsed.success) {
@@ -986,11 +986,11 @@ export async function finishGoogleConnect(
   code: string,
   state: string,
   token?: string,
-): Promise<{ googleAccountEmail: string; connection?: "mailbox" | "calendar" }> {
+): Promise<{ googleAccountEmail: string; connection?: "mailbox" | "calendar" | "search_console" }> {
   const qs = new URLSearchParams({ code, state });
   const raw = await apiCall<unknown>(`/orgs/google/auth/callback?${qs.toString()}`, { token });
   const parsed = z
-    .object({ googleAccountEmail: z.string(), connection: z.enum(["mailbox", "calendar"]).optional() })
+    .object({ googleAccountEmail: z.string(), connection: z.enum(["mailbox", "calendar", "search_console"]).optional() })
     .safeParse(raw);
   if (!parsed.success) {
     console.error("[api] finishGoogleConnect response shape mismatch", parsed.error.flatten());
@@ -1036,6 +1036,49 @@ export async function listGoogleCalendars(token?: string): Promise<{ calendars: 
 /** Disconnect a calendar: stops reading it and deletes its mirrored meetings. */
 export async function disconnectGoogleCalendar(email: string, token?: string): Promise<unknown> {
   return apiCall<unknown>(`/orgs/google/calendar/accounts/${encodeURIComponent(email)}`, { token, method: "DELETE" });
+}
+
+// ==================== GOOGLE SEARCH CONSOLE (google-service), per organization ====================
+//
+// GSC-CONNECTOR-1108. Connected by its own Google consent (`startGoogleConnect(..., "search_console")`),
+// finished by the same callback as Gmail. google-service reads each property's daily clicks and
+// declares them as Units of the outcome « Google search click » on the brand owning the site.
+
+const SearchConsolePropertySchema = z.object({
+  siteUrl: z.string(),
+  permissionLevel: z.string().nullable(),
+  brandId: z.string().nullable(),
+  // Plain string: the producer owns this vocabulary (`searchConsolePropertyLine` names it).
+  status: z.string(),
+  lastSyncedAt: z.string().nullable(),
+  lastSyncError: z.string().nullable(),
+});
+
+const SearchConsoleAccountSchema = z.object({
+  email: z.string(),
+  status: z.string(),
+  connectedAt: z.string(),
+  lastSyncedAt: z.string().nullable(),
+  lastSyncError: z.string().nullable(),
+  properties: z.array(SearchConsolePropertySchema),
+});
+
+export type SearchConsoleAccount = z.infer<typeof SearchConsoleAccountSchema>;
+
+/** The org's connected Search Console accounts, each property with the brand it counts for or why not. */
+export async function listSearchConsoleAccounts(token?: string): Promise<{ accounts: SearchConsoleAccount[] }> {
+  const raw = await apiCall<unknown>(`/orgs/google/search-console/accounts`, { token });
+  const parsed = z.object({ accounts: z.array(SearchConsoleAccountSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listSearchConsoleAccounts response shape mismatch", parsed.error.flatten());
+    throw new Error("listSearchConsoleAccounts returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Stop reading a Search Console account. Clicks already counted stay counted. */
+export async function disconnectSearchConsole(email: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(`/orgs/google/search-console/accounts/${encodeURIComponent(email)}`, { token, method: "DELETE" });
 }
 
 // ==================== MESSAGING APPS (crm-service Matrix bridges), per brand ====================

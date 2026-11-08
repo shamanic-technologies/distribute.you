@@ -28,6 +28,6 @@ describe("v2 mobile layout", () => {
 
   it("integration rows wrap their button under the text on a phone", () => {
     const src = read("components/settings/brand-integrations-card.tsx");
-    expect(src.match(/min-w-0 flex-1 basis-\[calc\(100%-52px\)\] sm:basis-0/g)?.length).toBe(3);
+    expect(src.match(/min-w-0 flex-1 basis-\[calc\(100%-52px\)\] sm:basis-0/g)?.length).toBe(4); // Gmail, Google Calendar, Google Search Console, the integration row
   });
 });

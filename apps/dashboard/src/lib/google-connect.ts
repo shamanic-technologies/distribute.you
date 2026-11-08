@@ -24,10 +24,11 @@ export const GOOGLE_RETURN_KEY = "distribute-google-connect";
 /**
  * Which Google connection a sign-in is for. Each is its OWN consent, never bundled:
  * `mailbox` (Gmail read + send, Contacts read) is google-service's default; `calendar`
- * (Calendar events read + Google Meet read) shows booked meetings and who joined.
- * Both come back through the same registered callback.
+ * (Calendar events read + Google Meet read) shows booked meetings and who joined;
+ * `search_console` (search analytics read) counts each site's Google search clicks
+ * (GSC-CONNECTOR-1108). All come back through the same registered callback.
  */
-export type GoogleConnection = "mailbox" | "calendar";
+export type GoogleConnection = "mailbox" | "calendar" | "search_console";
 
 export interface GoogleConnectReturn {
   orgId: string;
@@ -48,7 +49,7 @@ export function parseGoogleReturn(raw: string | null): GoogleConnectReturn | nul
     // Only a path on this site: the value comes back out of storage, never a full URL.
     if (typeof v.returnTo !== "string" || !v.returnTo.startsWith("/") || v.returnTo.startsWith("//")) return null;
     // A trip stored before the calendar existed carried no connection: it was a mailbox.
-    const connection: GoogleConnection = v.connection === "calendar" ? "calendar" : "mailbox";
+    const connection: GoogleConnection = v.connection === "calendar" || v.connection === "search_console" ? v.connection : "mailbox";
     return { orgId: v.orgId, returnTo: v.returnTo, connection };
   } catch {
     return null;
@@ -59,6 +60,7 @@ export function parseGoogleReturn(raw: string | null): GoogleConnectReturn | nul
 export const OUTCOME_PARAMS: Record<GoogleConnection, { connected: string; error: string }> = {
   mailbox: { connected: "gmail", error: "gmailError" },
   calendar: { connected: "calendar", error: "calendarError" },
+  search_console: { connected: "searchConsole", error: "searchConsoleError" },
 };
 
 /** The return path with the outcome the Integrations row reads back. */
@@ -116,6 +118,12 @@ export function withLoginHint(authorizeUrl: string, email: string): string {
 export function finishErrorMessage(connection: GoogleConnection, err: unknown): string {
   if (connection === "mailbox") return "We could not connect this mailbox. Try again.";
   const e = err as { status?: unknown; body?: { reason?: unknown } | null } | null;
+  if (connection === "search_console") {
+    if (e?.status === 400 && e.body?.reason === "search_console_permission_missing") {
+      return "Keep the Search Console box ticked and try again.";
+    }
+    return "We could not connect Google Search Console. Try again.";
+  }
   if (e?.status === 400 && e.body?.reason === "calendar_permission_missing") {
     return "Keep the calendar box ticked and try again.";
   }
@@ -153,4 +161,72 @@ export function calendarLine(cal: GoogleCalendarHealth): { text: string; tone: "
     tone: "warn",
     reconnect: true,
   };
+}
+
+/** The fields of a connected Search Console account its line reads (google-service `GET /orgs/google/search-console/accounts`). */
+export interface SearchConsoleAccountHealth {
+  status: string;
+}
+
+/**
+ * What a connected Search Console account says, and whether it offers Reconnect (GSC-CONNECTOR-1108).
+ * `reconnect_required` = Google refused our token: the same connect flow brings it back. `sync_failing`
+ * = the last read failed and google-service retries on its own. Any value the producer adds later
+ * reads as a stop, loudly, rather than as healthy.
+ */
+export function searchConsoleAccountLine(acc: SearchConsoleAccountHealth): { text: string | null; tone: "ok" | "warn"; reconnect: boolean } {
+  if (acc.status === "active") return { text: null, tone: "ok", reconnect: false };
+  if (acc.status === "sync_failing") {
+    return { text: "We could not read this account last time. We try again on our own.", tone: "warn", reconnect: false };
+  }
+  if (acc.status !== "reconnect_required") console.error("[search-console] unknown account status", acc.status);
+  return { text: "Google stopped our access. Sign in again to keep counting your clicks.", tone: "warn", reconnect: true };
+}
+
+/** One property of a connected account (its site, the brand it counts for, and google-service's verdict). */
+export interface SearchConsolePropertyHealth {
+  siteUrl: string;
+  brandId: string | null;
+  status: string;
+}
+
+/**
+ * `sc-domain:distribute.you` (the whole domain) reads `distribute.you`; a URL prefix property keeps its
+ * scheme and drops the trailing slash (`https://distribute.you`), so the two never read the same.
+ */
+export function searchConsoleSiteName(siteUrl: string): string {
+  if (siteUrl.startsWith("sc-domain:")) return siteUrl.slice("sc-domain:".length);
+  return siteUrl.replace(/\/$/, "");
+}
+
+/**
+ * Whether a property counts clicks and for which brand, or why not, in plain words. The verdict is
+ * google-service's (`status`), read and only named here. `brandName` is the brand's display name,
+ * null when the brand list has not answered (the line then names no brand).
+ */
+export function searchConsolePropertyLine(
+  p: SearchConsolePropertyHealth,
+  brandName: string | null,
+): { text: string; tone: "ok" | "muted" | "warn" } {
+  switch (p.status) {
+    case "counting":
+      return { text: brandName ? `Counts your Google search clicks for ${brandName}.` : "Counts your Google search clicks.", tone: "ok" };
+    case "pending":
+      return { text: "Reading this site for the first time.", tone: "muted" };
+    case "covered":
+      return { text: "Already counted by another property of this site.", tone: "muted" };
+    case "no_brand":
+      return { text: "Not counted. No brand here uses this site. Add it as a brand's website to count it.", tone: "warn" };
+    case "brand_ambiguous":
+      return { text: "Not counted. Two brands here use this site. Keep it on one brand to count it.", tone: "warn" };
+    case "unverified":
+      return { text: "Not counted. Google does not let this account read this site.", tone: "warn" };
+    case "not_listed":
+      return { text: "Not counted. Google no longer lists this site for this account.", tone: "warn" };
+    case "disconnected":
+      return { text: "Not read anymore.", tone: "muted" };
+    default:
+      console.error("[search-console] unknown property status", p.status);
+      return { text: "Not counted right now.", tone: "warn" };
+  }
 }
