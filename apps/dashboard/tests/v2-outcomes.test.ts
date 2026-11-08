@@ -139,7 +139,10 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     expect(shell).toContain("useBrandOutcomeList(orgId, brandId)");
     // Everyone first, then the ones we contacted (lead-service's bucket, the column's figure).
     expect(page).toContain('{ key: "all", label: "Everyone", count: listed.all.people }');
-    expect(page).toContain("<EveryoneTable crmStep={outcome.items.crmStep} />");
+    expect(page).toContain('<EveryoneTable key="all" crmStep={outcome.items.crmStep} />');
+    // The From us tab LISTS crm-service's contacted people too (OUTCOME-CONTACTED-LIST-1108), never lead-service's.
+    expect(page).toContain('<EveryoneTable key="ours" crmStep={outcome.items.crmStep} contactedOnly />');
+    expect(read("src/lib/api.ts")).toContain('if (opts.contactedByUs) qs.set("contactedByUs", "true");');
     // From us (owner 2026-11-08, was "Contacted by us") = crm-service's served figure on the row, the tile and the tab alike (the row read
     // lead-service's reached count, 16 Stripe payers, while the page said 1).
     expect(page).toContain('{ key: "ours", label: "From us", count: listed.all.contactedByUs }');
