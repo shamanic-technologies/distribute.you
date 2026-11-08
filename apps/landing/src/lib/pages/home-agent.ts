@@ -1,6 +1,6 @@
 /**
  * The live parts of the homepage, the Revenue AI Agent page (PAGE-REVENUE-AGENT-1029,
- * owner 2026-10-29): "Revenue Automation Done For You", sold to the SaaS founder at the
+ * owner 2026-10-29): "Revenue Automation Done For You", sold (since 2026-11-08) to the solo founder of a B2B service making $100k+/year, at the
  * API price with 0% markup, open source, run locally if they want.
  *
  * The page itself is hand-written HTML (`public/landing/index-v2.html`). This module

@@ -1,158 +1,101 @@
 # distribute.you — Ideal Customer Profile
 
 **Status:** Living document. Source of truth for landing copy, ads, sales, product decisions.
-**Last updated:** 2026-05-22.
+**Last updated:** 2026-11-08 (owner: the cash-poor "Serial Builder" SaaS founder is OUT).
 
 ---
 
-## ICP #1 — Théo, the Serial Builder
+## ICP #1 — the Scaling Service Founder
 
 ### Identity statement
 
-> "I'm 16-40. CEO-founder, mostly solo. I build non-stop. I always have several SaaS in bench. I don't have time to breathe between newsletter, content, distribute.you campaigns, meetings, monitoring, replies, workflows, and refining the ICP of my own campaigns. I want someone close to me — founder reachable, bugs fixed fast, features shipped fast."
+> "I run a B2B service that makes over $100k a year with a team of 1 to 3. Now I want to scale. I need revenue automation I can trust: easy to run, measured, auditable, solid and fast, built on the best tools of the moment."
 
-### The dream (never forget this)
+### The dream
 
-> "One of my products is going to take off. I want it to take off because of my marketing, my distribution, my ICP — not because I hired a marketing team or raised a Series A. I want to stay solo. I want to ride one product from $0 to $1M MRR without ever needing to become a 'real company.' distribute.you is the lever that makes that math work."
+> "I know what each new client brings me back, on the path that pays best this month. My agent keeps testing, switches to what works and keeps me posted on WhatsApp."
 
-The dream is **stay solo, go big.** Every product decision, every roadmap item, every line of copy must support this trajectory: a single founder, riding the right product, becoming a millionaire on their own terms. Anything that implies "you're too small for this" or "wait until you're a real company" is wrong.
+The dream is **scale a service business that already works**. Every page, roadmap item and line of copy answers one question: does this help a founder with cash add clients, measurably?
 
 ### Demographics & context
 
 | Dimension | Value |
 |---|---|
-| Age | 16-40 (modern builders start young — Pieter Levels archetype, Gen Z indie hackers) |
-| Status | Solo CEO-founder, sometimes 1-3 ppl max |
-| Profile | Marketing-first builder, codes sometimes. CEO-leaning. Distribution + growth obsessed. |
-| Portfolio | 3-10 active products at any time. Always testing. |
-| Code stack | Cursor / Claude Code / Lovable / v0. Not necessarily senior engineer. |
-| Primary device | Desktop. Mobile is read-only glance. |
-| Notification channel | Email (Gmail). No mobile push. |
+| Business | B2B service (consulting, agency-style services, clinics, B2B providers) |
+| Team | Solo founder, 1-3 people |
+| Revenue | $100k+ a year, already profitable |
+| Goal | Scale |
+| Channel to us | WhatsApp and email first, dashboard optional |
 
-### Mindset & strategy
+### What they want (owner's words, 2026-11-08)
 
-| Dimension | Value |
+Easy, but serious. Measurable. Auditable. Solid, robust. Fast. State of the art.
+
+| Their word | What we show |
 |---|---|
-| Mental model | VC on his own products. Allocates budget per bet. |
-| Strategy | A/B channels × A/B products. Kill < 4 weeks if CAC > LTV. Scale 10x if CAC < LTV/3. |
-| North-star metric | Real CAC ($/qualified reply, $/paid conversion) |
-| Budget | $5-15/day per product × N products. 100% variable. |
-| Subscription tolerance | Refused outright. |
-| Setup tolerance | < 5 min. Ideally 30 seconds — URL + budget. |
+| Measurable | The return of each outcome over time, per offer and audience |
+| Auditable | Every action, its price and every email sent, visible; open source |
+| Solid, robust | Our own warmed domains and inboxes, run by us |
+| Fast | First emails out the same day |
+| State of the art | New LLMs and prompts tested as they come out, named |
+| Easy | Everything run from WhatsApp or email |
+
+Our edge they cannot build alone: results pooled across every client, so each campaign improves the pick for all.
+
+### Outcomes they buy (three levels)
+
+1. Paid client (everyone wants it).
+2. Booked meeting, signup, purchase (what their sales motion needs).
+3. Across cold email, lead nurturing and content.
 
 ### Time poverty
 
-Théo has **no time** between:
+No time between delivering for today's clients, selling to the next ones, answering replies, booking calls, following up past leads and producing content. Buys **time** and **leverage**.
 
-- Writing his newsletter
-- Producing content
-- Launching distribute.you campaigns across multiple products
-- The meetings these generate
-- Monitoring campaigns
-- Managing qualified replies
-- Refining his own workflows / templates / ICPs
-
-He buys **time** and **leverage**, not a tool.
-
-### Infrastructure: what he refuses vs accepts
+### Refuses / accepts
 
 | Refuses | Accepts |
 |---|---|
-| Buying a sending domain | Email sent from an agency-style address on his behalf |
-| SPF / DKIM / DMARC setup | AI qualifies replies + forwards to his Gmail |
-| Warming mailboxes for 6 weeks | Only the "gold" leads reach his inbox |
-| Triaging raw replies (spam vs lead) | One 30-second setup, back to building |
-| Bounces / blacklists / reputation monitoring | Multi-channel in a single dashboard |
+| Hiring an SDR team before a path is proven | A team sending on their behalf, from domains it owns |
+| Buying domains and warming mailboxes | Interested replies answered and handed over with the meeting |
+| Triaging raw replies | Every action at the API price, the return of each outcome shown |
+| Results nobody can audit | New LLMs and prompts tested as they come out |
+| Lock-in / opaque pricing | Every offer and audience in one dashboard, ranked by return |
 
-### Pricing & trust
-
-| Dimension | Value |
-|---|---|
-| Margin tolerance | 2x+ accepted if: public unit prices + no subscription + open source + $25 welcome credits |
-| Preferred model | Pay-as-you-go prepaid credits (AWS / OpenAI style) |
-| Trust triangle | (1) Public unit prices on 50+ primitives (2) Open source on GitHub, 20+ repos (3) Public CAC at `/performance` |
-| Self-host | Knows it exists. Never activates in practice (too complex, 20+ repos). Reassurance is enough. |
-| $25 welcome credits | Perfect tasting amount. Covers 1-2 micro preview campaigns. |
-
-### Relationship with the founder
-
-Strong expectation:
-
-- Direct access to distribute.you's founder
-- Bug → message → fast patch
-- Feature request → heard, prioritized when relevant, shipped in days/weeks
-- No enterprise support, no ticketing system
-- Twitter DM / GitHub issue / direct email = accepted channels
-- Wants to feel he has "the boss's number"
-
-Implications: founder is accessible, roadmap is public, response time is visible.
-
-### Catalog expectations
+### Mindset
 
 | Dimension | Value |
 |---|---|
-| Mental model | A growing marketplace of channels. Stripe analogy taken literally (1 payment method → 50+). |
-| Vitality signal | At least one new channel per month |
-| FOMO levers | VC Outreach, Accelerators Outreach, Influencers, LinkedIn (coming) |
-| Custom workflow | Forks an existing recipe → tunes (prompt / model / sequence) → deploys on his own account → sees his $/outcome |
-| Contribution path | PR on a public repo → merged → re-billed for everyone |
+| North-star metric | Real CAC ($/booked meeting, $/paying client) per offer and audience |
+| Strategy | Kill a path under 4 weeks if CAC > LTV; scale 10x when CAC < LTV/3 |
+| Buys | AI Agent (self-serve, Start free) or Agency (from $1K/month + 10% of budget, Book a call) |
 
 ### Pricing stack (3 layers)
 
 ```
-Layer 1 — PRIMITIVES (public, fixed unit price, margin included)
-  50+ priced API items
+Layer 1 — PRIMITIVES (public unit prices, vendor price, 0% markup on new accounts)
+  /catalog
 
-Layer 2 — WORKFLOWS (recipes that combine primitives, forkable)
-  Compete on $/outcome
+Layer 2 — SCRIPTS (competing code making one outcome, picked by the Rating)
+  Compete on return per outcome
 
-Layer 3 — OUTCOMES (derived, measured a posteriori)
-  $/qualified reply, $/paid conversion = CAC components
+Layer 3 — OUTCOMES (measured a posteriori)
+  $/booked meeting, $/paying client = CAC components
 ```
 
 ### Vocabulary
 
 | Anti | Pro |
 |---|---|
-| "synergy" / "enterprise-ready" / "transformation" | "ship" / "MRR" / "ICP" / "CAC" / "BYOK" |
-| "book a demo" / "talk to sales" | "self-serve" / "$X credits" / "go" |
-| "per-seat pricing" / "monthly minimum" | "pay-as-you-go" / "no subscription" |
-| Lock-in / opaque pricing | Open source / unit prices public |
-
-### Acquisition channels (where Théo lives)
-
-- Hacker News front page (Show HN)
-- X indie sphere (`@levelsio`, `@swyx`, `@theo`, `@marc_louvion`)
-- Indie Hackers
-- `/r/SaaS`
-- Build-in-public threads
-- Founder podcasts
-- MCP awesome lists (secondary)
-
----
-
-## Platform reality check (as of 2026-05-22)
-
-Claims that can be made on landing without "coming soon" caveats:
-
-- 9 channels live (Sales · PR · VC · Hiring · Accelerators · PR Expert Quote · Outlet Discovery · Press Kit · AI Visibility)
-- $25 welcome credits
-- AI reply qualification + Gmail forwarding (manual on the founder's side today, transparent to users)
-- Managed sender infrastructure (warmed agency address)
-- Multi-brand UI in the dashboard
-- Custom workflow forking inside the dashboard
-- Public `/pricing` page listing primitives
-- Open source on GitHub (20+ repos)
-- Public CAC at `/performance`
-
-Caveat: positive-reply stats on `/performance` currently understate reality because positive-reply qualification is not yet automated end-to-end. To be fixed before pushing the leaderboard hard in copy.
+| "growth hacks" / "cheap leads" | "revenue" / "return" / "measured" / "auditable" |
+| A price alone | The value per dollar (return, revenue per $) |
+| "Stay solo" | "Scale" |
 
 ---
 
 ## How to use this document
 
-- **Writing landing copy:** target Théo. Every section must answer "is this useful for Théo?". If not, cut.
-- **Writing ads:** Théo's vocab pro/anti list above. Channels list = where to run.
-- **Prioritizing features:** does this reduce time poverty, increase CAC clarity, expand the catalog, or strengthen founder proximity? If none, deprioritize.
-- **Pricing decisions:** keep unit prices public, keep $25 credits, keep no-subscription. Margin can stay 2x+ but never advertised — the price is the price.
-- **Roadmap signal:** at least one new channel per month is non-negotiable for retention of this ICP.
+- **Writing landing copy:** target the Scaling Service Founder. Every section answers "does this help them add clients, measurably?". If not, cut.
+- **Selling value:** lead with return per dollar, never the cost itself.
+- **Prioritizing features:** does this make results more measurable, auditable, faster, or easier to run from WhatsApp? If none, deprioritize.
+- **Proof:** live figures and named clients only, never invented numbers.

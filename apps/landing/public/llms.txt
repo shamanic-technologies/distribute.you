@@ -180,7 +180,6 @@ https://distribute.you/docs
 - [Docs](https://distribute.you/docs): the API and its OpenAPI document, how a key
   authenticates, the MCP server, the CLI, and the machine-readable files on this domain
 - [Contact](https://distribute.you/contact): support, press, and the registered company
-- [Investors](https://distribute.you/investors): live platform metrics, growth data, infrastructure, SAFE round details, ICP definition
 - [Blog](https://distribute.you/blog): playbooks, benchmarks and field notes on B2B acquisition
 
 ## Comparisons

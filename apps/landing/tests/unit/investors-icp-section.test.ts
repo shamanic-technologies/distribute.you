@@ -20,8 +20,10 @@ describe("Investors page: ICP #1 section", () => {
     expect(page).toMatch(/Who We Serve:\s+ICP\s+#1/);
   });
 
-  it("includes Serial Builder framing", () => {
-    expect(page).toMatch(/Serial Builder/);
+  it("includes the Scaling Service Founder framing (owner 2026-11-08)", () => {
+    expect(page).toMatch(/Scaling Service Founder/);
+    expect(page).toMatch(/\$100k\+ a year/);
+    expect(page).not.toMatch(/Serial Builder|16-40|\$50-\$500/);
   });
 
   it("section is placed after Company Overview and before Platform Metrics", () => {
@@ -48,7 +50,7 @@ describe("Investors page: ICP #1 section", () => {
 
   it("mentions the public roadmap expectation", () => {
     expect(page).toMatch(/Roadmap expectation/);
-    expect(page).toMatch(/More channels, same measurement/);
+    expect(page).toMatch(/More outcomes, same measurement/);
   });
 });
 
@@ -59,13 +61,13 @@ describe("Internal ICP doc", () => {
 
   const doc = fs.existsSync(docPath) ? fs.readFileSync(docPath, "utf-8") : "";
 
-  it("documents the Serial Builder persona", () => {
-    expect(doc).toMatch(/Serial Builder/);
+  it("documents the Scaling Service Founder persona", () => {
+    expect(doc).toMatch(/Scaling Service Founder/);
   });
 
   it("documents the 3-layer pricing stack", () => {
     expect(doc).toMatch(/PRIMITIVES/);
-    expect(doc).toMatch(/WORKFLOWS/);
+    expect(doc).toMatch(/SCRIPTS/);
     expect(doc).toMatch(/OUTCOMES/);
   });
 
