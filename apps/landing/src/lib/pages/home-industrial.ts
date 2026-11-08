@@ -46,7 +46,7 @@ const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0l2.6 9.4
 // sparkles twinkle in place. Transforms, opacity and background-position only.
 // `main.js` splits the hero title into `.w` word spans (each with its own transform and
 // blur): a clip on `.ig` alone paints nothing through them, so the word carries the clip
-// and chains the shine after its own entrance.
+// and starts the shine after its own entrance.
 export const INDUSTRIAL_STYLE = `<style>
 .ig{position:relative;display:inline-block;background:linear-gradient(100deg,#2563eb 0%,#2563eb 38%,#a5c8ff 48%,#fff 50%,#a5c8ff 52%,#2563eb 62%,#2563eb 100%);background-size:250% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;color:transparent;animation:ig-shine 3.2s cubic-bezier(0.77,0,0.175,1) .4s infinite;filter:drop-shadow(0 0 18px rgba(37,99,235,.28))}
 @keyframes ig-shine{0%{background-position:100% 0}55%,100%{background-position:0 0}}
