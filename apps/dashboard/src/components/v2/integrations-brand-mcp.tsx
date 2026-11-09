@@ -144,7 +144,7 @@ function ServerRow({
   };
 
   return (
-    <li className="k-line-subtle flex items-start gap-3 border-b px-4 py-3 last:border-b-0">
+    <li className="k-line-subtle flex flex-wrap items-start gap-x-3 gap-y-2 border-b px-4 py-3 last:border-b-0">
       <span
         aria-hidden
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]"
@@ -152,20 +152,20 @@ function ServerRow({
       >
         <PlugsConnectedIcon size={20} weight="duotone" />
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-[calc(100%-52px)] sm:basis-0">
         <p className="truncate text-[14px] font-medium leading-5">{server.name}</p>
         <p className="k-fg3 k-mono truncate text-[12px] leading-5" title={server.url}>{server.url}</p>
-        <p className="mt-0.5 inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
+        <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
           <span
             aria-hidden
-            className="inline-block h-1.5 w-1.5 rounded-full"
+            className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
             style={{ background: ok ? "var(--run)" : "var(--data-rose)" }}
           />
           <span title={ok ? server.toolNames.join(", ") : undefined}>{serverStateLine(server)}</span>
         </p>
         {failed && <p className="mt-1 text-[12px] text-[var(--data-rose)]">{failed}</p>}
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="flex w-full shrink-0 items-center justify-end gap-1.5 sm:w-auto">
         {confirming ? (
           <>
             <button type="button" className="k-btn" disabled={busy !== null} onClick={remove}>
