@@ -208,7 +208,15 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("The referred account\n          receives no referral credit.");
     expect(terms).not.toContain("each side");
     expect(terms).toContain("is an acquisition agency delivered as a service");
-    expect(terms).toContain('const LAST_UPDATED = "October 30, 2026"');
+    expect(terms).toContain('const LAST_UPDATED = "November 9, 2026"');
+  });
+
+  it("the terms state the risk of a brand MCP server our AI reads from and writes to (BRAND-MCP-1109)", () => {
+    const terms = read("src/app/terms/page.tsx");
+    expect(terms).toContain('id="brand-mcp-servers"');
+    expect(terms).toContain("MCP servers you connect (public beta).");
+    expect(terms).toContain("may perform write actions on that server");
+    expect(terms).toContain("you accept that risk");
   });
 
   it("the terms disclose the card authorization hold, and say it is not a charge", () => {
