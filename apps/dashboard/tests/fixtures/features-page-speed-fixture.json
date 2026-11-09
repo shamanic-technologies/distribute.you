@@ -1,0 +1,198 @@
+{
+ "status": "red",
+ "brokenCount": 3,
+ "reason": "3 of 4 checks broken.",
+ "windowDays": 30,
+ "recentHours": 48,
+ "staleCadenceMultiplier": 3,
+ "checks": [
+  {
+   "check": "page-speed-today",
+   "label": "Page speed: Today",
+   "verdict": "broken",
+   "reason": "Reload 21.4 s (budget 1 s). Slowest server read /orgs/people/outcomes?brandId={id} 49.0 s.",
+   "stale": false,
+   "lastRunAt": "2026-11-09T20:25:12.000Z",
+   "lastRunOk": false,
+   "minutesSinceLastRun": 12.5,
+   "cadenceMinutes": 1440,
+   "staleAfterMinutes": 4320,
+   "brokenSince": "2026-11-09T20:25:12.000Z",
+   "unit": "ms",
+   "latestValue": 21377,
+   "latestDetails": {
+    "path": "/v2/orgs/org_3CL2MrIGuvlW9YHd5RgRgNoMAMS/brands/f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+    "route": "",
+    "warmMs": 21377,
+    "warmCapped": false,
+    "inAppMs": null,
+    "inAppFrom": null,
+    "firstMs": 26377,
+    "slowestRead": {
+     "path": "/orgs/people/outcomes?brandId={id}",
+     "ms": 49037
+    },
+    "limit": 1000
+   },
+   "daily": [
+    {
+     "day": "2026-11-09",
+     "runs": 1,
+     "failedRuns": 1,
+     "valueMin": 21377,
+     "valueMax": 21377,
+     "valueMean": 21377,
+     "valueLast": 21377
+    }
+   ],
+   "recent": [
+    {
+     "ranAt": "2026-11-09T20:25:12.000Z",
+     "ok": false,
+     "value": 21377
+    }
+   ]
+  },
+  {
+   "check": "page-speed-companies",
+   "label": "Page speed: Companies",
+   "verdict": "broken",
+   "reason": "Reload 12.8 s (budget 1 s). Click from Today 1.1 s.",
+   "stale": false,
+   "lastRunAt": "2026-11-09T20:25:12.000Z",
+   "lastRunOk": false,
+   "minutesSinceLastRun": 12.5,
+   "cadenceMinutes": 1440,
+   "staleAfterMinutes": 4320,
+   "brokenSince": "2026-11-09T20:25:12.000Z",
+   "unit": "ms",
+   "latestValue": 12762,
+   "latestDetails": {
+    "path": "/v2/orgs/org_3CL2MrIGuvlW9YHd5RgRgNoMAMS/brands/f4d73dab-1f9d-49b2-b16e-63ecde76a5eb/companies",
+    "route": "companies",
+    "warmMs": 12762,
+    "warmCapped": false,
+    "inAppMs": 1099,
+    "inAppFrom": "Today",
+    "firstMs": 17762,
+    "slowestRead": {
+     "path": "/orgs/people/outcomes?brandId={id}",
+     "ms": 21796
+    },
+    "limit": 1000
+   },
+   "daily": [
+    {
+     "day": "2026-11-09",
+     "runs": 1,
+     "failedRuns": 1,
+     "valueMin": 12762,
+     "valueMax": 12762,
+     "valueMean": 12762,
+     "valueLast": 12762
+    }
+   ],
+   "recent": [
+    {
+     "ranAt": "2026-11-09T20:25:12.000Z",
+     "ok": false,
+     "value": 12762
+    }
+   ]
+  },
+  {
+   "check": "page-speed-people",
+   "label": "Page speed: People",
+   "verdict": "broken",
+   "reason": "Reload 8.9 s (budget 1 s). Click from Today 0.58 s.",
+   "stale": false,
+   "lastRunAt": "2026-11-09T20:25:12.000Z",
+   "lastRunOk": false,
+   "minutesSinceLastRun": 12.5,
+   "cadenceMinutes": 1440,
+   "staleAfterMinutes": 4320,
+   "brokenSince": "2026-11-09T20:25:12.000Z",
+   "unit": "ms",
+   "latestValue": 8883,
+   "latestDetails": {
+    "path": "/v2/orgs/org_3CL2MrIGuvlW9YHd5RgRgNoMAMS/brands/f4d73dab-1f9d-49b2-b16e-63ecde76a5eb/people",
+    "route": "people",
+    "warmMs": 8883,
+    "warmCapped": false,
+    "inAppMs": 581,
+    "inAppFrom": "Today",
+    "firstMs": 13883,
+    "slowestRead": {
+     "path": "/brands/{id}/campaign-revenue?pricing=net",
+     "ms": 26729
+    },
+    "limit": 1000
+   },
+   "daily": [
+    {
+     "day": "2026-11-09",
+     "runs": 1,
+     "failedRuns": 1,
+     "valueMin": 8883,
+     "valueMax": 8883,
+     "valueMean": 8883,
+     "valueLast": 8883
+    }
+   ],
+   "recent": [
+    {
+     "ranAt": "2026-11-09T20:25:12.000Z",
+     "ok": false,
+     "value": 8883
+    }
+   ]
+  },
+  {
+   "check": "page-speed-relationships",
+   "label": "Page speed: Relationships",
+   "verdict": "ok",
+   "reason": "Reload 0.85 s (budget 1 s).",
+   "stale": false,
+   "lastRunAt": "2026-11-09T20:25:12.000Z",
+   "lastRunOk": true,
+   "minutesSinceLastRun": 12.5,
+   "cadenceMinutes": 1440,
+   "staleAfterMinutes": 4320,
+   "brokenSince": null,
+   "unit": "ms",
+   "latestValue": 851,
+   "latestDetails": {
+    "path": "/v2/orgs/org_3CL2MrIGuvlW9YHd5RgRgNoMAMS/brands/f4d73dab-1f9d-49b2-b16e-63ecde76a5eb/relationships",
+    "route": "relationships",
+    "warmMs": 851,
+    "warmCapped": false,
+    "inAppMs": 372,
+    "inAppFrom": "Today",
+    "firstMs": 5851,
+    "slowestRead": {
+     "path": "/brands/{id}/relationships/review",
+     "ms": 1673
+    },
+    "limit": 1000
+   },
+   "daily": [
+    {
+     "day": "2026-11-09",
+     "runs": 1,
+     "failedRuns": 0,
+     "valueMin": 851,
+     "valueMax": 851,
+     "valueMean": 851,
+     "valueLast": 851
+    }
+   ],
+   "recent": [
+    {
+     "ranAt": "2026-11-09T20:25:12.000Z",
+     "ok": true,
+     "value": 851
+    }
+   ]
+  }
+ ]
+}

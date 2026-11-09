@@ -25,7 +25,7 @@ describe("Monitoring > Box > Watchdogs: features-service's read parses as served
   });
 
   it("asks for every watchdog the box runs, so a silent one reads not yet", () => {
-    expect(Object.keys(EXPECTED_BOX_CHECKS)).toEqual(["deploy-pipeline", "service-health", "workflow-queue", "jev-judgments", "own-org-balance", "social-posting", "pg-connections"]);
+    expect(Object.keys(EXPECTED_BOX_CHECKS)).toEqual(["deploy-pipeline", "service-health", "workflow-queue", "jev-judgments", "own-org-balance", "social-posting", "pg-connections", "page-speed"]);
     expect(boxCheckName({ check: "own-org-balance", label: null })).toBe("Our own org's credit");
     expect(boxCheckName({ check: "deploy-pipeline", label: "Deploy pipeline" })).toBe("Deploy pipeline");
     expect(boxCheckName({ check: "brand-new-check", label: null })).toBe("brand-new-check");
