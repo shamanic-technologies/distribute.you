@@ -326,6 +326,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // both are read on every Settings visit, and an unlisted root is default-OFF —
   // so without these the Integrations section cold-skeletons every time.
   "brandKeys",
+  // Integrations > Tools for our AI: a brand's MCP servers, no secret (BRAND-MCP-1109).
+  "brandMcpServers",
   "crmConnections",
   // The GoHighLevel token scopes the connect form lists (crm-service, a constant list).
   "ghlScopes",

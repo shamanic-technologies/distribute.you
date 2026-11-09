@@ -24,6 +24,7 @@ import { OfferSourcesTab } from "@/components/v2/offer-sources-tab";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
 import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
+import { BrandMcpServersView } from "@/components/v2/integrations-brand-mcp";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 import { Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -446,6 +447,16 @@ export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
               Run distribute.you from the AI you already use. One line sets it up.
             </p>
             <V2AiIntegrationView orgId={orgId} brandId={brandId} />
+          </section>
+          <section>
+            <h2 className="flex items-center gap-2 text-[14px] font-medium leading-5">
+              Tools for our AI
+              <span className="k-chip">Public beta</span>
+            </h2>
+            <p className="k-fg3 mb-3 mt-1 text-[12px] leading-[18px]">
+              Our AI uses these servers before it writes to your leads and clients.
+            </p>
+            <BrandMcpServersView brandId={brandId} />
           </section>
         </div>
       ) : view === "raw" ? (
