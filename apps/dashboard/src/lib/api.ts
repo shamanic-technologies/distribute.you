@@ -2,6 +2,7 @@ import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths"
 import { CatalogueRowsSchema, CatalogueStrategySchema, CatalogueTacticSchema, ScriptListSchema, type Script } from "./v2/catalogue";
 import { BrandOutcomesSchema, OutcomePeopleSchema, type BrandOutcomes, type OutcomePeople } from "./v2/outcome-people";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
+import { BrandMcpServerResponseSchema, BrandMcpServersResponseSchema, type BrandMcpServer } from "./v2/brand-mcp-servers";
 import {
   BrandDisqualificationsSchema,
   LeadCompanyBlockSchema,
@@ -624,6 +625,53 @@ const SetBrandKeyResponseSchema = z.object({
   provider: z.string(),
   maskedKey: z.string(),
 });
+
+// ─── Brand MCP servers (BRAND-MCP-1109, public beta) ───────────────────────────
+// The servers a brand gives our conversation AI (read + write tools), stored by chat-service.
+// The Authorization value is sent once on create and never read back.
+
+/** This brand's MCP servers, each with its connect state and tool count. */
+export async function listBrandMcpServers(brandId: string, token?: string): Promise<BrandMcpServer[]> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/mcp-servers?brandId=${brandId}`, { token });
+  const parsed = BrandMcpServersResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listBrandMcpServers response shape mismatch", parsed.error.flatten());
+    throw new Error("listBrandMcpServers returned an unexpected shape");
+  }
+  return parsed.data.servers;
+}
+
+/** Plug an MCP server on this brand. A server that cannot connect is still stored, with its reason. */
+export async function addBrandMcpServer(
+  brandId: string,
+  input: { name: string; url: string; authorization?: string },
+  token?: string,
+): Promise<BrandMcpServer> {
+  // brandId rides the query too: a body-only id never reaches the third hop as x-brand-id.
+  const raw = await apiCall<unknown>(`/brands/${brandId}/mcp-servers?brandId=${brandId}`, { token, method: "POST", body: input });
+  const parsed = BrandMcpServerResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] addBrandMcpServer response shape mismatch", parsed.error.flatten());
+    throw new Error("addBrandMcpServer returned an unexpected shape");
+  }
+  return parsed.data.server;
+}
+
+/** Ask the server for its tools again (after the brand fixed its side). */
+export async function checkBrandMcpServer(brandId: string, serverId: string, token?: string): Promise<BrandMcpServer> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/mcp-servers/${serverId}/check?brandId=${brandId}`, { token, method: "POST" });
+  const parsed = BrandMcpServerResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] checkBrandMcpServer response shape mismatch", parsed.error.flatten());
+    throw new Error("checkBrandMcpServer returned an unexpected shape");
+  }
+  return parsed.data.server;
+}
+
+/** Unplug a server: our AI stops using it and its secret is deleted. */
+export async function removeBrandMcpServer(brandId: string, serverId: string, token?: string): Promise<void> {
+  await apiCall<unknown>(`/brands/${brandId}/mcp-servers/${serverId}?brandId=${brandId}`, { token, method: "DELETE" });
+}
 
 /** This brand's third-party credentials, masked. Never the org-wide ones. */
 export async function listBrandKeys(
