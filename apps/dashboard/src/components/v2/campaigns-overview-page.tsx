@@ -39,7 +39,7 @@ import { CampaignPinButton } from "@/components/v2/outcome-pins";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useBrandScope } from "@/components/v2/brand-scope";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
-import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
+import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelOtherPartLines, FunnelPathLine, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
 import { EmptyNote, MarkLines, SectionTitle, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 
@@ -426,7 +426,11 @@ export function CampaignLine({
       onFocus={() => prefetch(href)}
       className="k-row grid cursor-pointer grid-cols-1 items-center @md:grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-2 px-4 py-4 @[68rem]:grid-cols-[minmax(0,1fr)_104px_120px_116px_120px_76px_170px]"
     >
-      <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
+      <MarkLines
+        gap="gap-3"
+        mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}
+        after={<FunnelOtherPartLines campaignId={campaign.id} parts={copy?.otherParts} />}
+      >
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-[14px] font-medium">{campaign.salesFunnelName}</span>
           {offerName && <span className="k-fg3 truncate text-[12px]">{offerName}</span>}

@@ -58,7 +58,7 @@ import { CampaignAudience } from "@/components/v2/campaign-audience";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, MarkLines, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostValue, RoiLabel } from "@/components/v2/roi-label";
-import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi, InvestedFigure } from "@/components/v2/funnel-campaigns";
+import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelOtherPartLines, FunnelPathLine, FunnelRoi, InvestedFigure } from "@/components/v2/funnel-campaigns";
 import { CampaignPinButton } from "@/components/v2/outcome-pins";
 
 /**
@@ -108,7 +108,10 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
   const row = rowsQ.data?.find((r) => r.id === campaign.id) ?? null;
   const rowsSettled = funnelRowSettled(row !== null, rowsQ, campaign.createdAt);
   const copyQ = useAuthQuery(["funnelCampaignCopies", campaign.brandId, campaign.offerId], () => listFunnelCampaignCopies(campaign.brandId, campaign.offerId), pollOptions);
-  const path = row?.path ?? copyQ.data?.find((r) => r.id === campaign.id)?.path ?? null;
+  const copyRow = copyQ.data?.find((r) => r.id === campaign.id) ?? null;
+  const path = row?.path ?? copyRow?.path ?? null;
+  // Every part the campaign runs off its path, one line each under it (CAMPAIGN-PATH-SHOWS-AI-ANSWER-1109).
+  const otherParts = row?.otherParts ?? copyRow?.otherParts;
 
   const caps = useAuthQuery(
     ["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId],
@@ -134,6 +137,7 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
             {path && (
               <div className="mt-1">
                 <FunnelPathLine items={path.items} />
+                <FunnelOtherPartLines campaignId={campaign.id} parts={otherParts} />
               </div>
             )}
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">

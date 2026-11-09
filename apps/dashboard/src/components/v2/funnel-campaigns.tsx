@@ -47,6 +47,7 @@ import {
   type FunnelCampaignRow,
   type FunnelCampaignCopy,
   type FunnelPathItem,
+  type FunnelOtherPart,
   orderPipesByFunnel,
   funnelRowSettled,
 } from "@/lib/sales-funnel-campaigns";
@@ -464,6 +465,40 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
       ))}
     </span>
     </HoverScroll>
+  );
+}
+
+/**
+ * Every part the campaign runs off its path, one line each under the path line, in the same look
+ * (CAMPAIGN-PATH-SHOWS-AI-ANSWER-1109, owner 2026-11-09): a campaign whose AI answers leads never reads
+ * as closed by the client's team alone. Renders nothing when the producer serves no other part.
+ */
+export function FunnelOtherPartLines({ campaignId, parts }: { campaignId: string; parts: FunnelOtherPart[] | undefined }) {
+  useEffect(() => {
+    for (const part of parts ?? []) {
+      if (!part.items) console.error("[funnel-campaigns] other part not described", { id: campaignId, part: part.campaignId, reason: part.unavailableReason ?? null });
+    }
+  }, [campaignId, parts]);
+  if (!parts || parts.length === 0) return null;
+  return (
+    <>
+      {parts.map((part) =>
+        part.items ? (
+          // Its outcomes, then its own served sentence ("Our AI emails leads the moment they act until they buy."):
+          // the outcomes alone ("Lead event → Paid client") never said that our AI does it.
+          <span key={part.campaignId} className="mt-1 flex min-w-0 items-center gap-2" data-other-part>
+            <span className="min-w-0 shrink-0">
+              <FunnelPathLine items={part.items} />
+            </span>
+            {part.shortDescription && <span className="k-fg3 min-w-0 truncate text-[11px]">{part.shortDescription}</span>}
+          </span>
+        ) : (
+          <span key={part.campaignId} className="k-fg3 mt-1 block text-[11px]" data-other-part>
+            One more part runs here, not described yet
+          </span>
+        ),
+      )}
+    </>
   );
 }
 

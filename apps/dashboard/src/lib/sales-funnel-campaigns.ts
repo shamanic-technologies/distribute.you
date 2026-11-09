@@ -381,6 +381,23 @@ const PathItemSchema = z.union([
 ]);
 export type FunnelPathItem = z.infer<typeof PathItemSchema>;
 
+/**
+ * A part the campaign runs OFF its `path` (features-service CAMPAIGN-PATH-SHOWS-AI-ANSWER-1109, owner
+ * 2026-11-09): e.g. our AI answering every Lead event beside a cold email path closed by the client's
+ * team. `items` use the path's item kinds; null only with the served `unavailableReason`.
+ */
+const FunnelOtherPartSchema = z
+  .object({
+    campaignId: z.string(),
+    pipeId: z.string(),
+    trigger: z.object({ slug: z.string(), name: z.string() }).passthrough().nullish(),
+    items: z.array(PathItemSchema).nullish(),
+    shortDescription: z.string().nullish(),
+    unavailableReason: z.string().nullish(),
+  })
+  .passthrough();
+export type FunnelOtherPart = z.infer<typeof FunnelOtherPartSchema>;
+
 export const FunnelCampaignRowSchema = z
   .object({
     id: z.string(),
@@ -392,6 +409,8 @@ export const FunnelCampaignRowSchema = z
     type: z.string().nullable(),
     typeLabel: z.string().nullable(),
     path: z.object({ items: z.array(PathItemSchema) }).passthrough().nullable(),
+    // Every part the campaign runs off `path`, each drawn as its own line beside it (1109). Optional until deployed.
+    otherParts: z.array(FunnelOtherPartSchema).optional(),
     copyUnavailableReason: z.string().nullish(),
     // One short customer sentence describing the campaign (owner 2026-10-14, features-service v0.179.225),
     // null + its served reason when there is nothing we run to describe.
@@ -433,6 +452,7 @@ export const FunnelCampaignCopySchema = FunnelCampaignRowSchema.pick({
   type: true,
   typeLabel: true,
   path: true,
+  otherParts: true,
   copyUnavailableReason: true,
   shortDescription: true,
   shortDescriptionUnavailableReason: true,

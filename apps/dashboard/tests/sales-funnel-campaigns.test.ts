@@ -338,7 +338,13 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
 
   it("the mark beside two lines is as tall as the lines (MarkLines, one primitive)", () => {
     expect(src("src/components/v2/ui.tsx")).toContain("export function MarkLines(");
-    expect(funnel()).toContain('<MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>');
+    // Fragments that cannot split on a reflow (the row's MarkLines also carries an `after` since 1109).
+    const f = funnel();
+    const mark = f.indexOf("mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}");
+    expect(mark).toBeGreaterThan(-1);
+    const open = f.lastIndexOf("<MarkLines", mark);
+    expect(open).toBeGreaterThan(-1);
+    expect(f.slice(open, mark)).toContain('gap="gap-3"');
   });
 });
 
