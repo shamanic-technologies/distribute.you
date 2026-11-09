@@ -77,4 +77,16 @@ describe("campaign other parts (1109)", () => {
     expect(src("components/v2/campaigns-overview-page.tsx")).toContain("after={<FunnelOtherPartLines campaignId={campaign.id} parts={copy?.otherParts} />}");
     expect(src("components/v2/campaign-page-next.tsx")).toContain("<FunnelOtherPartLines campaignId={campaign.id} parts={otherParts} />");
   });
+
+  it("each part line carries its served sentence, so it says that our AI does it", () => {
+    const f = src("components/v2/funnel-campaigns.tsx");
+    const body = f.slice(f.indexOf("export function FunnelOtherPartLines("), f.indexOf("export function TypeTag("));
+    expect(body).toContain("{part.shortDescription}");
+  });
+
+  it("the campaign page every customer opens (Goal card) states the served description, every part included", () => {
+    const aim = src("components/v2/campaign-aim.tsx");
+    expect(aim).toContain(">What we do</p>");
+    expect(aim).toContain("copy?.shortDescription");
+  });
 });

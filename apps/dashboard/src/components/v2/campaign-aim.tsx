@@ -67,7 +67,22 @@ export function CampaignAimSection({
             </div>
           </div>
         </div>
+        {/* What we do, every part it runs said once (features-service shortDescription, CAMPAIGN-PATH-SHOWS-AI-ANSWER-1109):
+            a campaign whose AI answers leads beside its client's own closing never reads as only "Your Team". */}
+        <div className="k-line-subtle border-t px-4 py-3">
+          <p className="k-label">What we do</p>
+          <p className="mt-1 text-[13px]">
+            {copy?.shortDescription ?? (copy ? <span className="k-fg3">{whatWeDoUnavailable(copy.shortDescriptionUnavailableReason ?? null)}</span> : copySettled ? dash : <Shimmer className="h-5 w-64" />)}
+          </p>
+        </div>
       </div>
     </section>
   );
+}
+
+/** Why the served description is empty, in plain words. A reason we have no words for is logged. */
+function whatWeDoUnavailable(reason: string | null): string {
+  if (reason === "no_step_run_by_us") return "Your team runs every step of this campaign.";
+  console.error("[campaign-aim] shortDescription not served", { reason });
+  return "—";
 }

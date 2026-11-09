@@ -484,8 +484,13 @@ export function FunnelOtherPartLines({ campaignId, parts }: { campaignId: string
     <>
       {parts.map((part) =>
         part.items ? (
-          <span key={part.campaignId} className="mt-1 block min-w-0" data-other-part>
-            <FunnelPathLine items={part.items} />
+          // Its outcomes, then its own served sentence ("Our AI emails leads the moment they act until they buy."):
+          // the outcomes alone ("Lead event → Paid client") never said that our AI does it.
+          <span key={part.campaignId} className="mt-1 flex min-w-0 items-center gap-2" data-other-part>
+            <span className="min-w-0 shrink-0">
+              <FunnelPathLine items={part.items} />
+            </span>
+            {part.shortDescription && <span className="k-fg3 min-w-0 truncate text-[11px]">{part.shortDescription}</span>}
           </span>
         ) : (
           <span key={part.campaignId} className="k-fg3 mt-1 block text-[11px]" data-other-part>
