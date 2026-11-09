@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "October 30, 2026";
+const LAST_UPDATED = "November 9, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -547,6 +547,19 @@ const SECTIONS: SectionDef[] = [
         <p>
           Your use of third-party services through the Service is also
           governed by those providers&rsquo; terms.
+        </p>
+        <p id="brand-mcp-servers">
+          <strong>MCP servers you connect (public beta).</strong> You may
+          connect one or more MCP servers to a brand so that our AI can use
+          their tools when it writes to your leads and clients. Our AI reads
+          answers from a server that you or another company controls, and it
+          may perform write actions on that server, such as updating or
+          removing a record, with the access you provided. We do not control
+          those servers, their answers, or the actions they allow. By
+          connecting a server, you accept that risk and remain responsible
+          for the access you grant and for the actions performed through it.
+          You can remove a server at any time from the Integrations page.
+          This feature is in public beta and may change.
         </p>
       </>
     ),
