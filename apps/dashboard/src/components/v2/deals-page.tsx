@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getBrandDealsLifecycle, getOfferDealsLifecycle, listUniboxLeads } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollIntervalFor, leadReadOptions } from "@/lib/query-options";
+import { leadReadOptions, slowServerReadOptions } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
@@ -48,7 +48,7 @@ export function DealsPage() {
   const dealsValue = useAuthQuery(
     ["dealsLifecycle", brandId, valueOfferId ?? "brand", campaignFilter ?? ""],
     () => (campaignFilter ? getOfferDealsLifecycle(valueOfferId!, brandId, campaignFilter) : getBrandDealsLifecycle(brandId)),
-    { refetchInterval: pollIntervalFor, enabled: !!brandId && (!campaignFilter || !!valueOfferId) },
+    { ...slowServerReadOptions, enabled: !!brandId && (!campaignFilter || !!valueOfferId) },
   );
   const served = useMemo(() => servedRungValues(dealsValue.data), [dealsValue.data]);
   const pipeline = dealsValue.data?.expectedPipelineUsd ?? null;

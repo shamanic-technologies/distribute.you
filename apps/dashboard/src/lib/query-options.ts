@@ -72,3 +72,13 @@ export const LEAD_READ_REFRESH_MS = 30_000;
 export const leadReadOptions = { refetchInterval: everyMs(LEAD_READ_REFRESH_MS) } as const;
 export const PEOPLE_OUTCOMES_REFRESH_MS = 60_000;
 export const peopleOutcomesReadOptions = { refetchInterval: everyMs(PEOPLE_OUTCOMES_REFRESH_MS) } as const;
+
+/**
+ * The brand's heavy server reads (DASH-SPEED-1110, owner 2026-11-09 « pourquoi je dois redemander chaque jour »): its
+ * money (`/brands/:id/revenue`, its window, every campaign's money), the deals and company boards (`deals-value`) and
+ * the list snapshot behind Leads found. Each took 15-40 s on the box and was re-asked every 5 s by every open tab: a new
+ * ask started before the last one answered and kept the box saturated. Once a minute is enough for figures that move
+ * on sends; a user's OWN write still re-reads them at once (write-invalidation).
+ */
+export const SLOW_SERVER_READ_REFRESH_MS = 60_000;
+export const slowServerReadOptions = { refetchInterval: everyMs(SLOW_SERVER_READ_REFRESH_MS) } as const;

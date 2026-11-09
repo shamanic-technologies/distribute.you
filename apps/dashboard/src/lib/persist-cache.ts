@@ -106,8 +106,6 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Staff Ledger (one brand's books and production orders: cost data).
   "brandLedger",
   "brandLedgerRuns",
-  // Staff Done by your team (who waits on the client's own team: names and companies).
-  "pipeQueue",
   // Staff Monitoring (fleet margin, vendor costs, price catalogue, emails sent).
   "staffCostMargin",
   "staffPriceVersions",
@@ -183,20 +181,9 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Staff Monitoring > Chat > Skills (the Copilot skill tree, edited live).
   "staffSkills",
   "staffSkill",
-  // Staff Audience snapshot (what a brand holds per list, Jev acceptance).
-  "staffAudienceSnapshot",
-  "staffHeldPeople",
-  "staffHeldCompanies",
-  "staffSourcingInvestment",
-  "staffSourcingPeople",
-  "staffSourcingCompanies",
   "staffBrands",
   // Staff catalogue sections (fleet economics of every business object).
   "staffCatalogueList",
-  // The Catalogue page (every client, owner 2026-11-07): live scripts, tactics, strategies.
-  "catalogueScripts",
-  "catalogueTactics",
-  "catalogueStrategies",
   "staffCatalogueObject",
   // A pipe's own figures since inception (fleet, brand, offer).
   "staffPipeStats",
@@ -222,6 +209,13 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
  * SENSITIVE_QUERY_ROOTS; a future UNKNOWN root is default-OFF until listed here.
  */
 export const PERSISTABLE_QUERY_ROOTS = new Set([
+  // Customer pages that used to wait on a fresh read every visit (DASH-SPEED-1110, owner 2026-11-09
+  // « pourquoi je dois redemander chaque jour »): the Catalogue page (every client, cross-org scripts,
+  // tactics, strategies) and Done by your team (the client's own people waiting on their team).
+  "catalogueScripts",
+  "catalogueTactics",
+  "catalogueStrategies",
+  "pipeQueue",
   // The campaign page's Milestones and What its people went through (FACTORY-USER-DASHBOARD-1102).
   "funnelCampaignPeopleJourneys",
   // Today > Why each one was picked (FACTORY-USER-DASHBOARD-1102).
@@ -483,6 +477,25 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "campaignHold",
 ]);
 
+/**
+ * Roots read on a CUSTOMER page whose key carries the staff-mode flag at index 2
+ * (`[root, brandId, staff, …]`): the customer read (`staff === false`) goes to the org route and
+ * is the client's own data, so it persists like every other root (DASH-SPEED-1110: Leads found
+ * and the sidebar's count waited 15-20 s on every visit). The staff read goes to the staff route:
+ * "both" when it carries nothing of ours (lists, people, companies held), "customer" when it adds
+ * what sourcing cost US (`vendorUsd`, our margin), which never goes to disk.
+ */
+export const STAFF_FLAG_ROOTS = new Map<string, "both" | "customer">([
+  // The brand's list snapshot (lists, people and companies held, Jev acceptance).
+  ["staffAudienceSnapshot", "both"],
+  ["staffHeldPeople", "both"],
+  ["staffHeldCompanies", "both"],
+  // $ invested in sourcing: the staff route adds the vendor cost.
+  ["staffSourcingInvestment", "customer"],
+  ["staffSourcingPeople", "customer"],
+  ["staffSourcingCompanies", "customer"],
+]);
+
 export interface PersistableQuery {
   state: { status: string };
   queryKey: readonly unknown[];
@@ -503,6 +516,8 @@ export interface PersistableQuery {
 export function isPersistableQueryKey(queryKey: readonly unknown[]): boolean {
   const root = String(queryKey[0] ?? "");
   if (SENSITIVE_QUERY_ROOTS.has(root)) return false;
+  const scoped = STAFF_FLAG_ROOTS.get(root);
+  if (scoped) return queryKey[2] === false || scoped === "both";
   return PERSISTABLE_QUERY_ROOTS.has(root);
 }
 

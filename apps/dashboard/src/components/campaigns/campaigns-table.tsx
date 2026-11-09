@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { pollIntervalFor } from "@/lib/query-options";
+import { pollIntervalFor, slowServerReadOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listCampaignsByBrand,
@@ -96,7 +96,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const groupsQ = useAuthQuery(
     ["featureRevenueByCampaign", brandId, featureSlug],
     () => getFeatureRevenueByCampaign(featureSlug, brandId),
-    { enabled: revenueEnabled, refetchInterval: pollIntervalFor },
+    { enabled: revenueEnabled, ...slowServerReadOptions },
   );
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
@@ -167,7 +167,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   );
   const brandMoneyQ = useAuthQuery(["brandCampaignRevenue", brandId], () => getBrandCampaignRevenue(brandId), {
     enabled: orgConsistent && !!brandId && moneyChannelSlugs.length > 0,
-    refetchInterval: pollIntervalFor,
+    ...slowServerReadOptions,
   });
   useEffect(() => {
     for (const f of brandMoneyQ.data?.failed ?? []) {

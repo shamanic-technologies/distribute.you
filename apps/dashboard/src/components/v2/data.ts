@@ -22,7 +22,7 @@ import {
 import { useBrandScope } from "@/components/v2/brand-scope";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
-import { pollOptions, leadReadOptions, peopleOutcomesReadOptions } from "@/lib/query-options";
+import { pollOptions, leadReadOptions, peopleOutcomesReadOptions, slowServerReadOptions } from "@/lib/query-options";
 import type { RevenueWindowDays } from "@/lib/revenue-window";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -51,16 +51,26 @@ export function useBrandInfo(brandId: string) {
 }
 
 /**
+ * Whether a brand's money read is asked. It starts WITH the campaigns read, never after it
+ * (DASH-SPEED-1110: the money waited on the campaigns, then took its own 20-40 s, ~48 s before
+ * Today showed revenue on a first visit). It stops only once the campaigns answered NONE: a
+ * brand with no campaign has no money yet.
+ */
+export function revenueReadEnabled(featureSlug: string, brandId: string, campaignIds: string[] | null): boolean {
+  return isRevenueFeature(featureSlug) && !!brandId && (campaignIds === null || campaignIds.length > 0);
+}
+
+/**
  * The brand's money (features-service's brand grain, every offer and channel, net). Not asked
- * while the brand has no campaign: there is no money yet, and pages show their no-data state.
+ * once the campaigns answered none: there is no money yet, and pages show their no-data state.
  */
 export function useBrandRevenue(brandId: string) {
   const { campaignIds, scopeSettled } = useBrandScope();
   const featureSlug = useSoleFeatureSlug();
-  const enabled = isRevenueFeature(featureSlug) && !!brandId && (campaignIds?.length ?? 0) > 0;
+  const enabled = revenueReadEnabled(featureSlug, brandId, campaignIds);
   const q = useAuthQuery(["brandRevenue", brandId, "brand"], () => getBrandRevenue(brandId), {
     enabled,
-    ...pollOptions,
+    ...slowServerReadOptions,
     structuralSharing: (prev, next) =>
       keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
   });
@@ -89,10 +99,10 @@ export function useCampaignTargetRow(brandId: string, salesFunnelCampaignId: str
 export function useBrandRevenueWindow(brandId: string, days: RevenueWindowDays) {
   const featureSlug = useSoleFeatureSlug();
   const { campaignIds, scopeSettled } = useBrandScope();
-  const enabled = isRevenueFeature(featureSlug) && !!brandId && (campaignIds?.length ?? 0) > 0;
+  const enabled = revenueReadEnabled(featureSlug, brandId, campaignIds);
   const q = useAuthQuery(["brandRevenueWindow", brandId, "brand", days], () => getBrandRevenueWindow(brandId, days), {
     enabled,
-    ...pollOptions,
+    ...slowServerReadOptions,
   });
   return { ...q, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
 }
@@ -147,7 +157,7 @@ export function useDealsLifecycleCounts(brandId: string, campaignId: string | nu
  */
 export function useCompanyLifecycle(brandId: string) {
   return useAuthQuery(["companyLifecycle", brandId, "brand"], () => getBrandCompanyLifecycle(brandId), {
-    ...pollOptions,
+    ...slowServerReadOptions,
     enabled: !!brandId,
   });
 }

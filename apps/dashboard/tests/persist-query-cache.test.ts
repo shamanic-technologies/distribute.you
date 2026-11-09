@@ -10,6 +10,7 @@ import {
   PERSIST_MAX_AGE_MS,
   PERSIST_GC_TIME_MS,
   SENSITIVE_QUERY_ROOTS,
+  STAFF_FLAG_ROOTS,
   type PersistableQuery,
 } from "../src/lib/persist-cache";
 
@@ -353,6 +354,7 @@ describe("every org-scoped read's root is allowlisted (or explicitly sensitive)"
         for (const m of window.matchAll(/\[\s*"([A-Za-z-]+)"/g)) {
           const root = m[1];
           if (SENSITIVE_QUERY_ROOTS.has(root)) continue;
+          if (STAFF_FLAG_ROOTS.has(root)) continue;
           if (isPersistableQueryKey([root])) continue;
           unlisted.set(root, path.relative(SRC, file));
         }
