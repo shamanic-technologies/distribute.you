@@ -5,6 +5,7 @@ import { useBrandOutcomes } from "@/components/v2/data";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getAudienceSnapshot, getPublicCatalogueSteps } from "@/lib/api";
 import { useStaffMode } from "@/lib/use-staff-mode";
+import { slowServerReadOptions } from "@/lib/query-options";
 import { useOngoingCampaigns, type OngoingOutcome } from "@/components/v2/ongoing-campaigns";
 import { byDepth, outcomeOfCrmStep } from "@/lib/v2/outcomes";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -78,5 +79,5 @@ export function useCatalogueSteps(): Map<string, { name: string; pluralName: str
  */
 export function useAudienceSnapshot(brandId: string, enabled = true) {
   const { staffMode: staff } = useStaffMode();
-  return useAuthQuery(["staffAudienceSnapshot", brandId, staff], () => getAudienceSnapshot(brandId, staff), { enabled });
+  return useAuthQuery(["staffAudienceSnapshot", brandId, staff], () => getAudienceSnapshot(brandId, staff), { ...slowServerReadOptions, enabled });
 }
