@@ -13463,11 +13463,18 @@ export async function getStaffBoxHealth(days: number): Promise<StaffBoxHealth> {
 
 // ─── Monitoring > Box > Watchdogs (BOX-WATCHDOGS-1030) ───
 import { BoxChecksSchema as StaffBoxChecksSchema, EXPECTED_BOX_CHECKS, type BoxChecks as StaffBoxChecks } from "./monitoring/box-checks";
+import { PAGE_SPEED_PREFIX } from "./monitoring/page-speed";
 
 /** Every box watchdog's runs over the last `days` UTC days with features-service's served verdict; `expect` makes a silent one read "not yet". */
 export async function getStaffBoxChecks(days: number): Promise<StaffBoxChecks> {
   const expect = Object.keys(EXPECTED_BOX_CHECKS).join(",");
-  return parseStaff("getStaffBoxChecks", StaffBoxChecksSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.boxChecks}?days=${days}&expect=${expect}`));
+  // The per-page timings have their own page (Page speed): the watchdogs list and its red count leave them out.
+  return parseStaff("getStaffBoxChecks", StaffBoxChecksSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.boxChecks}?days=${days}&expect=${expect}&excludePrefix=${PAGE_SPEED_PREFIX}`));
+}
+
+/** Monitoring > Box > Page speed (DASH-SPEED-MONITOR-1110): only the per-page checks, with features-service's verdict over them. */
+export async function getStaffPageSpeed(days: number): Promise<StaffBoxChecks> {
+  return parseStaff("getStaffPageSpeed", StaffBoxChecksSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.boxChecks}?days=${days}&prefix=${PAGE_SPEED_PREFIX}`));
 }
 
 // ─── Monitoring > Triggers (TRIGGER-REPORTS-MONITORING-1027) ───

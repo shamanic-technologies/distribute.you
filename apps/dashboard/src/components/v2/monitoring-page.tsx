@@ -43,6 +43,7 @@ import { SecurityAdvisoriesPage, SecurityAdvisoriesTile, useSecurityAdvisories }
 import { CpuIcon } from "@phosphor-icons/react/dist/csr/Cpu";
 import { BoxHealthPage, BoxHealthTile, useBoxHealth } from "@/components/v2/monitoring-box";
 import { BoxChecksPage, BoxChecksTile, useBoxChecks } from "@/components/v2/monitoring-watchdogs";
+import { PageSpeedPage, PageSpeedTile, usePageSpeed } from "@/components/v2/monitoring-page-speed";
 import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { TriggerReportsPage, TriggerReportsTile, useTriggerReports } from "@/components/v2/monitoring-triggers";
 import { triggerName } from "@/lib/monitoring/trigger-reports";
@@ -187,6 +188,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "security/advisories": { section: "security", title: "Advisories", question: "Does any prod repo carry an open critical or high advisory?" },
   "box/load": { section: "box", title: "Load and memory", question: "Is the production server overloaded, and which containers eat its CPU and memory?" },
   "box/watchdogs": { section: "box", title: "Watchdogs", question: "Is every check the production server runs on itself passing?" },
+  "box/page-speed": { section: "box", title: "Page speed", question: "Does every dashboard page open in under 1 second?" },
   "triggers/reports": { section: "triggers", title: "Reports", question: "Did every form, WhatsApp number, positive reply and account event reach its campaign?" },
   "triggers/waiting": { section: "triggers", title: "Prospects waiting", question: "Is any prospect waiting on a blocked campaign answer?" },
   "triggers/firing": { section: "triggers", title: "Firing", question: "Is any trigger our campaigns wait on broken?" },
@@ -353,6 +355,7 @@ export function V2Monitoring() {
         {view.page === "security/advisories" && <SecurityAdvisoriesPage />}
         {view.page === "box/load" && <BoxHealthPage />}
         {view.page === "box/watchdogs" && <BoxChecksPage />}
+        {view.page === "box/page-speed" && <PageSpeedPage />}
         {view.page === "triggers/reports" && <TriggerReportsPage />}
         {view.page === "triggers/waiting" && <ProspectsWaitingPage />}
         {view.page === "triggers/firing" && <TriggerHealthPage />}
@@ -459,6 +462,7 @@ function Hub({ base }: { base: string }) {
   const sec = useSecurityAdvisories();
   const box = useBoxHealth();
   const watchdogs = useBoxChecks();
+  const pageSpeed = usePageSpeed();
   const trig = useTriggerReports();
   const waiting = useStuckOccurrences();
   const firing = useTriggerHealth();
@@ -513,6 +517,8 @@ function Hub({ base }: { base: string }) {
         <BoxHealthTile href={href("box/load")} />
         {/* A deploy, service, queue, Jev, own-credit or social cron that found a problem or went silent (BOX-WATCHDOGS-1030): red here IS the alert, never an email. */}
         <BoxChecksTile href={href("box/watchdogs")} />
+        {/* A dashboard v2 page over 1 s on reload from the saved copy, timed daily by a robot (DASH-SPEED-MONITOR-1110): red here IS the alert, never an email. */}
+        <PageSpeedTile href={href("box/page-speed")} />
         {/* A form, WhatsApp number, positive reply or account event not sent to its campaign 15 min after we saw it (TRIGGER-REPORTS-MONITORING-1027): red here IS the alert. */}
         <TriggerReportsTile href={href("triggers/reports")} />
         {/* A prospect who acted still waits 30 min later on a blocked campaign answer (REACTIVE-THROUGHPUT-1028): red here IS the alert, never an email. */}
@@ -1094,10 +1100,11 @@ function Hub({ base }: { base: string }) {
 
       <div>
       <SectionTitle count={1}>Box</SectionTitle>
-      <Section section="box" count={2} grid={false}>
+      <Section section="box" count={3} grid={false}>
         <HubChips>
           <HubChip href={href("box/load")} color={box.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Load and memory" />
           <HubChip href={href("box/watchdogs")} color={watchdogs.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Watchdogs" />
+          <HubChip href={href("box/page-speed")} color={pageSpeed.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Page speed" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -1131,6 +1138,23 @@ function Hub({ base }: { base: string }) {
               label: "Watchdogs",
               value: watchdogs.data?.checks.length,
               note: "crons reporting here, never by email",
+            },
+          ]}
+        />
+        <Card
+          href={href("box/page-speed")}
+          page="box/page-speed"
+          error={pageSpeed.isError && !pageSpeed.data}
+          cells={[
+            {
+              label: "Over 1 s",
+              value: pageSpeed.data && <span style={{ color: pageSpeed.data.brokenCount > 0 ? "var(--data-rose)" : undefined }}>{pageSpeed.data.brokenCount}</span>,
+              note: "reload from the saved copy",
+            },
+            {
+              label: "Pages",
+              value: pageSpeed.data?.checks.length,
+              note: "timed every day at 04:10 UTC",
             },
           ]}
         />
