@@ -42,7 +42,7 @@ export function ColdEmailChannelSettings({ brandId, offerId, channelSlug }: { br
 
   const legs = useMemo(
     () =>
-      validatedLegSections(catalogue, [...new Set((path.data ?? []).flatMap((c) => c.units.map((u) => u.legKey)))], SALES_PATH_CHANNEL_SLUGS).sections.filter(
+      validatedLegSections(catalogue, [...new Set((path.data ?? []).flatMap((c) => c.units.flatMap((u) => (u.legKey ? [u.legKey] : []))))], SALES_PATH_CHANNEL_SLUGS).sections.filter(
         (s) => s.channels.includes(channelSlug) && !isProactiveFrom(s.fromKey),
       ),
     [catalogue, path.data, channelSlug],

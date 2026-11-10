@@ -37,7 +37,7 @@ import { OutcomePinButton } from "@/components/v2/outcome-pins";
 import { LedgerOutcomeStats, OutcomeStats, useOutcomeCostSeries } from "@/components/v2/outcome-stats";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { LearningFigure, RoiLabel } from "@/components/v2/roi-label";
-import { formatUsdAdaptive } from "@/lib/format-number";
+import { formatUsdAdaptive, formatUsdUnit } from "@/lib/format-number";
 import {
   costStepOf,
   lastDays,
@@ -420,7 +420,7 @@ function LedgerOutcomeRow({
       </td>
       <td className={OTD}>
         <span className="min-w-[88px] text-[14px] font-medium tabular-nums">
-          {lo.costPerUnitUsd != null ? formatUsdAdaptive(lo.costPerUnitUsd) : <span className="k-fg4">—</span>}
+          {lo.costPerUnitUsd != null ? formatUsdUnit(lo.costPerUnitUsd) : <span className="k-fg4">—</span>}
         </span>
       </td>
       <td className={`${OTD} whitespace-nowrap text-right tabular-nums`}>
