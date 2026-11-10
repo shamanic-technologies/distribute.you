@@ -1,6 +1,6 @@
 # apps/admin: staff GOD-MODE console (dashboard fork, NOT a customer surface)
 
-Container on the Hetzner box (`167.233.196.79`) at `admin.distribute.you` since 2026-08-07 (#3298). `apps/admin/vercel.json` is vestigial. Local: `pnpm dev:admin` (port 3002); seed `apps/admin/.env.local` from `ssh -i ~/.ssh/oracle-distribute root@167.233.196.79 'cat /root/distribute/env/admin-app.env'` (+ `admin-app.build.env` for `NEXT_PUBLIC_*`; includes `ADMIN_DISTRIBUTE_API_KEY`).
+Container on the Hetzner box (`62.83.93.230`) at `admin.distribute.you` since 2026-08-07 (#3298). `apps/admin/vercel.json` is vestigial. Local: `pnpm dev:admin` (port 3002); seed `apps/admin/.env.local` from `ssh -i ~/.ssh/oracle-distribute root@62.83.93.230 'cat /root/distribute/env/admin-app.env'` (+ `admin-app.build.env` for `NEXT_PUBLIC_*`; includes `ADMIN_DISTRIBUTE_API_KEY`).
 
 ## Deploy / infra
 

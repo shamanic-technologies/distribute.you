@@ -14,9 +14,11 @@ import { PlanCheckSchema } from "./plan-following";
 export const SalesFunnelUnitSchema = z
   .object({
     campaignId: z.string(),
-    pipeId: z.string(),
-    featureSlug: z.string(),
-    legKey: z.string(),
+    // A campaign launched on its TARGET alone (campaign-service #883, BACKLINK-ENGINE-1109): its one part is run by
+    // the target's Engine and carries none of the three (null); what it makes is the campaign's `target`.
+    pipeId: z.string().nullable(),
+    featureSlug: z.string().nullable(),
+    legKey: z.string().nullable(),
     status: z.string(),
     workflowSlug: z.string().nullable(),
     name: z.string(),

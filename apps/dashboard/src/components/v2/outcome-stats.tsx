@@ -4,7 +4,7 @@ import { Bar, BarChart, Cell, Line, LineChart, ReferenceLine, ResponsiveContaine
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getBrandOutcomeCostSeries, getOfferOutcomeCostSeries } from "@/lib/api";
-import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { formatCount, formatUsdAdaptive, formatUsdUnit } from "@/lib/format-number";
 import { costStepOf, lastDays, monthLabel, monthTick, outcomeCountWords, type LedgerOutcome, type OutcomeCostStep } from "@/lib/v2/outcome-cost-series";
 import type { OutcomeStepStat } from "@/lib/v2/outcome-people";
 import { EmptyNote, Figure, Shimmer, StatTile } from "@/components/v2/ui";
@@ -339,7 +339,7 @@ export function LedgerOutcomeStats({ lo, label, plural }: { lo: LedgerOutcome; /
           <Figure value={formatCount(lo.ourUnits)} />
         </StatTile>
         <StatTile label={`$ / ${label}`}>
-          <Figure value={lo.costPerUnitUsd != null ? formatUsdAdaptive(lo.costPerUnitUsd) : DASH} />
+          <Figure value={lo.costPerUnitUsd != null ? formatUsdUnit(lo.costPerUnitUsd) : DASH} />
           {lo.productionCostUsd != null && <p className="k-fg3 mt-0.5 truncate text-[12px]">{formatUsdAdaptive(lo.productionCostUsd)} spent</p>}
         </StatTile>
       </div>

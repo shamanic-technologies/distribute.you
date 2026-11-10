@@ -382,6 +382,8 @@ function V2Sidebar() {
               // 2026-11-07); the page being read always keeps its entry.
               if (n === 0 && pathname !== href) return null;
               if (!pinned.includes(outcome.key) && pathname !== href) return null;
+              // A published outcome with a row is listed once, by its own entry below (as on the Overview).
+              if (published.withRows.some((p) => p.key === outcome.key)) return null;
               return (
                 <NavItem
                   key={outcome.key}

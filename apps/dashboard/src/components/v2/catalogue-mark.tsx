@@ -55,6 +55,14 @@ import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { ThreadsLogoIcon } from "@phosphor-icons/react/dist/csr/ThreadsLogo";
 import { TrayIcon } from "@phosphor-icons/react/dist/csr/Tray";
 import { VideoCameraIcon } from "@phosphor-icons/react/dist/csr/VideoCamera";
+import { LinkIcon } from "@phosphor-icons/react/dist/csr/Link";
+import { ChatCircleDotsIcon } from "@phosphor-icons/react/dist/csr/ChatCircleDots";
+import { QueueIcon } from "@phosphor-icons/react/dist/csr/Queue";
+import { EnvelopeOpenIcon } from "@phosphor-icons/react/dist/csr/EnvelopeOpen";
+import { NewspaperIcon } from "@phosphor-icons/react/dist/csr/Newspaper";
+import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
+import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
+import { XLogoIcon } from "@phosphor-icons/react/dist/csr/XLogo";
 import { MARK_ICONS } from "@/components/v2/catalogue-mark-icons";
 
 /**
@@ -63,6 +71,14 @@ import { MARK_ICONS } from "@/components/v2/catalogue-mark-icons";
  * the ~190KB barrel. A name not listed is logged once and drawn as a plain circle.
  */
 const CATALOGUE_ICONS: Record<string, Icon> = {
+  "link": LinkIcon,
+  "chat-circle-dots": ChatCircleDotsIcon,
+  "queue": QueueIcon,
+  "envelope-open": EnvelopeOpenIcon,
+  "newspaper": NewspaperIcon,
+  "check-circle": CheckCircleIcon,
+  "whatsapp-logo": WhatsappLogoIcon,
+  "x-logo": XLogoIcon,
   "pencil-simple-line": PencilSimpleLineIcon,
   "seal-check": SealCheckIcon,
   "smiley": SmileyIcon,
