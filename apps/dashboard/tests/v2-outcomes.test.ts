@@ -148,6 +148,12 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     expect(page).toContain('{ key: "ours", label: "From us", count: listed.all.contactedByUs }');
     expect(page).toContain("if (o.all) return <Num n={o.all.contactedByUs} />;");
   });
+  it("a costed Overview row counts ledger Units on both sides, so $ / outcome x from us = $ Spent (OUTCOME-TOTAL-UNITS-1110)", () => {
+    const page = read("src/components/v2/outcomes-page.tsx");
+    expect(page).toContain("<Num n={cost.sinceInception.totalOutcomes} />");
+    expect(page).toContain("<Num n={cost.sinceInception.outcomes} /> from us");
+    expect(read("src/lib/v2/outcome-cost-series.ts")).toContain("totalOutcomes: z.number().nullish(),");
+  });
   it("the Overview's Leads row states its figures, never a dash (owner 2026-10-21: 72 leads read as none)", () => {
     const page = read("src/components/v2/outcomes-page.tsx");
     // People = the lists' held people, the same key and figure as the sidebar entry.
