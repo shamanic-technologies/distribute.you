@@ -228,18 +228,25 @@ function UnitRow({
   return (
     <tr className="k-row k-line-subtle border-b last:border-b-0">
       <td className={TD}>
-        <Link href={v2CatalogueHref(orgId, brandId, "pipes", unit.pipeId)} className="block min-w-0">
-          <MarkLines mark={(px) => <CatalogueMark icon={p?.icon ?? "bird"} color={p?.color} name={unit.name} size={px} />}>
-            <span className="block truncate font-medium">{p?.name ?? unit.name}</span>
-            <span className="k-fg3 block truncate text-[12px]">{p?.line ?? unit.pipeId}</span>
-          </MarkLines>
-        </Link>
+        {unit.pipeId ? (
+          <Link href={v2CatalogueHref(orgId, brandId, "pipes", unit.pipeId)} className="block min-w-0">
+            <MarkLines mark={(px) => <CatalogueMark icon={p?.icon ?? "bird"} color={p?.color} name={unit.name} size={px} />}>
+              <span className="block truncate font-medium">{p?.name ?? unit.name}</span>
+              <span className="k-fg3 block truncate text-[12px]">{p?.line ?? unit.pipeId}</span>
+            </MarkLines>
+          </Link>
+        ) : (
+          // A part launched on the campaign's target alone (BACKLINK-ENGINE-1109): run by its Engine, nothing to open.
+          <span className="block truncate font-medium">{unit.name}</span>
+        )}
       </td>
       <td className={TD}>
         <StateDot running={unit.status === "ongoing"} label={producerWord(unit.status)} />
       </td>
       <td className={TD}>
-        {unit.workflowSlug ? (
+        {unit.workflowSlug && !unit.pipeId ? (
+          <span className="k-fg2 truncate">{unit.workflowSlug}</span>
+        ) : unit.workflowSlug && unit.pipeId ? (
           <Link href={v2WorkflowHref(orgId, brandId, unit.workflowSlug, unit.pipeId, unit.campaignId)} className="flex min-w-0 items-center gap-2 hover:underline">
             <CatalogueMark icon="flow-arrow" color={wf.data?.color} name={unit.workflowSlug} size={18} />
             <span className="truncate">{wf.data?.name ?? unit.workflowSlug}</span>

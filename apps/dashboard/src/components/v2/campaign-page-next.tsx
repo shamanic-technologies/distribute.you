@@ -96,7 +96,9 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
   const catalogue = useLegCatalogue();
   const { campaignById } = useCampaigns(orgId, campaign.brandId);
   const units = orderPipesByFunnel(campaign.units, (u) => legFor(catalogue, u.legKey));
-  const coldEmail = units.find((u) => isColdEmailChannel(u.featureSlug) && isProactiveFrom(legFor(catalogue, u.legKey)?.fromKey)) ?? null;
+  const coldEmailUnit = units.find((u) => isColdEmailChannel(u.featureSlug) && isProactiveFrom(legFor(catalogue, u.legKey)?.fromKey)) ?? null;
+  // A part launched on the campaign's target alone carries no feature slug (BACKLINK-ENGINE-1109): only a part with one emails people.
+  const coldEmail = coldEmailUnit?.featureSlug ? { ...coldEmailUnit, featureSlug: coldEmailUnit.featureSlug } : null;
   const conversation = units.find((u) => {
     const leg = campaignById.get(u.campaignId)?.leg ?? legFor(catalogue, u.legKey);
     return leg != null && !isProactiveFrom(leg.fromKey);
