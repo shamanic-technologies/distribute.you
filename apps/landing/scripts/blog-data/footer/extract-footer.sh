@@ -14,7 +14,7 @@
 # about 2026-10-24. The committed snapshot is the record after that.
 set -euo pipefail
 OUT="${1:?output file}"
-BOX="${BLOG_DATA_BOX:-root@167.233.196.79}"
+BOX="${BLOG_DATA_BOX:-root@62.83.93.230}"
 KEY="${BLOG_DATA_KEY:-$HOME/.ssh/oracle-distribute}"
 DESIGN="${FOOTER_DESIGN:-/root/blog-data/footer-design.json}"
 HERE="$(cd "$(dirname "$0")" && pwd)"

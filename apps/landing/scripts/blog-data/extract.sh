@@ -11,7 +11,7 @@ set -euo pipefail
 FROM="${1:?window start, e.g. 2026-04-15}"
 TO="${2:?window end exclusive, e.g. 2026-09-12}"
 OUT="${3:?output directory}"
-BOX="${BLOG_DATA_BOX:-root@167.233.196.79}"
+BOX="${BLOG_DATA_BOX:-root@62.83.93.230}"
 KEY="${BLOG_DATA_KEY:-$HOME/.ssh/oracle-distribute}"
 
 mkdir -p "$OUT"

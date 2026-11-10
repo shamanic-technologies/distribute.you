@@ -8,5 +8,5 @@
 # recomputed from a database: the article states the served study. Aggregates only: no text,
 # no client, no lead, no campaign.
 set -euo pipefail
-ssh -i ~/.ssh/oracle-distribute root@167.233.196.79 \
+ssh -i ~/.ssh/oracle-distribute root@62.83.93.230 \
   'docker exec distribute-features-service-1 node -e "fetch(\"http://localhost:8080/internal/research\",{headers:{\"x-api-key\":process.env.FEATURES_SERVICE_API_KEY}}).then(r=>{if(!r.ok)throw new Error(\"research \"+r.status);return r.json()}).then(d=>{const s=d.studies.find(x=>x.id===\"positive-reply-delay\");if(!s)throw new Error(\"no positive-reply-delay study\");process.stdout.write(JSON.stringify({computedAt:d.computedAt,study:s},null,2)+\"\\n\")})"'
