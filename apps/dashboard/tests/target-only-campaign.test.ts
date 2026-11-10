@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { formatUsdUnit } from "../src/lib/format-number";
 import { SalesFunnelCampaignListSchema, orderPipesByFunnel } from "../src/lib/sales-funnel-campaigns";
 import { OfferOutcomeCostSeriesSchema, unlistedLedgerOutcomes } from "../src/lib/v2/outcome-cost-series";
 
@@ -79,5 +82,26 @@ describe("a campaign launched on its target alone", () => {
     // The usual campaign's outcome (Positive replies) is its own row; its Units' lead state is not listed twice.
     const out = unlistedLedgerOutcomes(series, new Set(["conversation"]), (k) => (k === "conversation" ? "lead_conversation" : null));
     expect(out.map((o) => [o.outcomeKey, o.units, o.productionCostUsd])).toEqual([["backlink_earned", 29, 0.0527]]);
+  });
+});
+
+describe("what the prod render of Distribute.you's Outcomes showed (BACKLINK-ENGINE-1109)", () => {
+  const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "utf8");
+
+  it("every step icon the public catalogue serves today is drawn, never the blank circle", () => {
+    const mark = read("components/v2/catalogue-mark.tsx");
+    for (const icon of ["link", "chat-circle-dots", "queue", "envelope-open", "newspaper", "check-circle", "whatsapp-logo", "x-logo"]) {
+      expect(mark, icon).toContain(`"${icon}": `);
+    }
+  });
+
+  it("a sub-cent price per Unit keeps its digits ($0.0018 per backlink, never $0.00)", () => {
+    expect(formatUsdUnit(0.0018)).toBe("$0.0018");
+    expect(read("components/v2/outcomes-page.tsx")).toContain("formatUsdUnit(lo.costPerUnitUsd)");
+    expect(read("components/v2/outcome-stats.tsx")).toContain("formatUsdUnit(lo.costPerUnitUsd)");
+  });
+
+  it("the sidebar lists a published outcome once, as the Overview does", () => {
+    expect(read("components/v2/v2-shell.tsx")).toContain("if (published.withRows.some((p) => p.key === outcome.key)) return null;");
   });
 });
