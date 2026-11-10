@@ -93,7 +93,10 @@ export const OutcomeCostStepSchema = z.object({
   learningOutcomesRequired: z.number(),
   sinceInception: z.object({
     spendUsd: z.number(),
+    /** OUR ledger Units of the step: the divisor of `costPerOutcomeUsd` (OUTCOME-COST-CUMUL-1109). */
     outcomes: z.number().nullable(),
+    /** Every ledger Unit of the step, ours and another factory's (OUTCOME-TOTAL-UNITS-1110): always >= `outcomes`. */
+    totalOutcomes: z.number().nullish(),
     undatedOutcomes: z.number().nullable(),
     costPerOutcomeUsd: z.number().nullable(),
     learning: z.boolean().nullable(),

@@ -472,11 +472,23 @@ function OutcomeRow({
           name={name}
           href={href}
           sub={
-            <>
-              <AllCount o={o} counts={counts} peopleHeld={peopleHeld} />
-              <span>·</span>
-              <OursCount o={o} counts={counts} /> from us
-            </>
+            !costAnswered ? (
+              <Shimmer className="h-4 w-24" />
+            ) : cost ? (
+              // A costed step counts LEDGER UNITS on both sides (owner 2026-11-10, OUTCOME-TOTAL-UNITS-1110): "from us" is the
+              // divisor of $ / outcome, so $ / outcome x from us = $ Spent on screen, and the total counts the same thing.
+              <>
+                <Num n={cost.sinceInception.totalOutcomes} />
+                <span>·</span>
+                <Num n={cost.sinceInception.outcomes} /> from us
+              </>
+            ) : (
+              <>
+                <AllCount o={o} counts={counts} peopleHeld={peopleHeld} />
+                <span>·</span>
+                <OursCount o={o} counts={counts} /> from us
+              </>
+            )
           }
         />
       </td>
