@@ -67,6 +67,7 @@ import { holdOutlivesLimitChange } from "@/lib/campaign-hold";
 import { FactoryCampaignSections } from "@/components/v2/factory-campaign";
 import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts, type BilledSpend } from "@/components/v2/spend-charts";
 import { PeoplePage } from "@/components/v2/people-page";
+import { HeldStepNote } from "@/components/v2/held-step-note";
 import { CampaignAudience } from "@/components/v2/campaign-audience";
 import { EmptyNote, Figure, HoverScroll, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { RoiLabel } from "@/components/v2/roi-label";
@@ -761,6 +762,9 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
       <div className="space-y-8">
         {/* P5.1 (owner 2026-10-31): every customer's page opens on what the campaign aims at and the path it runs now. */}
         <CampaignAimSection campaign={campaign} copy={copyOf} copySettled={copyQ.isFetchedAfterMount || rowsQ.isFetchedAfterMount || copyOf !== null} />
+
+        {/* The step that cannot run, people waiting at it, and the client's fix (features-service next-steps, NEXT-STEPS-TRUE-REASON-1111). */}
+        <HeldStepNote brandId={campaign.brandId} salesFunnelCampaignId={campaign.id} />
 
         {notFunded && (
           // keel.css is unlayered, so a bg-* utility on a k-card loses: the amber tint rides an inline style.

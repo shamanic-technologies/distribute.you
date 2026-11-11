@@ -295,6 +295,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "funnelCampaignRows",
   // Why each day costs what it costs (campaign, pipes, offer): features-service spend charts.
   "spendCharts",
+  // The campaign page's held-step note (features-service next-steps, NEXT-STEPS-TRUE-REASON-1111).
+  "funnelCampaignNextSteps",
   // $ / outcome per month and since inception, every outcome step of the offer (features-service).
   "outcomeCostSeries",
   // A published outcome's Units (posts, newsletter emails) with their served totals (OUTCOME-FINEST-1106).
