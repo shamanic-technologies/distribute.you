@@ -126,6 +126,8 @@ describe("engine full migration: every result driven", () => {
       withResults([result({ status: "no_engine_pick", units: 0, driving: 0, unpicked: 1, switchedSince: null, heldDays: null, unpickedCampaigns: [unpicked("c1", "no_candidate_priced")] })], ["results_without_engine"]),
     );
     expect(resultStatusLook("no_engine_pick")).toEqual({ word: "No Engine pick", tone: "var(--data-rose)" });
+    expect(resultStatusLook("scripts")).toEqual({ word: "Scripts", tone: "var(--run)" });
+    expect(unpickedReasonWords("no_script_kept")).toBe("the campaign's strategy keeps none of the scripts that make this result");
     expect(engineReasonWords("results_without_engine")).toBe("a result of a live campaign runs without an Engine pick");
     const rows = engineBrokenRows(parsed.engine!);
     expect(rows).toHaveLength(1);
