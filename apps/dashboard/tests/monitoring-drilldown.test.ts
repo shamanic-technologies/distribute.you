@@ -8,6 +8,7 @@ import {
   PlacementTestsSchema,
   QueuedStepsSchema,
   ScheduleSchema,
+  alertFreshness,
   alertSeries,
   entityPath,
   placementTestPath,
@@ -122,5 +123,28 @@ describe("Monitoring > Emails drill-down: prod reads (captured in-container 2026
     const google = alertSeries(alerts, "google");
     expect(google.days.every((d) => d.provider === "google")).toBe(true);
     if (google.latest) expect(google.latest.measured).toBe(true);
+  });
+
+  it("a provider the producer serves overdue is red on its tile and in the hub headline (MON-PLACEMENT-STOPPED-1111)", () => {
+    const base = fixture("ops-placement-alerts");
+    // Before the producer serves freshness, nothing is red for staleness.
+    expect(alertFreshness(PlacementAlertsSchema.parse(base), "google")).toBeUndefined();
+    const served = PlacementAlertsSchema.parse({
+      ...base,
+      freshness: {
+        overdueAfterDays: 8,
+        providers: [
+          { provider: "google", providerLabel: "Google", lastMeasuredDay: "2026-11-03", ageDays: 8, overdue: true },
+          { provider: "microsoft_consumer", providerLabel: "Outlook.com", lastMeasuredDay: "2026-11-08", ageDays: 3, overdue: false },
+        ],
+      },
+    });
+    expect(alertFreshness(served, "google")?.overdue).toBe(true);
+    expect(alertFreshness(served, "microsoft_consumer")?.overdue).toBe(false);
+    const tile = read("components/v2/monitoring-sending.tsx");
+    expect(tile).toContain("alertFreshness(alerts.data, provider)");
+    expect(tile).toContain("const red = overdue ||");
+    expect(tile).toContain("No test since");
+    expect(tile).toContain("alertFreshness(data, p.key)?.overdue");
   });
 });

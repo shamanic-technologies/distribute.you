@@ -642,6 +642,13 @@ export const PlacementAlertsSchema = z.object({
       below: z.boolean(),
     }),
   ),
+  // Per provider: newest measured day and whether it is too old = broken, red (instantly-service, MON-PLACEMENT-STOPPED-1111).
+  freshness: z
+    .object({
+      overdueAfterDays: z.number(),
+      providers: z.array(z.object({ provider: z.string(), lastMeasuredDay: z.string().nullable(), ageDays: z.number().nullable(), overdue: z.boolean() })),
+    })
+    .optional(),
   episodes: z.array(
     z.object({
       provider: z.string(),
@@ -665,6 +672,11 @@ export const ALERT_PROVIDERS: Array<{ key: string; name: string }> = [
   { key: "microsoft", name: "Microsoft 365" },
   { key: "microsoft_consumer", name: "Outlook.com" },
 ];
+
+/** A provider's served freshness verdict (undefined = not served yet). Lookup only. */
+export function alertFreshness(data: PlacementAlerts, provider: string) {
+  return data.freshness?.providers.find((p) => p.provider === provider);
+}
 
 /** A provider's served rows in day order, and its latest MEASURED day (null = never measured). Lookup only. */
 export function alertSeries(data: PlacementAlerts, provider: string): { days: PlacementAlertDay[]; latest: PlacementAlertDay | null } {
