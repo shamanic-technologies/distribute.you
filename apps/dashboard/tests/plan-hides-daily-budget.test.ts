@@ -47,8 +47,8 @@ describe("the onboarding wall asks no daily budget", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
     expect(wall).not.toContain("budgetRow");
     expect(wall).not.toContain("marginOk");
-    // The plan is sold only to its homepage A/B arm (owner 2026-10-10, three arms 2026-10-13), never by default.
-    expect(wall).toContain("offer: offerArm(cookie)");
-    expect(wall).toContain('const isPlan = sold === "subscription";');
+    // The wall sells the prepaid checkout only: no plan arm since 2026-11-11 (OFFER-RESET-1029).
+    expect(wall).toContain("<PrepaidTopup ");
+    expect(wall).not.toContain("isPlan");
   });
 });

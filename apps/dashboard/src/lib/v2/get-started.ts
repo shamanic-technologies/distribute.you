@@ -792,17 +792,14 @@ export interface WallCopy {
   cardCta: string;
 }
 
-/** The credit a plan's 3-day trial starts with (billing's `subscription_trial` grant). */
-export const PLAN_TRIAL_CREDIT_USD = 99;
-
 /**
- * The wall's words. `planMonthlyUsd` = null for the prepaid offer (the default); a number
- * for a visitor the homepage A/B test put in the $99/month arm (owner 2026-10-10): the
- * monthly amount they picked on the landing (`lp_plan`), $99 when none.
+ * The wall's words. The wall sells the prepaid checkout only (OFFER-RESET-1029; the
+ * homepage A/B arms, the $99/month plan and post-paid, were deleted 2026-11-11): at cost
+ * for an org billing serves `prepaid_at_cost`, the $100 match on an older one.
  */
-export function wallCopy(planMonthlyUsd: number | null = null, postpaid = false, atCost = false): WallCopy {
-  // Prepaid at cost (owner 2026-10-29, every org created since): no match, no trial,
-  // no free money promised anywhere. The $5 at creation is an advance, never named here.
+export function wallCopy(atCost = false): WallCopy {
+  // Prepaid at cost (owner 2026-10-29, every org created since): no match, no free
+  // money promised anywhere. The $5 at creation is an advance, never named here.
   if (atCost) {
     return {
       creditUsd: null,
@@ -820,45 +817,7 @@ export function wallCopy(planMonthlyUsd: number | null = null, postpaid = false,
       cardCta: "Add credit and launch",
     };
   }
-  if (planMonthlyUsd !== null) {
-    const plan = `$${planMonthlyUsd.toLocaleString("en-US")}`;
-    return {
-      creditUsd: PLAN_TRIAL_CREDIT_USD,
-      creditLine: "of credit to start",
-      bannerTitle: "of credit to start",
-      bannerCta: "Start my trial",
-      timerLabel: "Time left to claim your trial",
-      timerExtendedLabel: "We're giving you more time to start your trial",
-      formTitle: "Start your 3-day trial",
-      formSub: "One minute to set up.",
-      emailCta: "Continue with Email",
-      codeCta: "Continue",
-      cardTitle: `$${PLAN_TRIAL_CREDIT_USD} of credit to start`,
-      // Never "nothing charged for 3 days": the plan starts early once the trial credit is used (owner 2026-10-12).
-      cardNote: `Your ${plan} plan starts in 3 days, or as soon as you use the $${PLAN_TRIAL_CREDIT_USD}. Pause or cancel anytime.`,
-      cardCta: "Start my trial",
-    };
-  }
   const m = MATCH_USD;
-  if (postpaid) {
-    // Post-paid (owner 2026-10-13 A/B arm): a card saved, nothing charged today, the
-    // first $100 spent is matched. Never "free trial".
-    return {
-      creditUsd: m,
-      creditLine: "matched on your first spend",
-      bannerTitle: "matched on your first spend",
-      bannerCta: `Get my $${m} match`,
-      timerLabel: `Time left to claim your $${m} match`,
-      timerExtendedLabel: `We're giving you more time to claim your $${m}`,
-      formTitle: `Claim your $${m} match`,
-      formSub: "One minute. You save a card at the end.",
-      emailCta: "Continue with Email",
-      codeCta: "Continue",
-      cardTitle: "Save your card",
-      cardNote: `You pay after your campaigns spend. We match your first $${m}.`,
-      cardCta: "Save my card and launch",
-    };
-  }
   return {
     creditUsd: m,
     creditLine: "matched on your first payment",

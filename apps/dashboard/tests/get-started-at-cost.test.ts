@@ -68,7 +68,7 @@ describe("no free money for an at-cost org", () => {
   });
 
   it("the wall's words promise no match, no trial, nothing free", () => {
-    const copy = wallCopy(null, false, true);
+    const copy = wallCopy(true);
     expect(copy.creditUsd).toBeNull();
     const words = Object.values(copy).filter((v) => typeof v === "string").join(" ");
     expect(words).not.toMatch(/match|free|trial|gift|\$/i);
@@ -76,8 +76,8 @@ describe("no free money for an at-cost org", () => {
   });
 
   it("an older org's wall is unchanged", () => {
-    expect(wallCopy(null, false).creditUsd).toBe(100);
-    expect(wallCopy(null, true).cardNote).toContain("match");
+    expect(wallCopy(false).creditUsd).toBe(100);
+    expect(wallCopy().cardNote).toContain("match");
   });
 
   it("the match line and the pay button say nothing free", () => {
@@ -93,9 +93,9 @@ describe("no free money for an at-cost org", () => {
 });
 
 describe("the wall and the dashboard walk use the at-cost checkout", () => {
-  it("the wall forces prepaid once billing says at cost, and hands the topup its offer", () => {
+  it("the wall reads at cost off the account once it exists, and hands the topup its offer", () => {
     const wall = src("src/components/v2/get-started/account-card-wall.tsx");
-    expect(wall).toContain('if (isAtCostOffer(acct)) setSold("prepaid");');
+    expect(wall).toContain("const atCost = account ? isAtCostOffer(account) : walkAtCost;");
     expect(wall).toContain("<PrepaidTopup busy={busy} atCost={atCost}");
   });
 
@@ -108,7 +108,7 @@ describe("the wall and the dashboard walk use the at-cost checkout", () => {
   it("the signed-out walk reads its org's offer before promising anything", () => {
     const walk = src("src/components/v2/get-started/get-started.tsx");
     expect(walk).toContain("readWalkOffer()");
-    expect(walk).toContain("wallCopy(planMonthlyUsd, postpaidArm, walkAtCost)");
+    expect(walk).toContain("wallCopy(walkAtCost)");
     expect(src("src/app/api/anon/offer/route.ts")).toContain("getOrgFreeCreditOffer(session.orgId)");
   });
 });
