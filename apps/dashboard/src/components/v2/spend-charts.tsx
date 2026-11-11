@@ -15,6 +15,9 @@ import {
   firstMaturingDay,
   formatPerActionUsd,
   latestSpendDay,
+  SUPPORT_KEY,
+  SUPPORT_LABEL,
+  supportSpendUsd,
   unitPlural,
   type SpendChart,
   type SpendChartPoint,
@@ -46,6 +49,7 @@ const ACTION_COLOR: Record<string, string> = {
   replies_read: "var(--data-amber)",
   notifications: "var(--data-lime)",
   other: "var(--fg-4)",
+  [SUPPORT_KEY]: "var(--fg-3)",
 };
 const actionColor = (key: string) => ACTION_COLOR[key] ?? "var(--fg-4)";
 
@@ -157,6 +161,7 @@ function SpendCard({ chart, answered, billed }: { chart: SpendChart | null; answ
     date: p.date,
     point: p,
     ...(byActionUnread ? { spent: p.spendUsd } : Object.fromEntries(p.byAction.map((a) => [a.key, a.spendUsd]))),
+    ...(byActionUnread ? {} : { [SUPPORT_KEY]: supportSpendUsd(p) ?? 0 }),
   }));
   return (
     <Card title="$ Spent">
@@ -206,11 +211,12 @@ function SpendCard({ chart, answered, billed }: { chart: SpendChart | null; answ
 
 /** A day's spend, action by action, in the producer's words and units. */
 function DayTip({ point }: { point: SpendChartPoint }) {
+  const support = supportSpendUsd(point);
   return (
     <div className="k-popover min-w-[200px] px-2.5 py-1.5 text-[12px]">
       <p className="k-fg3 k-mono">{point.date}</p>
       <p className="font-medium tabular-nums">{formatUsdAdaptive(point.spendUsd)} spent</p>
-      {point.byAction.length > 0 && (
+      {(point.byAction.length > 0 || support != null) && (
         <ul className="mt-1 space-y-0.5">
           {point.byAction.map((a) => (
             <li key={a.key} className="flex items-baseline gap-1.5">
@@ -222,6 +228,13 @@ function DayTip({ point }: { point: SpendChartPoint }) {
               <span className="tabular-nums">{formatUsdAdaptive(a.spendUsd)}</span>
             </li>
           ))}
+          {support != null && (
+            <li className="flex items-baseline gap-1.5">
+              <span className="inline-block h-2 w-2 shrink-0 rounded-[2px]" style={{ background: actionColor(SUPPORT_KEY) }} />
+              <span className="min-w-0 flex-1">{SUPPORT_LABEL}</span>
+              <span className="tabular-nums">{formatUsdAdaptive(support)}</span>
+            </li>
+          )}
         </ul>
       )}
     </div>

@@ -233,6 +233,25 @@ export function dayInWords(p: SpendChartPoint): { counts: string | null; prices:
   return { counts: counts || null, prices: prices || null, other: other || null };
 }
 
+/**
+ * The day's SUPPORT spend: brand work no campaign carries (setting the brand up, notifications sent
+ * outside a campaign). features-service counts it in the day's `spendUsd` and serves it apart as
+ * `byActionGapUsd` (never folded into an action), so a tooltip listing only `byAction` summed short of
+ * its own total (2026-11-11: $5.70 spent, rows $4.98). Shown as its own row and bar segment, read as
+ * served, never added to another row here. Null when there is none.
+ */
+export const SUPPORT_KEY = "support";
+export const SUPPORT_LABEL = "Support";
+export function supportSpendUsd(p: SpendChartPoint): number | null {
+  const gap = p.byActionGapUsd;
+  if (gap == null || Math.abs(gap) < 0.005) return null;
+  if (gap < 0) {
+    console.error(`[spend-charts] ${p.date}: actions exceed the day's spend by ${-gap} USD (byActionGapUsd < 0)`);
+    return null;
+  }
+  return gap;
+}
+
 /** The action keys features-service serves, in the order a day's bar stacks them. */
 export const ACTION_ORDER = ["prospects_found", "first_contacts", "follow_ups", "messages_written", "replies_read", "notifications", "other"] as const;
 
@@ -240,9 +259,11 @@ export const ACTION_ORDER = ["prospects_found", "first_contacts", "follow_ups", 
 export function actionKeysOf(daily: readonly SpendChartPoint[]): { key: string; label: string }[] {
   const seen = new Map<string, string>();
   for (const p of daily) for (const a of p.byAction) if (!seen.has(a.key)) seen.set(a.key, a.label);
+  const support = daily.some((p) => supportSpendUsd(p) != null);
   const rank = (k: string) => {
     const i = (ACTION_ORDER as readonly string[]).indexOf(k);
     return i === -1 ? ACTION_ORDER.length : i;
   };
-  return [...seen.entries()].sort((a, b) => rank(a[0]) - rank(b[0])).map(([key, label]) => ({ key, label }));
+  const keys = [...seen.entries()].sort((a, b) => rank(a[0]) - rank(b[0])).map(([key, label]) => ({ key, label }));
+  return support ? [...keys, { key: SUPPORT_KEY, label: SUPPORT_LABEL }] : keys;
 }
