@@ -51,7 +51,7 @@ import { expectedReasonWords } from "@/lib/expected-return";
 import { expectedBasisWord } from "@/lib/realized-return";
 import { realizedReturnWords } from "@/components/v2/return-figures";
 import { clickedControlLabel, pushRecentAction, type RecentAction } from "@/lib/recent-actions";
-import { nudgeDelayMs, sessionIdFromUIStream } from "@/lib/copilot-nudge";
+import { mayAutoSend, nudgeDelayMs, sessionIdFromUIStream } from "@/lib/copilot-nudge";
 
 /**
  * The Copilot (owner 2026-10-09, GA 2026-10-10), drawn inside the right panel. A reload shows the last
@@ -359,6 +359,36 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     },
   });
   const busy = status === "streaming" || status === "submitted";
+  const busyRef = useRef(busy);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  // One turn at a time from this panel (COPILOT-NO-DOUBLE-TURN-1111): useChat sends two
+  // requests when called twice in one tick, and `busy` only moves on the next render, so
+  // every send goes through sendTurn, which marks a turn in flight at once.
+  const turnsInFlightRef = useRef(0);
+  const [turnInFlight, setTurnInFlight] = useState(false);
+  // The person wrote in this chat (typed, or a page button asked): no opener any more.
+  const userSpokeRef = useRef(false);
+  const nudgingRef = useRef(false);
+  const nudgeAbortRef = useRef<AbortController | null>(null);
+  const nudgeAskedAtRef = useRef<string | null>(null);
+  const sendTurn = useCallback(
+    (text: string) => {
+      turnsInFlightRef.current += 1;
+      setTurnInFlight(true);
+      void sendMessage({ text }).finally(() => {
+        turnsInFlightRef.current -= 1;
+        if (turnsInFlightRef.current === 0) setTurnInFlight(false);
+      });
+    },
+    [sendMessage],
+  );
 
   // A reload shows the last conversation: the user's latest one for this brand on any device,
   // else the one this browser kept (sessions from before chat-service recorded the brand);
@@ -414,14 +444,33 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     };
   }, [storageKey, brandId, setMessages]);
 
+  // The person's own message always wins (COPILOT-NO-DOUBLE-TURN-1111): it ends any chance of
+  // an opener, drops a proactive ask in flight, and an answer still streaming (the opener's,
+  // typically) is stopped and the message goes out right after. The user never waits.
+  const [queuedText, setQueuedText] = useState<string | null>(null);
+  const sendOwn = useCallback(
+    (value: string) => {
+      userSpokeRef.current = true;
+      setOpenerWanted(false);
+      nudgeAskedAtRef.current = new Date().toISOString();
+      nudgeAbortRef.current?.abort();
+      if (busy || turnsInFlightRef.current > 0) {
+        setQueuedText(value);
+        stop();
+        return;
+      }
+      sendTurn(value);
+    },
+    [busy, stop, sendTurn],
+  );
+
   // A page button asked something ("Create a campaign"): sent as if typed and sent, once the
   // conversation is loaded and idle. It takes the place of a new chat's opener.
   useEffect(() => {
     if (!askedText || phase !== "ready" || busy) return;
     clearPending();
-    setOpenerWanted(false);
-    sendMessage({ text: askedText });
-  }, [askedText, phase, busy, clearPending, sendMessage]);
+    sendOwn(askedText);
+  }, [askedText, phase, busy, clearPending, sendOwn]);
 
   // A page button started a sentence ("Edit with AI"): it lands in the box, never sent, the
   // cursor after it so the user types the rest (owner 2026-10-17).
@@ -440,29 +489,36 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   }, [startedText, phase, clearDraft]);
 
   // A new chat opens on the model's read of the account, once the figures are in.
+  // Never while the person types, once they wrote, or while a turn runs (mayAutoSend).
   useEffect(() => {
-    if (!openerWanted || askedText || phase !== "ready" || !settled || busy) return;
+    if (!openerWanted || askedText || phase !== "ready" || !settled) return;
+    if (userSpokeRef.current) {
+      setOpenerWanted(false);
+      return;
+    }
+    const turnRunning = turnsInFlightRef.current > 0 || nudgingRef.current;
+    if (!mayAutoSend({ draft, busy, turnInFlight: turnRunning, userSpoke: false })) return;
     setOpenerWanted(false);
-    sendMessage({ text: COPILOT_OPENER });
-  }, [openerWanted, askedText, phase, settled, busy, sendMessage]);
+    sendTurn(COPILOT_OPENER);
+  }, [openerWanted, askedText, phase, settled, busy, draft, turnInFlight, sendTurn]);
 
   // Proactive help (owner 2026-10-15): while the Copilot is open and idle, a moment after
   // the user opens a page or stops clicking, chat-service's Jev decides whether the Copilot
   // speaks first. Quiet = nothing shown. Speak = the turn is stored without a visible user
   // message, so the conversation is reloaded to show it with its cards.
-  const busyRef = useRef(busy);
-  useEffect(() => {
-    busyRef.current = busy;
-  }, [busy]);
-  const nudgeAskedAtRef = useRef<string | null>(null);
-  const nudgingRef = useRef(false);
   const askNudge = useCallback(async () => {
     if (nudgingRef.current) return;
+    // Checked again at fire time: the timer was armed before the person typed or sent.
+    const turnRunning = turnsInFlightRef.current > 0;
+    if (!mayAutoSend({ draft: draftRef.current, busy: busyRef.current, turnInFlight: turnRunning, userSpoke: false })) return;
     nudgingRef.current = true;
     nudgeAskedAtRef.current = new Date().toISOString();
+    const abort = new AbortController();
+    nudgeAbortRef.current = abort;
     try {
       const res = await fetch("/api/v1/chat", {
         method: "POST",
+        signal: abort.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nudge: true,
@@ -486,26 +542,32 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       saveSessionId(storageKey, sid);
       const h = await getChatSessionHistory(sid);
       // The user started a turn meanwhile: the stored answer shows on the next load.
-      if (busyRef.current) return;
+      if (abort.signal.aborted || busyRef.current || turnsInFlightRef.current > 0) return;
       setMessages(historyToUIMessages(h.messages));
       setHistoryChoices(choicesByTurn(h.messages));
       setHistoryPages(openPagesByTurn(h.messages));
       setHistoryCredits(creditsRequiredByTurn(h.messages));
+    } catch (err) {
+      // The person's own message dropped this ask: a normal quiet.
+      if (abort.signal.aborted) return;
+      throw err;
     } finally {
       nudgingRef.current = false;
+      if (nudgeAbortRef.current === abort) nudgeAbortRef.current = null;
     }
   }, [storageKey, setMessages]);
   useEffect(() => {
-    if (!dockOpen || phase !== "ready" || busy || draft.trim()) return;
+    if (!dockOpen || phase !== "ready" || busy || turnInFlight || draft.trim()) return;
     const actions = recentActionsRef.current;
     const delay = nudgeDelayMs(actions[actions.length - 1], nudgeAskedAtRef.current);
     if (delay === null) return;
     const t = setTimeout(() => void askNudge(), delay);
     return () => clearTimeout(t);
-  }, [actionTick, dockOpen, phase, busy, draft, askNudge]);
+  }, [actionTick, dockOpen, phase, busy, turnInFlight, draft, askNudge]);
 
   const newChat = useCallback(() => {
     stop();
+    userSpokeRef.current = false;
     sessionIdRef.current = null;
     saveSessionId(storageKey, null);
     setMessages([]);
@@ -517,27 +579,21 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
 
   // The user never waits on the Copilot: a message sent while an answer streams (the new
   // chat's opener reading the account, typically) stops that answer and goes out at once.
-  const [queuedText, setQueuedText] = useState<string | null>(null);
   const submit = useCallback(
     (text: string) => {
       const value = text.trim();
       if (!value) return;
       setDraft("");
-      if (busy) {
-        setOpenerWanted(false);
-        setQueuedText(value);
-        stop();
-        return;
-      }
-      sendMessage({ text: value });
+      draftRef.current = "";
+      sendOwn(value);
     },
-    [busy, stop, sendMessage],
+    [sendOwn],
   );
   useEffect(() => {
-    if (!queuedText || busy) return;
+    if (!queuedText || busy || turnInFlight) return;
     setQueuedText(null);
-    sendMessage({ text: queuedText });
-  }, [queuedText, busy, sendMessage]);
+    sendTurn(queuedText);
+  }, [queuedText, busy, turnInFlight, sendTurn]);
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     submit(draft);

@@ -264,16 +264,17 @@ describe("Create a campaign button (owner 2026-10-11)", () => {
     expect(src("src/components/v2/copilot-panel.tsx")).toContain('inert={!open}');
     const chat = src("src/components/v2/copilot-chat.tsx");
     expect(chat).toContain('if (!askedText || phase !== "ready" || busy) return;');
-    expect(chat).toContain("sendMessage({ text: askedText });");
+    expect(chat).toContain("sendOwn(askedText);");
   });
 
   it("shows the panel and the chat sends the queued text as if typed and sent", () => {
     const dock = src("src/components/v2/copilot-dock.tsx");
     expect(dock).toContain("setOpen(true);\n      setPending(text);");
     const chat = src("src/components/v2/copilot-chat.tsx");
-    expect(chat).toContain("sendMessage({ text: askedText })");
+    expect(chat).toContain("sendOwn(askedText)");
     // The ask replaces a new chat's opener: never two first messages.
     expect(chat).toContain("if (!openerWanted || askedText ||");
+    expect(chat).toContain("userSpokeRef.current = true;\n      setOpenerWanted(false);");
   });
 });
 
@@ -299,18 +300,38 @@ describe("Edit with AI opens the Copilot with the sentence started (owner 2026-1
   });
 });
 
+describe("one Copilot turn at a time, the person's own message wins (COPILOT-NO-DOUBLE-TURN-1111)", () => {
+  it("every send goes through sendTurn, which marks the turn in flight before useChat's status moves", () => {
+    const chat = src("src/components/v2/copilot-chat.tsx");
+    expect(chat.match(/sendMessage\(/g)?.length).toBe(1);
+    const at = chat.indexOf("const sendTurn = useCallback(");
+    const body = chat.slice(at, chat.indexOf("[sendMessage],", at));
+    expect(body.indexOf("turnsInFlightRef.current += 1;")).toBeLessThan(body.indexOf("sendMessage({ text })"));
+  });
+
+  it("the opener never goes out once the person wrote, while they type, or while a turn runs", () => {
+    const chat = src("src/components/v2/copilot-chat.tsx");
+    const at = chat.indexOf("if (!openerWanted || askedText ||");
+    const body = chat.slice(at, chat.indexOf("sendTurn(COPILOT_OPENER);", at));
+    expect(body).toContain("if (userSpokeRef.current) {");
+    expect(body).toContain("if (!mayAutoSend({ draft, busy, turnInFlight: turnRunning, userSpoke: false })) return;");
+  });
+});
+
 describe("the user never waits on the Copilot (owner 2026-10-15)", () => {
   it("a message sent while an answer streams stops it and goes out at once", () => {
     const chat = src("src/components/v2/copilot-chat.tsx");
-    const at = chat.indexOf("const submit = useCallback(");
-    const body = chat.slice(at, chat.indexOf("const onSubmit = ", at));
+    const at = chat.indexOf("const sendOwn = useCallback(");
+    const own = chat.slice(at, chat.indexOf("// A page button asked something", at));
     // No early return on busy: the send stops the stream and queues the text.
-    const send = body.slice(0, body.indexOf("useEffect("));
-    expect(send).not.toContain("|| busy) return");
-    expect(body).toContain("setQueuedText(value);");
-    expect(body).toContain("stop();");
-    expect(body).toContain("if (!queuedText || busy) return;");
-    expect(body).toContain("sendMessage({ text: queuedText });");
+    expect(own).not.toContain("|| busy) return");
+    expect(own).toContain("if (busy || turnsInFlightRef.current > 0) {");
+    expect(own).toContain("setQueuedText(value);");
+    expect(own).toContain("stop();");
+    const sub = chat.slice(chat.indexOf("const submit = useCallback("), chat.indexOf("const onSubmit = "));
+    expect(sub).toContain("sendOwn(value);");
+    expect(sub).toContain("if (!queuedText || busy || turnInFlight) return;");
+    expect(sub).toContain("sendTurn(queuedText);");
     // Typing during a stream shows Send, Stop only on an empty box.
     expect(chat).toContain("{busy && !draft.trim() ? (");
   });

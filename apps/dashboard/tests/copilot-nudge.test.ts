@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { NUDGE_AFTER_IDLE_MS, NUDGE_AFTER_PAGE_MS, nudgeDelayMs, sessionIdFromUIStream } from "../src/lib/copilot-nudge";
+import { NUDGE_AFTER_IDLE_MS, NUDGE_AFTER_PAGE_MS, mayAutoSend, nudgeDelayMs, sessionIdFromUIStream } from "../src/lib/copilot-nudge";
 import type { RecentAction } from "../src/lib/recent-actions";
 
 const at = (kind: RecentAction["kind"], when: string): RecentAction => ({ at: when, kind, label: "x", page: "/p" });
@@ -18,6 +18,20 @@ describe("nudgeDelayMs", () => {
 
   it("asks again after a new action", () => {
     expect(nudgeDelayMs(at("page", "2026-10-15T10:01:00Z"), "2026-10-15T10:00:05Z")).toBe(NUDGE_AFTER_PAGE_MS);
+  });
+});
+
+describe("mayAutoSend (COPILOT-NO-DOUBLE-TURN-1111)", () => {
+  const idle = { draft: "", busy: false, turnInFlight: false, userSpoke: false };
+  it("sends an automatic turn only when the person is idle and silent", () => {
+    expect(mayAutoSend(idle)).toBe(true);
+  });
+  it("never while typing, after they wrote, or while a turn runs", () => {
+    expect(mayAutoSend({ ...idle, draft: "now start" })).toBe(false);
+    expect(mayAutoSend({ ...idle, draft: "   " })).toBe(true);
+    expect(mayAutoSend({ ...idle, userSpoke: true })).toBe(false);
+    expect(mayAutoSend({ ...idle, busy: true })).toBe(false);
+    expect(mayAutoSend({ ...idle, turnInFlight: true })).toBe(false);
   });
 });
 
@@ -42,8 +56,14 @@ describe("call sites", () => {
   const route = readFileSync(new URL("../src/app/(authed)/api/v1/chat/route.ts", import.meta.url), "utf8");
 
   it("the Copilot asks only while open, idle and not typing", () => {
-    expect(chat).toContain("if (!dockOpen || phase !== \"ready\" || busy || draft.trim()) return;");
+    expect(chat).toContain("if (!dockOpen || phase !== \"ready\" || busy || turnInFlight || draft.trim()) return;");
     expect(chat).toContain("nudge: true,");
+    // Re-checked when the timer fires, and dropped when the person sends meanwhile.
+    const at = chat.indexOf("const askNudge = useCallback(");
+    const body = chat.slice(at, chat.indexOf("}, [storageKey, setMessages]);", at));
+    expect(body).toContain("if (!mayAutoSend({ draft: draftRef.current, busy: busyRef.current, turnInFlight: turnRunning, userSpoke: false })) return;");
+    expect(body).toContain("signal: abort.signal,");
+    expect(chat).toContain("nudgeAbortRef.current?.abort();");
   });
 
   it("a speak turn reloads the stored conversation", () => {
