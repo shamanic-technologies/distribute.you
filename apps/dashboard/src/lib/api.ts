@@ -2432,6 +2432,8 @@ export const STAFF_MONITORING_PATHS = {
   planFollowing: "/campaigns/ops/plan-following",
   // Per outcome a stored script makes, script path vs the service path it replaced, per day + the verdicts and the roll-back guard (workflow-service, FACTORY-P3).
   scriptsMonitoring: "/scripts/ops/monitoring",
+  // Every staff alert transactional-email-service records instead of emailing (provider out of credits, campaign failing, trigger silent, domain blocklisted, newsletter halted...): per type the verdict, a daily series, the latest occurrences (SIGNUP-EMAILS-1111-MONITORING).
+  monitoringAlerts: "/transactional-email/ops/monitoring-alerts",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -13507,6 +13509,14 @@ import { UnsentAnswersSchema as StaffUnsentAnswersSchema, type UnsentAnswers as 
 /** Answers owed to a person who wrote that the sender refused or that every run failed, over the last `days` UTC days, with campaign-service's served verdict. */
 export async function getStaffUnsentAnswers(days: number): Promise<StaffUnsentAnswers> {
   return parseStaff("getStaffUnsentAnswers", StaffUnsentAnswersSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.unsentAnswers}?days=${days}`));
+}
+
+// ─── Monitoring > Alerts > Raised (SIGNUP-EMAILS-1111-MONITORING) ───
+import { MonitoringAlertsSchema as StaffMonitoringAlertsSchema, type MonitoringAlerts as StaffMonitoringAlerts } from "./monitoring/monitoring-alerts";
+
+/** Every staff alert type transactional-email-service records (never emails) over the last `days` UTC days, broken first, with its served verdict. */
+export async function getStaffMonitoringAlerts(days: number): Promise<StaffMonitoringAlerts> {
+  return parseStaff("getStaffMonitoringAlerts", StaffMonitoringAlertsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.monitoringAlerts}?days=${days}`));
 }
 
 // ─── Monitoring > Triggers > Firing (TRIGGER-HEALTH-1028-DASH) ───

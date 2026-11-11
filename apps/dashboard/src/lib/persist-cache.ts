@@ -138,6 +138,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Monitoring > AI vendors > Credit: which AI vendor is out of credit (VENDOR-CREDIT-1030).
   "staffVendorCredit",
   "staffUnsentAnswers",
+  // Monitoring > Alerts: every staff alert recorded instead of emailed (SIGNUP-EMAILS-1111-MONITORING).
+  "staffMonitoringAlerts",
   // Monitoring > Connected tools: records each client tool takes in per day (CONNECTOR-INTAKE-MONITORING-1028).
   "staffConnectorIntake",
   // GTM Factory shadow (FACTORY-P1-DASH): staff-only reads, never persisted to disk.

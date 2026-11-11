@@ -1,0 +1,2281 @@
+{
+ "days": 30,
+ "generatedAt": "2026-11-11T11:38:35.534Z",
+ "alerts": [
+  {
+   "eventType": "campaign_failing",
+   "label": "A campaign fails every run",
+   "verdict": "broken",
+   "reason": "Raised 9 times in 30 days, last at 2026-11-11T06:48:54.141Z",
+   "lastRaisedAt": "2026-11-11T06:48:54.141Z",
+   "daily": [
+    {
+     "day": "2026-10-13",
+     "count": 0
+    },
+    {
+     "day": "2026-10-14",
+     "count": 0
+    },
+    {
+     "day": "2026-10-15",
+     "count": 0
+    },
+    {
+     "day": "2026-10-16",
+     "count": 0
+    },
+    {
+     "day": "2026-10-17",
+     "count": 0
+    },
+    {
+     "day": "2026-10-18",
+     "count": 0
+    },
+    {
+     "day": "2026-10-19",
+     "count": 0
+    },
+    {
+     "day": "2026-10-20",
+     "count": 2
+    },
+    {
+     "day": "2026-10-21",
+     "count": 0
+    },
+    {
+     "day": "2026-10-22",
+     "count": 0
+    },
+    {
+     "day": "2026-10-23",
+     "count": 0
+    },
+    {
+     "day": "2026-10-24",
+     "count": 0
+    },
+    {
+     "day": "2026-10-25",
+     "count": 0
+    },
+    {
+     "day": "2026-10-26",
+     "count": 0
+    },
+    {
+     "day": "2026-10-27",
+     "count": 2
+    },
+    {
+     "day": "2026-10-28",
+     "count": 0
+    },
+    {
+     "day": "2026-10-29",
+     "count": 0
+    },
+    {
+     "day": "2026-10-30",
+     "count": 2
+    },
+    {
+     "day": "2026-10-31",
+     "count": 0
+    },
+    {
+     "day": "2026-11-01",
+     "count": 0
+    },
+    {
+     "day": "2026-11-02",
+     "count": 0
+    },
+    {
+     "day": "2026-11-03",
+     "count": 0
+    },
+    {
+     "day": "2026-11-04",
+     "count": 0
+    },
+    {
+     "day": "2026-11-05",
+     "count": 0
+    },
+    {
+     "day": "2026-11-06",
+     "count": 0
+    },
+    {
+     "day": "2026-11-07",
+     "count": 2
+    },
+    {
+     "day": "2026-11-08",
+     "count": 0
+    },
+    {
+     "day": "2026-11-09",
+     "count": 0
+    },
+    {
+     "day": "2026-11-10",
+     "count": 0
+    },
+    {
+     "day": "2026-11-11",
+     "count": 1
+    }
+   ],
+   "recent": [
+    {
+     "raisedAt": "2026-11-11T06:48:54.141Z",
+     "orgId": "b4a43279-275c-430e-9d36-eb698dcb28fd",
+     "campaignId": "c5df3208-48c8-45f3-bfcd-c6ce240ff57d",
+     "metadata": {
+      "email": "client1@example.com",
+      "orgId": "b4a43279-275c-430e-9d36-eb698dcb28fd",
+      "brandId": "f25037e6-8a25-44e5-96de-856fb5f5c401",
+      "campaignId": "c5df3208-48c8-45f3-bfcd-c6ce240ff57d",
+      "featureSlug": "sales-cold-email-outreach",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='c5df3208-48c8-45f3-bfcd-c6ce240ff57d' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "Email Replies 3cfc2aaa - sales-cold-email-outreach - f25037e6-8a25-44e5-96de-856fb5f5c401 - 8c9985d7-25df-4b8e-b631-963f7f28cf95 - lead_found_to_conversation",
+      "failingSince": "2026-11-11T06:09:48.292Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    },
+    {
+     "raisedAt": "2026-11-07T21:53:07.473Z",
+     "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+     "campaignId": "18da3b07-611c-46ad-9a3d-0667f2f607c8",
+     "metadata": {
+      "email": "client2@example.com",
+      "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+      "brandId": "d0965c2c-a58f-4497-addd-6a19e556b068",
+      "campaignId": "18da3b07-611c-46ad-9a3d-0667f2f607c8",
+      "featureSlug": "sales-cold-email-outreach",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='18da3b07-611c-46ad-9a3d-0667f2f607c8' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "Test Automation (Positive reply, Cold email)",
+      "failingSince": "2026-11-07T21:18:17.584Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    },
+    {
+     "raisedAt": "2026-11-07T19:10:22.509Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "brandId": "33211c62-b34b-4d21-b124-4ff16338c800",
+      "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+      "featureSlug": "lead-sourcing",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='9fcb1a51-c2fe-4e34-8192-a046b2eaed8d' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "Wide Email b255706c - lead-sourcing - 33211c62-b34b-4d21-b124-4ff16338c800 - 43870a82-f1fb-4ad4-82d9-5909fc84447c - start_to_lead_found",
+      "failingSince": "2026-11-07T18:29:09.034Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    },
+    {
+     "raisedAt": "2026-10-30T18:18:53.482Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "b93006ef-829e-43fc-908a-8077dc028bd9",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "brandId": "33211c62-b34b-4d21-b124-4ff16338c800",
+      "campaignId": "b93006ef-829e-43fc-908a-8077dc028bd9",
+      "featureSlug": "sales-cold-email-outreach",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='b93006ef-829e-43fc-908a-8077dc028bd9' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "Wide Email b255706c - sales-cold-email-outreach - 33211c62-b34b-4d21-b124-4ff16338c800 - 43870a82-f1fb-4ad4-82d9-5909fc84447c - lead_found_to_conversation",
+      "failingSince": "2026-10-30T17:43:31.867Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    },
+    {
+     "raisedAt": "2026-10-30T00:44:41.237Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": "3922c8e1-3405-46af-8a56-1eef3f221b19",
+     "metadata": {
+      "email": "client4@example.com",
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "brandId": "a179bbd9-8eed-4dba-9338-78125922b0c6",
+      "campaignId": "3922c8e1-3405-46af-8a56-1eef3f221b19",
+      "featureSlug": "sales-cold-email-outreach",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='3922c8e1-3405-46af-8a56-1eef3f221b19' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "example-client.com \u2014 Sales meetings",
+      "failingSince": "2026-10-30T00:09:38.895Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T01:58:04.846Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": "3922c8e1-3405-46af-8a56-1eef3f221b19",
+     "metadata": {
+      "email": "client4@example.com",
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "brandId": "a179bbd9-8eed-4dba-9338-78125922b0c6",
+      "campaignId": "3922c8e1-3405-46af-8a56-1eef3f221b19",
+      "featureSlug": "sales-cold-email-outreach",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='3922c8e1-3405-46af-8a56-1eef3f221b19' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "example-client.com \u2014 Sales meetings",
+      "failingSince": "2026-10-27T01:04:13.961Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T01:17:13.945Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": "3dc476d1-0bfc-47cf-97a2-f577c00d83b0",
+     "metadata": {
+      "email": "client4@example.com",
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "brandId": "a179bbd9-8eed-4dba-9338-78125922b0c6",
+      "campaignId": "3dc476d1-0bfc-47cf-97a2-f577c00d83b0",
+      "featureSlug": "lead-sourcing",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='3dc476d1-0bfc-47cf-97a2-f577c00d83b0' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "Cold Email Replies 87d76a1a - lead-sourcing - a179bbd9-8eed-4dba-9338-78125922b0c6 - 3484bbae-6c63-4415-8528-589eb4f863fe - start_to_lead_found",
+      "failingSince": "2026-10-27T00:39:17.886Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    },
+    {
+     "raisedAt": "2026-10-20T21:21:57.609Z",
+     "orgId": "45bcdcb0-817e-4dde-be0e-3b04b9476f0c",
+     "campaignId": "6d9e13bf-756c-4fb2-af18-3f6e0f01c2ee",
+     "metadata": {
+      "email": "client5@example.com",
+      "orgId": "45bcdcb0-817e-4dde-be0e-3b04b9476f0c",
+      "brandId": "96c1014f-5f6a-4924-bd14-1831c58a6b26",
+      "campaignId": "6d9e13bf-756c-4fb2-af18-3f6e0f01c2ee",
+      "featureSlug": "sourcing-apollo-cold-filters",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='6d9e13bf-756c-4fb2-af18-3f6e0f01c2ee' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "Targeted Email Replies 0d5d19f3 - sourcing-apollo-cold-filters - 96c1014f-5f6a-4924-bd14-1831c58a6b26 - 85848d97-3c12-4833-a059-b1aeb745b09e - start_to_lead_found",
+      "failingSince": "2026-10-20T20:33:13.782Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    },
+    {
+     "raisedAt": "2026-10-20T06:44:45.637Z",
+     "orgId": "62594115-4e20-4405-8a6d-5e4bd72a7d86",
+     "campaignId": "3c487c6f-3121-42dd-add8-5671b8212466",
+     "metadata": {
+      "email": "client6@example.com",
+      "orgId": "62594115-4e20-4405-8a6d-5e4bd72a7d86",
+      "brandId": "1502052b-0511-48cd-8ba1-e192c2802062",
+      "campaignId": "3c487c6f-3121-42dd-add8-5671b8212466",
+      "featureSlug": "lead-sourcing",
+      "whereToLook": "runs_service: SELECT created_at, service, event, level, detail FROM run_events WHERE campaign_id='3c487c6f-3121-42dd-add8-5671b8212466' AND level IN ('warn','error') ORDER BY created_at DESC LIMIT 20;",
+      "campaignName": "Cold Email Replies 16f04958 - lead-sourcing - 1502052b-0511-48cd-8ba1-e192c2802062 - fa7fb1c6-f05e-493e-8d9a-045ea7f24a77 - start_to_lead_found",
+      "failingSince": "2026-10-20T06:10:40.255Z",
+      "retryInterval": "30 min",
+      "consecutiveFailures": "8"
+     }
+    }
+   ]
+  },
+  {
+   "eventType": "provider_credits_exhausted",
+   "label": "A paid data provider is out of credits",
+   "verdict": "broken",
+   "reason": "Raised 25 times in 30 days, last at 2026-11-11T05:46:01.811Z",
+   "lastRaisedAt": "2026-11-11T05:46:01.811Z",
+   "daily": [
+    {
+     "day": "2026-10-13",
+     "count": 0
+    },
+    {
+     "day": "2026-10-14",
+     "count": 0
+    },
+    {
+     "day": "2026-10-15",
+     "count": 0
+    },
+    {
+     "day": "2026-10-16",
+     "count": 1
+    },
+    {
+     "day": "2026-10-17",
+     "count": 1
+    },
+    {
+     "day": "2026-10-18",
+     "count": 0
+    },
+    {
+     "day": "2026-10-19",
+     "count": 0
+    },
+    {
+     "day": "2026-10-20",
+     "count": 1
+    },
+    {
+     "day": "2026-10-21",
+     "count": 2
+    },
+    {
+     "day": "2026-10-22",
+     "count": 1
+    },
+    {
+     "day": "2026-10-23",
+     "count": 1
+    },
+    {
+     "day": "2026-10-24",
+     "count": 0
+    },
+    {
+     "day": "2026-10-25",
+     "count": 1
+    },
+    {
+     "day": "2026-10-26",
+     "count": 2
+    },
+    {
+     "day": "2026-10-27",
+     "count": 2
+    },
+    {
+     "day": "2026-10-28",
+     "count": 2
+    },
+    {
+     "day": "2026-10-29",
+     "count": 1
+    },
+    {
+     "day": "2026-10-30",
+     "count": 1
+    },
+    {
+     "day": "2026-10-31",
+     "count": 0
+    },
+    {
+     "day": "2026-11-01",
+     "count": 2
+    },
+    {
+     "day": "2026-11-02",
+     "count": 1
+    },
+    {
+     "day": "2026-11-03",
+     "count": 1
+    },
+    {
+     "day": "2026-11-04",
+     "count": 1
+    },
+    {
+     "day": "2026-11-05",
+     "count": 1
+    },
+    {
+     "day": "2026-11-06",
+     "count": 0
+    },
+    {
+     "day": "2026-11-07",
+     "count": 1
+    },
+    {
+     "day": "2026-11-08",
+     "count": 1
+    },
+    {
+     "day": "2026-11-09",
+     "count": 0
+    },
+    {
+     "day": "2026-11-10",
+     "count": 0
+    },
+    {
+     "day": "2026-11-11",
+     "count": 1
+    }
+   ],
+   "recent": [
+    {
+     "raisedAt": "2026-11-11T05:46:01.811Z",
+     "orgId": "b4a43279-275c-430e-9d36-eb698dcb28fd",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "b4a43279-275c-430e-9d36-eb698dcb28fd",
+      "detail": "operation: organizations/{id}\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-11-08T07:33:29.630Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-11-07T17:22:29.288Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-11-05T00:02:45.304Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-11-04T00:09:29.698Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-11-03T01:00:21.816Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-11-02T18:30:00.793Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-11-01T12:55:31.085Z",
+     "orgId": "cb9ad98a-d572-4fe7-9dd9-7dbce61d8373",
+     "campaignId": "f5e00ec7-94e3-47b4-8da5-46efbedd8fe9",
+     "metadata": {
+      "email": "client7@example.com",
+      "orgId": "cb9ad98a-d572-4fe7-9dd9-7dbce61d8373",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-11-01T00:03:58.605Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-10-30T17:33:13.204Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-10-29T14:19:43.383Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": "3dc476d1-0bfc-47cf-97a2-f577c00d83b0",
+     "metadata": {
+      "email": "client4@example.com",
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "detail": "operation: bounceverify\nHTTP 403\napify bounceverify responded 403: {\n  \"error\": {\n    \"type\": \"platform-feature-disabled\",\n    \"message\": \"Monthly usage hard limit exceeded\"\n  }\n}",
+      "reason": "Apify refused the email-verification actor: the account's usage limit is reached (TryKitt / MillionVerifier verify instead)",
+      "provider": "apify"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T15:06:19.672Z",
+     "orgId": "f00c29d0-a41f-41a3-b8b3-471a10c96277",
+     "campaignId": "95a44b45-6212-4833-92b1-178370e35323",
+     "metadata": {
+      "email": "client8@example.com",
+      "orgId": "f00c29d0-a41f-41a3-b8b3-471a10c96277",
+      "detail": "operation: bounceverify\nHTTP 403\napify bounceverify responded 403: {\n  \"error\": {\n    \"type\": \"platform-feature-disabled\",\n    \"message\": \"Monthly usage hard limit exceeded\"\n  }\n}",
+      "reason": "Apify refused the email-verification actor: the account's usage limit is reached (TryKitt / MillionVerifier verify instead)",
+      "provider": "apify"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T06:13:01.321Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: bounceverify\nHTTP 403\napify bounceverify responded 403: {\n  \"error\": {\n    \"type\": \"platform-feature-disabled\",\n    \"message\": \"Monthly usage hard limit exceeded\"\n  }\n}",
+      "reason": "Apify refused the email-verification actor: the account's usage limit is reached (TryKitt / MillionVerifier verify instead)",
+      "provider": "apify"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T20:23:35.504Z",
+     "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+     "campaignId": "9fcb1a51-c2fe-4e34-8192-a046b2eaed8d",
+     "metadata": {
+      "email": "client3@example.com",
+      "orgId": "8c043fa7-88b9-4e92-a96b-3dab875cb465",
+      "detail": "operation: bounceverify\nHTTP 403\napify bounceverify responded 403: {\n  \"error\": {\n    \"type\": \"platform-feature-disabled\",\n    \"message\": \"Monthly usage hard limit exceeded\"\n  }\n}",
+      "reason": "Apify refused the email-verification actor: the account's usage limit is reached (TryKitt / MillionVerifier verify instead)",
+      "provider": "apify"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T01:17:06.228Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": "3dc476d1-0bfc-47cf-97a2-f577c00d83b0",
+     "metadata": {
+      "email": "client4@example.com",
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-10-26T08:42:56.703Z",
+     "orgId": "f9f7d746-5159-4fff-abf9-ca058fb05bee",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f9f7d746-5159-4fff-abf9-ca058fb05bee",
+      "detail": "operation: organizations/{id}\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-10-26T00:07:40.076Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": "3dc476d1-0bfc-47cf-97a2-f577c00d83b0",
+     "metadata": {
+      "email": "client4@example.com",
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-10-25T01:27:30.653Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": "3dc476d1-0bfc-47cf-97a2-f577c00d83b0",
+     "metadata": {
+      "email": "client4@example.com",
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "detail": "operation: people/match (enrich)\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-10-23T05:21:53.497Z",
+     "orgId": "3e8dc010-0ed5-4ba7-862a-aab67b11edf8",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "3e8dc010-0ed5-4ba7-862a-aab67b11edf8",
+      "detail": "operation: organizations/{id}\nHTTP 422\n{\"error\":\"You have insufficient credits! \\u003ca href='https://app.apollo.io/#/settings/plans/upgrade?source=api_credit_limit' aria-onclick='close_alert'\\u003eUpgrade your plan\\u003c/a\\u003e to increase your number of lead credits.\",\"error_details\":{\"code\":\"BILLING.LIMIT.CREDITS_EXHAUSTED\",\"message\":\"Your team has used all of its credits for this billing cycle.\",\"suggestions\":[{\"label\":\"Upgrade your plan to get more API credits\",\"url\":\"https://app.apollo.io/#/settings/plans/upgrade?source=billin",
+      "reason": "Apollo rejected the request with HTTP 422 and an out-of-credits message",
+      "provider": "apollo"
+     }
+    },
+    {
+     "raisedAt": "2026-10-22T01:38:37.469Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": "3dc476d1-0bfc-47cf-97a2-f577c00d83b0",
+     "metadata": {
+      "email": "client4@example.com",
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "detail": "operation: bounceverify\nHTTP 403\napify bounceverify responded 403: {\n  \"error\": {\n    \"type\": \"platform-feature-disabled\",\n    \"message\": \"Monthly usage hard limit exceeded\"\n  }\n}",
+      "reason": "Apify refused the email-verification actor: the account's usage limit is reached (TryKitt / MillionVerifier verify instead)",
+      "provider": "apify"
+     }
+    }
+   ]
+  },
+  {
+   "eventType": "audience_refill_failed",
+   "label": "A campaign ran out of people and the refill found nobody",
+   "verdict": "ok",
+   "reason": "Not raised in 30 days",
+   "lastRaisedAt": null,
+   "daily": [
+    {
+     "day": "2026-10-13",
+     "count": 0
+    },
+    {
+     "day": "2026-10-14",
+     "count": 0
+    },
+    {
+     "day": "2026-10-15",
+     "count": 0
+    },
+    {
+     "day": "2026-10-16",
+     "count": 0
+    },
+    {
+     "day": "2026-10-17",
+     "count": 0
+    },
+    {
+     "day": "2026-10-18",
+     "count": 0
+    },
+    {
+     "day": "2026-10-19",
+     "count": 0
+    },
+    {
+     "day": "2026-10-20",
+     "count": 0
+    },
+    {
+     "day": "2026-10-21",
+     "count": 0
+    },
+    {
+     "day": "2026-10-22",
+     "count": 0
+    },
+    {
+     "day": "2026-10-23",
+     "count": 0
+    },
+    {
+     "day": "2026-10-24",
+     "count": 0
+    },
+    {
+     "day": "2026-10-25",
+     "count": 0
+    },
+    {
+     "day": "2026-10-26",
+     "count": 0
+    },
+    {
+     "day": "2026-10-27",
+     "count": 0
+    },
+    {
+     "day": "2026-10-28",
+     "count": 0
+    },
+    {
+     "day": "2026-10-29",
+     "count": 0
+    },
+    {
+     "day": "2026-10-30",
+     "count": 0
+    },
+    {
+     "day": "2026-10-31",
+     "count": 0
+    },
+    {
+     "day": "2026-11-01",
+     "count": 0
+    },
+    {
+     "day": "2026-11-02",
+     "count": 0
+    },
+    {
+     "day": "2026-11-03",
+     "count": 0
+    },
+    {
+     "day": "2026-11-04",
+     "count": 0
+    },
+    {
+     "day": "2026-11-05",
+     "count": 0
+    },
+    {
+     "day": "2026-11-06",
+     "count": 0
+    },
+    {
+     "day": "2026-11-07",
+     "count": 0
+    },
+    {
+     "day": "2026-11-08",
+     "count": 0
+    },
+    {
+     "day": "2026-11-09",
+     "count": 0
+    },
+    {
+     "day": "2026-11-10",
+     "count": 0
+    },
+    {
+     "day": "2026-11-11",
+     "count": 0
+    }
+   ],
+   "recent": []
+  },
+  {
+   "eventType": "mailing_list_release_halted",
+   "label": "A newsletter release stopped itself",
+   "verdict": "ok",
+   "reason": "Not raised in 30 days",
+   "lastRaisedAt": null,
+   "daily": [
+    {
+     "day": "2026-10-13",
+     "count": 0
+    },
+    {
+     "day": "2026-10-14",
+     "count": 0
+    },
+    {
+     "day": "2026-10-15",
+     "count": 0
+    },
+    {
+     "day": "2026-10-16",
+     "count": 0
+    },
+    {
+     "day": "2026-10-17",
+     "count": 0
+    },
+    {
+     "day": "2026-10-18",
+     "count": 0
+    },
+    {
+     "day": "2026-10-19",
+     "count": 0
+    },
+    {
+     "day": "2026-10-20",
+     "count": 0
+    },
+    {
+     "day": "2026-10-21",
+     "count": 0
+    },
+    {
+     "day": "2026-10-22",
+     "count": 0
+    },
+    {
+     "day": "2026-10-23",
+     "count": 0
+    },
+    {
+     "day": "2026-10-24",
+     "count": 0
+    },
+    {
+     "day": "2026-10-25",
+     "count": 0
+    },
+    {
+     "day": "2026-10-26",
+     "count": 0
+    },
+    {
+     "day": "2026-10-27",
+     "count": 0
+    },
+    {
+     "day": "2026-10-28",
+     "count": 0
+    },
+    {
+     "day": "2026-10-29",
+     "count": 0
+    },
+    {
+     "day": "2026-10-30",
+     "count": 0
+    },
+    {
+     "day": "2026-10-31",
+     "count": 0
+    },
+    {
+     "day": "2026-11-01",
+     "count": 0
+    },
+    {
+     "day": "2026-11-02",
+     "count": 0
+    },
+    {
+     "day": "2026-11-03",
+     "count": 0
+    },
+    {
+     "day": "2026-11-04",
+     "count": 0
+    },
+    {
+     "day": "2026-11-05",
+     "count": 0
+    },
+    {
+     "day": "2026-11-06",
+     "count": 0
+    },
+    {
+     "day": "2026-11-07",
+     "count": 0
+    },
+    {
+     "day": "2026-11-08",
+     "count": 0
+    },
+    {
+     "day": "2026-11-09",
+     "count": 0
+    },
+    {
+     "day": "2026-11-10",
+     "count": 0
+    },
+    {
+     "day": "2026-11-11",
+     "count": 0
+    }
+   ],
+   "recent": []
+  },
+  {
+   "eventType": "mailing_list_release_stalled",
+   "label": "A newsletter release stopped moving",
+   "verdict": "ok",
+   "reason": "Not raised in 30 days",
+   "lastRaisedAt": null,
+   "daily": [
+    {
+     "day": "2026-10-13",
+     "count": 0
+    },
+    {
+     "day": "2026-10-14",
+     "count": 0
+    },
+    {
+     "day": "2026-10-15",
+     "count": 0
+    },
+    {
+     "day": "2026-10-16",
+     "count": 0
+    },
+    {
+     "day": "2026-10-17",
+     "count": 0
+    },
+    {
+     "day": "2026-10-18",
+     "count": 0
+    },
+    {
+     "day": "2026-10-19",
+     "count": 0
+    },
+    {
+     "day": "2026-10-20",
+     "count": 0
+    },
+    {
+     "day": "2026-10-21",
+     "count": 0
+    },
+    {
+     "day": "2026-10-22",
+     "count": 0
+    },
+    {
+     "day": "2026-10-23",
+     "count": 0
+    },
+    {
+     "day": "2026-10-24",
+     "count": 0
+    },
+    {
+     "day": "2026-10-25",
+     "count": 0
+    },
+    {
+     "day": "2026-10-26",
+     "count": 0
+    },
+    {
+     "day": "2026-10-27",
+     "count": 0
+    },
+    {
+     "day": "2026-10-28",
+     "count": 0
+    },
+    {
+     "day": "2026-10-29",
+     "count": 0
+    },
+    {
+     "day": "2026-10-30",
+     "count": 0
+    },
+    {
+     "day": "2026-10-31",
+     "count": 0
+    },
+    {
+     "day": "2026-11-01",
+     "count": 0
+    },
+    {
+     "day": "2026-11-02",
+     "count": 0
+    },
+    {
+     "day": "2026-11-03",
+     "count": 0
+    },
+    {
+     "day": "2026-11-04",
+     "count": 0
+    },
+    {
+     "day": "2026-11-05",
+     "count": 0
+    },
+    {
+     "day": "2026-11-06",
+     "count": 0
+    },
+    {
+     "day": "2026-11-07",
+     "count": 0
+    },
+    {
+     "day": "2026-11-08",
+     "count": 0
+    },
+    {
+     "day": "2026-11-09",
+     "count": 0
+    },
+    {
+     "day": "2026-11-10",
+     "count": 0
+    },
+    {
+     "day": "2026-11-11",
+     "count": 0
+    }
+   ],
+   "recent": []
+  },
+  {
+   "eventType": "sending_domain_blocklisted",
+   "label": "A sending domain is on a blocklist",
+   "verdict": "ok",
+   "reason": "Not raised in the last 24 h (12 in 30 days)",
+   "lastRaisedAt": "2026-10-16T07:41:15.659Z",
+   "daily": [
+    {
+     "day": "2026-10-13",
+     "count": 0
+    },
+    {
+     "day": "2026-10-14",
+     "count": 0
+    },
+    {
+     "day": "2026-10-15",
+     "count": 0
+    },
+    {
+     "day": "2026-10-16",
+     "count": 12
+    },
+    {
+     "day": "2026-10-17",
+     "count": 0
+    },
+    {
+     "day": "2026-10-18",
+     "count": 0
+    },
+    {
+     "day": "2026-10-19",
+     "count": 0
+    },
+    {
+     "day": "2026-10-20",
+     "count": 0
+    },
+    {
+     "day": "2026-10-21",
+     "count": 0
+    },
+    {
+     "day": "2026-10-22",
+     "count": 0
+    },
+    {
+     "day": "2026-10-23",
+     "count": 0
+    },
+    {
+     "day": "2026-10-24",
+     "count": 0
+    },
+    {
+     "day": "2026-10-25",
+     "count": 0
+    },
+    {
+     "day": "2026-10-26",
+     "count": 0
+    },
+    {
+     "day": "2026-10-27",
+     "count": 0
+    },
+    {
+     "day": "2026-10-28",
+     "count": 0
+    },
+    {
+     "day": "2026-10-29",
+     "count": 0
+    },
+    {
+     "day": "2026-10-30",
+     "count": 0
+    },
+    {
+     "day": "2026-10-31",
+     "count": 0
+    },
+    {
+     "day": "2026-11-01",
+     "count": 0
+    },
+    {
+     "day": "2026-11-02",
+     "count": 0
+    },
+    {
+     "day": "2026-11-03",
+     "count": 0
+    },
+    {
+     "day": "2026-11-04",
+     "count": 0
+    },
+    {
+     "day": "2026-11-05",
+     "count": 0
+    },
+    {
+     "day": "2026-11-06",
+     "count": 0
+    },
+    {
+     "day": "2026-11-07",
+     "count": 0
+    },
+    {
+     "day": "2026-11-08",
+     "count": 0
+    },
+    {
+     "day": "2026-11-09",
+     "count": 0
+    },
+    {
+     "day": "2026-11-10",
+     "count": 0
+    },
+    {
+     "day": "2026-11-11",
+     "count": 0
+    }
+   ],
+   "recent": [
+    {
+     "raisedAt": "2026-10-16T07:41:15.659Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "e13c051f-01de-4b1e-b043-e5583145e600",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 3 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:15.027Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "c20d1fe3-dd2b-40d2-ad8e-e3896b473d3b",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 4 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:14.455Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "b43617fe-fb01-4881-97a0-0b2ede6feccf",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 3 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-09-11.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:13.981Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "b318a6b1-967a-4e8c-b61a-f44ce28bbaaa",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 4 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-09-12.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:13.542Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "b185a2bc-c6d2-4902-b60a-4c73eafc9679",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 3 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-10-08.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:13.105Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "a506739c-11a4-4ec4-bc43-70510fa47d59",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 4 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-10-01.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:12.683Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "9ab3021b-bdd0-4ba5-b76f-898fcd8c39e7",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 5 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:12.082Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "8c209f9b-2da6-48ee-8c93-c1e8b8253703",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 4 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-10-01.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:11.551Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "6ef344c4-eaa3-4b0a-a007-0e47a5053ce1",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 4 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-09-11.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:10.999Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "60003465-fba4-47c9-b20b-9910c7b167bf",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 3 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-10-01.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:10.399Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "16aab90d-367f-4f78-afeb-aedbb2658bf4",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 5 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-10-04.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    },
+    {
+     "raisedAt": "2026-10-16T07:41:09.245Z",
+     "orgId": null,
+     "campaignId": null,
+     "metadata": {
+      "domain": "example-sender.com",
+      "eventId": "127ab56e-03e8-4f95-9a24-daf5fd56240c",
+      "listName": "SURBL",
+      "listAnswer": "ABUSE (127.0.0.64)",
+      "removalUrl": "https://www.surbl.org/surbl-analysis",
+      "actionTaken": "Its 3 mailboxes take no new prospects from now on. Follow-ups already planned from them still go out. They come back by themselves the day a daily check reads the domain clean. First bounce citing a blocklist from this domain: 2026-10-01.",
+      "listedSince": "2026-10-16",
+      "mailboxesAffected": "a@example-sender.com, b@example-sender.com"
+     }
+    }
+   ]
+  },
+  {
+   "eventType": "trigger_occurrence_stuck",
+   "label": "A prospect waits on a campaign that cannot run",
+   "verdict": "ok",
+   "reason": "Not raised in the last 24 h (312 in 30 days)",
+   "lastRaisedAt": "2026-10-28T10:45:42.477Z",
+   "daily": [
+    {
+     "day": "2026-10-13",
+     "count": 0
+    },
+    {
+     "day": "2026-10-14",
+     "count": 0
+    },
+    {
+     "day": "2026-10-15",
+     "count": 3
+    },
+    {
+     "day": "2026-10-16",
+     "count": 0
+    },
+    {
+     "day": "2026-10-17",
+     "count": 0
+    },
+    {
+     "day": "2026-10-18",
+     "count": 0
+    },
+    {
+     "day": "2026-10-19",
+     "count": 10
+    },
+    {
+     "day": "2026-10-20",
+     "count": 0
+    },
+    {
+     "day": "2026-10-21",
+     "count": 1
+    },
+    {
+     "day": "2026-10-22",
+     "count": 1
+    },
+    {
+     "day": "2026-10-23",
+     "count": 0
+    },
+    {
+     "day": "2026-10-24",
+     "count": 217
+    },
+    {
+     "day": "2026-10-25",
+     "count": 1
+    },
+    {
+     "day": "2026-10-26",
+     "count": 8
+    },
+    {
+     "day": "2026-10-27",
+     "count": 12
+    },
+    {
+     "day": "2026-10-28",
+     "count": 59
+    },
+    {
+     "day": "2026-10-29",
+     "count": 0
+    },
+    {
+     "day": "2026-10-30",
+     "count": 0
+    },
+    {
+     "day": "2026-10-31",
+     "count": 0
+    },
+    {
+     "day": "2026-11-01",
+     "count": 0
+    },
+    {
+     "day": "2026-11-02",
+     "count": 0
+    },
+    {
+     "day": "2026-11-03",
+     "count": 0
+    },
+    {
+     "day": "2026-11-04",
+     "count": 0
+    },
+    {
+     "day": "2026-11-05",
+     "count": 0
+    },
+    {
+     "day": "2026-11-06",
+     "count": 0
+    },
+    {
+     "day": "2026-11-07",
+     "count": 0
+    },
+    {
+     "day": "2026-11-08",
+     "count": 0
+    },
+    {
+     "day": "2026-11-09",
+     "count": 0
+    },
+    {
+     "day": "2026-11-10",
+     "count": 0
+    },
+    {
+     "day": "2026-11-11",
+     "count": 0
+    }
+   ],
+   "recent": [
+    {
+     "raisedAt": "2026-10-28T10:45:42.477Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "17",
+      "prospect": "<client54@example.com>",
+      "lastError": "6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client54@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='0b3b5f79-f2f0-467c-8f66-4a47f0ca9525'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='6c54479c-2300-4e21-afca-59fa8c4adfe5' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "occurrenceId": "0b3b5f79-f2f0-467c-8f66-4a47f0ca9525",
+      "waitingSince": "2026-10-28T10:09:36.515Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:45:41.559Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "16",
+      "prospect": "<client55@example.com>",
+      "lastError": "6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client55@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='81958851-6ddd-48c8-ba4d-c5252eb2d413'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='6c54479c-2300-4e21-afca-59fa8c4adfe5' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "occurrenceId": "81958851-6ddd-48c8-ba4d-c5252eb2d413",
+      "waitingSince": "2026-10-28T10:10:37.505Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:24:46.143Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "15",
+      "prospect": "<client56@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client56@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='a4d529eb-1762-4056-abf1-01238d373fe2'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "a4d529eb-1762-4056-abf1-01238d373fe2",
+      "waitingSince": "2026-10-28T09:51:37.312Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:24:44.821Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "15",
+      "prospect": "<client56@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client56@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='2752b09a-04e7-4097-8964-7865ab56f42e'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "2752b09a-04e7-4097-8964-7865ab56f42e",
+      "waitingSince": "2026-10-28T09:51:37.676Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:24:43.519Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "15",
+      "prospect": "<client57@example.com>",
+      "lastError": "6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client57@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='f560c7ac-116d-4310-9483-b930a37a4278'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='6c54479c-2300-4e21-afca-59fa8c4adfe5' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "occurrenceId": "f560c7ac-116d-4310-9483-b930a37a4278",
+      "waitingSince": "2026-10-28T09:51:37.506Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:24:41.488Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "16",
+      "prospect": "<client58@example.com>",
+      "lastError": "6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client58@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='0285570b-7b41-4a55-a783-5bafc015fb0e'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='6c54479c-2300-4e21-afca-59fa8c4adfe5' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "occurrenceId": "0285570b-7b41-4a55-a783-5bafc015fb0e",
+      "waitingSince": "2026-10-28T09:49:35.467Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:24:39.436Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "16",
+      "prospect": "<client58@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight: client58@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='d40760e2-5bae-40a6-a684-11b35b23b3c1'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "d40760e2-5bae-40a6-a684-11b35b23b3c1",
+      "waitingSince": "2026-10-28T09:49:35.605Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:24:37.627Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "16",
+      "prospect": "<client58@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client58@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='cd7b4d6b-8c54-4153-a8d8-c48d7c02f2c4'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "cd7b4d6b-8c54-4153-a8d8-c48d7c02f2c4",
+      "waitingSince": "2026-10-28T09:49:35.683Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:13:15.425Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "17",
+      "prospect": "<client59@example.com>",
+      "lastError": "6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client59@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='afdac950-bcdb-433e-80eb-05649bdf2455'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='6c54479c-2300-4e21-afca-59fa8c4adfe5' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "occurrenceId": "afdac950-bcdb-433e-80eb-05649bdf2455",
+      "waitingSince": "2026-10-28T09:39:05.341Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:13:14.051Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "17",
+      "prospect": "<client60@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight: client60@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='2e198502-a8e4-4f93-b17f-a88ad3833823'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "2e198502-a8e4-4f93-b17f-a88ad3833823",
+      "waitingSince": "2026-10-28T09:39:05.188Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:13:13.260Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "17",
+      "prospect": "<client60@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client60@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='5504d19d-2023-433b-a46f-5bf1558f1cd6'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "5504d19d-2023-433b-a46f-5bf1558f1cd6",
+      "waitingSince": "2026-10-28T09:39:05.254Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:03:05.689Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "17",
+      "prospect": "<client61@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client61@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='510d4a31-01d2-4805-b563-ad8e7da47916'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "510d4a31-01d2-4805-b563-ad8e7da47916",
+      "waitingSince": "2026-10-28T09:29:05.039Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:03:05.204Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "17",
+      "prospect": "<client62@example.com>",
+      "lastError": "6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client62@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='3179cd1c-117f-483b-a7d5-5123ef27ccab'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='6c54479c-2300-4e21-afca-59fa8c4adfe5' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "occurrenceId": "3179cd1c-117f-483b-a7d5-5123ef27ccab",
+      "waitingSince": "2026-10-28T09:29:05.116Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:03:04.373Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "18",
+      "prospect": "<client63@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client63@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='95b60c86-e53d-4fe4-8f9f-11bea4719f75'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "95b60c86-e53d-4fe4-8f9f-11bea4719f75",
+      "waitingSince": "2026-10-28T09:27:04.409Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:03:03.798Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "17",
+      "prospect": "<client64@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client64@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='1412b7e8-8cea-4060-aeaa-436c69f03400'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "1412b7e8-8cea-4060-aeaa-436c69f03400",
+      "waitingSince": "2026-10-28T09:29:04.965Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:03:03.305Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "18",
+      "prospect": "<client65@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client65@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='273d4e86-3a29-485d-85b5-eabba564546e'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "273d4e86-3a29-485d-85b5-eabba564546e",
+      "waitingSince": "2026-10-28T09:26:35.278Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T10:03:02.156Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "18",
+      "prospect": "<client66@example.com>",
+      "lastError": "6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client66@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='938b1da8-b7b8-4887-8b93-61557e770016'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='6c54479c-2300-4e21-afca-59fa8c4adfe5' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "occurrenceId": "938b1da8-b7b8-4887-8b93-61557e770016",
+      "waitingSince": "2026-10-28T09:26:35.213Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T09:53:02.252Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "15",
+      "prospect": "<client67@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client67@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='fc7e394b-da95-443c-b1fc-b660b262d11b'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "fc7e394b-da95-443c-b1fc-b660b262d11b",
+      "waitingSince": "2026-10-28T09:22:12.378Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T09:53:01.841Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "15",
+      "prospect": "<client68@example.com>",
+      "lastError": "6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client68@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "6c54479c-2300-4e21-afca-59fa8c4adfe5",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='8abc5205-53d9-4b24-b2a8-80be1ffce117'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='6c54479c-2300-4e21-afca-59fa8c4adfe5' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Lead Follow-up f1ab54e3 - ai-follow-up-email - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - start_to_paid_client",
+      "occurrenceId": "8abc5205-53d9-4b24-b2a8-80be1ffce117",
+      "waitingSince": "2026-10-28T09:22:11.858Z"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T09:53:01.420Z",
+     "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+      "attempts": "15",
+      "prospect": "<client68@example.com>",
+      "lastError": "764ed07a-a9c7-4883-b536-a3475931d6e4 run_in_flight, 6c54479c-2300-4e21-afca-59fa8c4adfe5 run_in_flight, 94dfb79a-f5b6-4f4c-b579-57bdc91ed74d cohort_run_in_flight: client68@example.com, retried in 2 min",
+      "triggerId": "lead_event",
+      "campaignId": "764ed07a-a9c7-4883-b536-a3475931d6e4",
+      "whereToLook": "campaign_service: SELECT status, attempts, last_error, detail FROM trigger_events WHERE id='cc721c56-4e4f-410b-bad1-91020f6029bd'; SELECT created_at, event, level, detail FROM run_events WHERE campaign_id='764ed07a-a9c7-4883-b536-a3475931d6e4' ORDER BY created_at DESC LIMIT 5;",
+      "campaignName": "Client WhatsApp 6c4735da - cold-whatsapp-outreach - f4d73dab-1f9d-49b2-b16e-63ecde76a5eb - 832126f3-f3f1-4601-885d-bc8e101e5680 - paid_client_to_client_satisfied",
+      "occurrenceId": "cc721c56-4e4f-410b-bad1-91020f6029bd",
+      "waitingSince": "2026-10-28T09:22:12.143Z"
+     }
+    }
+   ]
+  },
+  {
+   "eventType": "trigger_silent",
+   "label": "A trigger has been silent for days",
+   "verdict": "ok",
+   "reason": "Not raised in the last 24 h (39 in 30 days)",
+   "lastRaisedAt": "2026-10-28T13:18:29.166Z",
+   "daily": [
+    {
+     "day": "2026-10-13",
+     "count": 0
+    },
+    {
+     "day": "2026-10-14",
+     "count": 0
+    },
+    {
+     "day": "2026-10-15",
+     "count": 0
+    },
+    {
+     "day": "2026-10-16",
+     "count": 0
+    },
+    {
+     "day": "2026-10-17",
+     "count": 0
+    },
+    {
+     "day": "2026-10-18",
+     "count": 0
+    },
+    {
+     "day": "2026-10-19",
+     "count": 3
+    },
+    {
+     "day": "2026-10-20",
+     "count": 5
+    },
+    {
+     "day": "2026-10-21",
+     "count": 4
+    },
+    {
+     "day": "2026-10-22",
+     "count": 6
+    },
+    {
+     "day": "2026-10-23",
+     "count": 5
+    },
+    {
+     "day": "2026-10-24",
+     "count": 2
+    },
+    {
+     "day": "2026-10-25",
+     "count": 3
+    },
+    {
+     "day": "2026-10-26",
+     "count": 2
+    },
+    {
+     "day": "2026-10-27",
+     "count": 5
+    },
+    {
+     "day": "2026-10-28",
+     "count": 4
+    },
+    {
+     "day": "2026-10-29",
+     "count": 0
+    },
+    {
+     "day": "2026-10-30",
+     "count": 0
+    },
+    {
+     "day": "2026-10-31",
+     "count": 0
+    },
+    {
+     "day": "2026-11-01",
+     "count": 0
+    },
+    {
+     "day": "2026-11-02",
+     "count": 0
+    },
+    {
+     "day": "2026-11-03",
+     "count": 0
+    },
+    {
+     "day": "2026-11-04",
+     "count": 0
+    },
+    {
+     "day": "2026-11-05",
+     "count": 0
+    },
+    {
+     "day": "2026-11-06",
+     "count": 0
+    },
+    {
+     "day": "2026-11-07",
+     "count": 0
+    },
+    {
+     "day": "2026-11-08",
+     "count": 0
+    },
+    {
+     "day": "2026-11-09",
+     "count": 0
+    },
+    {
+     "day": "2026-11-10",
+     "count": 0
+    },
+    {
+     "day": "2026-11-11",
+     "count": 0
+    }
+   ],
+   "recent": [
+    {
+     "raisedAt": "2026-10-28T13:18:29.166Z",
+     "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+      "firedBy": "campaign-service",
+      "triggerId": "email_pushed_via_api",
+      "silentDays": "4.1",
+      "silentSince": "2026-10-24T12:04:02.162Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='email_pushed_via_api' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Email Pushed Via API",
+      "liveCampaignCount": "2"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T13:18:28.725Z",
+     "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+      "firedBy": "crm-service",
+      "triggerId": "form_submitted",
+      "silentDays": "4.0",
+      "silentSince": "2026-10-24T12:33:24.441Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='form_submitted' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Form submitted",
+      "liveCampaignCount": "2"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T13:18:28.114Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "firedBy": "lead-service",
+      "triggerId": "meeting_attended",
+      "silentDays": "6.1",
+      "silentSince": "2026-10-22T11:30:00.000Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='meeting_attended' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Meeting attended",
+      "liveCampaignCount": "23"
+     }
+    },
+    {
+     "raisedAt": "2026-10-28T13:18:27.084Z",
+     "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+      "firedBy": "lead-service",
+      "triggerId": "booking_call_started",
+      "silentDays": "12.2",
+      "silentSince": "2026-10-16T08:52:28.254Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='booking_call_started' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Booking call",
+      "liveCampaignCount": "4"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T12:47:13.210Z",
+     "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+      "firedBy": "campaign-service",
+      "triggerId": "email_pushed_via_api",
+      "silentDays": "3.0",
+      "silentSince": "2026-10-24T12:04:02.162Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='email_pushed_via_api' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Email Pushed Via API",
+      "liveCampaignCount": "2"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T12:47:12.158Z",
+     "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+      "firedBy": "crm-service",
+      "triggerId": "form_submitted",
+      "silentDays": "3.0",
+      "silentSince": "2026-10-24T12:33:24.441Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='form_submitted' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Form submitted",
+      "liveCampaignCount": "2"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T12:47:11.162Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "firedBy": "lead-service",
+      "triggerId": "meeting_attended",
+      "silentDays": "5.1",
+      "silentSince": "2026-10-22T11:30:00.000Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='meeting_attended' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Meeting attended",
+      "liveCampaignCount": "22"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T12:47:09.566Z",
+     "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+      "firedBy": "lead-service",
+      "triggerId": "booking_call_started",
+      "silentDays": "11.2",
+      "silentSince": "2026-10-16T08:52:28.254Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='booking_call_started' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Booking call",
+      "liveCampaignCount": "4"
+     }
+    },
+    {
+     "raisedAt": "2026-10-27T05:45:44.678Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "firedBy": "lead-service",
+      "triggerId": "meeting_booked",
+      "silentDays": "3.0",
+      "silentSince": "2026-10-24T05:34:08.386Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='meeting_booked' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Meeting booked",
+      "liveCampaignCount": "22"
+     }
+    },
+    {
+     "raisedAt": "2026-10-26T12:39:39.320Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "firedBy": "lead-service",
+      "triggerId": "meeting_attended",
+      "silentDays": "4.0",
+      "silentSince": "2026-10-22T11:30:00.000Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='meeting_attended' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Meeting attended",
+      "liveCampaignCount": "22"
+     }
+    },
+    {
+     "raisedAt": "2026-10-26T12:39:38.241Z",
+     "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+      "firedBy": "lead-service",
+      "triggerId": "booking_call_started",
+      "silentDays": "10.2",
+      "silentSince": "2026-10-16T08:52:28.254Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='booking_call_started' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Booking call",
+      "liveCampaignCount": "4"
+     }
+    },
+    {
+     "raisedAt": "2026-10-25T21:36:11.735Z",
+     "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+      "firedBy": "instantly-service",
+      "triggerId": "positive_reply_received",
+      "silentDays": "6.1",
+      "silentSince": "2026-10-19T18:44:47.000Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='positive_reply_received' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Positive reply",
+      "liveCampaignCount": "24"
+     }
+    },
+    {
+     "raisedAt": "2026-10-25T12:22:24.621Z",
+     "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+      "firedBy": "lead-service",
+      "triggerId": "meeting_attended",
+      "silentDays": "3.0",
+      "silentSince": "2026-10-22T11:30:00.000Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='meeting_attended' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Meeting attended",
+      "liveCampaignCount": "22"
+     }
+    },
+    {
+     "raisedAt": "2026-10-25T12:22:23.556Z",
+     "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+      "firedBy": "lead-service",
+      "triggerId": "booking_call_started",
+      "silentDays": "9.1",
+      "silentSince": "2026-10-16T08:52:28.254Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='booking_call_started' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Booking call",
+      "liveCampaignCount": "4"
+     }
+    },
+    {
+     "raisedAt": "2026-10-24T21:15:10.526Z",
+     "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+      "firedBy": "instantly-service",
+      "triggerId": "positive_reply_received",
+      "silentDays": "5.1",
+      "silentSince": "2026-10-19T18:44:47.000Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='positive_reply_received' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Positive reply",
+      "liveCampaignCount": "24"
+     }
+    },
+    {
+     "raisedAt": "2026-10-24T11:21:24.122Z",
+     "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+      "firedBy": "lead-service",
+      "triggerId": "booking_call_started",
+      "silentDays": "8.1",
+      "silentSince": "2026-10-16T08:52:28.254Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='booking_call_started' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Booking call",
+      "liveCampaignCount": "4"
+     }
+    },
+    {
+     "raisedAt": "2026-10-23T21:16:13.876Z",
+     "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+      "firedBy": "crm-service",
+      "triggerId": "form_submitted",
+      "silentDays": "4.1",
+      "silentSince": "2026-10-19T19:29:10.831Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='form_submitted' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Form submitted",
+      "liveCampaignCount": "2"
+     }
+    },
+    {
+     "raisedAt": "2026-10-23T20:16:11.248Z",
+     "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+      "firedBy": "instantly-service",
+      "triggerId": "positive_reply_received",
+      "silentDays": "4.1",
+      "silentSince": "2026-10-19T18:44:47.000Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='positive_reply_received' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Positive reply",
+      "liveCampaignCount": "24"
+     }
+    },
+    {
+     "raisedAt": "2026-10-23T19:16:09.644Z",
+     "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "785a2dff-60f0-4a9b-9aea-5bc7b8ce19a0",
+      "firedBy": "campaign-service",
+      "triggerId": "email_pushed_via_api",
+      "silentDays": "5.1",
+      "silentSince": "2026-10-18T18:01:56.334Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='email_pushed_via_api' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Email Pushed Via API",
+      "liveCampaignCount": "2"
+     }
+    },
+    {
+     "raisedAt": "2026-10-23T11:07:41.179Z",
+     "orgId": "37031b2f-dd4d-4ad0-9e59-c4f31d01fbc5",
+     "campaignId": null,
+     "metadata": {
+      "orgId": "37031b2f-dd4d-4ad0-9e59-c4f31d01fbc5",
+      "firedBy": "lead-service",
+      "triggerId": "purchase_made",
+      "silentDays": "7.1",
+      "silentSince": "2026-10-16T08:52:28.254Z",
+      "whereToLook": "campaign_service: SELECT occurred_at, org_id, brand_id, offer_id, outcome, skip_reason FROM trigger_events WHERE trigger_id='purchase_made' ORDER BY occurred_at DESC LIMIT 20;",
+      "triggerLabel": "Direct purchase",
+      "liveCampaignCount": "6"
+     }
+    }
+   ]
+  }
+ ]
+}

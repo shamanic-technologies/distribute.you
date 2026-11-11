@@ -28,6 +28,9 @@ import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
 import { ChatCircleIcon } from "@phosphor-icons/react/dist/csr/ChatCircle";
+import { BellRingingIcon } from "@phosphor-icons/react/dist/csr/BellRinging";
+import { MonitoringAlertsPage, MonitoringAlertsTile, useMonitoringAlerts } from "@/components/v2/monitoring-alerts";
+import { brokenAlerts } from "@/lib/monitoring/monitoring-alerts";
 import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { SkillsView } from "@/components/v2/monitoring-skills";
 import { CapacityPage, RulesPage, SendPoolTile, VendorRefusalTile, useOpsInfra } from "@/components/v2/monitoring-capacity";
@@ -135,7 +138,7 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "scripts" | "ai" | "chat";
+type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "scripts" | "ai" | "chat" | "alerts";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
@@ -154,6 +157,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   scripts: { name: "Scripts", color: "var(--data-teal)", Icon: CodeIcon, sub: "Whether each stored script works as well as the code it replaced" },
   ai: { name: "AI vendors", color: "var(--data-violet)", Icon: RobotIcon, sub: "Whether every AI vendor we call still has credit" },
   chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
+  alerts: { name: "Alerts", color: "var(--data-rose)", Icon: BellRingingIcon, sub: "Every alert our services raise, recorded here instead of emailed" },
 };
 
 const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; question: string }> = {
@@ -201,6 +205,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "scripts/campaigns": { section: "scripts", title: "Campaigns", question: "Which outcomes do our campaigns still make with a workflow?" },
   "ai/credit": { section: "ai", title: "Credit", question: "Does every AI vendor we call still have credit?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
+  "alerts/raised": { section: "alerts", title: "Raised", question: "Did any of our services raise an alert in the last 24 hours?" },
 };
 
 /** A section's mark: a soft tile in its colour, drawn like Research's topic mark. */
@@ -293,6 +298,8 @@ export function V2Monitoring() {
           ? "Every org, read live from production. Days are UTC."
           : meta.section === "scripts"
           ? "Every org, read live from production, stored once a day. Days are UTC."
+          : meta.section === "alerts"
+          ? "Every org, read live from production. Each alert keeps the facts it was raised with. Days are UTC."
           : meta.section === "ai"
           ? "Every AI vendor chat-service calls, read live from production. Days are UTC."
           : meta.section === "chat"
@@ -368,6 +375,7 @@ export function V2Monitoring() {
         {view.page === "scripts/campaigns" && <CampaignEnginesPage />}
         {view.page === "ai/credit" && <VendorCreditPage />}
         {view.page === "chat/skills" && <SkillsView />}
+        {view.page === "alerts/raised" && <MonitoringAlertsPage />}
       </div>
     </Frame>
   );
@@ -472,6 +480,8 @@ function Hub({ base }: { base: string }) {
   const following = usePlanFollowing();
   const scripts = useScriptsMonitoring();
   const vendors = useVendorCredit();
+  const alerts = useMonitoringAlerts();
+  const alertsBroken = alerts.data ? brokenAlerts(alerts.data) : undefined;
   const opsInfra = useOpsInfra();
   const mailboxVendorsRefusing = opsInfra.data ? vendorRefusals(opsInfra.data).length > 0 : false;
   const sendPoolEmpty = opsInfra.data ? emptySendPools(opsInfra.data).length > 0 : false;
@@ -501,6 +511,8 @@ function Hub({ base }: { base: string }) {
       </div>
       {/* A line down blocks every WhatsApp greeting (owner 2026-10-23): red here IS the alert, outside any collapsed row. */}
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {/* A provider out of credits, a campaign failing every run, a trigger silent, a domain blocklisted, a newsletter halted, raised in the last 24 h (SIGNUP-EMAILS-1111-MONITORING): red here IS the alert, never an email. */}
+        <MonitoringAlertsTile href={href("alerts/raised")} />
         {/* Which opt-out header prospect emails carry, default or measured winner (UNSUB-3WAY-1103): red only when unreadable. */}
         <OptOutTile href={href("emails/inbox-providers")} />
         <WhatsappLinesTile href={href("whatsapp/lines")} />
@@ -551,6 +563,32 @@ function Hub({ base }: { base: string }) {
 
       <HubOpen.Provider value={hub}>
       <div className="mt-8 space-y-8">
+      <div>
+      <SectionTitle count={1}>Alerts</SectionTitle>
+      <Section section="alerts" count={1} grid={false}>
+        <HubChips>
+          {(alerts.data?.alerts ?? []).map((a) => (
+            <HubChip key={a.eventType} href={`${href("alerts/raised")}#${a.eventType}`} color={a.verdict === "broken" ? "var(--data-rose)" : "var(--data-teal)"} label={a.label} />
+          ))}
+        </HubChips>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Card
+          href={href("alerts/raised")}
+          page="alerts/raised"
+          error={alerts.isError && !alerts.data}
+          cells={[
+            {
+              label: "Raised in 24 h",
+              value: alertsBroken && <span style={{ color: alertsBroken.length ? "var(--data-rose)" : undefined }}>{alertsBroken.length}</span>,
+              note: "kinds of alert, red = raised",
+            },
+            { label: "Kinds watched", value: alerts.data?.alerts.length, note: "recorded, never emailed" },
+          ]}
+        />
+        </div>
+      </Section>
+      </div>
+
       <div>
       <SectionTitle count={1}>Sending</SectionTitle>
       <Section section="emails" count={12} grid={false}>
