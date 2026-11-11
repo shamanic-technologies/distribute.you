@@ -506,6 +506,8 @@ const RESULT_STATUS: Record<string, { word: string; tone: string }> = {
   shadow: { word: "Shadow", tone: "var(--fg-4)" },
   rolled_back: { word: "Rolled back", tone: "var(--data-rose)" },
   no_engine_pick: { word: "No Engine pick", tone: "var(--data-rose)" },
+  // MON-ENGINE-PICK-1111: the Engine runs this result on scripts; the Rating picks one on every run.
+  scripts: { word: "Scripts", tone: "var(--run)" },
 };
 
 /** A served result status as the page shows it: its word and its tone (red only for a roll-back or a missing pick). */
@@ -534,6 +536,7 @@ const UNPICKED_REASON_WORDS: Record<string, string> = {
   no_candidate: "no workflow makes this result yet",
   no_candidate_priced: "no workflow for this result has a price yet",
   no_candidate_on_pipe: "no workflow the Engine picks runs on this pipe",
+  no_script_kept: "the campaign's strategy keeps none of the scripts that make this result",
 };
 
 /** Why a live campaign has no Engine pick on a result, in everyday words; an unknown code reads as served. */
