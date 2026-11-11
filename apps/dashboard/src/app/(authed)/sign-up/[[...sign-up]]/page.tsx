@@ -10,7 +10,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import { LastUsedBadge, rememberAuthMethod } from "@/components/auth/last-used-badge";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
-import { useSubscriptionArm } from "@/lib/use-subscription-arm";
 import { claimedSignUpCopy } from "@/lib/claimed-signup";
 import {
   authFailureProps,
@@ -47,8 +46,6 @@ const CAPTCHA_PROMPT_DELAY_MS = 1500;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignUpPage() {
-  // The homepage A/B arm (owner 2026-10-10): the $99/month visitor reads the plan here too.
-  const plan = useSubscriptionArm();
   const { signUp, setActive, isLoaded } = useSignUp();
   const { isSignedIn } = useAuth();
   const router = useRouter();
@@ -405,9 +402,7 @@ export default function SignUpPage() {
                   {claimedCopy.tail}
                 </>
               ) : (
-                plan
-                  ? "3-day trial with $99 of credit to start. Pause or cancel anytime."
-                  : "The platform is free. You choose how much goes to your outreach."
+                "The platform is free. You choose how much goes to your outreach."
               )}
             </p>
           </div>

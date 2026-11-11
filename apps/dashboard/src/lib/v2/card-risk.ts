@@ -6,10 +6,10 @@
  * acquirers); an unknown card (a Link payment hides it) is not refused by billing, so it is
  * not warned about here either. Nothing is re-graded from the raw facts.
  *
- * Per arm of the homepage A/B test:
- * - plan and prepaid: a warning, then "Use another card" or "Continue anyway";
- * - postpaid: post-paid cannot run on that card, so "Use another card" or "Switch to
- *   prepaid", no way past.
+ * Per payment mode:
+ * - prepaid (the onboarding checkout): a warning, then "Use another card" or "Continue anyway";
+ * - postpaid (an existing post-paid org, `org-launch.tsx`): post-paid cannot run on that
+ *   card, so "Use another card" or "Switch to prepaid", no way past.
  *
  * Post-paid also asks the bank to hold the first $50 step on the card (billing v0.83.52,
  * owner 2026-10-22): a refused hold comes back as billing's 409 `postpaid_card_hold_refused`
@@ -37,14 +37,14 @@ export interface CardFacts {
   refusalMessage?: string | null;
 }
 
-export type CardRiskArm = "subscription" | "prepaid" | "postpaid";
+export type CardRiskArm = "prepaid" | "postpaid";
 
 export interface CardRiskCopy {
   title: string;
   body: string;
   /** The way forward: always another card. */
   primary: string;
-  /** The other button: go on anyway (plan, prepaid) or move to prepaid (postpaid). */
+  /** The other button: go on anyway (prepaid) or move to prepaid (postpaid). */
   secondary: string;
   secondaryAction: "continue" | "prepaid";
 }
@@ -86,11 +86,9 @@ export function cardRiskCopy(arm: CardRiskArm, facts: CardFacts): CardRiskCopy |
       secondaryAction: "prepaid",
     };
   }
-  const what = arm === "subscription" ? "plan upgrades" : "automatic top-ups";
-  const one = arm === "subscription" ? "an upgrade" : "a top-up";
   return {
-    title: `Your ${what} may fail on this card`,
-    body: `${reason} When ${one} fails, your campaigns stop. Interested prospects can then wait for an answer, and a late answer loses deals.`,
+    title: "Your automatic top-ups may fail on this card",
+    body: `${reason} When a top-up fails, your campaigns stop. Interested prospects can then wait for an answer, and a late answer loses deals.`,
     primary: "Use another card",
     secondary: "Continue anyway",
     secondaryAction: "continue",

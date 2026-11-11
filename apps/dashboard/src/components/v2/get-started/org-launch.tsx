@@ -195,7 +195,7 @@ export function OrgLaunch({
   }
 
   // billing runs the $50 card check on `PUT payment_mode {postpaid}` for an org already
-  // postpaid whose check did not pass (the wall's `armPostpaid`): passed = launch; refused =
+  // postpaid whose check did not pass: passed = launch; refused =
   // the choice; a bank that wants 3-D Secure gets Stripe's step, then billing is asked again.
   async function checkCard() {
     setBusy(true);

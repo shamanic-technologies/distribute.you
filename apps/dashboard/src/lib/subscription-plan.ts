@@ -1,8 +1,7 @@
 /**
  * The subscription plan: $99/month, a 3-day free trial, card required (owner
- * 2026-10-01). Since 2026-10-10 it is one arm of the homepage A/B test (three arms since
- * 2026-10-13: plan, prepaid, postpaid, `offerArm`): only a visitor whose `lp_variant`
- * cookie (set on `.distribute.you` by the landing) is `subscription` is sold it.
+ * 2026-10-01). No longer sold at signup (OFFER-RESET-1029; the homepage A/B arms that
+ * sold it were deleted 2026-11-11): what is left here serves the orgs already on a plan.
  *
  * Owner's model, restated: the money paid IS the credit ($99 paid, $99 to spend; the
  * trial start grants $99 at our expense). Outbound runs at $50 a day from the start so
@@ -10,16 +9,14 @@
  * up to +50% of that. Credit at zero stops sending, by design: no auto top-up.
  *
  * billing-service owns the subscription (checkout, trial grant, mode flip, raises);
- * this module only holds what the dashboard decides: who is in the arm, how the plan's
- * daily money is spread over the campaigns, and the words.
+ * this module only holds what the dashboard decides: how the plan's daily money is
+ * spread over the campaigns, and the words.
  *
  * Alias-free on purpose, so it carries real unit tests.
  */
 
 import { isProactiveFrom } from "./outbound-leg-key";
-import { MONTHLY_LIMIT_REFUSAL } from "./v2/monthly-limit";
 
-export const SUBSCRIPTION_ARM = "subscription";
 export const SUBSCRIPTION_MONTHLY_CENTS = 9900;
 export const SUBSCRIPTION_TRIAL_DAYS = 3;
 /**
@@ -39,37 +36,6 @@ export function planAmountOptions(currentCents: number | null): number[] {
 export const SUBSCRIPTION_OUTBOUND_DAILY_USD = 50;
 /** What reactive work may spend a day on top: +50% of the outbound. */
 export const SUBSCRIPTION_REACTIVE_DAILY_USD = SUBSCRIPTION_OUTBOUND_DAILY_USD / 2;
-
-/** The `lp_variant` the landing wrote on `.distribute.you`, or null when there is none. */
-export function lpVariant(cookieHeader: string | null | undefined): string | null {
-  if (!cookieHeader) return null;
-  for (const part of cookieHeader.split(";")) {
-    const [k, ...rest] = part.trim().split("=");
-    if (k !== "lp_variant") continue;
-    const variant = decodeURIComponent(rest.join("=")).trim();
-    return variant === "" ? null : variant;
-  }
-  return null;
-}
-
-/** The offer a visitor is sold, from the homepage A/B arm (owner 2026-10-13: three arms). */
-export type OfferArm = "subscription" | "prepaid" | "postpaid";
-
-/**
- * The offer this visitor is sold. Owner 2026-10-14: 100% post-paid (charged after the
- * spend), the default for everyone, no cookie included (blog, compare page, direct link,
- * another device). Only `lp_variant=subscription` (an old cookie, or `?variant=` on the
- * landing) still gets the $99/month plan, matching the page it showed.
- */
-export function offerArm(cookieHeader: string | null | undefined): OfferArm {
-  const v = lpVariant(cookieHeader);
-  return v === SUBSCRIPTION_ARM ? "subscription" : "postpaid";
-}
-
-/** True when this visitor is sold the $99/month plan (`offerArm` is `subscription`). */
-export function isSubscriptionArm(cookieHeader: string | null | undefined): boolean {
-  return offerArm(cookieHeader) === "subscription";
-}
 
 /** The fields of a campaign pair this module reads. */
 export interface PlanPair {
@@ -91,21 +57,6 @@ export function subscriptionBudgets(pairs: readonly PlanPair[]): Record<string, 
   if (entry) out[entry.key] = String(SUBSCRIPTION_OUTBOUND_DAILY_USD);
   if (reactive) out[reactive.key] = String(SUBSCRIPTION_REACTIVE_DAILY_USD);
   return out;
-}
-
-/** The monthly amount the visitor picked on the landing (`lp_plan`, cents), or $99. */
-export function pickedPlanCents(cookieHeader: string | null | undefined): number {
-  if (cookieHeader) {
-    for (const part of cookieHeader.split(";")) {
-      const [k, ...rest] = part.trim().split("=");
-      if (k !== "lp_plan") continue;
-      const cents = Number(decodeURIComponent(rest.join("=")));
-      if (Number.isInteger(cents) && cents >= SUBSCRIPTION_MONTHLY_CENTS && (cents - SUBSCRIPTION_MONTHLY_CENTS) % 10000 === 0) {
-        return cents;
-      }
-    }
-  }
-  return SUBSCRIPTION_MONTHLY_CENTS;
 }
 
 /** The fields of a plan this module reads (billing's per brand x offer plan). */
@@ -146,25 +97,4 @@ export function planStartRefusal(code: unknown): string {
 /** "$99", "$199": a monthly amount in whole dollars. */
 export function monthlyUsd(cents: number): string {
   return `$${Math.round(cents / 100).toLocaleString("en-US")}`;
-}
-
-/** A prepaid card cannot start the free trial (billing `prepaid_card_trial_refused`). */
-export const PREPAID_CARD_TRIAL_REFUSAL = "Prepaid cards can't start a trial. Use a debit or credit card.";
-
-/** What a checkout refusal means, keyed on billing's machine `code`, never its English. */
-export function subscriptionCheckoutRefusal(code: unknown): string {
-  switch (code) {
-    case "prepaid_card_trial_refused":
-      return PREPAID_CARD_TRIAL_REFUSAL;
-    case "subscription_exists":
-      return "This account already has a subscription. Open your Billing page to see it.";
-    case "existing_paying_org":
-      return "This account already pays as you go, so the monthly plan is not available on it. Write to us and we will switch it.";
-    case "acquirer_not_supported":
-      return "Your card setup on this account cannot take a subscription. Write to us and we will sort it out.";
-    case "monthly_charge_limit_reached":
-      return MONTHLY_LIMIT_REFUSAL;
-    default:
-      return "We couldn't open the checkout. Nothing was charged. Please try again in a moment.";
-  }
 }

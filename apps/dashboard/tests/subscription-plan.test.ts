@@ -4,14 +4,9 @@ import { join } from "node:path";
 import {
   SUBSCRIPTION_OUTBOUND_DAILY_USD,
   SUBSCRIPTION_REACTIVE_DAILY_USD,
-  isSubscriptionArm,
-  lpVariant,
-  offerArm,
   monthlyUsd,
-  pickedPlanCents,
   planAmountOptions,
   subscriptionBudgets,
-  subscriptionCheckoutRefusal,
 } from "../src/lib/subscription-plan";
 
 const read = (rel: string) => readFileSync(join(__dirname, "..", rel), "utf8");
@@ -19,34 +14,6 @@ const PLAN = read("src/components/v2/subscription-plan.tsx");
 const BILLING = read("src/components/v2/billing-page.tsx");
 const API = read("src/lib/api.ts");
 const CANCEL_LIB = read("src/lib/cancel-plan.ts");
-
-describe("who is in the $99/month arm", () => {
-  it("is only a visitor the homepage A/B test put in the subscription arm", () => {
-    expect(isSubscriptionArm("lp_variant=subscription")).toBe(true);
-    expect(isSubscriptionArm("a=1; lp_variant=subscription; b=2")).toBe(true);
-    expect(lpVariant("a=1; lp_variant=subscription; b=2")).toBe("subscription");
-  });
-
-  it("keeps everyone else on prepaid: no cookie, an empty one, any other variant", () => {
-    for (const c of [null, undefined, "", "a=1; b=2", "x_lp_variant=subscription", "lp_variant="]) {
-      expect(isSubscriptionArm(c)).toBe(false);
-    }
-    for (const v of ["control", "instinct", "assistant", "concierge"]) {
-      expect(isSubscriptionArm(`lp_variant=${v}`)).toBe(false);
-      expect(isSubscriptionArm(`a=1; lp_variant=${v}; b=2`)).toBe(false);
-    }
-    expect(lpVariant(null)).toBe(null);
-    expect(lpVariant("lp_variant=")).toBe(null);
-    expect(lpVariant("lp_variant=control")).toBe("control");
-  });
-
-  it("sells post-paid to everyone but the plan cookie (owner 2026-10-14: 100% post-paid)", () => {
-    expect(offerArm("lp_variant=subscription")).toBe("subscription");
-    expect(offerArm("a=1; lp_variant=postpaid")).toBe("postpaid");
-    for (const c of [null, "", "lp_variant=control", "lp_variant=instinct", "lp_variant=junk"]) expect(offerArm(c)).toBe("postpaid");
-    expect(isSubscriptionArm("lp_variant=postpaid")).toBe(false);
-  });
-});
 
 describe("the plan's daily money", () => {
   it("is $50 of outreach plus a +50% ceiling for replies", () => {
@@ -72,30 +39,10 @@ describe("the plan's daily money", () => {
   });
 });
 
-describe("the amount picked on the landing", () => {
-  it("reads lp_plan when it sits on billing's ladder, else $99", () => {
-    expect(pickedPlanCents("lp_plan=49900")).toBe(49900);
-    expect(pickedPlanCents("a=1; lp_plan=19900")).toBe(19900);
-    expect(pickedPlanCents("lp_plan=12345")).toBe(9900);
-    expect(pickedPlanCents("lp_plan=500")).toBe(9900);
-    expect(pickedPlanCents(null)).toBe(9900);
-  });
-});
-
 describe("words", () => {
   it("states a monthly amount in whole dollars", () => {
     expect(monthlyUsd(9900)).toBe("$99");
     expect(monthlyUsd(109900)).toBe("$1,099");
-  });
-
-  it("explains each checkout refusal by billing's code, with a generic line for the rest", () => {
-    expect(subscriptionCheckoutRefusal("subscription_exists")).toMatch(/already has a subscription/);
-    expect(subscriptionCheckoutRefusal("existing_paying_org")).toMatch(/Write to us/);
-    expect(subscriptionCheckoutRefusal("acquirer_not_supported")).toMatch(/Write to us/);
-    expect(subscriptionCheckoutRefusal(undefined)).toMatch(/Nothing was charged/);
-    expect(subscriptionCheckoutRefusal("prepaid_card_trial_refused")).toBe(
-      "Prepaid cards can't start a trial. Use a debit or credit card.",
-    );
   });
 });
 
@@ -193,18 +140,12 @@ describe("the plan on the Billing page", () => {
   });
 });
 
-describe("prepaid card on the subscription wall (billing#736)", () => {
-  const wall = readFileSync(
-    join(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"),
-    "utf8",
-  );
-  it("says why the card form asks for another card", () => {
-    expect(wall).toContain('checkout.card_refused_reason === "prepaid_card"');
-  });
-  it("names the prepaid refusal when the trial start is refused", () => {
-    const at = wall.indexOf("async function afterTrialCardSaved");
-    const body = wall.slice(at, wall.indexOf("async function launch", at));
-    expect(body).toContain('code === "prepaid_card_trial_refused"');
-    expect(body).toContain("PREPAID_CARD_TRIAL_REFUSAL");
+// The signup wall sells the prepaid checkout only (OFFER-RESET-1029, arms deleted 2026-11-11).
+describe("no plan sold at signup", () => {
+  it("the wall starts no trial and opens no subscription checkout", () => {
+    const wall = readFileSync(join(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"), "utf8");
+    for (const gone of ["createSubscriptionCheckout(", "startSubscription(", "afterTrialCardSaved", "lp_variant"]) {
+      expect(wall, gone).not.toContain(gone);
+    }
   });
 });

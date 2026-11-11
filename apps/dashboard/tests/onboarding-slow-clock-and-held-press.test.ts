@@ -38,17 +38,6 @@ describe("a session refused because the browser clock is behind", () => {
   });
 });
 
-describe("the card form opens fast", () => {
-  it("the monthly limit is saved while the card form is fetched, not before it", () => {
-    const src = read("src/components/v2/get-started/account-card-wall.tsx");
-    expect(src).toContain("Promise.all([createEmbeddedCardSetup(), firstSaved])");
-    const at = src.indexOf("function startPostpaid()");
-    const body = src.slice(at, src.indexOf("async function afterPostpaidCardSaved", at));
-    expect(body).not.toContain("await saveMonthlyLimit(");
-    expect(body).toContain("openCardSave(() => void afterPostpaidCardSaved(), limitSaved)");
-  });
-});
-
 describe("Set up my campaign while the companies are still being found", () => {
   it("knows a step before the campaign is running", () => {
     expect(stepRunningBefore(["done", "running", "waiting"], 2)).toBe(true);

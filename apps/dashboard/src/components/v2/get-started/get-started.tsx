@@ -158,7 +158,6 @@ import { EditableAnswer } from "@/components/v2/editable-answer";
 import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
-import { isSubscriptionArm, offerArm, pickedPlanCents } from "@/lib/subscription-plan";
 import { AccountCardWall } from "./account-card-wall";
 import { GS_ARM_COOKIE, GS_ARM_COPY, showsEmails, walkStepNumber, walkSteps, type GsArm } from "@/lib/v2/get-started-arm";
 import { EMAIL_ANGLES, ANGLE_CHANNEL, angleStrategy, funnelFitsAngles, toggleAngle, type EmailAngle } from "@/lib/v2/email-angles";
@@ -233,30 +232,15 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     return () => setApiActiveOrgOverride(null);
   }, [org?.orgId]);
   const snapshotKey = org ? getStartedOrgSnapshotKey(org.orgId) : GET_STARTED_SNAPSHOT_KEY;
-  // The homepage A/B arm (owner 2026-10-10), read after mount: the cookie is not on the
-  // server render, and reading it there would mismatch the first frame.
-  const [planMonthlyUsd, setPlanMonthlyUsd] = useState<number | null>(null);
-  // The post-paid arm (owner 2026-10-13) is a signup offer: the dashboard walk pays as before.
-  const [postpaidArm, setPostpaidArm] = useState(false);
-  useEffect(() => {
-    if (isSubscriptionArm(document.cookie)) setPlanMonthlyUsd(Math.round(pickedPlanCents(document.cookie) / 100));
-    if (!org && offerArm(document.cookie) === "postpaid") setPostpaidArm(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   // The walk org's offer (billing's `free_credit_offer`), read once the signed-out session
   // exists: an org created since 2026-10-29 (`prepaid_at_cost`) is promised no free money.
   const [walkOffer, setWalkOffer] = useState<string | null>(null);
   // No match is promised until billing says the org has one (unknown = promise nothing).
   const walkAtCost = !org && (walkOffer === null || isAtCostOffer({ free_credit_offer: walkOffer }));
-  const wall = wallCopy(planMonthlyUsd, postpaidArm, walkAtCost);
-  // The monthly limit's first charge to let through (owner 2026-10-12): the plan, post-paid's first step, or the smallest top-up.
-  const limitArm: LimitArm = walkAtCost
-    ? { kind: "prepaid", topupUsd: AT_COST_TOPUP_CHOICES_USD[0] }
-    : planMonthlyUsd !== null
-      ? { kind: "plan", monthlyUsd: planMonthlyUsd }
-      : postpaidArm
-        ? { kind: "postpaid" }
-        : { kind: "prepaid", topupUsd: TOPUP_CHOICES_USD[0] };
+  // The wall sells the prepaid checkout only (OFFER-RESET-1029; the homepage arms were deleted 2026-11-11).
+  const wall = wallCopy(walkAtCost);
+  // The monthly limit's first charge to let through (owner 2026-10-12): the smallest top-up.
+  const limitArm: LimitArm = { kind: "prepaid", topupUsd: walkAtCost ? AT_COST_TOPUP_CHOICES_USD[0] : TOPUP_CHOICES_USD[0] };
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   // A prepared link (`?firstName=&lastName=&phone=+…`, owner 2026-10-21): what we already know
