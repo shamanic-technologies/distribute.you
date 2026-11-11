@@ -970,15 +970,17 @@ export function offersNoFreeMoney(account: { free_credit_offer?: string } | null
 /**
  * The at-cost checkout (owner 2026-10-29: « les memes montants minimaux $10 topup, et
  * below $5 au plus bas pour retopup, et montant de retopup at least $10 de plus que le
- * seuil de reload »). Our validation only: billing refuses none of them.
+ * seuil de reload »). The reload ADDS at least $10, whatever the threshold (owner
+ * 2026-11-11: « +10 dès qu'on arrive sous $5 … c'était exactement ma règle »; the old
+ * reading "threshold + $10" forced a $15 reload). Our validation only: billing refuses none.
  */
 export const AT_COST_TOPUP_CHOICES_USD = [10, 25, 50, 100] as const;
 export const AT_COST_MIN_TOPUP_USD = 10;
 export const AT_COST_MIN_THRESHOLD_USD = 5;
-/** A reload adds at least this much more than the threshold it fires under. */
-export const AT_COST_RELOAD_ABOVE_THRESHOLD_USD = 10;
+/** A reload adds at least this much, whatever the threshold it fires under. */
+export const AT_COST_MIN_RELOAD_USD = 10;
 export const AT_COST_DEFAULT_THRESHOLD_USD = 5;
-export const AT_COST_DEFAULT_RELOAD_USD = 15;
+export const AT_COST_DEFAULT_RELOAD_USD = 10;
 
 function wholeDollars(input: string): number | null {
   const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
@@ -1008,7 +1010,7 @@ export function atCostCheckout(input: { topup: string; threshold: string; reload
       : threshold < AT_COST_MIN_THRESHOLD_USD
         ? `At least $${AT_COST_MIN_THRESHOLD_USD}.`
         : null;
-  const reloadMin = (threshold ?? AT_COST_MIN_THRESHOLD_USD) + AT_COST_RELOAD_ABOVE_THRESHOLD_USD;
+  const reloadMin = AT_COST_MIN_RELOAD_USD;
   const reloadProblem = !reloadOn ? null : reload === null ? "Whole dollars." : reload < reloadMin ? `At least $${reloadMin}.` : null;
   const problems = { topup: topupProblem, threshold: thresholdProblem, reload: reloadProblem };
   if (topup === null || topupProblem) return { problems, values: null };
