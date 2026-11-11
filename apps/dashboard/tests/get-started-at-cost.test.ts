@@ -7,29 +7,29 @@ import { spendConsentLines } from "../src/lib/v2/spend-consent";
 
 // ONBOARDING-PREPAID-1029 (owner 2026-10-29): every org created since is billing's
 // `prepaid_at_cost`: first top-up + automatic reload in one checkout, minimums $10 / $5 /
-// threshold + $10 checked HERE (billing refuses none), no match, no free money promised.
+// reload $10 checked HERE (billing refuses none), no match, no free money promised.
 
 const src = (rel: string) => fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
 
 describe("at-cost checkout minimums", () => {
-  it("takes the owner's worked example: $10 now, $15 below $5", () => {
-    expect(atCostCheckout({ topup: "10", threshold: "5", reload: "15" })).toEqual({
+  it("takes the owner's worked example: $10 now, +$10 below $5", () => {
+    expect(atCostCheckout({ topup: "10", threshold: "5", reload: "10" })).toEqual({
       problems: { topup: null, threshold: null, reload: null },
-      values: { topupUsd: 10, thresholdUsd: 5, reloadUsd: 15 },
+      values: { topupUsd: 10, thresholdUsd: 5, reloadUsd: 10 },
     });
   });
 
   it("refuses each amount under its own minimum, by name", () => {
-    const r = atCostCheckout({ topup: "9", threshold: "4", reload: "13" });
+    const r = atCostCheckout({ topup: "9", threshold: "4", reload: "9" });
     expect(r.values).toBeNull();
     expect(r.problems.topup).toBe("At least $10.");
     expect(r.problems.threshold).toBe("At least $5.");
-    expect(r.problems.reload).toBe("At least $14.");
+    expect(r.problems.reload).toBe("At least $10.");
   });
 
-  it("ties the reload to the threshold typed", () => {
-    expect(atCostCheckout({ topup: "50", threshold: "20", reload: "29" }).problems.reload).toBe("At least $30.");
-    expect(atCostCheckout({ topup: "50", threshold: "20", reload: "30" }).values).toEqual({ topupUsd: 50, thresholdUsd: 20, reloadUsd: 30 });
+  it("a $10 reload passes whatever the threshold (owner 2026-11-11: +$10, never threshold + $10)", () => {
+    expect(atCostCheckout({ topup: "50", threshold: "20", reload: "10" }).values).toEqual({ topupUsd: 50, thresholdUsd: 20, reloadUsd: 10 });
+    expect(atCostCheckout({ topup: "50", threshold: "20", reload: "9" }).problems.reload).toBe("At least $10.");
   });
 
   it("refuses anything but whole dollars", () => {
