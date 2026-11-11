@@ -19,6 +19,7 @@ import { EmptyNote, Figure, Meter, SectionTitle, ShareBar, Shimmer, StatTile, St
 import {
   ALERT_PROVIDERS,
   INBOX_PROVIDERS,
+  alertFreshness,
   alertSeries,
   entityPath,
   MESSAGE_KIND_WORD,
@@ -154,7 +155,10 @@ function InboxTile({ provider, name }: { provider: string; name: string }) {
   const latest = series?.latest;
   const recent = series?.days.slice(-14) ?? [];
   const bar = alerts.data?.bar.inboxPctOfFound ?? null;
-  const red = latest && bar != null ? underBar(latest.fleet.inboxPct, bar) : false;
+  // No measured day for the producer's overdue age = tests stopped or unreadable: broken, red (MON-PLACEMENT-STOPPED-1111).
+  const fresh = alerts.data ? alertFreshness(alerts.data, provider) : undefined;
+  const overdue = fresh?.overdue === true;
+  const red = overdue || (latest && bar != null ? underBar(latest.fleet.inboxPct, bar) : false);
   return (
     <StatTile label={`Inbox at ${name}`} note={latest ? shortDay(latest.day) : undefined}>
       <div className="flex items-end justify-between gap-2">
@@ -165,7 +169,7 @@ function InboxTile({ provider, name }: { provider: string; name: string }) {
             ) : series === undefined ? (
               <Shimmer className="h-6 w-16" />
             ) : !latest || latest.fleet.inboxPct == null ? (
-              <Dash />
+              overdue ? <span style={{ color: RED }}>{"—"}</span> : <Dash />
             ) : (
               <span style={{ color: red ? RED : undefined }}>{pct(latest.fleet.inboxPct)}</span>
             )
@@ -174,8 +178,12 @@ function InboxTile({ provider, name }: { provider: string; name: string }) {
         />
         {series && bar != null && <DayBars values={recent.map((d) => (d.measured ? d.fleet.inboxPct : null))} red={recent.map((d) => d.measured && underBar(d.fleet.inboxPct, bar))} />}
       </div>
-      <p className="k-fg3 mt-1 truncate text-[11px]">
-        {series && !latest
+      <p className="k-fg3 mt-1 truncate text-[11px]" style={overdue ? { color: RED } : undefined}>
+        {overdue
+          ? fresh?.lastMeasuredDay
+            ? `No test since ${shortDay(fresh.lastMeasuredDay)}`
+            : `No test in ${HEALTH_DAYS} days`
+          : series && !latest
           ? `No measured day in ${HEALTH_DAYS} days`
           : latest && bar != null
             ? `Bar ${bar}% · after the cut ${pct(latest.allowed.inboxPct) ?? "—"}${latest.below ? " (alert)" : ""} · ${n(latest.mailboxesCut)} cut`
@@ -235,6 +243,11 @@ export function useSendingVerdict(): string | null {
   const alerts = usePlacementAlerts();
   if (!alerts.data) return null;
   const data = alerts.data;
+  const stale = ALERT_PROVIDERS.filter((p) => alertFreshness(data, p.key)?.overdue);
+  if (stale.length) {
+    const names = stale.map((p) => p.name);
+    return `No recent inbox test at ${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0]}`;
+  }
   const measured = ALERT_PROVIDERS.map((p) => ({ p, latest: alertSeries(data, p.key).latest })).filter((x) => x.latest !== null);
   if (!measured.length) return `No inbox test in ${HEALTH_DAYS} days`;
   const under = measured.filter((x) => underBar(x.latest!.fleet.inboxPct, data.bar.inboxPctOfFound));
