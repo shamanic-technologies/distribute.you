@@ -35,6 +35,7 @@ import {
   type FunnelCampaignCopy,
   type FunnelCampaignRow,
 } from "./sales-funnel-campaigns";
+import { CampaignNextStepsSchema, type CampaignNextSteps } from "./held-step";
 import {
   BrandSpendChartsSchema,
   FunnelCampaignSpendChartsSchema,
@@ -2558,6 +2559,17 @@ export async function getFunnelCampaignSpendCharts(brandId: string, salesFunnelC
     `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/spend-charts?${qs.toString()}`,
   );
   return parseStaff("getFunnelCampaignSpendCharts", FunnelCampaignSpendChartsSchema, raw);
+}
+
+/**
+ * What comes next in one sales-funnel campaign (features-service next-steps, NEXT-STEPS-TRUE-REASON-1111): the
+ * campaign page reads only why nothing goes out (`nextSends.heldBy`). Shapes: lib/held-step.ts.
+ */
+export async function getFunnelCampaignNextSteps(brandId: string, salesFunnelCampaignId: string): Promise<CampaignNextSteps> {
+  const raw = await apiCall<unknown>(
+    `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/next-steps`,
+  );
+  return parseStaff("getFunnelCampaignNextSteps", CampaignNextStepsSchema, raw);
 }
 
 /**
