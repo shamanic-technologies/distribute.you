@@ -9,6 +9,7 @@ import {
   firstMaturingDay,
   formatPerActionUsd,
   latestSpendDay,
+  supportSpendUsd,
   type SpendChartPoint,
 } from "../src/lib/spend-charts";
 
@@ -126,5 +127,40 @@ describe("the block is drawn at the three grains", () => {
   it("divides nothing in the browser", () => {
     const s = src("spend-charts.tsx");
     expect(s).not.toMatch(/\.spendUsd\s*\/|\/\s*\w+\.outcomes|reduce\(/);
+  });
+});
+
+describe("support spend (2026-11-11: tooltip rows summed $4.98 under a $5.70 day)", () => {
+  // Served by features-service for brand f25037e6 (offer 8c9985d7), 2026-11-11, pricing=net.
+  const prod = point("2026-11-11", {
+    spendUsd: 5.703623266279999,
+    byActionGapUsd: 0.72,
+    byAction: [
+      { key: "prospects_found", label: "Prospects found", spendUsd: 4.771709999999999, actions: 130, unit: "prospect", costPerActionUsd: 0.0367 },
+      { key: "messages_written", label: "Messages written", spendUsd: 0.18924788, actions: null },
+      { key: "replies_read", label: "Replies read", spendUsd: 0.022833972, actions: null },
+      { key: "notifications", label: "Notifications", spendUsd: 0, actions: null },
+      { key: "other", label: "Other", spendUsd: 0, actions: null },
+    ],
+  });
+
+  it("lists the served gap as Support, so the rows add up to the day's total", () => {
+    const support = supportSpendUsd(prod);
+    expect(support).toBe(0.72);
+    const rows = prod.byAction.map((a) => a.spendUsd).concat(support!);
+    expect(Math.round(rows.reduce((a, b) => a + b, 0) * 100)).toBe(Math.round(prod.spendUsd * 100));
+  });
+
+  it("stacks Support last in the bar, only when a day has some", () => {
+    expect(actionKeysOf([prod]).map((k) => k.key).at(-1)).toBe("support");
+    expect(actionKeysOf([point("2026-11-10", { byActionGapUsd: 0 })]).map((k) => k.key)).not.toContain("support");
+    expect(supportSpendUsd(point("2026-11-10", { byActionGapUsd: null }))).toBeNull();
+  });
+
+  it("prints the Support row in the day tooltip", () => {
+    const s = fs.readFileSync(path.join(__dirname, "../src/components/v2/spend-charts.tsx"), "utf-8");
+    const tip = s.slice(s.indexOf("function DayTip("), s.indexOf("function unavailableWords("));
+    expect(tip).toContain("supportSpendUsd(point)");
+    expect(tip).toContain("{SUPPORT_LABEL}");
   });
 });
