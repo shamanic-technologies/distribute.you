@@ -19,6 +19,17 @@ export function nudgeDelayMs(last: RecentAction | undefined, lastAskedAt: string
 }
 
 /**
+ * Whether the dashboard may send an AUTOMATIC Copilot turn (a new chat's opener, a
+ * proactive nudge) right now (COPILOT-NO-DOUBLE-TURN-1111). The person's own message always
+ * wins: never while they type, once they have spoken in this chat, or while a turn runs
+ * (a 2026-11-11 opener went out in the same second as "now start a new campain", two turns
+ * answered in parallel and contradicted each other).
+ */
+export function mayAutoSend(g: { draft: string; busy: boolean; turnInFlight: boolean; userSpoke: boolean }): boolean {
+  return !g.userSpoke && !g.draft.trim() && !g.busy && !g.turnInFlight;
+}
+
+/**
  * The session a speak turn was stored in, read from the UI message stream the chat proxy
  * returns (`data: {"type":"data-session","data":{"sessionId":"…"}}`). Null when absent.
  */
