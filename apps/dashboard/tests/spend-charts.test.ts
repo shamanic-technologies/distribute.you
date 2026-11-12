@@ -163,4 +163,11 @@ describe("support spend (2026-11-11: tooltip rows summed $4.98 under a $5.70 day
     expect(tip).toContain("supportSpendUsd(point)");
     expect(tip).toContain("{SUPPORT_LABEL}");
   });
+  it("never draws the cost chart over an empty series (a new campaign with no spend day crashed its page)", () => {
+    const s = fs.readFileSync(path.join(__dirname, "../src/components/v2/spend-charts.tsx"), "utf-8");
+    expect(s).toContain("!chart || chart.daily.length === 0 || (chart.daily.every((p) => p.costPerOutcomeUsd == null)");
+    const conv = s.slice(s.indexOf("function ConvergenceChart("));
+    expect(conv).not.toContain("daily[daily.length - 1].date");
+    expect(conv).toContain("bandFrom != null && lastDayT != null");
+  });
 });
