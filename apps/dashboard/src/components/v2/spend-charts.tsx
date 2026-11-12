@@ -279,7 +279,7 @@ function CostCard({ chart, answered, outcome, outcomes }: { chart: SpendChart | 
       <ChartBox answered={answered}>
         {unavailable ? (
           <EmptyNote>{unavailableWords(unavailable)}</EmptyNote>
-        ) : !chart || (chart.daily.every((p) => p.costPerOutcomeUsd == null) && expected == null) ? (
+        ) : !chart || chart.daily.length === 0 || (chart.daily.every((p) => p.costPerOutcomeUsd == null) && expected == null) ? (
           // With an expected cost served, the chart draws its dotted Expected line before the first result (owner 2026-11-02:
           // like the % chart beside it); the measured line starts with the first one.
           <EmptyNote>
@@ -357,14 +357,16 @@ function ConvergenceChart({
   maturingFrom?: string | null;
 }) {
   const rows = convergenceRows(daily, pick, expected);
-  const lastDayT = Date.parse(`${daily[daily.length - 1].date}T00:00:00Z`);
+  // A campaign with no spend day yet serves an empty series: no last day, no band (crashed ExamPal's campaign page, 2026-11-12).
+  const lastDay = daily[daily.length - 1];
+  const lastDayT = lastDay ? Date.parse(`${lastDay.date}T00:00:00Z`) : null;
   const bandFrom = maturingFrom ? Date.parse(`${maturingFrom}T00:00:00Z`) : null;
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tick={TICK} tickLine={false} axisLine={false} minTickGap={40} tickFormatter={shortDate} />
         <YAxis tick={TICK} tickLine={false} axisLine={false} width={44} tickCount={4} tickFormatter={(v: number) => format(v)} />
-        {bandFrom != null && (
+        {bandFrom != null && lastDayT != null && (
           <ReferenceArea
             x1={bandFrom}
             x2={lastDayT}
