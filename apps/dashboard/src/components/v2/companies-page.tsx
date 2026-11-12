@@ -7,7 +7,7 @@ import type { ConversionOrg } from "@/lib/revenue-view";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
-import { useBrandRevenue, useCompanyLifecycle } from "@/components/v2/data";
+import { useBrandCompanies, useCompanyLifecycle } from "@/components/v2/data";
 import { companyRungs, dealsBoardRungs } from "@/lib/deals-board";
 import { uniboxValueTag, uniboxValueTone, type LifecycleRung } from "@/lib/unibox-leads";
 import { TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
@@ -87,7 +87,7 @@ function useAgo(at: number | undefined): string | null {
 export function CompaniesPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const router = useRouter();
-  const revenue = useBrandRevenue(brandId);
+  const revenue = useBrandCompanies(brandId);
   const [q, setQ] = useState("");
   // One tab per lifecycle rung (owner 2026-10-21): each company on the highest rung any of its
   // people reached, served by features-service with the companies per rung.

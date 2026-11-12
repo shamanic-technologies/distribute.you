@@ -17,7 +17,7 @@ import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
-import { useLeadScope, useBrandRevenue, useReachedCounts, useNeedsYourCall } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue, useBrandCompanies, useReachedCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, v2NewBrandHref, type V2Section } from "@/lib/v2/routes";
@@ -503,6 +503,8 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
 
   const { staffMode } = useStaffMode();
   const revenue = useBrandRevenue(brandId).data;
+  // The company LIST (~5 MB on a big brand) is read only once a search term is typed.
+  const companyList = useBrandCompanies(brandId, q.trim() !== "").data;
   // People we emailed: lead-service's Unibox count of the people who reached the first email.
   const sentPeople = useReachedCounts(brandId, [EMAIL_SENT_STEP]).data?.[EMAIL_SENT_STEP] ?? null;
   const call = useNeedsYourCall(brandId, 5).data?.leads ?? [];
@@ -552,7 +554,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     }
     if (term) {
       let companies = 0;
-      for (const o of revenue?.organizations ?? []) {
+      for (const o of companyList?.organizations ?? []) {
         const name = o.orgName ?? o.orgDomain ?? "";
         const href = companyHref(orgId, brandId, o);
         if (!name || !href || !matches(`${name} ${o.orgDomain ?? ""}`, term)) continue;
@@ -562,7 +564,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       for (const l of peopleQ.data?.leads ?? []) out.push(personItem("People", l));
     }
     return out;
-  }, [q, call, staffMode, revenue, peopleQ.data, orgId, brandId]);
+  }, [q, call, staffMode, companyList, peopleQ.data, orgId, brandId]);
 
   useEffect(() => setCursor(0), [q, items.length]);
   useEffect(() => {
@@ -657,7 +659,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
           <span className="k-keys hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">↵</span> to open</span>
           <span className="k-keys hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">esc</span> to close</span>
           <span className="ml-auto tabular-nums">
-            {revenue ? `${formatCount(revenue.organizations.length)} companies` : ""}
+            {revenue ? `${formatCount(revenue.organizationCount)} companies` : ""}
             {revenue && sentPeople != null ? " · " : ""}
             {sentPeople != null ? `${formatCount(sentPeople)} people` : ""}
           </span>
