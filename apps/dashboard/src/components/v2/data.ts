@@ -7,6 +7,7 @@ import {
   getBrandOutcomes,
   getBrandDisqualifications,
   getBrandRevenue,
+  getBrandRevenueSummary,
   getBrandRevenueWindow,
   getAwaitingReply,
   getReachedCounts,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/api";
 import { useBrandScope } from "@/components/v2/brand-scope";
 import type { RevenueOverview } from "@/lib/revenue-view";
+import type { BrandRevenueSummary } from "@/lib/revenue-parse";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
 import { pollOptions, leadReadOptions, peopleOutcomesReadOptions, slowServerReadOptions } from "@/lib/query-options";
 import type { RevenueWindowDays } from "@/lib/revenue-window";
@@ -61,13 +63,35 @@ export function revenueReadEnabled(featureSlug: string, brandId: string, campaig
 }
 
 /**
- * The brand's money (features-service's brand grain, every offer and channel, net). Not asked
- * once the campaigns answered none: there is no money yet, and pages show their no-data state.
+ * The brand's money (features-service's brand grain, every offer and channel, net), with the COUNT
+ * of its companies but not the companies themselves (`organizationCount`): ~0.2 MB instead of ~5 MB,
+ * so it fits the persisted cache and every page paints its money at once (MON-PAGE-SPEED-1111).
+ * A page that LISTS companies reads {@link useBrandCompanies}. Not asked once the campaigns answered
+ * none: there is no money yet, and pages show their no-data state.
  */
 export function useBrandRevenue(brandId: string) {
   const { campaignIds, scopeSettled } = useBrandScope();
   const featureSlug = useSoleFeatureSlug();
   const enabled = revenueReadEnabled(featureSlug, brandId, campaignIds);
+  const q = useAuthQuery(["brandRevenue", brandId, "brand", "summary"], () => getBrandRevenueSummary(brandId), {
+    enabled,
+    ...slowServerReadOptions,
+    structuralSharing: (prev, next) =>
+      keepLastGoodFeatureRevenue(prev as BrandRevenueSummary | undefined, next as BrandRevenueSummary),
+  });
+  // Reveal on SETTLE, same rule as below.
+  return { ...q, enabled, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
+}
+
+/**
+ * The brand's money WITH every company its outreach reached (`organizations[]`, ~5 MB on a big
+ * brand): only for the pages that draw the company list (Companies, a Company, the search palette
+ * once a term is typed). `when` defers it until that list is wanted.
+ */
+export function useBrandCompanies(brandId: string, when = true) {
+  const { campaignIds, scopeSettled } = useBrandScope();
+  const featureSlug = useSoleFeatureSlug();
+  const enabled = when && revenueReadEnabled(featureSlug, brandId, campaignIds);
   const q = useAuthQuery(["brandRevenue", brandId, "brand"], () => getBrandRevenue(brandId), {
     enabled,
     ...slowServerReadOptions,

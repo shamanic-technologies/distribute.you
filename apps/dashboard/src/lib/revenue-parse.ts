@@ -720,6 +720,33 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
 }
 
 /**
+ * The brand's money WITHOUT its companies (features-service `?organizations=count`, MON-PAGE-SPEED-1111).
+ *
+ * The brand body was 97% `organizations[]` (8,423 companies, 5.0 of 5.2 MB on our own brand,
+ * 2026-11-11): over the persisted-cache cap, so the shell, Today and the Copilot cold-loaded their
+ * money on every reload. Pages that LIST companies read the full body (`getBrandRevenue`); every
+ * other reader takes this one, which carries how many companies there are and nothing else of them.
+ */
+export type BrandRevenueSummary = Omit<RevenueOverview, "organizations"> & { organizationCount: number };
+
+const BrandRevenueSummarySchema = FeatureRevenueResponseSchema.omit({ organizations: true }).extend({
+  organizationCount: z.number().int(),
+});
+
+export function parseBrandRevenueSummary(raw: unknown, label: string): BrandRevenueSummary {
+  const parsed = BrandRevenueSummarySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${label}: revenue summary response shape mismatch`, {
+      issues: parsed.error.issues,
+    });
+    throw new Error(`[dashboard] ${label}: invalid revenue summary response shape`);
+  }
+  const { organizationCount, ...body } = parsed.data;
+  const { organizations: _none, ...flat } = flattenRevenue({ ...body, organizations: [] });
+  return { ...flat, organizationCount };
+}
+
+/**
  * Validate + flatten a revenue body INCLUDING its per-lead array.
  *
  * The outcome-digest cron is the only caller: it names, per person, what each one did on

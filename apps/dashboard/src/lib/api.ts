@@ -156,7 +156,7 @@ import type {
   FleetRead,
 } from "./campaign-workflow-rows";
 import type { LeadConversation } from "./lead-conversation";
-import { ScopeMaturitySchema, parseFeatureRevenue } from "./revenue-parse";
+import { ScopeMaturitySchema, parseFeatureRevenue, parseBrandRevenueSummary, type BrandRevenueSummary } from "./revenue-parse";
 import { maturityPairSchema, type MaturityPair } from "./maturity";
 import type { OutcomeFigures, ScopeMaturity } from "./revenue-view";
 import { LeadHistorySchema, type LeadHistory } from "./lead-history";
@@ -7058,6 +7058,17 @@ export async function getBrandRevenue(
 }
 
 /**
+ * The brand's money with only the COUNT of its companies (`?organizations=count`): ~0.2 MB where
+ * the full body is ~5 MB, so it fits the persisted cache and every page paints its money from
+ * disk. Read it everywhere the company LIST is not drawn (MON-PAGE-SPEED-1111).
+ */
+export async function getBrandRevenueSummary(brandId: string, token?: string): Promise<BrandRevenueSummary> {
+  const query = new URLSearchParams({ pricing: "net", organizations: "count" });
+  const raw = await apiCall<unknown>(`/brands/${brandId}/revenue?${query.toString()}`, { token });
+  return parseBrandRevenueSummary(raw, "getBrandRevenueSummary");
+}
+
+/**
  * ONE offer's money across every channel selling it — features-service's offer grain
  * (`/offers/:offerId/revenue`), the same engine and body as the brand read, narrowed to
  * the campaigns that sell the offer. v2 reads every money figure through it now that the
@@ -7154,10 +7165,10 @@ export async function getCampaignRevenueWindow(
  * keep-last-good); a real persistent absence still logs. Opt-in here ONLY —
  * absence is "transient/not-ready", never "removed".
  */
-export function keepLastGoodFeatureRevenue(
-  prev: RevenueOverview | undefined,
-  next: RevenueOverview,
-): RevenueOverview {
+export function keepLastGoodFeatureRevenue<T extends Pick<RevenueOverview, "spend">>(
+  prev: T | undefined,
+  next: T,
+): T {
   return keepLastGoodFields(
     prev,
     next,

@@ -296,7 +296,7 @@ function V2Sidebar() {
                 href={v2Href(orgId, brandId, "companies")}
                 label="Companies"
                 active={section === "companies"}
-                trailing={<Count n={revenue?.organizations.length} />}
+                trailing={<Count n={revenue?.organizationCount} />}
               />
               <NavItem
                 indent

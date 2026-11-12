@@ -16,7 +16,7 @@ import { v2Href } from "@/lib/v2/routes";
 import { useLeadCampaigns, type LeadCampaign } from "@/components/v2/lead-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { TagChip } from "@/components/v2/tag-chip";
-import { useLeadScope, useBrandRevenue, useCompanyLifecycle } from "@/components/v2/data";
+import { useLeadScope, useBrandCompanies, useCompanyLifecycle } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { HIDDEN_TAGS, TAG_LABEL, companyHref, companyKey } from "@/components/v2/companies-page";
@@ -45,7 +45,7 @@ export function CompanyPage() {
   const { orgId, brandId, companyKey: rawKey } = useParams<{ orgId: string; brandId: string; companyKey: string }>();
   const key = decodeURIComponent(rawKey);
   const router = useRouter();
-  const revenue = useBrandRevenue(brandId);
+  const revenue = useBrandCompanies(brandId);
   const { campaignOf } = useLeadCampaigns(orgId, brandId);
   const gate = useOrgQueryGate();
   const sorted = useMemo(
