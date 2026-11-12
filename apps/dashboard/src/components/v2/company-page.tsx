@@ -16,11 +16,11 @@ import { v2Href } from "@/lib/v2/routes";
 import { useLeadCampaigns, type LeadCampaign } from "@/components/v2/lead-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { TagChip } from "@/components/v2/tag-chip";
-import { useLeadScope, useBrandCompanies, useCompanyLifecycle } from "@/components/v2/data";
+import { useLeadScope, useBrandCompany } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
-import { HIDDEN_TAGS, TAG_LABEL, companyHref, companyKey } from "@/components/v2/companies-page";
-import { companyRungs, dealsBoardRungs } from "@/lib/deals-board";
+import { HIDDEN_TAGS, TAG_LABEL, companyKeyHref } from "@/components/v2/companies-page";
+import { dealsBoardRungs } from "@/lib/deals-board";
 import { uniboxValueTag } from "@/lib/unibox-leads";
 
 /** The steps a company moves through, in order, in features-service's own tags. */
@@ -36,7 +36,8 @@ interface TimelineEntry {
 
 /**
  * One company: Keel's record page. The header and the stage come off the
- * organisation features-service values on the brand's revenue read; the people are
+ * organisation features-service values on the brand's revenue read, read alone by its key
+ * (`GET /brands/:brandId/companies/:companyKey`, MON-PAGE-SPEED-2-1112: never the whole list); the people are
  * lead-service's own search on the company name; the timeline is each person's stored,
  * labelled conversation (lead-service, the Unibox's facts) at the brand, every offer, merged
  * newest first. Nothing is derived.
@@ -45,15 +46,12 @@ export function CompanyPage() {
   const { orgId, brandId, companyKey: rawKey } = useParams<{ orgId: string; brandId: string; companyKey: string }>();
   const key = decodeURIComponent(rawKey);
   const router = useRouter();
-  const revenue = useBrandCompanies(brandId);
+  const found = useBrandCompany(brandId, key);
   const { campaignOf } = useLeadCampaigns(orgId, brandId);
   const gate = useOrgQueryGate();
-  const sorted = useMemo(
-    () => [...(revenue.data?.organizations ?? [])].sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd),
-    [revenue.data],
-  );
-  const index = sorted.findIndex((o) => companyKey(o) === key);
-  const org = index >= 0 ? sorted[index] : null;
+  // Its place in the value order (highest expected value first), served with the row.
+  const index = found.data ? found.data.position - 1 : -1;
+  const org = found.data?.company ?? null;
   const name = org?.orgName ?? org?.orgDomain ?? key;
   const q = org?.orgName ? leadsSearchParam(org.orgName) ?? "" : "";
   const lead = useLeadScope(brandId);
@@ -100,8 +98,9 @@ export function CompanyPage() {
     return out.sort((a, b) => b.at.localeCompare(a.at));
   }, [people, campaignOf, timelinesVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const prev = index > 0 ? companyHref(orgId, brandId, sorted[index - 1]) : null;
-  const next = index >= 0 && index < sorted.length - 1 ? companyHref(orgId, brandId, sorted[index + 1]) : null;
+  const prev = companyKeyHref(orgId, brandId, found.data?.previousKey ?? null);
+  const next = companyKeyHref(orgId, brandId, found.data?.nextKey ?? null);
+  const companyCount = found.data?.organizationCount ?? 0;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -114,9 +113,8 @@ export function CompanyPage() {
   }, [prev, next, router]);
 
   // The company's lifecycle rung (features-service: the highest any of its people reached), on the ladder.
-  const lifecycle = useCompanyLifecycle(brandId).data;
-  const flow = lifecycle ? dealsBoardRungs(lifecycle.rungs) : [];
-  const stage = org?.organizationKey ? (companyRungs(lifecycle).get(org.organizationKey) ?? null) : null;
+  const flow = found.data ? dealsBoardRungs(found.data.rungs) : [];
+  const stage = org?.lifecycle ?? null;
   const reachedIndex = stage ? flow.findIndex((f) => f.key === stage.key) : -1;
   const person = org?.topPerson ? `${org.topPerson.firstName ?? ""} ${org.topPerson.lastName ?? ""}`.trim() : "";
 
@@ -152,7 +150,7 @@ export function CompanyPage() {
           <>
             {index >= 0 && (
               <span className="k-fg3 mr-1 hidden items-center gap-1 text-[12px] tabular-nums md:inline-flex">
-                {index + 1} of {sorted.length}
+                {index + 1} of {companyCount}
                 <Link aria-label="Previous company" href={prev ?? "#"} aria-disabled={!prev} className={`k-btn-ghost h-7 w-7 justify-center px-0 ${prev ? "" : "pointer-events-none opacity-40"}`}>
                   <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 7.5 6 4.5l3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                 </Link>
@@ -165,8 +163,10 @@ export function CompanyPage() {
         }
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        {revenue.pending ? (
+        {found.pending ? (
           <Shimmer className="h-40 rounded-xl" />
+        ) : found.isError && found.data === undefined ? (
+          <div className="k-card"><EmptyNote>We could not load this company. It comes back on the next refresh.</EmptyNote></div>
         ) : !org ? (
           <div className="k-card"><EmptyNote>We could not find this company among the ones that engaged.</EmptyNote></div>
         ) : (
@@ -403,7 +403,7 @@ export function CompanyPage() {
                     <div className="flex justify-between gap-3"><dt className="k-fg2">Domain</dt><dd className="truncate">{org.orgDomain ?? "—"}</dd></div>
                     <div className="flex justify-between gap-3"><dt className="k-fg2">Best contact</dt><dd className="truncate">{person || "—"}</dd></div>
                     <div className="flex justify-between gap-3"><dt className="k-fg2">Expected value</dt><dd className="tabular-nums">{formatUsdAdaptive(org.expectedRevenueUsd)}</dd></div>
-                    <div className="flex justify-between gap-3"><dt className="k-fg2">Rank</dt><dd className="tabular-nums">{index + 1} of {sorted.length}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="k-fg2">Rank</dt><dd className="tabular-nums">{index + 1} of {companyCount}</dd></div>
                   </dl>
                 </div>
               </div>

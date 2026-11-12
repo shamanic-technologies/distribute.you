@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { ConversionOrg } from "@/lib/revenue-view";
+import { getBrandCompaniesPage } from "@/lib/api";
+import { COMPANIES_PAGE_SIZE, type BrandCompanyRow, type CompanyListQuery } from "@/lib/brand-companies";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
-import { useBrandCompanies, useCompanyLifecycle } from "@/components/v2/data";
-import { companyRungs, dealsBoardRungs } from "@/lib/deals-board";
+import { useCompanyList } from "@/components/v2/data";
+import { dealsBoardRungs } from "@/lib/deals-board";
 import { uniboxValueTag, uniboxValueTone, type LifecycleRung } from "@/lib/unibox-leads";
 import { TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { CompanyMark } from "@/components/v2/people-bits";
@@ -33,29 +34,35 @@ export const TAG_LABEL: Record<string, string> = {
 };
 export const HIDDEN_TAGS = new Set(["opened"]);
 
-/** The URL key of a company: its domain when served, else features-service's org id. */
-export function companyKey(o: ConversionOrg): string | null {
+/** The URL key of a company: its domain when served, else features-service's org id (served as `companyKey`). */
+export function companyKey(o: { orgDomain?: string | null; orgId: string | null }): string | null {
   return o.orgDomain ?? o.orgId ?? null;
 }
 
-export function companyHref(orgId: string, brandId: string, o: ConversionOrg): string | null {
-  const key = companyKey(o);
+/** A Company page's URL from its key. */
+export function companyKeyHref(orgId: string, brandId: string, key: string | null): string | null {
   return key ? `${v2Href(orgId, brandId, "companies")}/${encodeURIComponent(key)}` : null;
 }
 
-type SortKey = "value" | "touch" | "name";
-const SORTS: Record<SortKey, { label: string; compare: (a: ConversionOrg, b: ConversionOrg) => number }> = {
-  value: { label: "Value", compare: (a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd },
-  touch: { label: "Last touch", compare: (a, b) => (b.mostAdvancedDate ?? "").localeCompare(a.mostAdvancedDate ?? "") },
-  name: { label: "Name", compare: (a, b) => (a.orgName ?? a.orgDomain ?? "").localeCompare(b.orgName ?? b.orgDomain ?? "") },
+export function companyHref(orgId: string, brandId: string, o: { orgDomain?: string | null; orgId: string | null }): string | null {
+  return companyKeyHref(orgId, brandId, companyKey(o));
+}
+
+/** The orders features-service serves (`sort`): highest value, latest touch, name A to Z. */
+type SortKey = CompanyListQuery["sort"];
+const SORTS: Record<SortKey, { label: string }> = {
+  value: { label: "Value" },
+  touch: { label: "Last touch" },
+  name: { label: "Name" },
 };
 
-/**
- * Rows drawn per step. A brand engaged with a few hundred companies drew every row at
- * once (about 8,000 DOM nodes), so each click on Companies spent ~0.6 s rendering before
- * the page even switched. The rest arrives as the reader scrolls toward the end.
- */
-const ROWS_STEP = 60;
+/** Rows per export page: every matching company, read 5,000 at a time when the export is asked. */
+const EXPORT_PAGE = 5000;
+
+/** The page count that loads the page after the `loaded` rows (idempotent per loaded count). */
+function pagesAfter(loaded: number): number {
+  return Math.ceil(loaded / COMPANIES_PAGE_SIZE) + 1;
+}
 
 /**
  * List or Board (owner 2026-10-23, after Senthil asked to see the people of one company side by
@@ -81,25 +88,33 @@ function useAgo(at: number | undefined): string | null {
 /**
  * Companies: Keel's company table over the organisations features-service already
  * dedupes and values on the brand's revenue read. The expected revenue is its own served
- * figure, the order is that figure, and a row opens the company. The tabs and the search
- * only narrow rows already loaded; nothing is computed.
+ * figure, and a row opens the company. features-service sorts, searches, filters on the
+ * tab's rung and pages them (MON-PAGE-SPEED-2-1112): the page reads ~35 KB per 60 rows,
+ * never the whole list; nothing is computed here.
  */
 export function CompaniesPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const router = useRouter();
-  const revenue = useBrandCompanies(brandId);
   const [q, setQ] = useState("");
-  // One tab per lifecycle rung (owner 2026-10-21): each company on the highest rung any of its
-  // people reached, served by features-service with the companies per rung.
-  const lifecycle = useCompanyLifecycle(brandId);
-  const rungOf = useMemo(() => {
-    const m = companyRungs(lifecycle.data);
-    return (o: ConversionOrg) => (o.organizationKey ? (m.get(o.organizationKey) ?? null) : null);
-  }, [lifecycle.data]);
-  const rungTabs = lifecycle.data ? dealsBoardRungs(lifecycle.data.rungs) : [];
+  // The search the server is asked, once typing pauses.
+  const [wireQ, setWireQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setWireQ(q.trim()), 200);
+    return () => clearTimeout(t);
+  }, [q]);
   const [tab, setTab] = useState<string>("all");
   const [cursor, setCursor] = useState(-1);
   const [sort, setSort] = useState<SortKey>("value");
+  const listQuery = useMemo<CompanyListQuery>(() => ({ sort, q: wireQ || null, rung: tab === "all" ? null : tab }), [sort, wireQ, tab]);
+  // How many pages of the list are read. Back to one whenever the filter or order changes;
+  // the keyboard cursor and the end-of-list sentinel ask the next one.
+  const [pages, setPages] = useState(1);
+  useEffect(() => setPages(1), [listQuery]);
+  const list = useCompanyList(brandId, listQuery, pages);
+  // One tab per lifecycle rung (owner 2026-10-21): each company on the highest rung any of its
+  // people reached, served by features-service on every row with the companies per rung.
+  const rungOf = (o: BrandCompanyRow) => o.lifecycle;
+  const rungTabs = list.rungs ? dealsBoardRungs(list.rungs) : [];
   const [view, setView] = useState<CompaniesView>("list");
   useEffect(() => {
     if (window.localStorage.getItem(VIEW_STORAGE_KEY) === "board") setView("board");
@@ -110,37 +125,29 @@ export function CompaniesPage() {
   };
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const searchRef = useRef<HTMLInputElement | null>(null);
-  const updated = useAgo(revenue.dataUpdatedAt);
-  const all = useMemo(() => revenue.data?.organizations ?? [], [revenue.data]);
-  const orgs = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return all
-      .filter((o) => (tab === "all" ? true : rungOf(o)?.key === tab))
-      .filter((o) => (needle ? `${o.orgName ?? ""} ${o.orgDomain ?? ""}`.toLowerCase().includes(needle) : true))
-      .sort(SORTS[sort].compare);
-  }, [all, q, tab, rungOf, sort]);
-  // How many of `orgs` are drawn. Back to one step whenever the filter or order changes;
-  // the keyboard cursor and the end-of-list sentinel extend it.
-  const [shown, setShown] = useState(ROWS_STEP);
-  useEffect(() => setShown(ROWS_STEP), [q, tab, sort]);
+  const updated = useAgo(list.dataUpdatedAt);
+  // Every company of the brand, and the rows loaded so far of the ones matching the tab and search.
+  const all = list.organizationCount ?? 0;
+  const orgs = list.rows;
+  const matching = list.total ?? 0;
+  const hasMore = orgs.length < matching;
   useEffect(() => {
-    if (cursor >= shown) setShown(cursor + ROWS_STEP);
-  }, [cursor, shown]);
+    if (hasMore && cursor >= orgs.length - 1) setPages((n) => Math.max(n, pagesAfter(orgs.length)));
+  }, [cursor, hasMore, orgs.length]);
   const sentinel = useRef<HTMLTableRowElement | null>(null);
-  const hasMore = orgs.length > shown;
   useEffect(() => {
     const el = sentinel.current;
     if (!el || !hasMore) return;
     const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) setShown((n) => n + ROWS_STEP);
+      if (entries.some((e) => e.isIntersecting)) setPages((n) => Math.max(n, pagesAfter(orgs.length)));
     }, { rootMargin: "600px 0px" });
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, shown]);
+  }, [hasMore, orgs.length]);
   const rowKey = (o: (typeof orgs)[number], i: number) => o.orgId ?? o.orgDomain ?? `${o.orgName}-${i}`;
   const allSelected = orgs.length > 0 && orgs.every((o, i) => selected.has(rowKey(o, i)));
   // The biggest served value in view scales each row's bar (display only).
-  const valueMax = Math.max(0, ...orgs.slice(0, shown).map((o) => o.expectedRevenueUsd));
+  const valueMax = Math.max(0, ...orgs.map((o) => o.expectedRevenueUsd));
   const toggle = (k: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -158,8 +165,17 @@ export function CompaniesPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-  const exportRows = () => {
-    const pick = selected.size ? orgs.filter((o, i) => selected.has(rowKey(o, i))) : orgs;
+  const exportRows = async () => {
+    // The selection, else every company matching the tab and search, read in full for the file.
+    let pick: BrandCompanyRow[] = orgs.filter((o, i) => selected.has(rowKey(o, i)));
+    if (!selected.size) {
+      pick = [];
+      for (let offset = 0; offset === 0 || offset < matching; offset += EXPORT_PAGE) {
+        const page = await getBrandCompaniesPage(brandId, listQuery, offset, EXPORT_PAGE);
+        pick.push(...page.companies);
+        if (page.companies.length < EXPORT_PAGE) break;
+      }
+    }
     const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
     const lines = [
       ["Company", "Domain", "Stage", "Best contact", "Expected value (USD)", "Signals", "Last touch"].join(","),
@@ -177,7 +193,7 @@ export function CompaniesPage() {
         ].map(esc).join(",");
       }),
     ];
-    return Promise.resolve(lines.join("\n"));
+    return lines.join("\n");
   };
   // "$ pipeline" lives on the Deals board only, as a forecast (ROI-CONSISTENCY-1103).
 
@@ -192,8 +208,8 @@ export function CompaniesPage() {
       <TopBar crumbs={[{ label: "Records" }, { label: "Companies" }]} />
       <RecordsTabs
         tabs={[
-          { key: "all", label: "All companies", count: revenue.data ? all.length : null },
-          ...rungTabs.map((r) => ({ key: r.key, label: r.label, count: lifecycle.data?.rungs.find((x) => x.key === r.key)?.organizationCount ?? null })),
+          { key: "all", label: "All companies", count: list.organizationCount },
+          ...rungTabs.map((r) => ({ key: r.key, label: r.label, count: list.rungs?.find((x) => x.key === r.key)?.organizationCount ?? null })),
         ]}
         active={tab}
         onPick={(k) => {
@@ -201,9 +217,9 @@ export function CompaniesPage() {
           setCursor(-1);
         }}
         right={
-          revenue.data ? (
+          list.data ? (
             <span>
-              {formatCount(all.length)} {all.length === 1 ? "company" : "companies"} engaged
+              {formatCount(all)} {all === 1 ? "company" : "companies"} engaged
               {updated ? ` · updated ${updated}` : ""}
             </span>
           ) : null
@@ -254,11 +270,10 @@ export function CompaniesPage() {
           orgId={orgId}
           brandId={brandId}
           rungs={tab === "all" ? rungTabs : rungTabs.filter((r) => r.key === tab)}
-          orgs={orgs}
-          rungOf={rungOf}
-          served={(key) => lifecycle.data?.rungs.find((x) => x.key === key)?.organizationCount ?? null}
-          pending={revenue.pending || lifecycle.data === undefined}
-          filtered={q.trim() !== ""}
+          sort={sort}
+          q={listQuery.q}
+          served={(key) => list.rungs?.find((x) => x.key === key)?.organizationCount ?? null}
+          pending={list.pending}
         />
       ) : (
       <div className="k-scroll overflow-x-auto">
@@ -284,14 +299,16 @@ export function CompaniesPage() {
             </tr>
           </thead>
           <tbody>
-            {revenue.pending ? (
+            {list.pending ? (
               Array.from({ length: 12 }, (_, i) => (
                 <tr key={i} className="k-row h-10"><td colSpan={8} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
               ))
-            ) : !revenue.enabled || orgs.length === 0 ? (
+            ) : list.isError && !list.data ? (
+              <tr><td colSpan={8}><EmptyNote>We could not load the companies. They come back on the next refresh.</EmptyNote></td></tr>
+            ) : !list.enabled || orgs.length === 0 ? (
               <tr><td colSpan={8}><EmptyNote>{q || tab !== "all" ? "No company matches." : "No company has engaged yet."}</EmptyNote></td></tr>
             ) : (
-              orgs.slice(0, shown).map((o, i) => {
+              orgs.map((o, i) => {
                 const name = o.orgName ?? o.orgDomain ?? "Unknown company";
                 const person = o.topPerson ? `${o.topPerson.firstName ?? ""} ${o.topPerson.lastName ?? ""}`.trim() : "";
                 const stage = rungOf(o);
@@ -375,7 +392,7 @@ export function CompaniesPage() {
                 );
               })
             )}
-            {!revenue.pending && hasMore && (
+            {!list.pending && hasMore && (
               <tr ref={sentinel} className="k-row h-10" aria-label="Loading more companies">
                 <td colSpan={8} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td>
               </tr>
@@ -398,8 +415,8 @@ export function CompaniesPage() {
           </>
         }
         left={
-          revenue.data
-            ? `${formatCount(orgs.length)} ${orgs.length === 1 ? "company" : "companies"}`
+          list.data
+            ? `${formatCount(matching)} ${matching === 1 ? "company" : "companies"}`
             : " "
         }
       />
@@ -410,38 +427,26 @@ export function CompaniesPage() {
 /**
  * The Board: one column per rung, each company once, on the rung features-service serves for it
  * (the highest any of its people reached), in the page's sort. A card opens the company, where
- * all its people sit together. A column's count is the served one unless a search narrows it.
+ * all its people sit together. Each column reads its own rung's pages; its count is the served
+ * one unless a search narrows it.
  */
 function CompaniesBoard({
   orgId,
   brandId,
   rungs,
-  orgs,
-  rungOf,
+  sort,
+  q,
   served,
   pending,
-  filtered,
 }: {
   orgId: string;
   brandId: string;
   rungs: LifecycleRung[];
-  orgs: ConversionOrg[];
-  rungOf: (o: ConversionOrg) => LifecycleRung | null;
+  sort: SortKey;
+  q: string | null;
   served: (key: string) => number | null;
   pending: boolean;
-  filtered: boolean;
 }) {
-  const byRung = useMemo(() => {
-    const m = new Map<string, ConversionOrg[]>();
-    for (const o of orgs) {
-      const key = rungOf(o)?.key;
-      if (!key) continue;
-      const list = m.get(key) ?? [];
-      list.push(o);
-      m.set(key, list);
-    }
-    return m;
-  }, [orgs, rungOf]);
   return (
     <div className="k-scroll flex gap-4 overflow-x-auto px-4 pb-6 pt-4 md:px-6">
       {pending
@@ -451,19 +456,9 @@ function CompaniesBoard({
               <Shimmer className="h-[74px] rounded-[10px]" />
             </section>
           ))
-        : rungs.map((r) => {
-            const list = byRung.get(r.key) ?? [];
-            return (
-              <CompaniesColumn
-                key={r.key}
-                orgId={orgId}
-                brandId={brandId}
-                rung={r}
-                orgs={list}
-                total={filtered ? list.length : (served(r.key) ?? list.length)}
-              />
-            );
-          })}
+        : rungs.map((r) => (
+            <CompaniesColumn key={r.key} orgId={orgId} brandId={brandId} rung={r} sort={sort} q={q} served={served(r.key)} />
+          ))}
     </div>
   );
 }
@@ -472,16 +467,23 @@ function CompaniesColumn({
   orgId,
   brandId,
   rung,
-  orgs,
-  total,
+  sort,
+  q,
+  served,
 }: {
   orgId: string;
   brandId: string;
   rung: LifecycleRung;
-  orgs: ConversionOrg[];
-  total: number;
+  sort: SortKey;
+  q: string | null;
+  served: number | null;
 }) {
-  const [shown, setShown] = useState(ROWS_STEP);
+  const query = useMemo<CompanyListQuery>(() => ({ sort, q, rung: rung.key }), [sort, q, rung.key]);
+  const [pages, setPages] = useState(1);
+  useEffect(() => setPages(1), [query]);
+  const column = useCompanyList(brandId, query, pages);
+  const orgs = column.rows;
+  const total = q ? (column.total ?? orgs.length) : (served ?? column.total ?? orgs.length);
   const color = TONE_COLOR[uniboxValueTone("lifecycle", rung.key)];
   return (
     <section className="flex w-[240px] min-w-[200px] shrink-0 flex-col md:flex-1 md:basis-0">
@@ -491,13 +493,15 @@ function CompaniesColumn({
         <span className="k-fg3 shrink-0 text-[13px] tabular-nums">{formatCount(total)}</span>
       </header>
       <div className="flex flex-col gap-2">
-        {orgs.length === 0 ? (
+        {column.pending ? (
+          <Shimmer className="h-[74px] rounded-[10px]" />
+        ) : orgs.length === 0 ? (
           <EmptyNote>No company here.</EmptyNote>
         ) : (
-          orgs.slice(0, shown).map((o, i) => <CompanyCard key={o.orgId ?? o.organizationKey ?? `${o.orgName}-${i}`} orgId={orgId} brandId={brandId} o={o} />)
+          orgs.map((o, i) => <CompanyCard key={o.orgId ?? o.organizationKey ?? `${o.orgName}-${i}`} orgId={orgId} brandId={brandId} o={o} />)
         )}
-        {orgs.length > shown ? (
-          <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + ROWS_STEP)}>
+        {orgs.length < (column.total ?? 0) ? (
+          <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setPages((n) => Math.max(n, pagesAfter(orgs.length)))}>
             Show more
           </button>
         ) : null}
@@ -506,7 +510,7 @@ function CompaniesColumn({
   );
 }
 
-function CompanyCard({ orgId, brandId, o }: { orgId: string; brandId: string; o: ConversionOrg }) {
+function CompanyCard({ orgId, brandId, o }: { orgId: string; brandId: string; o: BrandCompanyRow }) {
   const name = o.orgName ?? o.orgDomain ?? "Unknown company";
   const person = o.topPerson ? `${o.topPerson.firstName ?? ""} ${o.topPerson.lastName ?? ""}`.trim() : "";
   const href = companyHref(orgId, brandId, o);

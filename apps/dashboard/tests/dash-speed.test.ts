@@ -109,7 +109,7 @@ describe("the brand's money read starts with the campaigns read, not after it", 
   it("asks unless the campaigns answered none", () => {
     expect(data).toContain("(campaignIds === null || campaignIds.length > 0)");
     expect(data).not.toContain("(campaignIds?.length ?? 0) > 0");
-    // The money summary, the company list (MON-PAGE-SPEED-1111) and the revenue window.
-    expect(data.match(/revenueReadEnabled\(featureSlug, brandId, campaignIds\)/g)?.length).toBe(3);
+    // The money summary (MON-PAGE-SPEED-1111), the company pages and one company (MON-PAGE-SPEED-2-1112), the revenue window.
+    expect(data.match(/revenueReadEnabled\(featureSlug, brandId, campaignIds\)/g)?.length).toBe(4);
   });
 });

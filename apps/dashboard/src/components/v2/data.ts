@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { keepPreviousData, useQueries } from "@tanstack/react-query";
+import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import {
   getBrand,
   getBrandOutcomes,
   getBrandDisqualifications,
-  getBrandRevenue,
+  getBrandCompaniesPage,
+  getBrandCompany,
   getBrandRevenueSummary,
   getBrandRevenueWindow,
   getAwaitingReply,
@@ -15,13 +17,12 @@ import {
   getLeadHistory,
   getOrgUsage,
   getUniboxLifecycleCounts,
-  getBrandCompanyLifecycle,
   keepLastGoodFeatureRevenue,
   type AwaitingReplyPerson,
   type LeadScope,
 } from "@/lib/api";
 import { useBrandScope } from "@/components/v2/brand-scope";
-import type { RevenueOverview } from "@/lib/revenue-view";
+import { COMPANIES_PAGE_SIZE, type BrandCompanyRow, type CompanyListQuery } from "@/lib/brand-companies";
 import type { BrandRevenueSummary } from "@/lib/revenue-parse";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
 import { pollOptions, leadReadOptions, peopleOutcomesReadOptions, slowServerReadOptions } from "@/lib/query-options";
@@ -84,23 +85,63 @@ export function useBrandRevenue(brandId: string) {
 }
 
 /**
- * The brand's money WITH every company its outreach reached (`organizations[]`, ~5 MB on a big
- * brand): only for the pages that draw the company list (Companies, a Company, the search palette
- * once a term is typed). `when` defers it until that list is wanted.
+ * The brand's companies, `pages` pages of {@link COMPANIES_PAGE_SIZE} in the asked order, search and rung
+ * (features-service `GET /brands/:brandId/companies`, MON-PAGE-SPEED-2-1112): ~35 KB a page, each page its
+ * own cached query, so the Companies page, its Board columns and the search palette paint from the saved
+ * copy and a scroll asks only the next page. `rows` are the loaded rows in order; `total` the rows matching;
+ * `organizationCount` every company of the brand; `rungs` the served count per lifecycle rung. Same gate
+ * as the money read: not asked once the campaigns answered none.
  */
-export function useBrandCompanies(brandId: string, when = true) {
+export function useCompanyList(brandId: string, query: CompanyListQuery, pages: number, when = true) {
   const { campaignIds, scopeSettled } = useBrandScope();
   const featureSlug = useSoleFeatureSlug();
+  const gate = useOrgQueryGate();
   const enabled = when && revenueReadEnabled(featureSlug, brandId, campaignIds);
-  const q = useAuthQuery(["brandRevenue", brandId, "brand"], () => getBrandRevenue(brandId), {
+  const results = useQueries({
+    queries: Array.from({ length: Math.max(1, pages) }, (_, i) => ({
+      queryKey: ["brandCompanies", brandId, query.sort, query.q ?? "", query.rung ?? "", i * COMPANIES_PAGE_SIZE],
+      queryFn: () => getBrandCompaniesPage(brandId, query, i * COMPANIES_PAGE_SIZE),
+      enabled: gate && enabled,
+      // A new search or tab keeps the rows on screen until its own first page lands.
+      placeholderData: i === 0 ? keepPreviousData : undefined,
+      ...slowServerReadOptions,
+    })),
+  });
+  const first = results[0];
+  const rows: BrandCompanyRow[] = [];
+  for (const r of results) {
+    if (!r.data) break;
+    rows.push(...r.data.companies);
+  }
+  return {
+    data: first.data,
+    rows,
+    total: first.data?.total ?? null,
+    organizationCount: first.data?.organizationCount ?? null,
+    rungs: first.data?.rungs ?? null,
+    isError: first.isError,
+    dataUpdatedAt: first.dataUpdatedAt,
+    loadingMore: results.some((r, i) => i > 0 && r.data === undefined && !r.isError),
+    enabled,
+    // Reveal on SETTLE: a failed read shows its note, never an eternal skeleton. While the campaigns
+    // load, `enabled` is false for want of data: that is pending too, or every reload flashes the no-data note.
+    pending: enabled ? first.data === undefined && !first.isError : !scopeSettled,
+  };
+}
+
+/**
+ * ONE company of the brand by its URL key, its place in the value order and its neighbours' keys
+ * (features-service `GET /brands/:brandId/companies/:companyKey`): the Company page. `data === null` =
+ * no company of the brand has this key.
+ */
+export function useBrandCompany(brandId: string, companyKey: string) {
+  const { campaignIds, scopeSettled } = useBrandScope();
+  const featureSlug = useSoleFeatureSlug();
+  const enabled = revenueReadEnabled(featureSlug, brandId, campaignIds) && !!companyKey;
+  const q = useAuthQuery(["brandCompany", brandId, companyKey], () => getBrandCompany(brandId, companyKey), {
     enabled,
     ...slowServerReadOptions,
-    structuralSharing: (prev, next) =>
-      keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
   });
-  // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton. While the
-  // campaigns load, `enabled` is false for want of data: that is pending too, or every reload
-  // flashes the page's no-data note.
   return { ...q, enabled, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
 }
 
@@ -172,18 +213,6 @@ export function useDealsLifecycleCounts(brandId: string, campaignId: string | nu
     () => getUniboxLifecycleCounts(brandId, filters, { campaignId }),
     { ...leadReadOptions, enabled: !!brandId },
   );
-}
-
-/**
- * Each company's lifecycle rung (features-service), and the companies per rung: the Companies
- * page's tabs and Stage column, the company page's stage. Read at the BRAND grain (v0.179.548):
- * every offer of the brand, each company once.
- */
-export function useCompanyLifecycle(brandId: string) {
-  return useAuthQuery(["companyLifecycle", brandId, "brand"], () => getBrandCompanyLifecycle(brandId), {
-    ...slowServerReadOptions,
-    enabled: !!brandId,
-  });
 }
 
 /**

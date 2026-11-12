@@ -187,7 +187,7 @@ describe("v2 wiring", () => {
 
   it("keeps v1's key prefixes at brand grain, so a brand invalidation still reaches them", () => {
     const data = read("src/components/v2/data.ts");
-    expect(data).toContain('["brandRevenue", brandId, "brand"]');
+    expect(data).toContain('["brandRevenue", brandId, "brand", "summary"]');
     expect(data).toContain('["reachedCounts", brandId, "", campaignId ?? "", list.join(",")]');
     expect(data).toContain("key: brandLeadScopeKey(brandId)");
     expect(read("src/components/v2/use-campaigns.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");

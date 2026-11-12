@@ -145,11 +145,14 @@ describe("Companies reads each company's served rung", () => {
     const { join } = await import("node:path");
     const page = readFileSync(join(__dirname, "../src/components/v2/companies-page.tsx"), "utf8");
     const one = readFileSync(join(__dirname, "../src/components/v2/company-page.tsx"), "utf8");
-    expect(page).toContain("useCompanyLifecycle(brandId)");
-    expect(page).toContain("rungOf(o)?.key === tab");
+    // The rung rides each served company row; the tab filters on the producer (MON-PAGE-SPEED-2-1112).
+    expect(page).toContain("useCompanyList(brandId, listQuery, pages)");
+    expect(page).toContain('rung: tab === "all" ? null : tab');
+    expect(page).toContain("const rungOf = (o: BrandCompanyRow) => o.lifecycle;");
     expect(page).not.toContain("STAGE_ORDER");
     expect(page).not.toContain('label: "Won"');
-    expect(one).toContain("dealsBoardRungs(lifecycle.rungs)");
+    expect(one).toContain("dealsBoardRungs(found.data.rungs)");
+    expect(one).toContain("const stage = org?.lifecycle ?? null;");
     expect(one).not.toContain("const FLOW");
   });
   it("Companies has a Board view: one column per served rung, each company on its served rung", async () => {
@@ -162,7 +165,8 @@ describe("Companies reads each company's served rung", () => {
     expect(page).toContain("<CompaniesBoard");
     // Columns are the served ladder (minus Lead found), cards land on the served company rung.
     expect(page).toContain('rungs={tab === "all" ? rungTabs');
-    expect(board).toContain("rungOf(o)?.key");
+    expect(board).toContain("<CompaniesColumn");
+    expect(page).toContain("({ sort, q, rung: rung.key })");
     // Each card opens the company, where its people sit together.
     expect(page).toContain("const href = companyHref(orgId, brandId, o);");
   });
