@@ -97,5 +97,8 @@ describe("Monitoring > LLMs per Engine reader", () => {
     const comp = readFileSync("src/components/v2/monitoring-llms.tsx", "utf8");
     expect(comp).toContain('<CatalogueName kind="llm"');
     expect(comp).not.toContain(".sort(");
+    // One fixed grid across Engines (render check 2026-11-12: columns drifted per table), phone keeps 3 columns.
+    expect(comp).toContain("table-fixed");
+    expect(comp).toContain('const WIDE = "hidden md:table-cell"');
   });
 });

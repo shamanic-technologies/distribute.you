@@ -33,6 +33,10 @@ export function useEngineLlms() {
 }
 
 const pctOf = (v: number | null) => (v == null ? null : formatRatePct(v * 100));
+/** Dollars as the dashboard prints them; a real amount under one cent never reads as $0.00. */
+const usd = (v: number) => (v > 0 && v < 0.005 ? "<$0.01" : formatUsdAdaptive(v));
+/** Columns hidden below md (a phone keeps LLM, Rating share and Status). */
+const WIDE = "hidden md:table-cell";
 
 function Dot({ color }: { color: string }) {
   return <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} aria-hidden="true" />;
@@ -47,22 +51,24 @@ function LlmRow({ l, outside }: { l: EngineLlm; outside: boolean }) {
     <tr className="k-row border-t k-line-subtle">
       <td className="px-3 py-2 first:pl-4">
         <span className={outside ? "k-fg2" : undefined}>
-          <CatalogueName kind="llm" name={l.name} after={l.rank === 1 ? <span className="k-chip">Favourite</span> : null} />
+          <CatalogueName kind="llm" name={l.name} after={l.rank === 1 ? <span className="hidden md:inline"><span className="k-chip">Favourite</span></span> : null} />
         </span>
       </td>
       <td className="px-3 py-2">
         {draws ? (
           <span className="inline-flex items-center gap-2 tabular-nums">
-            <ShareBar value={l.shareOfDraws} max={1} />
+            <span className="hidden md:inline-flex">
+              <ShareBar value={l.shareOfDraws} max={1} />
+            </span>
             {draws}
           </span>
         ) : (
           <Dash />
         )}
       </td>
-      <td className="px-3 py-2 text-right tabular-nums">
+      <td className={`${WIDE} px-3 py-2 text-right tabular-nums`}>
         {l.costPerOutcomeUsd != null ? (
-          formatUsdAdaptive(l.costPerOutcomeUsd)
+          usd(l.costPerOutcomeUsd)
         ) : l.calls > 0 && l.outcomes === 0 ? (
           <span className="k-fg3" title={l.costPerOutcomeUnavailableReason ?? undefined}>
             Learning
@@ -71,16 +77,16 @@ function LlmRow({ l, outside }: { l: EngineLlm; outside: boolean }) {
           <Dash />
         )}
       </td>
-      <td className="px-3 py-2 text-right tabular-nums">{pctOf(l.outcomeRate) ?? <Dash />}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{n(l.outcomes)}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{formatUsdAdaptive(l.spentUsdToDate)}</td>
-      <td className="px-3 py-2">
+      <td className={`${WIDE} px-3 py-2 text-right tabular-nums`}>{pctOf(l.outcomeRate) ?? <Dash />}</td>
+      <td className={`${WIDE} px-3 py-2 text-right tabular-nums`}>{n(l.outcomes)}</td>
+      <td className={`${WIDE} px-3 py-2 text-right tabular-nums`}>{usd(l.spentUsdToDate)}</td>
+      <td className={`${WIDE} px-3 py-2`}>
         <span className="flex items-center justify-end gap-2 tabular-nums">
           <BarSpark values={l.dailySpend.map((d) => d.spentUsd)} className="h-5 w-16" />
-          <span className="w-12 text-right">{formatUsdAdaptive(l.spentUsdPerDay)}</span>
+          <span className="w-12 text-right">{usd(l.spentUsdPerDay)}</span>
         </span>
       </td>
-      <td className="k-mono k-fg2 px-3 py-2 text-[12px]">{l.lastCallDay ? shortDay(l.lastCallDay) : <Dash />}</td>
+      <td className={`${WIDE} k-mono k-fg2 px-3 py-2 text-[12px]`}>{l.lastCallDay ? shortDay(l.lastCallDay) : <Dash />}</td>
       <td className="px-3 py-2 last:pr-4">
         <span className="inline-flex items-center gap-1.5 text-[12px]" style={red ? { color: RED } : undefined} title={l.notPickableReason ?? undefined}>
           <Dot color={red ? RED : outside ? "var(--fg-4)" : OK} />
@@ -91,8 +97,18 @@ function LlmRow({ l, outside }: { l: EngineLlm; outside: boolean }) {
   );
 }
 
-const HEADS = ["LLM", "Rating share", "$ / outcome", "% outcome", "# outcomes", "$ spent", "$ per day", "Last call", "Status"];
-const RIGHT = new Set(["$ / outcome", "% outcome", "# outcomes", "$ spent", "$ per day"]);
+/** One fixed grid for every Engine's table, so a column sits at the same place in each (LLM takes what is left). */
+const COLS: { head: string; width: string | null; right: boolean; wide: boolean }[] = [
+  { head: "LLM", width: null, right: false, wide: false },
+  { head: "Rating share", width: "w-[64px] md:w-[130px]", right: false, wide: false },
+  { head: "$ / outcome", width: "w-[96px]", right: true, wide: true },
+  { head: "% outcome", width: "w-[88px]", right: true, wide: true },
+  { head: "# outcomes", width: "w-[92px]", right: true, wide: true },
+  { head: "$ spent", width: "w-[84px]", right: true, wide: true },
+  { head: "$ per day (30 days)", width: "w-[150px]", right: true, wide: true },
+  { head: "Last call", width: "w-[84px]", right: false, wide: true },
+  { head: "Status", width: "w-[144px] md:w-[168px]", right: false, wide: false },
+];
 
 function EngineBlock({ e }: { e: EngineLlmsEngine }) {
   const forced = forcedOutside(e);
@@ -100,7 +116,7 @@ function EngineBlock({ e }: { e: EngineLlmsEngine }) {
   return (
     <section className="space-y-3">
       <SectionTitle
-        count={e.llms.length}
+        count={e.llms.length + e.outsideUniverse.length}
         right={
           <span className="inline-flex items-center gap-1.5 text-[12px]" style={forced.length ? { color: RED } : undefined}>
             <Dot color={forced.length ? RED : OK} />
@@ -115,12 +131,15 @@ function EngineBlock({ e }: { e: EngineLlmsEngine }) {
       </p>
       <div className="k-card overflow-hidden">
         <div className="k-scroll overflow-x-auto">
-          <table className="w-full min-w-[980px] text-[13px]">
+          <table className="w-full table-fixed text-[13px]">
             <thead>
               <tr>
-                {HEADS.map((h) => (
-                  <th key={h} className={`k-label px-3 py-2.5 first:pl-4 last:pr-4 ${RIGHT.has(h) ? "text-right" : "text-left"}`}>
-                    {h}
+                {COLS.map((c) => (
+                  <th
+                    key={c.head}
+                    className={`k-label md:whitespace-nowrap px-3 py-2.5 first:pl-4 last:pr-4 ${c.width ?? ""} ${c.wide ? WIDE : ""} ${c.right ? "text-right" : "text-left"}`}
+                  >
+                    {c.head}
                   </th>
                 ))}
               </tr>
