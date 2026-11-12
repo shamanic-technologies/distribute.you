@@ -42,9 +42,10 @@ describe("slow-moving reads poll at their producer's pace", () => {
     expect(slowServerReadOptions.refetchInterval({ state: { status: "success", data: {} } })).toBe(60_000);
     expect(slowServerReadOptions.refetchInterval({ state: { status: "error", data: undefined } })).toBe(false);
     const sites: [string, string][] = [
-      ["src/components/v2/data.ts", "() => getBrandRevenue(brandId), {\n    enabled,\n    ...slowServerReadOptions,"],
+      ["src/components/v2/data.ts", "() => getBrandRevenueSummary(brandId), {\n    enabled,\n    ...slowServerReadOptions,"],
       ["src/components/v2/data.ts", "getBrandRevenueWindow(brandId, days), {\n    enabled,\n    ...slowServerReadOptions,"],
-      ["src/components/v2/data.ts", "getBrandCompanyLifecycle(brandId), {\n    ...slowServerReadOptions,"],
+      ["src/components/v2/data.ts", "enabled: gate && enabled,\n      // A new search or tab keeps the rows on screen until its own first page lands.\n      placeholderData: i === 0 ? keepPreviousData : undefined,\n      ...slowServerReadOptions,"],
+      ["src/components/v2/data.ts", "() => getBrandCompany(brandId, companyKey), {\n    enabled,\n    ...slowServerReadOptions,"],
       ["src/components/v2/deals-page.tsx", "{ ...slowServerReadOptions, enabled: !!brandId && (!campaignFilter || !!valueOfferId) }"],
       ["src/components/campaigns/campaigns-table.tsx", "getBrandCampaignRevenue(brandId), {\n    enabled: orgConsistent && !!brandId && moneyChannelSlugs.length > 0,\n    ...slowServerReadOptions,"],
       ["src/components/campaigns/campaigns-table.tsx", "{ enabled: revenueEnabled, ...slowServerReadOptions }"],

@@ -17,9 +17,9 @@ import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
-import { useLeadScope, useBrandRevenue, useBrandCompanies, useReachedCounts, useNeedsYourCall } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue, useCompanyList, useReachedCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
-import { companyHref } from "@/components/v2/companies-page";
+import { companyKeyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, v2NewBrandHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { moveOrgCursor, showOrgSearch, switcherOrgs } from "@/lib/v2/org-switcher-list";
@@ -496,15 +496,22 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [open]);
+  // The company search the server is asked, once typing pauses.
+  const [coWire, setCoWire] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => setWire(leadsSearchProblem(q) ? "" : (leadsSearchParam(q) ?? "")), 200);
+    const t = setTimeout(() => {
+      setWire(leadsSearchProblem(q) ? "" : (leadsSearchParam(q) ?? ""));
+      setCoWire(q.trim());
+    }, 200);
     return () => clearTimeout(t);
   }, [q]);
 
   const { staffMode } = useStaffMode();
   const revenue = useBrandRevenue(brandId).data;
-  // The company LIST (~5 MB on a big brand) is read only once a search term is typed.
-  const companyList = useBrandCompanies(brandId, q.trim() !== "").data;
+  // The companies matching the typed term, the first page of features-service's own search
+  // (MON-PAGE-SPEED-2-1112: never the whole list), read only once a term is typed.
+  const companyQuery = useMemo(() => ({ sort: "value" as const, q: coWire || null, rung: null }), [coWire]);
+  const companyList = useCompanyList(brandId, companyQuery, 1, open && coWire !== "").data;
   // People we emailed: lead-service's Unibox count of the people who reached the first email.
   const sentPeople = useReachedCounts(brandId, [EMAIL_SENT_STEP]).data?.[EMAIL_SENT_STEP] ?? null;
   const call = useNeedsYourCall(brandId, 5).data?.leads ?? [];
@@ -554,9 +561,9 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     }
     if (term) {
       let companies = 0;
-      for (const o of companyList?.organizations ?? []) {
+      for (const o of companyList?.companies ?? []) {
         const name = o.orgName ?? o.orgDomain ?? "";
-        const href = companyHref(orgId, brandId, o);
+        const href = companyKeyHref(orgId, brandId, o.companyKey);
         if (!name || !href || !matches(`${name} ${o.orgDomain ?? ""}`, term)) continue;
         out.push({ key: `co-${href}`, group: "Companies", text: name, label: name, meta: o.orgDomain ?? undefined, icon: <CompanyMark name={name} domain={o.orgDomain ?? null} size={16} />, href });
         if (++companies >= 6) break;

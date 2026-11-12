@@ -157,6 +157,15 @@ import type {
 } from "./campaign-workflow-rows";
 import type { LeadConversation } from "./lead-conversation";
 import { ScopeMaturitySchema, parseFeatureRevenue, parseBrandRevenueSummary, type BrandRevenueSummary } from "./revenue-parse";
+import {
+  COMPANIES_PAGE_SIZE,
+  companiesPageQuery,
+  parseBrandCompaniesPage,
+  parseBrandCompany,
+  type BrandCompaniesPage,
+  type BrandCompany,
+  type CompanyListQuery,
+} from "./brand-companies";
 import { maturityPairSchema, type MaturityPair } from "./maturity";
 import type { OutcomeFigures, ScopeMaturity } from "./revenue-view";
 import { LeadHistorySchema, type LeadHistory } from "./lead-history";
@@ -7066,6 +7075,38 @@ export async function getBrandRevenueSummary(brandId: string, token?: string): P
   const query = new URLSearchParams({ pricing: "net", organizations: "count" });
   const raw = await apiCall<unknown>(`/brands/${brandId}/revenue?${query.toString()}`, { token });
   return parseBrandRevenueSummary(raw, "getBrandRevenueSummary");
+}
+
+/**
+ * One page of the brand's companies (features-service `GET /brands/:brandId/companies`, MON-PAGE-SPEED-2-1112):
+ * sorted, searched and filtered on a lifecycle rung by the producer, each row with its rung. ~35 KB a page where
+ * the revenue body's company list was 7.1 MB. The Companies page, its Board and the search palette read it.
+ */
+export async function getBrandCompaniesPage(
+  brandId: string,
+  query: CompanyListQuery,
+  offset: number,
+  limit = COMPANIES_PAGE_SIZE,
+): Promise<BrandCompaniesPage> {
+  const raw = await apiCall<unknown>(`/brands/${encodeURIComponent(brandId)}/companies?${companiesPageQuery(query, offset, limit)}`);
+  return parseBrandCompaniesPage(raw, "getBrandCompaniesPage");
+}
+
+/**
+ * ONE company of the brand by its URL key (domain, else org id), its place in the value order and its
+ * neighbours' keys (features-service `GET /brands/:brandId/companies/:companyKey`). Null = no company of
+ * the brand has this key (the producer's named `company_not_found`); any other failure throws.
+ */
+export async function getBrandCompany(brandId: string, companyKey: string): Promise<BrandCompany | null> {
+  try {
+    const raw = await apiCall<unknown>(
+      `/brands/${encodeURIComponent(brandId)}/companies/${encodeURIComponent(companyKey)}?pricing=net`,
+    );
+    return parseBrandCompany(raw, "getBrandCompany");
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && err.body?.reason === "company_not_found") return null;
+    throw err;
+  }
 }
 
 /**

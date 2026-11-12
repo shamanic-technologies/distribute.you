@@ -356,7 +356,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "dealsLifecycleCounts",
   "dealsLifecycleRows",
   "dealsLifecycle",
-  "companyLifecycle",
+  // The brand's companies, one ~35 KB page per entry, and one company (MON-PAGE-SPEED-2-1112): the
+  // Companies page, its Board, a Company page and the search palette paint from disk.
+  "brandCompanies",
+  "brandCompany",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
   // is the offer sidebar's own label.

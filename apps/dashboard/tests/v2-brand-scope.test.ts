@@ -59,7 +59,7 @@ describe("no v2 brand page reads a sidebar-selected offer", () => {
 
   it("money, leads, campaigns and the shell read the brand", () => {
     const data = read("components/v2/data.ts");
-    expect(data).toContain("getBrandRevenue(brandId)");
+    expect(data).toContain("getBrandRevenueSummary(brandId)");
     expect(data).toContain("getBrandRevenueWindow(brandId, days)");
     expect(data).toContain("scope: { brandId }");
     expect(data).not.toContain("getOfferRevenue(");
@@ -70,7 +70,8 @@ describe("no v2 brand page reads a sidebar-selected offer", () => {
 
   it("an offer-grain-only read is asked for the brand's one offer, never summed across offers", () => {
     // Deals + Companies read features-service's BRAND grain since v0.179.548.
-    expect(read("components/v2/data.ts")).toContain("getBrandCompanyLifecycle(brandId)");
+    // Companies: the brand's own company list, paged by features-service (MON-PAGE-SPEED-2-1112).
+    expect(read("components/v2/data.ts")).toContain("getBrandCompaniesPage(brandId, query, i * COMPANIES_PAGE_SIZE)");
     expect(read("components/v2/deals-page.tsx")).toContain(": getBrandDealsLifecycle(brandId)");
     expect(read("components/v2/outcomes-page.tsx")).toContain("useBrandScope().soleOfferId");
     expect(read("components/v2/today-page.tsx")).toContain("offerId={scope.soleOfferId}");

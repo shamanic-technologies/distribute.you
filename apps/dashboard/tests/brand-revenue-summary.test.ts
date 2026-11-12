@@ -31,14 +31,15 @@ describe("brand revenue summary (organizations=count)", () => {
     expect(() => parseBrandRevenueSummary(rest, "test")).toThrow();
   });
 
-  it("the shared read asks the count; only list pages and a typed search ask the list", () => {
+  it("the shared read asks the count; the company pages read features-service's paged list, never the whole body (MON-PAGE-SPEED-2-1112)", () => {
     const api = read("src/lib/api.ts");
     expect(api).toContain('new URLSearchParams({ pricing: "net", organizations: "count" })');
     const data = read("src/components/v2/data.ts");
     expect(data).toContain('["brandRevenue", brandId, "brand", "summary"], () => getBrandRevenueSummary(brandId)');
-    expect(read("src/components/v2/companies-page.tsx")).toContain("useBrandCompanies(brandId)");
-    expect(read("src/components/v2/company-page.tsx")).toContain("useBrandCompanies(brandId)");
-    expect(read("src/components/v2/sidebar-menus.tsx")).toContain('useBrandCompanies(brandId, q.trim() !== "")');
+    expect(data).not.toContain("getBrandRevenue(brandId)");
+    expect(read("src/components/v2/companies-page.tsx")).toContain("useCompanyList(brandId, listQuery, pages)");
+    expect(read("src/components/v2/company-page.tsx")).toContain("useBrandCompany(brandId, key)");
+    expect(read("src/components/v2/sidebar-menus.tsx")).toContain('useCompanyList(brandId, companyQuery, 1, open && coWire !== "")');
     expect(read("src/components/v2/v2-shell.tsx")).toContain("revenue?.organizationCount");
   });
 });
