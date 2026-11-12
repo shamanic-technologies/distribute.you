@@ -70,6 +70,8 @@ import { CampaignEnginesPage, CampaignEnginesTile, useEngineNames } from "@/comp
 import { brokenEngines, brokenOutcomes, enginesOnWorkflow, guardStateWords, outcomeName } from "@/lib/monitoring/scripts-monitoring";
 import { engineReasonWords, regretPct, verdictReasonWords } from "@/lib/factory-shadow";
 import { EnginePage, EngineTile } from "@/components/v2/monitoring-engine";
+import { EngineLlmsPage, EngineLlmsTile, useEngineLlms } from "@/components/v2/monitoring-llms";
+import { enginesForcingOutside, evidenceBroken } from "@/lib/monitoring/engine-llms";
 import { loadLabel, memLabel } from "@/lib/monitoring/box-health";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, ReconciliationPage, ReconciliationTile, useLedgerCheck, useLedgerReconciliation, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
@@ -204,6 +206,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "scripts/engines": { section: "scripts", title: "Engines", question: "Does each script work as well as the code it replaced?" },
   "scripts/campaigns": { section: "scripts", title: "Campaigns", question: "Which outcomes do our campaigns still make with a workflow?" },
   "ai/credit": { section: "ai", title: "Credit", question: "Does every AI vendor we call still have credit?" },
+  "ai/llms": { section: "ai", title: "LLMs per Engine", question: "Which LLMs may each Engine use, and how does its Rating rank them?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
   "alerts/raised": { section: "alerts", title: "Raised", question: "Did any of our services raise an alert in the last 24 hours?" },
 };
@@ -374,6 +377,7 @@ export function V2Monitoring() {
         {view.page === "scripts/engines" && <ScriptsPage />}
         {view.page === "scripts/campaigns" && <CampaignEnginesPage />}
         {view.page === "ai/credit" && <VendorCreditPage />}
+        {view.page === "ai/llms" && <EngineLlmsPage />}
         {view.page === "chat/skills" && <SkillsView />}
         {view.page === "alerts/raised" && <MonitoringAlertsPage />}
       </div>
@@ -486,6 +490,9 @@ function Hub({ base }: { base: string }) {
   const mailboxVendorsRefusing = opsInfra.data ? vendorRefusals(opsInfra.data).length > 0 : false;
   const sendPoolEmpty = opsInfra.data ? emptySendPools(opsInfra.data).length > 0 : false;
   const vendorsOut = vendors.data ? outOfCreditVendors(vendors.data) : undefined;
+  const llms = useEngineLlms();
+  const llmsForcing = llms.data ? enginesForcingOutside(llms.data) : undefined;
+  const llmsRed = llms.data ? evidenceBroken(llms.data) || (llmsForcing?.length ?? 0) > 0 : false;
   const scriptsBroken = scripts.data ? brokenOutcomes(scripts.data) : undefined;
   const scriptGuards = scripts.data?.outcomes.flatMap((o) => (o.guard ? [o.guard.state] : [])) ?? [];
   const enginesBroken = scripts.data ? brokenEngines(scripts.data.engines) : undefined;
@@ -553,6 +560,8 @@ function Hub({ base }: { base: string }) {
         <CampaignEnginesTile href={href("scripts/campaigns")} />
         {/* An AI vendor that refused a call for lack of credit and has not served one since (VENDOR-CREDIT-1030, DeepSeek 2026-10-29): red here IS the alert, never an email. */}
         <VendorCreditTile href={href("ai/credit")} />
+        {/* An Engine still calling an LLM outside its allowed list (a script forcing Fable or Opus, owner 2026-11-12), or the Rating's LLM evidence unreadable (LLM-RATING-PER-ENGINE-1112): red here IS the alert, never an email. */}
+        <EngineLlmsTile href={href("ai/llms")} />
         {/* A mailbox vendor refusing our API, its mailboxes out of the send pool (SEND-PRIMEFORGE-402-1030, Primeforge 402 on 2026-10-29): shown only while one refuses, red here IS the alert, never an email. */}
         <VendorRefusalTile href={href("emails/capacity")} />
         {/* How many mailboxes can take a new email now, through the sender's own selection; zero = every org's new emails refused (SEND-POOL-VENDOR-402-1030, a day at zero from 2026-10-29): red here IS the alert, never an email. */}
@@ -1201,10 +1210,11 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={1}>AI vendors</SectionTitle>
-      <Section section="ai" count={1} grid={false}>
+      <SectionTitle count={2}>AI vendors</SectionTitle>
+      <Section section="ai" count={2} grid={false}>
         <HubChips>
           <HubChip href={href("ai/credit")} color={vendorsOut?.length ? "var(--data-rose)" : "var(--data-violet)"} label="Credit" />
+          <HubChip href={href("ai/llms")} color={llmsRed ? "var(--data-rose)" : "var(--data-violet)"} label="LLMs per Engine" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -1218,6 +1228,19 @@ function Hub({ base }: { base: string }) {
               note: "calls refused for lack of credit",
             },
             { label: "Vendors watched", value: vendors.data?.vendors.length, note: "every AI vendor we call" },
+          ]}
+        />
+        <Card
+          href={href("ai/llms")}
+          page="ai/llms"
+          error={llms.isError && !llms.data}
+          cells={[
+            {
+              label: "Outside their list",
+              value: llmsForcing && <span style={{ color: llmsRed ? "var(--data-rose)" : undefined }}>{llmsForcing.map((e) => e.name).join(", ") || "None"}</span>,
+              note: "an LLM a script still forces",
+            },
+            { label: "Engines calling an LLM", value: llms.data?.engines.length, note: "ranked by their Rating" },
           ]}
         />
         </div>

@@ -13502,9 +13502,17 @@ export async function getStaffSophieReplies(days: number): Promise<StaffSophieRe
 
 // ─── Monitoring > AI vendors > Credit (VENDOR-CREDIT-1030) ───
 import { VendorCreditSchema as StaffVendorCreditSchema, type VendorCredit as StaffVendorCredit } from "./monitoring/vendor-credit";
+import { EngineLlmsSchema, type EngineLlms } from "./monitoring/engine-llms";
 
 /** chat-service's stored "vendor out of credit" fact per AI provider it calls, through api-service's staff passthrough. */
 export const STAFF_VENDOR_CREDIT_PATH = "/chat/ops/vendor-credit";
+
+/** Monitoring > AI vendors > LLMs: per Engine, its allowed LLMs ranked by the Rating with their usage (features-service, LLM-RATING-PER-ENGINE-1112). */
+export const STAFF_ENGINE_LLMS_PATH = "/features/research/engine-llms";
+
+export async function getStaffEngineLlms(): Promise<EngineLlms> {
+  return parseStaff("getStaffEngineLlms", EngineLlmsSchema, await apiCall<unknown>(STAFF_ENGINE_LLMS_PATH));
+}
 
 /** One row per provider plus one per UTC day × provider over the last `days` (1..90), with chat-service's served verdict. */
 export async function getStaffVendorCredit(days: number): Promise<StaffVendorCredit> {

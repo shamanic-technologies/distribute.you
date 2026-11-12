@@ -70,7 +70,8 @@ describe("Monitoring > AI vendors > Credit: page and hub", () => {
     const hub = page.slice(page.indexOf("function Hub("), page.indexOf("function Section("));
     expect(hub.indexOf('<VendorCreditTile href={href("ai/credit")} />')).toBeGreaterThan(-1);
     expect(hub.indexOf("<VendorCreditTile")).toBeLessThan(hub.indexOf("<Section "));
-    expect(hub).toContain('<Section section="ai" count={1} grid={false}>');
+    // Two AI pages since LLM-RATING-PER-ENGINE-1112 (Credit + LLMs per Engine).
+    expect(hub).toContain('<Section section="ai" count={2} grid={false}>');
   });
 
   it("draws the served verdicts, sentences and days: no client sort, no sum, no per-vendor case", () => {
