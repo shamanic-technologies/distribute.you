@@ -79,8 +79,8 @@ const factsKey = (leadRowId: string | null, brandId: string, offerId: string | n
 /** How long the typing pauses before the search is asked. */
 const SEARCH_DEBOUNCE_MS = 150;
 
-/** A message longer than this opens folded, so one long email does not bury the thread. */
-const FOLD_AT = 600;
+/** A message longer than this opens folded, so one long email does not bury the thread. A full cold email (~900 chars) stays open (owner 2026-11-13, doubled from 600). */
+const FOLD_AT = 1200;
 
 /**
  * The Unibox (owner 2026-10-17): the list is lead-service's Unibox, ONLY the people crm-service
@@ -1022,7 +1022,7 @@ function Message({
       </p>
       {item.subject && <p className="mt-1 text-[13px] font-medium">{item.subject}</p>}
       {body ? (
-        <p className={`mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 ${long && !open ? "line-clamp-[10]" : ""}`}>{body}</p>
+        <p className={`mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 ${long && !open ? "line-clamp-[20]" : ""}`}>{body}</p>
       ) : (
         <p className="k-fg4 mt-1 text-[13px]">—</p>
       )}
