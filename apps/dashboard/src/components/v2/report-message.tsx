@@ -2,8 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { messageWrittenUnit } from "@/lib/unit-reports";
+import { useQueryClient } from "@tanstack/react-query";
+import { listUnitReports } from "@/lib/api";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { isMessageReported, messageWrittenUnit } from "@/lib/unit-reports";
 import { useUnitReport } from "@/lib/use-unit-report";
+
+/** The org's reports of one lead's messages: ONE read per thread (every message shares the key). */
+function unitReportsKey(leadId: string) {
+  return ["unitReports", "lead-service", leadId, "message_written"] as const;
+}
 
 /**
  * "Report" on a message we wrote (SCRIPT-VALUE-RATING-1113, owner 2026-11-13: « enlevons le point
@@ -11,11 +19,16 @@ import { useUnitReport } from "@/lib/use-unit-report";
  * says it here: an optional note, one click, one `reported` report of the message's Unit. The
  * message stays as it is; the row only says it was reported. No positive vote.
  *
- * The mark lasts while this view is open: no read of past reports is served yet (features-service
- * gap, relayed 2026-11-13).
+ * The mark is read back from features-service (`GET /orgs/unit-reports`, the lead's reports): a
+ * report whose `unitAt` is this message's send time marks it, after a reload too.
  */
 export function ReportMessage({ leadId, sentAt }: { leadId: string; sentAt: string | null }) {
   const send = useUnitReport();
+  const qc = useQueryClient();
+  const reports = useAuthQuery(unitReportsKey(leadId), () =>
+    listUnitReports({ subjectService: "lead-service", subjectId: leadId, outcomeKey: "message_written" }),
+  );
+  const servedReported = isMessageReported(reports.data, sentAt);
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState<{ top: number; left: number } | null>(null);
@@ -56,13 +69,15 @@ export function ReportMessage({ leadId, sentAt }: { leadId: string; sentAt: stri
       }
       setState("sent");
       close();
+      // Re-read so the served list carries it (and the disk copy a reload paints from).
+      void qc.invalidateQueries({ queryKey: unitReportsKey(leadId) });
     } catch (e) {
       console.error("[dashboard] message report not stored", { leadId, e });
       setState("failed");
     }
   };
 
-  if (state === "sent") {
+  if (state === "sent" || servedReported) {
     return (
       <span className="k-fg3 inline-flex h-6 items-center px-1.5 text-[12px]" data-reported>
         Reported

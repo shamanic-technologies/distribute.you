@@ -409,6 +409,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "leadTimeline",
   // Who wrote each message we sent to a person (model + tactic lines): small, read on open.
   "leadWrittenBy",
+  // The client's own reports of one lead's messages (SCRIPT-VALUE-RATING-1113): the "Reported" mark.
+  "unitReports",
   "leadDetail",
   // Where one lead stands (lead-service leadState: Won / Hot / Lost, lifecycle): small, the person page paints it from disk.
   "leadUniboxState",
