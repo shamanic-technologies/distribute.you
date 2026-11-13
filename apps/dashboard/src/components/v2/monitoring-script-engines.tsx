@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getStaffScriptEngines } from "@/lib/api";
+import { getPublicCatalogueSteps, getStaffScriptEngines } from "@/lib/api";
+import { catalogueReadOptions } from "@/lib/query-options";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { useClientClock } from "@/lib/use-client-clock";
-import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { BarSpark, Figure, SectionTitle, ShareBar, Shimmer, StatTile } from "@/components/v2/ui";
 import { CatalogueName } from "@/components/v2/catalogue-name";
-import { StepMark } from "@/components/marks/step-mark";
+import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { Dash, Failed, Loading, RED, n, shortDay } from "@/components/v2/monitoring-sending";
 import {
   basisWords,
@@ -38,10 +38,22 @@ export function useScriptEngines() {
   return useAuthQuery(["staffScriptEngines"], getStaffScriptEngines, { ...pollOptions, retry: false });
 }
 
-/** The Engine's catalogue name (served step label), the outcome key while the catalogue loads. */
+/** The public outcome catalogue (`/public/catalogue/steps`): every Engine's served name and icon. */
+function useSteps() {
+  return useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, catalogueReadOptions);
+}
+
+/** An outcome's served catalogue name, the outcome key while the catalogue loads. */
 function useStepName(): (outcome: string) => string {
-  const catalogue = useLegCatalogue();
-  return (outcome) => catalogue.steps.get(outcome)?.label ?? outcome;
+  const steps = useSteps();
+  return (outcome) => steps.data?.find((s) => s.key === outcome)?.name ?? outcome;
+}
+
+/** An outcome's served catalogue mark (the Catalogue and Research pages wear the same). */
+function OutcomeMark({ outcome }: { outcome: string }) {
+  const steps = useSteps();
+  const step = steps.data?.find((s) => s.key === outcome) ?? null;
+  return <CatalogueMark icon={step?.icon ?? null} name={step?.name ?? outcome} size={18} />;
 }
 
 /** Dollars as the dashboard prints them; a real amount under one cent never reads as $0.00. */
@@ -200,14 +212,14 @@ function EngineBlock({ e }: { e: ScriptEngine }) {
       <SectionTitle
         count={e.scripts.length}
         right={
-          <span className="k-fg2 inline-flex min-w-0 items-center gap-1.5 text-[12px]">
-            <span className="k-fg3">Favourite</span>
+          <span className="k-fg2 hidden min-w-0 items-center gap-1.5 text-[12px] md:inline-flex">
+            <span className="k-fg3 shrink-0">Favourite</span>
             {e.favourite ? <span className="k-mono truncate">{scriptName(e.favourite, e.outcome)}</span> : <Dash />}
           </span>
         }
       >
         <span className="inline-flex items-center gap-2">
-          <StepMark stepKey={e.outcome} size="xs" />
+          <OutcomeMark outcome={e.outcome} />
           {stepName(e.outcome)}
         </span>
       </SectionTitle>
