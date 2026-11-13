@@ -111,10 +111,10 @@ const readNumber = (data: Record<string, unknown>, key: string): number | null =
 };
 
 /**
- * The field campaign-service names the refused next spend on a funnel hold (HOLD-FIGURES-1113). Absent until it
- * ships: the copy then states the spent / limit figures alone.
+ * The field campaign-service names the refused next spend on a funnel hold (HOLD-FIGURES-1113, campaign-service
+ * #895). Null when billing named none: the copy then states the spent / limit figures alone.
  */
-const NEXT_SPEND_FIELD = "nextSpendCents";
+const NEXT_SPEND_FIELD = "refusedSpendCents";
 
 /** A charge keeps its cents ("$14.25"), a whole amount reads whole ("$15"): pure formatting. */
 function exactUsd(cents: number): string {

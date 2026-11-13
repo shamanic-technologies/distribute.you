@@ -208,7 +208,7 @@ describe("campaignHoldCopy", () => {
   });
 
   it("states the funnel's figures, the refused next step and the people waiting", () => {
-    const hold = readCampaignHold([funnelHold({ spentCents: 1425.21, ceilingCents: 1500, nextSpendCents: 99.82 })], NOW)!;
+    const hold = readCampaignHold([funnelHold({ spentCents: 1425.21, ceilingCents: 1500, refusedSpendCents: 99.82 })], NOW)!;
     expect(campaignHoldCopy(hold, NOW, 69).body).toBe(
       "$14.25 of $15 spent this period. The next step costs $1.00, which would go over the limit. 69 people are waiting for a first message. Sending starts again when the next period begins. Raise the limit to start sooner.",
     );
