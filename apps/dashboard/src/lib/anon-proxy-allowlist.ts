@@ -116,6 +116,11 @@ const RULES: Rule[] = [
   // moved earlier), so step 6 only waits for the model. Writes nothing.
   { method: "POST", segments: ["content", "preview-email", "prepare"] },
 
+  // ── The visitor changed an offer point we drafted (SCRIPT-VALUE-RATING-1113) ──
+  // One report that our draft was not good: append-only at features-service, stored with
+  // this anonymous org. It sends nothing, charges nothing and changes no row of anyone.
+  { method: "POST", segments: ["features", "unit-reports"] },
+
   // ── What the projection screen reads. All reads. ─────────────────────
   { method: "GET", segments: ["features", ":seg"] },
   { method: "GET", segments: ["features", ":seg", "workflow-projection"] },

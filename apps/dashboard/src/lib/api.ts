@@ -62,6 +62,7 @@ import {
 import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { AmbiguousThreadSchema, ReplySentSchema, newestThread, replyBodyHtml, type ReplySent } from "./unibox-reply";
 import { z } from "zod";
+import { UnitReportResponseSchema, type UnitReportBody, type UnitReportResponse } from "./unit-reports";
 import type { CardFacts } from "./v2/card-risk";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
 import {
@@ -9087,6 +9088,20 @@ export async function getLeadWrittenBy(leadId: string, token?: string): Promise<
   if (!parsed.success) {
     console.error("[dashboard] getLeadWrittenBy: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] getLeadWrittenBy: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * The client says a Unit we made is not good (SCRIPT-VALUE-RATING-1113): features-service
+ * `POST /orgs/unit-reports` through the gateway's `/v1/features/unit-reports`. One report, append-only.
+ */
+export async function reportUnit(body: UnitReportBody, token?: string): Promise<UnitReportResponse> {
+  const raw = await apiCall<unknown>(`/features/unit-reports`, { token, method: "POST", body: { ...body } });
+  const parsed = UnitReportResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] reportUnit: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] reportUnit: invalid response shape");
   }
   return parsed.data;
 }

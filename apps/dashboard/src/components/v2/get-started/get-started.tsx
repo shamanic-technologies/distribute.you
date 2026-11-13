@@ -164,6 +164,8 @@ import { EMAIL_ANGLES, ANGLE_CHANNEL, angleStrategy, funnelFitsAngles, toggleAng
 import { OrgLaunch } from "./org-launch";
 import { v2NewBrandHref } from "@/lib/v2/routes";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
+import { editedAgainstDraft, editedNote, offerFieldsDraftedUnit } from "@/lib/unit-reports";
+import { logReportFailure, useUnitReport } from "@/lib/use-unit-report";
 import { stepViewName, withStageTransition } from "./view-transition";
 
 type StepState = StepPhase;
@@ -395,6 +397,18 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [answered, setAnswered] = useState(false);
   const answeredRef = useRef(false);
   answeredRef.current = answered;
+  // What our draft said, per offer, for the edit reports (SCRIPT-VALUE-RATING-1113): a step
+  // confirmed with a changed drafted value tells the Rating our draft was not good.
+  const draftRef = useRef<{ offerId: string; values: Record<string, string> } | null>(null);
+  const sendReport = useUnitReport();
+  const reportDraftEdits = (offerId: string, sent: Record<string, string | string[]>) => {
+    const draft = draftRef.current;
+    if (!brandId || !draft || draft.offerId !== offerId) return;
+    const edited = editedAgainstDraft(draft.values, sent);
+    if (edited.length === 0) return;
+    const unit = offerFieldsDraftedUnit(brandId, offerId);
+    sendReport(unit, "edited", editedNote(edited)).catch(logReportFailure("onboarding offer points", unit));
+  };
   const [answerBusy, setAnswerBusy] = useState(false);
   const [answerError, setAnswerError] = useState<string | null>(null);
   // The signals step: the offer's checks (lead-service), all ticked until the visitor unticks one.
@@ -865,6 +879,12 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       const r = await extractBrandFields([id], fields, { mode: "suggest", urlStrategy: "landing", offerId });
       const usd = parseUsdEstimate(r.fields.clientLifetimeRevenueUsd?.value);
       setValueInput((cur) => cur || (usd != null ? String(usd) : ""));
+      draftRef.current = {
+        offerId,
+        values: Object.fromEntries(
+          [...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS].map((f) => [f.key, valueLines(r.fields[f.key]?.value).join("\n")]),
+        ),
+      };
       setLevers((cur) => fillBlank(cur, LEVER_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
       setGives((cur) => fillBlank(cur, GIVE_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
       setDrafted("done");
@@ -1031,7 +1051,10 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     advance("levers");
     try {
       const o = await ensureOffer();
-      if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, o.offerId, fields);
+      if (Object.keys(fields).length > 0) {
+        await saveOfferUserFields(brandId, o.offerId, fields);
+        reportDraftEdits(o.offerId, fields);
+      }
     } catch (e) {
       console.error("[get-started] offer points save failed:", e);
       reopen("levers", "We could not save your offer. Try again.");
@@ -1048,10 +1071,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     advance("gives");
     try {
       const o = await ensureOffer();
-      await saveOfferUserFields(brandId, o.offerId, {
-        giveForFree: answerLines(gives.giveForFree),
-        neverGive: answerLines(gives.neverGive),
-      });
+      const giveFields = { giveForFree: answerLines(gives.giveForFree), neverGive: answerLines(gives.neverGive) };
+      await saveOfferUserFields(brandId, o.offerId, giveFields);
+      reportDraftEdits(o.offerId, giveFields);
       if (edit) {
         // The examples were written from the old lists: written again on the next click.
         setExamples({});

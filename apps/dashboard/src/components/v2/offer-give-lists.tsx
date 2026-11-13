@@ -7,6 +7,8 @@ import { pollOptions } from "@/lib/query-options";
 import { getOfferUserFields, saveOfferUserFields, type BrandUserFields } from "@/lib/api";
 import { giveListLines, giveListsEqual, giveListsPayload, parseGiveListText, type GiveLists } from "@/lib/offer-channel-settings";
 import { Shimmer } from "@/components/v2/ui";
+import { editedDraftedKeys, editedNote, offerFieldsDraftedUnit } from "@/lib/unit-reports";
+import { logReportFailure, useUnitReport } from "@/lib/use-unit-report";
 
 const GIVE_FIELDS = [
   { key: "giveForFree", label: "We give for free", tip: "What an email may offer at no cost." },
@@ -21,6 +23,7 @@ const GIVE_FIELDS = [
  */
 export function OfferGiveLists({ brandId, offerId }: { brandId: string; offerId: string }) {
   const qc = useQueryClient();
+  const sendReport = useUnitReport();
   const fields = useAuthQuery(["offerUserFields", brandId, offerId], () => getOfferUserFields(brandId, offerId), {
     ...pollOptions,
     enabled: !!brandId && !!offerId,
@@ -38,6 +41,12 @@ export function OfferGiveLists({ brandId, offerId }: { brandId: string; offerId:
     const next = { ...served, [key]: lines };
     if (giveListsEqual(next, served)) return;
     const res = await saveOfferUserFields(brandId, offerId, giveListsPayload(next));
+    // A list we drafted and the client changed: the draft was not good (SCRIPT-VALUE-RATING-1113).
+    const edited = editedDraftedKeys(fields.data?.fields, giveListsPayload(next));
+    if (edited.length > 0) {
+      const unit = offerFieldsDraftedUnit(brandId, offerId);
+      sendReport(unit, "edited", editedNote(edited)).catch(logReportFailure("give lists", unit));
+    }
     qc.setQueryData(["offerUserFields", brandId, offerId], res);
     // setQueryData never reaches the on-disk cache: re-read so a reload paints the saved lists.
     await qc.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
