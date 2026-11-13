@@ -48,7 +48,7 @@ describe("Brand user-fields client surface", () => {
   });
 
   it("validates each field as { value, provenance } with the provenance enum", () => {
-    expect(apiContent).toContain("const UserFieldSchema = z.object({");
+    expect(apiContent).toContain("const UserFieldSchema = z");
     expect(apiContent).toContain('provenance: z.enum(["confirmed", "suggested", "extracted"])');
     expect(apiContent).toContain("value: UserFieldValueSchema");
   });

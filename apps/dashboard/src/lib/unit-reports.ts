@@ -8,11 +8,11 @@
  * The Rating reads a reported Unit as worth nothing for the script that made it; nothing is
  * blocked, hidden, rewritten or re-sent.
  *
- * Units the dashboard can name today (read off `run_outcomes` in prod, 2026-11-13):
- * - `offer_fields_drafted` / brand-service / the offer id (the brand id for a draft asked before
- *   any offer): the offer's fields brand-service's `suggest` mode drafted.
+ * Units the dashboard names:
+ * - a value we drafted (offer or brand field): the Unit brand-service states beside it
+ *   (`draftUnit`: `offer_fields_drafted` / the offer, `brand_fields_drafted` / the brand), sent
+ *   as served, `unitAt` included. Never built here: a draft naming no Unit sends no report.
  * - `message_written` / lead-service / the LEAD id: a message we wrote one person.
- * Brand fields (description, ...) are drafted by a support run that declares no Unit: no report.
  *
  * Alias-free (zod only) so it carries real unit tests.
  */
@@ -82,11 +82,6 @@ export function isMessageReported(reports: readonly UnitReportRow[] | undefined,
   return reports.some((r) => r.kind === "reported" && r.outcomeKey === "message_written" && r.unitAt != null && Date.parse(r.unitAt) === at);
 }
 
-/** The Unit one offer-fields draft produced (brand-service `offerFieldsDraftedUnit`). */
-export function offerFieldsDraftedUnit(brandId: string, offerId: string | null | undefined): UnitRef {
-  return { outcomeKey: "offer_fields_drafted", subjectService: "brand-service", subjectId: offerId || brandId };
-}
-
 /** The Unit a message we wrote one person is (its subject is the lead, as the ledger declares it), at its send time. */
 export function messageWrittenUnit(leadId: string, sentAt: string | null | undefined): UnitRef {
   const unit: UnitRef = { outcomeKey: "message_written", subjectService: "lead-service", subjectId: leadId };
@@ -108,31 +103,75 @@ export function sameFieldValue(a: FieldValue, b: FieldValue): boolean {
 }
 
 /**
- * Did this save change a value WE drafted? `before` = the fields as served before the save (each
- * with its provenance), `sent` = what the save writes. Only a field still `suggested` (our prefill,
- * never confirmed) whose value the save changes counts: a field the client typed, or a save that
- * changes nothing, is no edit of ours. A confirmed field is not counted: brand-service does not
- * say whether its value is still our draft (producer gap, relayed 2026-11-13).
+ * The Unit one draft of ours made, as brand-service states it beside each drafted value
+ * (`fields[key].draftUnit` on the user-fields reads, `drafts[key].draftUnit` on a suggest read).
  */
-export function editedDraftedKeys(
-  before: Record<string, { value: FieldValue; provenance: string } | undefined> | undefined,
-  sent: Record<string, FieldValue>,
-): string[] {
-  if (!before) return [];
-  return Object.keys(sent).filter((key) => {
-    const was = before[key];
-    if (!was || was.provenance !== "suggested" || lines(was.value).length === 0) return false;
-    return !sameFieldValue(was.value, sent[key]);
-  });
+export const DraftUnitSchema = z
+  .object({
+    outcomeKey: z.string().min(1),
+    subjectService: z.string().min(1),
+    subjectId: z.string().min(1),
+    unitAt: z.string().min(1),
+  })
+  .passthrough();
+export type DraftUnit = z.infer<typeof DraftUnitSchema>;
+
+/** A served `draftUnit` read loosely: anything that is not a whole Unit names none. */
+export function draftUnitOf(raw: unknown): DraftUnit | null {
+  const parsed = DraftUnitSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
+/** One value as the page last knew it: is it still our draft, and which Unit made that draft. */
+export interface DraftedField {
+  value: FieldValue;
+  stillOurDraft?: boolean;
+  draftUnit?: DraftUnit | null;
+}
+export type DraftedFields = Record<string, DraftedField | undefined>;
+
+/** One report to send: the Unit of one draft, and the fields of it this save changed. */
+export interface DraftedEdit {
+  unit: UnitRef;
+  keys: string[];
 }
 
 /**
- * The same question at onboarding, where the draft is held on the page (`drafted`, what the
- * suggest read returned) and the client confirms the step: the keys whose confirmed value differs
- * from a non-empty draft.
+ * Did this save change a value WE drafted? `before` = the fields as the page knew them before
+ * the save, `sent` = what the save writes. A field counts when it was still our draft
+ * (`stillOurDraft`), names its Unit (`draftUnit`), held a value, and the save changes that value.
+ * A value the client typed, a draft naming no Unit, or a save that changes nothing counts for
+ * nothing. ONE entry per Unit (fields of one draft share it), named exactly as served.
  */
-export function editedAgainstDraft(drafted: Record<string, FieldValue>, sent: Record<string, FieldValue>): string[] {
-  return Object.keys(sent).filter((key) => lines(drafted[key]).length > 0 && !sameFieldValue(drafted[key], sent[key]));
+export function draftedEdits(before: DraftedFields | undefined, sent: Record<string, FieldValue>): DraftedEdit[] {
+  if (!before) return [];
+  const edits: DraftedEdit[] = [];
+  for (const key of Object.keys(sent)) {
+    const was = before[key];
+    const unit = was?.stillOurDraft === true ? draftUnitOf(was.draftUnit) : null;
+    if (!was || !unit || lines(was.value).length === 0 || sameFieldValue(was.value, sent[key])) continue;
+    const same = edits.find(
+      (e) => e.unit.outcomeKey === unit.outcomeKey && e.unit.subjectService === unit.subjectService && e.unit.subjectId === unit.subjectId && e.unit.unitAt === unit.unitAt,
+    );
+    if (same) same.keys.push(key);
+    else edits.push({ unit: { outcomeKey: unit.outcomeKey, subjectService: unit.subjectService, subjectId: unit.subjectId, unitAt: unit.unitAt }, keys: [key] });
+  }
+  return edits;
+}
+
+/**
+ * What a page holding its own copy (onboarding) knows after a save: each key sent now holds the
+ * value sent, and is still our draft only if the save changed nothing. A changed value is the
+ * client's own from then on, so confirming the same step again reports nothing more.
+ */
+export function draftedAfterSave(before: DraftedFields, sent: Record<string, FieldValue>): DraftedFields {
+  const next: DraftedFields = { ...before };
+  for (const key of Object.keys(sent)) {
+    const was = before[key];
+    const kept = !!was && was.stillOurDraft === true && sameFieldValue(was.value, sent[key]);
+    next[key] = kept ? was : { value: sent[key], stillOurDraft: false, draftUnit: null };
+  }
+  return next;
 }
 
 /** The note sent with an edit: which fields changed, so the store says what was edited. */
