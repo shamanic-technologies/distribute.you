@@ -95,6 +95,7 @@ export const CAMPAIGN_MONEY_ROOTS = [
 export const CONVERSION_RATE_ROOTS = [
   ...LEAD_OUTCOME_ROOTS,
   "brandConversionRates",
+  "brandRateSources",
   "brandLegRates",
   "offerEconomics",
 ] as const;

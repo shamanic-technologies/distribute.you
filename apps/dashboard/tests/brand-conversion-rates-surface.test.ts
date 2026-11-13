@@ -31,5 +31,22 @@ describe("brand conversion rates", () => {
 
   it("the rates read paints from disk", () => {
     expect(persist).toContain('"brandConversionRates"');
+    expect(persist).toContain('"brandRateSources"');
+  });
+
+  // Owner 2026-11-13 (SCRIPT-VALUE-RATING-1113): the client types only the rates our ledger
+  // cannot measure; features-service's rate sources say which, joined on brand-service's step words.
+  it("reads the rate sources and hands them to the editor keyed like its rows", () => {
+    expect(card).toContain('useAuthQuery(["brandRateSources", brandId]');
+    expect(card).toContain("getBrandRateSources(brandId)");
+    expect(card).toContain("rateSources={rateSourcesByLeg(sourcesQ.data.legs)}");
+  });
+
+  it("a measured leg is read-only, an asked one opens on the client's value else the default", () => {
+    expect(editor).toContain("if (src && !src.ask) return <MeasuredLegRow");
+    expect(editor).toContain("askedFieldSeed(src)");
+    expect(editor).toContain("measuredSourceSentence(src)");
+    const measuredRow = editor.slice(editor.indexOf("function MeasuredLegRow("));
+    expect(measuredRow).not.toContain("<RateInput");
   });
 });

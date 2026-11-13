@@ -114,3 +114,56 @@ describe("rateFieldSeed", () => {
     expect(rateFieldSeed({ ...leg, manualRatePct: 3 })).toBe("3");
   });
 });
+
+// ─── Asked or measured (SCRIPT-VALUE-RATING-1113) ────────────────────────────
+import {
+  askedFieldSeed,
+  askedSourceLabel,
+  measuredSourceSentence,
+  rateSourcesByLeg,
+} from "../src/lib/brand-conversion-rates";
+import type { RateSourceLeg } from "../src/lib/api";
+
+function src(over: Partial<RateSourceLeg>): RateSourceLeg {
+  return {
+    fromStep: "Positive reply",
+    toStep: "Meeting booked",
+    legKey: null,
+    ask: true,
+    ratePct: null,
+    source: null,
+    ledger: null,
+    measuredRatePct: null,
+    unmeasuredReason: "too_few_units",
+    statedRatePct: null,
+    defaultRatePct: null,
+    defaultSource: null,
+    ...over,
+  };
+}
+
+describe("rate sources", () => {
+  it("keys legs on brand-service's step words, like the editor's rows", () => {
+    const map = rateSourcesByLeg([src({}), src({ fromStep: "Meeting booked", toStep: "Paid" })]);
+    expect(map.get(legId({ fromStep: "Positive reply", toStep: "Meeting booked" }))?.toStep).toBe("Meeting booked");
+    expect(map.size).toBe(2);
+  });
+
+  it("an asked field opens on what the client stated, else the default", () => {
+    expect(askedFieldSeed(src({ statedRatePct: 30, defaultRatePct: 10 }))).toBe("30");
+    expect(askedFieldSeed(src({ defaultRatePct: 10 }))).toBe("10");
+    expect(askedFieldSeed(src({}))).toBe("");
+  });
+
+  it("names where an asked field's number comes from", () => {
+    expect(askedSourceLabel(src({ statedRatePct: 30 }))).toBe("Your value");
+    expect(askedSourceLabel(src({ defaultRatePct: 10, defaultSource: "leg_default" }))).toMatch(/^Industry benchmark/);
+    expect(askedSourceLabel(src({ defaultRatePct: 10, defaultSource: "fleet_measured" }))).toMatch(/^Measured across our campaigns/);
+  });
+
+  it("a measured leg says it in one sentence on the brand's own counts", () => {
+    const measured = src({ ask: false, ledger: { consumedUnits: 12, ledUnits: 3 }, measuredRatePct: 25, source: "measured" });
+    expect(measuredSourceSentence(measured)).toBe("Measured on your own results: 3 of 12 reached Meeting booked.");
+    expect(measuredSourceSentence(src({ ask: false }))).toBeNull();
+  });
+});

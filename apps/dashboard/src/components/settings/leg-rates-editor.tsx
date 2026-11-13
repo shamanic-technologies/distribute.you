@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { stateBrandLegRates, type EffectiveLegRate } from "@/lib/api";
+import { stateBrandLegRates, type EffectiveLegRate, type RateSourceLeg } from "@/lib/api";
 import { useQueryClient } from "@/lib/use-auth-query";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
 import {
@@ -12,6 +12,9 @@ import {
   LEG_RATE_RULE,
   rateFieldSeed,
   rateSourceLabel,
+  askedFieldSeed,
+  askedSourceLabel,
+  measuredSourceSentence,
   statedFromEffective,
 } from "@/lib/brand-conversion-rates";
 import { RateInput } from "@/components/rate-input";
@@ -25,6 +28,11 @@ import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 // brand stated, else on the rate the row prices on as a prefill, and it is written only when the
 // person edits it. A measured rate wins over the brand's value once enough leads
 // reached the step, which the row says rather than hides.
+//
+// Owner 2026-11-13 (SCRIPT-VALUE-RATING-1113): the client types ONLY the rates our ledger
+// cannot measure for the brand. features-service's rate sources say which, per leg: an
+// asked leg keeps its field (prefilled with the default when unstated); a measured leg is
+// shown read-only with its rate and one sentence on where it comes from.
 
 /** brand-service writes the sentence; `err.message` is the whole downstream body verbatim. */
 function saveErrorMessage(err: unknown): string {
@@ -41,12 +49,15 @@ function saveErrorMessage(err: unknown): string {
 export function LegRatesEditor({
   brandId,
   legs,
+  rateSources,
   minMeasured,
   saveLabel = "Save",
   onSaved,
 }: {
   brandId: string;
   legs: EffectiveLegRate[];
+  /** features-service's rate sources keyed by `legId`; a leg it does not list stays editable. */
+  rateSources: Map<string, RateSourceLeg>;
   minMeasured: number;
   saveLabel?: string;
   onSaved?: () => void;
@@ -70,6 +81,7 @@ export function LegRatesEditor({
       // look like it had not taken.
       invalidateConversionRates(queryClient);
       await queryClient.refetchQueries({ queryKey: ["brandConversionRates", brandId] });
+      await queryClient.refetchQueries({ queryKey: ["brandRateSources", brandId] });
       setDrafts({});
       setSaved(true);
       onSaved?.();
@@ -94,6 +106,38 @@ export function LegRatesEditor({
       <ul className="divide-y divide-gray-100">
         {legs.map((leg) => {
           const id = legId(leg);
+          const src = rateSources.get(id);
+          if (src && !src.ask) return <MeasuredLegRow key={id} leg={leg} src={src} />;
+          if (src) {
+            const value = id in drafts ? drafts[id] : askedFieldSeed(src);
+            return (
+              <li key={id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3" data-rate-ask="true">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-gray-800">
+                    {leg.fromStep} <span className="text-gray-300">→</span> {leg.toStep}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {src.ratePct !== null && (
+                      <>
+                        <span className="font-medium text-gray-700">{formatRatePct(src.ratePct)}</span>{" "}
+                        ·{" "}
+                      </>
+                    )}
+                    <span data-rate-source={src.source ?? "none"}>{askedSourceLabel(src)}</span>
+                  </p>
+                </div>
+                <RateInput
+                  ariaLabel={`${leg.fromStep} to ${leg.toStep}`}
+                  value={value}
+                  onChange={(next) => {
+                    setSaved(false);
+                    setError(null);
+                    setDrafts((prev) => ({ ...prev, [id]: next }));
+                  }}
+                />
+              </li>
+            );
+          }
           const value = id in drafts ? drafts[id] : rateFieldSeed(leg);
           const measuredWins = leg.source === "measured";
           return (
@@ -141,5 +185,28 @@ export function LegRatesEditor({
         label={saveLabel}
       />
     </div>
+  );
+}
+
+/** A leg our ledger measures for the brand: its rate and where it comes from, nothing to type. */
+function MeasuredLegRow({ leg, src }: { leg: EffectiveLegRate; src: RateSourceLeg }) {
+  const sentence = measuredSourceSentence(src);
+  if (src.measuredRatePct === null || sentence === null) {
+    console.error("[dashboard] rate-sources: a measured leg without its rate or counts", src);
+  }
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3" data-rate-ask="false">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-gray-800">
+          {leg.fromStep} <span className="text-gray-300">→</span> {leg.toStep}
+        </p>
+        <p className="mt-0.5 text-xs text-gray-500" data-rate-source="measured">
+          {sentence ?? "Measured on your own results."}
+        </p>
+      </div>
+      <span className="text-sm font-medium tabular-nums text-gray-800">
+        {src.measuredRatePct === null ? "No rate yet" : formatRatePct(src.measuredRatePct)}
+      </span>
+    </li>
   );
 }
