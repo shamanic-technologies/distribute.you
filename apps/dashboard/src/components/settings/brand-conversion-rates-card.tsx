@@ -1,6 +1,7 @@
 "use client";
 
-import { getBrandConversionRates } from "@/lib/api";
+import { getBrandConversionRates, getBrandRateSources } from "@/lib/api";
+import { rateSourcesByLeg } from "@/lib/brand-conversion-rates";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { LegRatesEditor } from "@/components/settings/leg-rates-editor";
 
@@ -12,11 +13,15 @@ import { LegRatesEditor } from "@/components/settings/leg-rates-editor";
 // measured on the brand's own leads once enough of them reached the step, else the
 // brand's own value, else an industry benchmark — and each row says which.
 // Nothing here re-derives it.
+//
+// Owner 2026-11-13: the client is asked only the rates our ledger cannot measure for the
+// brand (features-service rate sources); a measured one is shown, never asked.
 
 export function BrandConversionRatesCard({ brandId }: { brandId: string }) {
   const ratesQ = useAuthQuery(["brandConversionRates", brandId], () => getBrandConversionRates(brandId));
+  const sourcesQ = useAuthQuery(["brandRateSources", brandId], () => getBrandRateSources(brandId));
 
-  if (ratesQ.isPending && !ratesQ.isError) {
+  if ((ratesQ.isPending && !ratesQ.isError) || (sourcesQ.isPending && !sourcesQ.isError)) {
     return (
       <div className="space-y-3 p-5">
         <div className="h-4 w-48 animate-pulse rounded bg-gray-100" />
@@ -26,7 +31,7 @@ export function BrandConversionRatesCard({ brandId }: { brandId: string }) {
     );
   }
 
-  if (ratesQ.isError || !ratesQ.data) {
+  if (ratesQ.isError || !ratesQ.data || sourcesQ.isError || !sourcesQ.data) {
     return <p className="p-5 text-sm text-gray-500">We could not read your conversion rates right now.</p>;
   }
 
@@ -42,7 +47,12 @@ export function BrandConversionRatesCard({ brandId }: { brandId: string }) {
 
   return (
     <div className="p-5">
-      <LegRatesEditor brandId={brandId} legs={legs} minMeasured={minMeasuredFromReached} />
+      <LegRatesEditor
+        brandId={brandId}
+        legs={legs}
+        rateSources={rateSourcesByLeg(sourcesQ.data.legs)}
+        minMeasured={minMeasuredFromReached}
+      />
     </div>
   );
 }

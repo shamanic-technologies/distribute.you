@@ -9,7 +9,7 @@
  * a person typed into the partial write brand-service expects.
  */
 
-import type { BrandLegRatePatch, EffectiveLegRate } from "./api";
+import type { BrandLegRatePatch, EffectiveLegRate, RateSourceLeg } from "./api";
 
 /** What the brand has STATED for one leg, whichever read it came from. */
 export type StatedLegRate = {
@@ -141,4 +141,52 @@ export function rateSourceLabel(leg: EffectiveLegRate): string {
     default:
       return leg.source;
   }
+}
+
+// ─── Asked or measured (owner 2026-11-13, SCRIPT-VALUE-RATING-1113) ──────────
+//
+// The client types only the rates our ledger cannot measure for the brand; a measured
+// rate is shown, never asked. features-service decides which (`ask`); this module only
+// joins its legs to the editor's rows on brand-service's own step words.
+
+/** The rate-sources legs keyed like the editor's rows (`legId`). */
+export function rateSourcesByLeg(legs: RateSourceLeg[]): Map<string, RateSourceLeg> {
+  const byLeg = new Map<string, RateSourceLeg>();
+  for (const leg of legs) {
+    const id = legId(leg);
+    if (!byLeg.has(id)) byLeg.set(id, leg);
+  }
+  return byLeg;
+}
+
+/**
+ * The value an ASKED rate field opens with: what the client stated, else the default
+ * the producer serves as the prefill. Shown only; written when the person edits it.
+ */
+export function askedFieldSeed(src: RateSourceLeg): string {
+  const value = src.statedRatePct ?? src.defaultRatePct;
+  return value === null ? "" : String(roundLegRatePct(value));
+}
+
+/**
+ * Where a MEASURED rate comes from, in one plain sentence, built on the brand's own
+ * ledger counts and brand-service's step word: "Measured on your own results: 3 of 12
+ * reached Meeting booked." `null` when the producer sent no counts (the caller says so).
+ */
+export function measuredSourceSentence(src: RateSourceLeg): string | null {
+  if (!src.ledger) return null;
+  return `Measured on your own results: ${src.ledger.ledUnits} of ${src.ledger.consumedUnits} reached ${src.toStep}.`;
+}
+
+/**
+ * Where the number in an ASKED field comes from, in words: the client's own value, else
+ * the default the producer prefills (the leg's industry benchmark, or what our campaigns
+ * measured across clients on that step). A source this app does not know is named as it came.
+ */
+export function askedSourceLabel(src: RateSourceLeg): string {
+  if (src.statedRatePct !== null) return "Your value";
+  if (src.defaultRatePct === null) return "No rate yet";
+  if (src.defaultSource === "fleet_measured") return "Measured across our campaigns";
+  if (src.defaultSource === "leg_default") return "Industry benchmark";
+  return src.defaultSource ?? "Default";
 }

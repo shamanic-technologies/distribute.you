@@ -246,6 +246,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "workflowDynastySummaries",
   // The brand's effective conversion rate per leg (Brand Settings).
   "brandConversionRates",
+  // Which of those legs our ledger measures and which the client is asked (Brand Settings).
+  "brandRateSources",
   // Tenant identity — the sidebar switcher's org label + Clerk avatar. Clerk is the
   // only source of an org's name and it hydrates asynchronously, so without a disk
   // snapshot the switcher reads "Dashboard" for the first second of every load.

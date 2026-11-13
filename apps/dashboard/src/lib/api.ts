@@ -3624,6 +3624,53 @@ export async function getBrandConversionRates(
   return parsed.data;
 }
 
+// ─── Which leg rates the client is asked (features-service, 2026-11-13) ───────
+//
+// Owner 2026-11-13 (SCRIPT-VALUE-RATING-1113): a rate our ledger cannot measure for the
+// brand is asked from the client, prefilled with a default; a rate the ledger measures
+// is shown, never asked. features-service decides which; legs are keyed in brand-service's
+// own step words (`fromStep`/`toStep`), the same keys the leg-rates write uses.
+const RateSourceLegSchema = z.object({
+  fromStep: z.string(),
+  toStep: z.string(),
+  legKey: z.string().nullable(),
+  ask: z.boolean(),
+  ratePct: z.number().nullable(),
+  // Producer-owned vocabulary (measured | stated | default): read as a plain string.
+  source: z.string().nullable(),
+  ledger: z.object({ consumedUnits: z.number(), ledUnits: z.number() }).nullable(),
+  measuredRatePct: z.number().nullable(),
+  unmeasuredReason: z.string().nullable(),
+  statedRatePct: z.number().nullable(),
+  defaultRatePct: z.number().nullable(),
+  defaultSource: z.string().nullable(),
+});
+
+export type RateSourceLeg = z.infer<typeof RateSourceLegSchema>;
+
+const BrandRateSourcesSchema = z.object({
+  brandId: z.string(),
+  minConsumedUnits: z.number(),
+  reportsMeetings: z.boolean(),
+  legs: z.array(RateSourceLegSchema),
+});
+
+export type BrandRateSources = z.infer<typeof BrandRateSourcesSchema>;
+
+/** GET /brands/:brandId/rate-sources — per leg, measured by our ledger (shown) or asked of the client. */
+export async function getBrandRateSources(brandId: string, token?: string): Promise<BrandRateSources> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/rate-sources`, { token });
+  const parsed = BrandRateSourcesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandRateSources: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandRateSources: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ─── Offers (Org > Brand > Offer > Campaign) ─────────────────────────────────
 //
 // A BRAND is an identity: a name, a domain, a logo, a conversion-tracking snippet.
