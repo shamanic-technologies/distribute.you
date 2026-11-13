@@ -29,7 +29,6 @@ import {
   monthText,
 } from "@/components/v2/research-bits";
 import { V2ResearchCatalogView, PipeCatalogLinks } from "@/components/v2/research-catalog";
-import { EngineHeadline, EngineSection } from "@/components/v2/research-engines";
 import type { ResearchPipe } from "@/lib/research/research";
 import { useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
@@ -65,8 +64,7 @@ import {
 } from "@/lib/research/research";
 
 /**
- * Research (FACTORY-RESEARCH-1102, the GTM Factory way): how the Engines decide, outcome by outcome
- * (`research-engines.tsx`), then every study homed under the outcome it measures, a pipe's studies and
+ * Research (FACTORY-RESEARCH-1102, the GTM Factory way): every study homed under the outcome it measures, a pipe's studies and
  * pages inside its outcome's section, never a pipe heading. Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
  *
  * Built on Keel's own anatomy (see the dashboard-v2-ux skill): the hub is a card grid
@@ -333,11 +331,19 @@ function V2ResearchHub({ base }: { base: string }) {
       <TopBar crumbs={[{ label: "Research" }]} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <EngineHeadline />
+          {/* Which script each Engine runs lives in ONE place since SCRIPT-VALUE-RATING-1113 (owner 2026-11-13: a pick is always a script): Monitoring, never a second story here. */}
+          <div className="min-w-0">
+            <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">Research</h1>
+            <p className="k-fg2 mt-1 text-[14px]">
+              Every study, outcome by outcome. Which script each Engine runs today:{" "}
+              <Link href="/v2/monitoring/ai/scripts" className="text-[var(--accent)] hover:underline">
+                Scripts per Engine
+              </Link>
+              .
+            </p>
+          </div>
           <ResearchLive file={RESEARCH} />
         </div>
-
-        <EngineSection />
 
         {/* The studies, outcome by outcome: one group per served lead track, then Other; every row collapsed by default. */}
         <section className="mt-10">

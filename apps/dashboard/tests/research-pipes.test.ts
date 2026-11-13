@@ -210,9 +210,9 @@ describe("Research names each pipe by its served name and mark, one collapsible 
     // the per-pipe group is gone: no pipe is a section of the hub
     expect(hub).not.toContain(">Pipes</SectionTitle>");
     expect(hub).not.toContain("section={{ pipe }} studies=");
-    // the Engines come first, the Factory way
-    expect(hub.indexOf("<EngineHeadline />")).toBeLessThan(hub.indexOf("<EngineSection />"));
-    expect(hub.indexOf("<EngineSection />")).toBeLessThan(hub.indexOf("Studies, outcome by outcome"));
+    // which script each Engine runs lives on Monitoring only (SCRIPT-VALUE-RATING-1113): the hub links there, draws no Engine picks
+    expect(hub).not.toContain("<EngineSection />");
+    expect(hub).toContain('href="/v2/monitoring/ai/scripts"');
   });
 });
 

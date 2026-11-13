@@ -414,8 +414,8 @@ function CatalogList({
   // A post-writing pipe (Threads posts): its templates and LLMs carry post figures, shown as their own
   // columns in place of the per-outcome ones (THREADS-IDEAS-AB). Every other pipe renders as before.
   const posts = tabbed && hasPostFigures(rows as (ResearchTemplate | ResearchModel)[]);
-  // Templates and models render in the served order: features-service ranks them in the ONE leg order the
-  // pipe picks them by, so row 1 is the one it writes with next. Never re-sorted here (owner 2026-10-23).
+  // Templates and models render in the served order (features-service's rank). Never re-sorted here (owner 2026-10-23).
+  // No « row 1 goes next »: since SCRIPT-VALUE-RATING-1113 the Rating picks a SCRIPT, never a template or an LLM.
   const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = tabbed ? (byTab?.[tab] ?? []) : rows;
   const pickTab = (next: TemplateTab) => {
     // The history API, null state: Next keeps useSearchParams in step (apps/dashboard CLAUDE.md).
@@ -437,7 +437,7 @@ function CatalogList({
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {live ? (
-                <>Every workflow on this pipe, all clients pooled, in the order the pipe picks them.</>
+                <>Every workflow on this pipe, all clients pooled, ranked as features-service serves them.</>
               ) : (
                 <>
                   Every {words.one} that wrote this pipe&apos;s {posts ? "posts" : "emails"}, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
@@ -739,7 +739,7 @@ function CatalogList({
                   <span className="min-w-0 truncate">
                     {kind === "workflows"
                       ? `${priced} of ${rows.length} priced per ${o.noun.toLowerCase()}; the rest have not earned one yet and are listed by volume.`
-                      : `${priced} of ${rows.length} priced per ${o.noun.toLowerCase()}. Listed in the order the pipe picks them, so row 1 goes next.`}
+                      : `${priced} of ${rows.length} priced per ${o.noun.toLowerCase()}. Ranked as features-service serves them.`}
                   </span>
                   <Link href={researchCatalogHref(base, pipe, other)} className="k-btn-ghost ml-auto h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]">
                     See the {KIND_WORD[other].many}

@@ -8,7 +8,6 @@ import { useMaturityView } from "@/lib/v2/use-maturity-view";
 import type { MaturityView } from "@/lib/v2/maturity-view-cookie";
 import { researchPipeEntry, type ResearchCatalog, type ResearchFile, type ResearchPipe, type ResearchPipeEntry } from "@/lib/research/research";
 import type { ResearchPerformance } from "@/lib/research/performance";
-import type { EnginePlaces } from "@/lib/research/engine-places";
 
 /**
  * Where Research's data comes from: the staff-only `/api/research/{basis}/{part}` route, never a
@@ -28,7 +27,7 @@ import type { EnginePlaces } from "@/lib/research/engine-places";
  */
 export type ResearchBasis = "user" | "actual";
 
-async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "texts" | "performance" | "engine-places", view?: MaturityView): Promise<T> {
+async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "texts" | "performance", view?: MaturityView): Promise<T> {
   const res = await fetch(`/api/research/${basis}/${part}${view ? `?view=${view}` : ""}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`[research] ${basis}/${part} answered ${res.status}`);
   return (await res.json()) as T;
@@ -72,19 +71,6 @@ const TEXTS_QUERY = { queryKey: ["researchTexts"], queryFn: () => fetchPart<Reco
 /** The Performance tab's read on one basis (disk on the billed basis; the actual basis reveals our margin, memory only). */
 export function useResearchPerformance(basis: ResearchBasis) {
   return useQuery(researchPerformanceQuery(basis, useMaturityView().view));
-}
-
-/**
- * The Engines' places (FACTORY-RESEARCH-1102), the same on both bases and views: painted from disk on a staff
- * browser (`researchEnginePlaces`), then re-read every poll (the producer refreshes on each Engine pass).
- */
-export function useResearchEnginePlaces() {
-  return useQuery({
-    queryKey: ["researchEnginePlaces"],
-    queryFn: () => fetchPart<EnginePlaces>("user", "engine-places"),
-    retry: false,
-    ...pollOptions,
-  });
 }
 
 /** The template texts, the same on both bases. */

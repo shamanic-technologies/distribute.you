@@ -239,8 +239,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The Research file (hub, every study) and the Performance tab, billed basis (owner 2026-10-23, « instantanées »).
   "researchFile",
   "researchPerformance",
-  // Research's Engine places (FACTORY-RESEARCH-1102): fleet-wide, no money of ours, staff disks only.
-  "researchEnginePlaces",
   "workflowDynastyStatuses",
   // The same listing with each runnable workflow's description (Status + Description cells).
   "workflowDynastySummaries",

@@ -1,6 +1,5 @@
 import type { ResearchCatalog, ResearchFile } from "@/lib/research/research";
 import type { ResearchPerformance } from "@/lib/research/performance";
-import { parseEnginePlaces, type EnginePlaces } from "@/lib/research/engine-places";
 
 /**
  * SERVER ONLY. Every byte of Research, read LIVE from features-service through the api-service
@@ -10,7 +9,6 @@ import { parseEnginePlaces, type EnginePlaces } from "@/lib/research/engine-plac
  *   GET /v1/features/research/catalog?basis=   the workflow, template and model pages per pipe
  *   GET /v1/features/research/templates        the template texts, by template id
  *   GET /v1/features/research/performance?basis=   the Performance tab per pipe
- *   GET /v1/features/research/engine-places   the Engines' places fleet-wide (one body, no basis, no view)
  *
  * Every read but the texts also carries `view=mature|flash` (MATURITY-VIEW-1023): which build
  * features-service serves, the staff Mature / Flash switch (`lib/v2/maturity-view-cookie.ts`).
@@ -58,9 +56,4 @@ export async function readLiveTemplateTexts(staffEmail: string): Promise<Record<
 /** The live Performance tab (every workflow x template x LLM per pipe, with the pipe's totals and series) on one cost basis. */
 export async function readLivePerformance(basis: ResearchBasisParam, view: ResearchViewParam, staffEmail: string): Promise<ResearchPerformance> {
   return readLive<ResearchPerformance>(`/v1/features/research/performance?basis=${basis}&view=${view}`, staffEmail);
-}
-
-/** The Engines' places fleet-wide (FACTORY-RESEARCH-1102): one body, on no basis and no view; parsed here, loud on a shape change. */
-export async function readLiveEnginePlaces(staffEmail: string): Promise<EnginePlaces> {
-  return parseEnginePlaces(await readLive<unknown>("/v1/features/research/engine-places", staffEmail));
 }
