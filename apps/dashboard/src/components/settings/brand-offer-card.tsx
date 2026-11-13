@@ -24,6 +24,8 @@ import {
 } from "@/components/brand-profile/field-editor";
 import { coerceTextField, OFFER_LEVERS } from "@/lib/strategy-model";
 import { buildOfferLLMPrompt } from "@/components/onboarding/llm-prompt";
+import { editedDraftedKeys, editedNote, offerFieldsDraftedUnit } from "@/lib/unit-reports";
+import { logReportFailure, useUnitReport } from "@/lib/use-unit-report";
 
 /**
  * List-kind levers edited as ONE textarea rather than a chip list. Both list levers
@@ -133,10 +135,18 @@ export function BrandOfferCard({ orgId, brandId, offerId }: { orgId: string; bra
   const offerFields = offerDraft ?? offerBaseline;
   const offerDirty = offerDraft !== null && !fieldsEqual(offerDraft, offerBaseline);
 
+  const sendReport = useUnitReport();
   const saveOfferMut = useMutation({
     mutationFn: (fields: ProfileFields) =>
       saveOfferUserFields(brandId, offerId, profileToUserFieldsPayload(fields)),
     onSuccess: (res, sent) => {
+      // A changed value we drafted tells the Rating our draft was not good (SCRIPT-VALUE-RATING-1113):
+      // one report per save, never for a value the client typed or a save that changes nothing.
+      const edited = editedDraftedKeys(userFieldsData?.fields, profileToUserFieldsPayload(sent));
+      if (edited.length > 0) {
+        const unit = offerFieldsDraftedUnit(brandId, offerId);
+        sendReport(unit, "edited", editedNote(edited)).catch(logReportFailure("offer fields", unit));
+      }
       // The response IS the read this card polls: write it, so the saved values
       // show at once instead of the pre-save copy until the next poll.
       queryClient.setQueryData(["offerUserFields", brandId, offerId], res);

@@ -37,7 +37,8 @@ import { conversationItemTag, conversationSourceWord, joinConversationLabels, li
 import { DisqualifiedTag } from "@/components/v2/conversation-timeline";
 import { TagChip } from "@/components/v2/tag-chip";
 import { WrittenWithTags, useLeadWrittenBy } from "@/components/v2/written-with-tags";
-import { writtenMessageId, type WrittenBy } from "@/lib/written-by";
+import { writtenByForRow, writtenMessageId, type WrittenBy } from "@/lib/written-by";
+import { ReportMessage } from "@/components/v2/report-message";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
@@ -662,6 +663,7 @@ function Thread({
                 item={row.item}
                 tag={row.tag}
                 writtenBy={writtenBy}
+                leadId={facts?.leadId ?? null}
                 campaignId={sentCampaignId(row.item, facts)}
                 folded={i < lastMessage || local.length > 0}
               />
@@ -854,6 +856,7 @@ function ThreadItem({
   item,
   tag,
   writtenBy = null,
+  leadId = null,
   campaignId = null,
   folded = false,
 }: {
@@ -861,6 +864,8 @@ function ThreadItem({
   item: PersonTimelineItem;
   tag: TimelineTag | null;
   writtenBy?: WrittenBy | null;
+  /** The conversation's lead (lead-service): the subject of a message we wrote, for Report. */
+  leadId?: string | null;
   campaignId?: string | null;
   /** An older message: one line until clicked. */
   folded?: boolean;
@@ -917,6 +922,12 @@ function ThreadItem({
           <WrittenWithTags writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} />
         ) : null
       }
+      report={
+        // Only a message WE wrote (a served writer row): the client's own replies and his team's are never reported.
+        item.direction === "outbound" && leadId && writtenByForRow(writtenBy, { id: writtenMessageId(item), campaignId, at: item.at }) ? (
+          <ReportMessage leadId={leadId} sentAt={item.at ?? null} />
+        ) : null
+      }
     />
   );
 }
@@ -928,6 +939,7 @@ function Message({
   meta,
   tag,
   written = null,
+  report = null,
   folded = false,
 }: {
   brandId: string;
@@ -935,6 +947,8 @@ function Message({
   mark: SourceMark;
   meta: string;
   tag: TimelineTag;
+  /** "Report" on a message we wrote (SCRIPT-VALUE-RATING-1113); null elsewhere. */
+  report?: ReactNode;
   /** What it was written with (model + tactics, tags beside its label), on a message we sent; null elsewhere. */
   written?: ReactNode;
   /** An older message opens as one line (who · first words · date) until clicked (owner 2026-10-21). */
@@ -1012,7 +1026,7 @@ function Message({
       ) : (
         <p className="k-fg4 mt-1 text-[13px]">—</p>
       )}
-      {(long || hasOriginal || callId) && (
+      {(long || hasOriginal || callId || report) && (
         <div className="mt-1 flex gap-1">
           {long && (
             <button type="button" className="k-btn-ghost h-6 px-1.5 text-[12px]" onClick={() => setOpen((o) => !o)}>
@@ -1029,6 +1043,7 @@ function Message({
               {callOpen ? "Hide request and response" : "Show request and response"}
             </button>
           )}
+          {report ? <span className="ml-auto inline-flex">{report}</span> : null}
         </div>
       )}
       {callId && callOpen && <ApiCallDetailPanel brandId={brandId} callId={callId} />}
