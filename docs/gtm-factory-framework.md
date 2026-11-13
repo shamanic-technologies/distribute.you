@@ -2,7 +2,7 @@
 
 # GTM Factory v10: the framework
 
-Revenue made easy. This document describes the open framework behind it: how to model a go-to-market operation as an industrial plant, with the plant's own words and its own cost accounting. Everything here is implemented in [`packages/core`](../packages/core), the scripts are code in [`scripts/`](../scripts), and every number in the worked examples is checked by a test ([`docs.test.ts`](../packages/core/test/docs.test.ts)).
+Revenue made easy. This document describes the open framework behind it: how to model a go-to-market operation as an industrial plant, with the plant's own words and its own cost accounting. The framework runs in production at distribute.you, and this document follows what runs there. The open repository ([distribute-you/gtm-factory](https://github.com/distribute-you/gtm-factory): `packages/core`, `scripts/`, the simulator) is frozen at its state of 2026-10-28: it implements the framework as it stood that day, and its test `packages/core/test/docs.test.ts` checks the worked examples written before then. The Supplier rating of section 8 changed after that date (2026-11-13): its worked example is checked by the tests of the production service, and the frozen simulator still runs the earlier rule.
 
 **Open source and hosted.** This repository is the framework and one fictional world to adapt to your own use case. A hosted GTM Factory keeps its catalogue in its database: the outcomes, the Engines, every script and every version of its code, the Providers. It keeps every run's result there too. Its estimates sharpen over time, because what one client learns is pooled with the others. Code kept as text in a database runs through `compileScript`; the host provides isolation.
 
@@ -228,7 +228,7 @@ No age rule: candidates drawn at the same time are as young as each other, so a 
 
 ### Regret
 
-The simulator knows the hidden truth, so it can grade the Rating. **Regret** is, per day, the share of each dollar's value the picks lost against always picking the hidden best (1 minus its value per dollar over the best's), weighted by picks, over every candidate place of every campaign, each day graded against that day's truth. On five seeds of the fictional world, regret falls between days 0 to 10 and days 50 to 60 on each seed, and its mean over days 50 to 60 stays under **0.05**.
+The simulator knows the hidden truth, so it can grade the Rating. **Regret** is, per day, the share of each dollar's value the picks lost against always picking the hidden best (1 minus its value per dollar over the best's), weighted by picks, over every candidate place of every campaign, each day graded against that day's truth. On five seeds of the fictional world, regret falls between days 0 to 10 and days 50 to 60 on each seed, and its mean over days 50 to 60 stays under **0.05**. That figure was measured with the earlier rating (the frozen simulator of 2026-10-28), before the credit by the strongest outcome reached; it has not been measured again with the rule above.
 
 ## 9. Splits and proposals
 
@@ -293,6 +293,8 @@ Standard cost charged: 334 x 2 + 333 + 333 + 600 = **$19.34**. Reuse gain: **$3.
 The email Engine's own cost for decisions: $9 over 4 Units consumed is **$2.25** per Unit. The unit cost of the interested lead for reports: $9 of its own production plus 4 leads at $3.33 each, about **$22.33**.
 
 ## 13. The simulator
+
+The simulator is frozen at its state of 2026-10-28, in the open repository. It runs the framework as it stood that day; the Supplier rating it uses is the earlier one (section 8 says what changed).
 
 The framework ships with one fictional world as data ([`seed/fictional-world.json`](../seed/fictional-world.json)): Northwind Analytics, a client starting from scratch tonight, with cold email, LinkedIn and ads, vendor list prices and rates from public benchmarks; its market of fictional people and companies; the catalogue; and the hidden truth (yields, costs, delays, the effect of every script, template and lead tactic). The world ticks 24 times a day. At each tick every campaign recomputes its Plan, pulls or pushes, runs land their Units after their delay, the ledger fills and the Supplier rating learns. One seed gives one history, byte for byte.
 
