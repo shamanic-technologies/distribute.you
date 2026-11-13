@@ -80,9 +80,23 @@ export function heldStepCopy(held: HeldEngine, waiting: number | null | undefine
   };
 }
 
-/** The held step to state: the producer's `heldBy`, else nothing. */
+/**
+ * Holds the campaign's LIMIT note already states (campaign-hold.tsx "This campaign reached its limit", billing's
+ * "Not funded yet"): the client's own max budget / max volume. A second card on the same hold said "Our team is
+ * on it. You have nothing to do." right above "Raise the limit" (prod 2026-11-13, CeXO, $14.25 of $15 spent).
+ */
+const LIMIT_HOLD_REASONS = new Set(["daily_ceiling_reached", "unfunded", "insufficient_credits"]);
+
+/** The held step to state: the producer's `heldBy`, else nothing. A limit hold is the limit note's to state. */
 export function heldStepOf(steps: CampaignNextSteps | null | undefined): { held: HeldEngine; waiting: number | null } | null {
   const held = steps?.nextSends?.heldBy ?? null;
-  if (!held) return null;
+  if (!held || LIMIT_HOLD_REASONS.has(held.reason)) return null;
   return { held, waiting: steps?.nextSends?.leadsWaitingOnHeldEngine ?? null };
+}
+
+/** People waiting behind a LIMIT hold (served `leadsWaitingOnHeldEngine`), for the limit note; null otherwise. */
+export function waitingOnLimit(steps: CampaignNextSteps | null | undefined): number | null {
+  const held = steps?.nextSends?.heldBy ?? null;
+  if (!held || !LIMIT_HOLD_REASONS.has(held.reason)) return null;
+  return steps?.nextSends?.leadsWaitingOnHeldEngine ?? null;
 }

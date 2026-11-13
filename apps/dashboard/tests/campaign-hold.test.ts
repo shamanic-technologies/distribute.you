@@ -193,9 +193,33 @@ describe("campaignHoldCopy", () => {
   it("names the limit and offers the control that raises it", () => {
     const copy = campaignHoldCopy(readCampaignHold([ceilingEvent()], NOW)!, NOW);
     expect(copy.headline).toBe("This campaign reached its limit");
-    expect(copy.body).toContain("max budget or its max volume");
+    expect(copy.body).toContain("$4.28 of $4 spent this period.");
     expect(copy.action).toBe("campaign_budget");
     expect(copy.actionLabel).toBe("Raise the limit");
+  });
+
+  // Prod 2026-11-13 (CeXO funnel 86cbd471): the hold said "1425.21 of 1500 cents spent, and the next spend of
+  // 99.82 cents would pass the cap", the page said only "hit its max budget" beside a "$14 of $15" gauge.
+  const funnelHold = (data: Record<string, unknown>): HoldEventInput => ({
+    event: "campaign-hold",
+    detail: "Campaign not run: its daily max budget is reached.",
+    data: { reason: "daily_ceiling_reached", nextRunAt: "2026-09-17T06:22:14.000Z", ...data },
+    createdAt: ago(60_000),
+  });
+
+  it("states the funnel's figures, the refused next step and the people waiting", () => {
+    const hold = readCampaignHold([funnelHold({ spentCents: 1425.21, ceilingCents: 1500, nextSpendCents: 99.82 })], NOW)!;
+    expect(campaignHoldCopy(hold, NOW, 69).body).toBe(
+      "$14.25 of $15 spent this period. The next step costs $1.00, which would go over the limit. 69 people are waiting for a first message. Sending starts again when the next period begins. Raise the limit to start sooner.",
+    );
+  });
+
+  it("without figures, says the limit in words and leaves the queue out when nobody waits", () => {
+    const hold = readCampaignHold([funnelHold({})], NOW)!;
+    expect(campaignHoldCopy(hold, NOW, 0).body).toBe(
+      "This campaign hit its max budget or its max volume for this period. Sending starts again when the next period begins. Raise the limit to start sooner.",
+    );
+    expect(campaignHoldCopy(hold, NOW, 1).body).toContain(" 1 person is waiting for a first message.");
   });
 
   it("tells an unfunded campaign where to get funded, never a retired daily budget", () => {

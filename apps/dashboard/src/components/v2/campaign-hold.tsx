@@ -60,15 +60,18 @@ export function CampaignHoldNote({
   onAction,
   limitsHref,
   billingHref,
+  waiting = null,
 }: {
   hold: CampaignHold;
+  /** People waiting behind this hold for a first message (features-service next-steps), when served. */
+  waiting?: number | null;
   /** The pipes it stops, when not all of them ("Lead found, Positive reply"). */
   pipes?: string | null;
   onAction?: () => void;
   limitsHref?: string | null;
   billingHref: string;
 }) {
-  const copy = campaignHoldCopy(hold);
+  const copy = campaignHoldCopy(hold, new Date(), waiting);
   const href = copy.action === "billing" ? billingHref : copy.action === "campaign_budget" && !onAction ? (limitsHref ?? null) : null;
   return (
     // keel.css is unlayered, so a bg-* utility on a k-card loses: the amber tint rides an inline style.
