@@ -75,7 +75,7 @@ A newsletter is no post: it sends one email per subscriber, each a Unit of its o
 
 1. **One Engine per outcome.** An Engine makes one outcome; competing scripts in dynasties perform it. A script makes one outcome and may consume any outcomes. The only pick left is the script, inside the Engine of an outcome: the best value per dollar among the scripts the strategy keeps.
 2. **No written manifest.** A script is code: it calls its Providers at run time. The outcomes it needs (its **materials**, for the Plan, costs and return) are read from its code: each `ctx.get("...")` names one, always a literal, and a test enforces it. They form its **bill of materials (BOM)**: the inputs a script consumes and the quantity of each per Unit produced, loss included. Then the ledger measures what each run consumed, and an unexpected call joins the list. No judge is needed.
-3. **Provider and Engine.** A Provider offers one function, `get()`, with no argument: it returns the most recent Unit of its outcome this caller has not received yet, for the caller's context (the run's subject, its company, its brand, or the run itself), from the stock, else by ordering one from the Engine. "Already received" is the ledger's record of consumption. One exception: when the brand holds several competing versions of an input (templates, for example), the Provider puts them against each other and the Rating picks one per run. That is how a new version proves itself against the old ones. An Engine offers `pull()` and `push(unit)`, and always makes a new piece. `pull()` makes one piece for a context, down from the Target. `push(unit)` makes the next outcome from a Unit that landed, up toward the Target.
+3. **Provider and Engine.** A Provider offers one function, `get()`, with no argument: it returns the most recent Unit of its outcome this caller has not received yet, for the caller's context (the run's subject, its company, its brand, or the run itself), from the stock, else by ordering one from the Engine. "Already received" is the ledger's record of consumption. A Provider never picks a template or a model: each is a tactic of the script that uses it, and a new one proves itself as a script (section 8). An Engine offers `pull()` and `push(unit)`, and always makes a new piece. `pull()` makes one piece for a context, down from the Target. `push(unit)` makes the next outcome from a Unit that landed, up toward the Target.
 4. **Freshness is the script's job.** A script unhappy with what it got calls `get()` again, and a new piece is made, as long as the run's budget lasts.
 5. **The names.** Engine, Provider, Plan, Lead, Lifecycle.
 6. **"Performed by" is a tactic of scripts.** Who runs a script is data on the script, never an object of its own.
@@ -112,6 +112,10 @@ A script that wants a fresh piece asks again: `if (context.ageDays > 90) context
 **An answer that takes minutes.** A run lasts a moment, but some vendors answer later: the client's Claude answers in seconds to minutes, or not while the Mac sleeps. Such a vendor answers "later"; the run stops, like a run missing a milestone, and is tried again at a later tick under the same picks, so the same Request is asked again and finds its answer.
 
 **One run, one script.** When a run does not produce its outcome, no other script is tried on that subject. A script may embed a fallback of its own, and it is then simply a different script.
+
+**A script is a path toward its outcome.** Some outcomes are facts nobody can make on demand: a meeting booked, a backlink earned, a client who pays. A script of such an Engine does its part by asking other outcomes (a message carrying the booking link, an email asking a page's author for the link), and its run ends. The Unit lands later, when someone observes the fact: our own judge, the client's CRM, a calendar, a crawler. A campaign never waits on a person: when the Unit lands, it is pushed to the next Engine. An outcome a campaign needs with no script working toward it is a gap to fill with a script.
+
+**Every piece of writing is a script.** A service never calls a model it chose itself. A draft of an offer's fields, a preview email, a reply: each is the outcome of an Engine, made by its scripts, so one Rating picks everything.
 
 ## 5. Pull, push and the Plan
 
@@ -174,7 +178,7 @@ Every Unit, from whoever performed it, lands in one stock. Several scripts feed 
 
 ### Dynasties
 
-Anything a pick can pick (a script, or a Unit of the brand) belongs to a dynasty of versions. The pick keeps the exact version it ran; the Rating compares dynasties, its stats pooled across the versions of each. An **upgrade** is a new version of the same dynasty: it starts from the dynasty's belief. A **fork** is a new dynasty: it starts from its parent's belief. The code holds no line about any one dynasty.
+Every script belongs to a dynasty of versions. The pick keeps the exact version it ran; the Rating compares dynasties, its stats pooled across the versions of each. An **upgrade** is a new version of the same dynasty: it starts from the dynasty's belief. A **fork** is a new dynasty: like any new script it starts from its Engine's belief, and its own runs take over (section 8). A script moved under a finer outcome keeps its runs. The code holds no line about any one dynasty.
 
 ## 8. The pick and the Supplier rating
 
@@ -182,7 +186,7 @@ A **pick is always a script**. An LLM model or a template is a tactic of the scr
 
 A **candidate place** is a pair (consuming Engine, outcome it calls): the writer's Engine calling Message written and the reply judge's Engine calling the same outcome make two candidate places, and each can settle on a different script.
 
-The **Supplier rating** is an Engine like any other. At each tick it reads the ledger and produces a **Rating** Unit for each brand: per candidate at each candidate place, its beliefs about value per dollar. Every picking script calls the Rating's Provider.
+The **Supplier rating** is an Engine like any other. At each tick it reads the ledger and produces one **Rating** for the whole fleet: per candidate at each candidate place, its beliefs about value per dollar. Outcomes are rare, so one brand's runs seldom say enough alone. Every picking script calls the Rating's Provider.
 
 The rule is one for every pick: **Thompson sampling on value per dollar**.
 
@@ -197,30 +201,30 @@ A candidate with little data has wide beliefs: sometimes it draws high and gets 
 
 A run is credited the value of the **strongest outcome its chain reached** in the ledger, less the value of what it made itself. Its chain is the runs that consumed its Unit, then the runs that consumed theirs, and so on. A writer whose message led to a reply, then a meeting, is credited the meeting's value less the message's own. A run whose chain reached nothing past its own Unit is credited nothing.
 
-An **outcome's value flows down from the offer's lifetime revenue**, one step at a time, through one-step rates MEASURED in the ledger: an outcome is worth the rate to the next one times that next one's value. A step the ledger cannot measure (a sale closed outside our tools) is asked from the client, never guessed.
+Why the subtraction. An outcome's value is already the average of what its Units lead to. Credited whole to a run that led no further, it counts the successes twice and hands every run the same floor, which favours the cheapest. Worked example: two writers, 500 messages each, the first at $0.002 a message, the second at $0.004. An interested lead is worth $126, a message sent $1.89, a message written $1.87. The first brings 4 interested leads, the second 12.
 
-The client is a second signal. When he **edits** a Unit we made (a drafted offer field, a description) or **reports** one he cannot edit (a message already sent), that Unit is worth nothing for the script that made it. Silence says nothing; there is no positive vote.
+| | Cheap writer | Dear writer |
+|---|---|---|
+| Credited without the subtraction | 4 x $126 + 496 x $1.89 = $1,441 | 12 x $126 + 488 x $1.89 = $2,434 |
+| Per dollar, without | $1,441 / $1 = **1,441** | $2,434 / $2 = **1,217** |
+| Credited with the subtraction | 4 x $124.13 + 496 x $0.02 = $506 | 12 x $124.13 + 488 x $0.02 = $1,499 |
+| Per dollar, with | $506 / $1 = **506** | $1,499 / $2 = **749** |
 
-### A branch is rated with its own picks at their best
+Without the subtraction the cheap writer wins on a floor both share. With it, the writer that brings three times the interest wins at twice the price.
 
-A candidate's measured yield mixes every pick still being learned under it. A cold email branch tried while its email finder, writer and template are still explored looks worse than it is. So the Rating multiplies a candidate's value by its **uplift**: over each candidate place under it, the best candidate's value per dollar over the value per dollar of the mix picked there this last week. The Plan reads the tree the same way.
+An **outcome's value flows down from the offer's lifetime revenue**, one step at a time, through one-step rates MEASURED in the ledger: an outcome is worth the rate to the next one times that next one's value. A step the ledger cannot measure (a sale closed outside our tools) is asked from the client, prefilled with a default, and replaced as soon as the ledger measures it (a CRM, a payment tool or a calendar connected); no other rate is ever asked. This value is gross: the pick divides it by each candidate's own cost. The Plan's value (section 10) is the same flow net of the cost to go on.
 
-### Pooling, delays, time
+The client is a second signal. When he **edits** a Unit we made (a drafted offer field, a description) or **reports** one he cannot edit (a message already sent), that Unit is worth nothing for the script that made it. Silence says nothing; there is no positive vote. One subject holds several Units over time (a lead holds every message written to them), so a report names the Unit by when it was made.
 
-A belief is pooled across levels (the candidate everywhere it is offered, this candidate place across clients, clients sharing tactics, the client), each pulled toward the one above with a strength fitted from the data. Local data wins as it grows.
+### A new script, and the price of exploring
 
-Worked example, with a fleet yield of 2% counted as 200 trials of prior experience, for a client whose true yield is 3%:
+A candidate's belief starts from its Engine's own mix (what the runs of every script of that Engine reached) and its own runs take over as they grow.
 
-| Client data | Estimate |
-|---|---|
-| No trials | 2.0% |
-| 3 successes out of 50 | (3 + 4) / 250 = **2.8%** |
-| 30 out of 1,000 | (30 + 4) / 1,200 = **2.83%** |
-| 300 out of 10,000 | (300 + 4) / 10,200 = **2.98%** |
+The pull toward the Engine is counted in **credited runs**, never in runs. Outcomes are rare: in our production, 5 interested leads for 13,731 sends. A pull worth 5 runs then holds 0.002 credited run, and a script with no history is believed to bring certainly nothing: a new script was picked 0 times in 50 against the one in place. With a pull worth one credited run (about 2,700 runs here), a new script is drawn above a script at the Engine's average about a third of the time, until its own runs say otherwise.
 
-A reply can land days after the message. A decision whose order is still open counts for the share of outcomes already due at its age; a decision whose order ended without the milestone counts in full. Worked example: 100 decisions made 7 days ago, 70% of outcomes usually arrive within 7 days, 2 successes so far, all still open. They are worth 100 x 0.7 = 70 full trials, and the estimate is 2 / 70 = **2.86%**, not 2%.
+Exploring has a price, and it grows with the number of candidates and the rarity of the outcome. One new script against the one in place takes about 40% of the picks until its runs speak. Sixty-six new scripts take nearly all of them for weeks, because each needs thousands of runs before a rare outcome can tell them apart. A script per combination of model and template is paid for in exploration: create the candidates worth learning about.
 
-Each day's decisions are read like for like, against the other candidates' results that day, so a candidate tried while the rest was still learning is not blamed for it, and a candidate cannot excuse its own failures. Old evidence fades with a half-life, so a world that changes is read again: a source that runs dry loses its picks.
+No age rule: candidates drawn at the same time are as young as each other, so a reply that lands days later is missed by all of them alike.
 
 ### Regret
 
@@ -240,7 +244,7 @@ Every decision rests on two numbers that flow in opposite directions, milestone 
 
 `C(start) = 0` and `C(to) = (C(from) + c) / y`
 
-**Value flows backward from the Target.** A paid client is worth the offer's lifetime revenue. A milestone before it is worth what you can make of it, net of what that costs, or nothing:
+**Value flows backward from the Target.** A paid client is worth the offer's lifetime revenue. A milestone before it is worth what you can make of it, net of what that costs, or nothing (the Plan's value: it says whether going on is worth it; the Rating's value of an outcome, section 8, is the same flow before cost):
 
 `V(target) = value` and `V(s) = max(0, y x V(next) - c)`
 
@@ -268,7 +272,7 @@ A budget is funded in order of value per dollar until it runs out. With $500 to 
 
 ## 11. Others who perform, and reliability
 
-Every Unit names who performed it. Everything is counted; our return values only what our runs brought in. A report from another party about a fact one of our runs made (the CRM import of an interested lead our reply judge missed) is that run's campaign's value, and credits no pick: a judge that missed a fact missed it.
+Every Unit names who performed it. Everything is counted; our return values only what our runs brought in. Who observes a fact and who worked toward it are two things. When another party reports a fact (the client's CRM imports a meeting, a crawler sees a backlink) and the ledger links that Unit to what one of our runs made, the run's chain reached it: the campaign holds its value and the scripts on that chain are credited (section 8). A reported fact no chain links to our runs counts in the totals and credits no pick.
 
 Whoever attests an outcome is a script: a reply judge, a CRM import, a website tracker. **Reliability** is its agreement with the outcome's reference script on the same subjects.
 
