@@ -174,26 +174,32 @@ Every Unit, from whoever performed it, lands in one stock. Several scripts feed 
 
 ### Dynasties
 
-Anything a pick can pick (a script, or a Unit of the brand) belongs to a dynasty of versions. The pick picks a dynasty and serves its head version. Stats pool across the versions of a dynasty. An **upgrade** is a new version of the same dynasty: it starts from the dynasty's belief. A **fork** is a new dynasty: it starts from its parent's belief. LLM models and templates are examples of this one rule; the code holds no line about any of them.
+Anything a pick can pick (a script, or a Unit of the brand) belongs to a dynasty of versions. The pick keeps the exact version it ran; the Rating compares dynasties, its stats pooled across the versions of each. An **upgrade** is a new version of the same dynasty: it starts from the dynasty's belief. A **fork** is a new dynasty: it starts from its parent's belief. The code holds no line about any one dynasty.
 
 ## 8. The pick and the Supplier rating
 
-A **candidate place** is a pair (consuming Engine, outcome it calls): the same LLM Engine called by the writer and by the reply judge makes two candidate places, and each can settle on a different model.
+A **pick is always a script**. An LLM model or a template is a tactic of the script that uses it, never a candidate of its own: two models are two scripts (or two versions of one).
+
+A **candidate place** is a pair (consuming Engine, outcome it calls): the writer's Engine calling Message written and the reply judge's Engine calling the same outcome make two candidate places, and each can settle on a different script.
 
 The **Supplier rating** is an Engine like any other. At each tick it reads the ledger and produces a **Rating** Unit for each brand: per candidate at each candidate place, its beliefs about value per dollar. Every picking script calls the Rating's Provider.
 
 The rule is one for every pick: **Thompson sampling on value per dollar**.
 
-1. Each candidate carries a belief about its yield (section 10) from its decisions to the next milestone, and a belief about its measured cost from the decision to that milestone.
-2. Draw one yield and one cost from each belief.
-3. Score each candidate: yield x value / cost.
+1. Each candidate carries a belief about the value its runs were credited (below) and a belief about its measured cost per run.
+2. Draw one value and one cost from each belief.
+3. Score each candidate: value / cost.
 4. Pick the highest.
 
 A candidate with little data has wide beliefs: sometimes it draws high and gets tried. Exploration comes by construction.
 
-### Credit through traceability
+### Credit through the ledger
 
-Every Unit carries its **traceability**: the picks that led to it, its own included, and those carried by the Units it consumed. When the next milestone lands, every pick on its traceability is credited. A template is scored on the replies of the messages it served, never on whether the writer wrote. Reply received puts its lead on the Engaged rung, so the picks of a cold email are credited at the reply, days before an interested lead.
+A run is credited the value of the **strongest outcome its chain reached** in the ledger, less the value of what it made itself. Its chain is the runs that consumed its Unit, then the runs that consumed theirs, and so on. A writer whose message led to a reply, then a meeting, is credited the meeting's value less the message's own. A run whose chain reached nothing past its own Unit is credited nothing.
+
+An **outcome's value flows down from the offer's lifetime revenue**, one step at a time, through one-step rates MEASURED in the ledger: an outcome is worth the rate to the next one times that next one's value. A step the ledger cannot measure (a sale closed outside our tools) is asked from the client, never guessed.
+
+The client is a second signal. When he **edits** a Unit we made (a drafted offer field, a description) or **reports** one he cannot edit (a message already sent), that Unit is worth nothing for the script that made it. Silence says nothing; there is no positive vote.
 
 ### A branch is rated with its own picks at their best
 
@@ -268,7 +274,7 @@ Whoever attests an outcome is a script: a reply judge, a CRM import, a website t
 
 ## 12. Decide versus report
 
-**To decide**, the Rating reads each candidate's own measured cost and yield, from the decision to the next milestone. **To report**, the ledger prices every outcome by every path: its own production, plus its materials at their own unit cost. Expected and measured returns share one formula and one basis: the Units of its Target the campaign made from its own inputs since its start, never Units it took from the stock. A return (value per dollar) exists only at a campaign's Target; below the Target, an outcome reports its cost per Unit, its cost from Start and its yield, never a return.
+**To decide**, the Rating reads each candidate's own measured cost and the value credited to its runs (section 8). **To report**, the ledger prices every outcome by every path: its own production, plus its materials at their own unit cost. Expected and measured returns share one formula and one basis: the Units of its Target the campaign made from its own inputs since its start, never Units it took from the stock. A return (value per dollar) exists only at a campaign's Target; below the Target, an outcome reports its cost per Unit, its cost from Start and its yield, never a return.
 
 A Unit keeps the price paid to produce it, its **standard cost**, and every consumption pays that price. When a Unit is consumed again, the books show a **reuse gain**. Everything reconciles to the cent:
 
