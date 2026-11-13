@@ -70,7 +70,7 @@ describe("Monitoring > AI vendors > Credit: page and hub", () => {
     const hub = page.slice(page.indexOf("function Hub("), page.indexOf("function Section("));
     expect(hub.indexOf('<VendorCreditTile href={href("ai/credit")} />')).toBeGreaterThan(-1);
     expect(hub.indexOf("<VendorCreditTile")).toBeLessThan(hub.indexOf("<Section "));
-    // Two AI pages since LLM-RATING-PER-ENGINE-1112 (Credit + LLMs per Engine).
+    // Two AI pages since LLM-RATING-PER-ENGINE-1112 (Credit + Scripts per Engine since SCRIPT-VALUE-RATING-1113-MON-DASH).
     expect(hub).toContain('<Section section="ai" count={2} grid={false}>');
   });
 

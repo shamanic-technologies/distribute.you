@@ -13596,16 +13596,22 @@ export async function getStaffSophieReplies(days: number): Promise<StaffSophieRe
 
 // ─── Monitoring > AI vendors > Credit (VENDOR-CREDIT-1030) ───
 import { VendorCreditSchema as StaffVendorCreditSchema, type VendorCredit as StaffVendorCredit } from "./monitoring/vendor-credit";
-import { EngineLlmsSchema, type EngineLlms } from "./monitoring/engine-llms";
+import { SCRIPT_ENGINES_NOT_BUILT_YET, ScriptEnginesSchema, type ScriptEnginesRead } from "./monitoring/script-engines";
 
 /** chat-service's stored "vendor out of credit" fact per AI provider it calls, through api-service's staff passthrough. */
 export const STAFF_VENDOR_CREDIT_PATH = "/chat/ops/vendor-credit";
 
-/** Monitoring > AI vendors > LLMs: per Engine, its allowed LLMs ranked by the Rating with their usage (features-service, LLM-RATING-PER-ENGINE-1112). */
-export const STAFF_ENGINE_LLMS_PATH = "/features/research/engine-llms";
+/** Monitoring > AI vendors > Scripts per Engine: per Engine, its scripts ranked by today's share of the Rating's draws (features-service, SCRIPT-VALUE-RATING-1113-MON). */
+export const STAFF_SCRIPT_ENGINES_PATH = "/features/research/script-engines";
 
-export async function getStaffEngineLlms(): Promise<EngineLlms> {
-  return parseStaff("getStaffEngineLlms", EngineLlmsSchema, await apiCall<unknown>(STAFF_ENGINE_LLMS_PATH));
+/** The board, or « being built » on the served 503 `script_engines_not_built_yet` (a normal state, never an error). */
+export async function getStaffScriptEngines(): Promise<ScriptEnginesRead> {
+  try {
+    return { state: "ready", board: parseStaff("getStaffScriptEngines", ScriptEnginesSchema, await apiCall<unknown>(STAFF_SCRIPT_ENGINES_PATH)) };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 503 && err.body?.reason === SCRIPT_ENGINES_NOT_BUILT_YET) return { state: "building" };
+    throw err;
+  }
 }
 
 /** One row per provider plus one per UTC day × provider over the last `days` (1..90), with chat-service's served verdict. */
