@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CampaignNextStepsSchema, heldStepCopy, heldStepOf } from "../src/lib/held-step";
+import { CampaignNextStepsSchema, heldStepCopy, heldStepOf, waitingOnLimit } from "../src/lib/held-step";
 
 const HELD = {
   outcome: "message_written",
@@ -43,6 +43,25 @@ describe("held step (NEXT-STEPS-TRUE-REASON-1111)", () => {
       expect(text).not.toMatch(/_/);
       expect(text).not.toMatch(/[—–]/);
     }
+  });
+
+  it("a limit hold is the limit note's: no second card saying our team is on it (prod 2026-11-13, CeXO)", () => {
+    for (const reason of ["daily_ceiling_reached", "unfunded", "insufficient_credits"]) {
+      const steps = CampaignNextStepsSchema.parse({
+        salesFunnelCampaignId: "c1",
+        nextSends: { heldBy: { ...HELD, outcome: "lead_found", reason }, leadsWaitingOnHeldEngine: 69 },
+      });
+      expect(heldStepOf(steps)).toBeNull();
+      expect(waitingOnLimit(steps)).toBe(69);
+    }
+    const ours = CampaignNextStepsSchema.parse({ salesFunnelCampaignId: "c1", nextSends: { heldBy: HELD, leadsWaitingOnHeldEngine: 5 } });
+    expect(waitingOnLimit(ours)).toBeNull();
+  });
+
+  it("the limit note on the funnel page carries the people waiting", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/funnel-campaigns.tsx"), "utf8");
+    expect(src).toContain("waitingOnLimit(useFunnelCampaignNextSteps(campaign.brandId, campaign.id).data)");
+    expect(src).toContain('waiting={g.hold.reason === "daily_ceiling_reached" ? waitingOnHold : null}');
   });
 
   it("no count served reads only the day", () => {

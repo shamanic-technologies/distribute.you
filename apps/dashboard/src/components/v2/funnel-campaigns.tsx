@@ -67,7 +67,8 @@ import { holdOutlivesLimitChange } from "@/lib/campaign-hold";
 import { FactoryCampaignSections } from "@/components/v2/factory-campaign";
 import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts, type BilledSpend } from "@/components/v2/spend-charts";
 import { PeoplePage } from "@/components/v2/people-page";
-import { HeldStepNote } from "@/components/v2/held-step-note";
+import { HeldStepNote, useFunnelCampaignNextSteps } from "@/components/v2/held-step-note";
+import { waitingOnLimit } from "@/lib/held-step";
 import { CampaignAudience } from "@/components/v2/campaign-audience";
 import { EmptyNote, Figure, HoverScroll, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { RoiLabel } from "@/components/v2/roi-label";
@@ -722,6 +723,8 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   // Why a running pipe sends nothing (campaign-service holds each PIPE): one note per reason.
   const runningPipes = units.filter((u) => campaignById.get(u.campaignId)?.running);
   const holds = useCampaignHolds(runningPipes.map((u) => u.campaignId));
+  // People waiting behind a limit hold: said on the limit note, the one card for it (same read as HeldStepNote).
+  const waitingOnHold = waitingOnLimit(useFunnelCampaignNextSteps(campaign.brandId, campaign.id).data);
   // Why each day costs what it costs, the campaign's and each pipe's (features-service, owner 2026-10-19).
   const spendQ = useFunnelCampaignSpendCharts(campaign.brandId, campaign.id);
   const pipeLabel = (id: string) => {
@@ -794,6 +797,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
               pipes={g.campaignIds.length < runningPipes.length ? g.campaignIds.map(pipeLabel).filter(Boolean).join(", ") : null}
               onAction={() => setEditing(true)}
               billingHref={v2Href(orgId, campaign.brandId, "billing")}
+              waiting={g.hold.reason === "daily_ceiling_reached" ? waitingOnHold : null}
             />
           ))}
 

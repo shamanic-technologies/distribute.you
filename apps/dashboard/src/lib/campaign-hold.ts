@@ -83,6 +83,8 @@ export interface CampaignHold {
   spentCents: number | null;
   /** The daily ceiling in cents, on the ceiling reason. */
   ceilingCents: number | null;
+  /** The next spend billing refused because it would pass the limit, in cents, when campaign-service states it. */
+  nextSpendCents: number | null;
 }
 
 /** What the customer can do about it, if anything. The caller owns the href. */
@@ -108,6 +110,18 @@ const readNumber = (data: Record<string, unknown>, key: string): number | null =
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 };
 
+/**
+ * The field campaign-service names the refused next spend on a funnel hold (HOLD-FIGURES-1113). Absent until it
+ * ships: the copy then states the spent / limit figures alone.
+ */
+const NEXT_SPEND_FIELD = "nextSpendCents";
+
+/** A charge keeps its cents ("$14.25"), a whole amount reads whole ("$15"): pure formatting. */
+function exactUsd(cents: number): string {
+  const usd = cents / 100;
+  return Number.isInteger(usd) ? `$${usd.toLocaleString("en-US")}` : `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 const HOLD_REASONS = new Set<string>([
   "daily_ceiling_reached",
   "unfunded",
@@ -127,6 +141,7 @@ function fromCampaignHold(e: HoldEventInput): CampaignHold | null {
     resumeAt,
     spentCents: readNumber(e.data, "spentCents"),
     ceilingCents: readNumber(e.data, "ceilingCents"),
+    nextSpendCents: readNumber(e.data, NEXT_SPEND_FIELD),
   };
 }
 
@@ -150,6 +165,7 @@ function fromGateCheck(e: HoldEventInput): CampaignHold | null {
     resumeAt: null,
     spentCents: null,
     ceilingCents: null,
+    nextSpendCents: null,
   };
 }
 
@@ -221,15 +237,29 @@ export function holdOutlivesLimitChange(hold: CampaignHold, limitsUpdatedAt: str
 export function campaignHoldCopy(
   hold: CampaignHold,
   now: Date = new Date(),
+  /** People served to the campaign still waiting for our first message (features-service next-steps), when served. */
+  waiting: number | null = null,
 ): CampaignHoldCopy {
   switch (hold.reason) {
-    case "daily_ceiling_reached":
+    case "daily_ceiling_reached": {
+      // The figures campaign-service states on the hold (prod 2026-11-13: a gauge reading "$14" of "$15" beside a
+      // bare "hit its max budget" read as a bug; it was $14.25 spent and a $1.00 next step).
+      const figures =
+        hold.spentCents !== null && hold.ceilingCents !== null
+          ? `${exactUsd(hold.spentCents)} of ${exactUsd(hold.ceilingCents)} spent this period.` +
+            (hold.nextSpendCents !== null ? ` The next step costs ${exactUsd(hold.nextSpendCents)}, which would go over the limit.` : "")
+          : "This campaign hit its max budget or its max volume for this period.";
+      const queue =
+        waiting !== null && waiting > 0
+          ? ` ${waiting === 1 ? "1 person is" : `${waiting.toLocaleString("en-US")} people are`} waiting for a first message.`
+          : "";
       return {
         headline: "This campaign reached its limit",
-        body: "This campaign hit its max budget or its max volume for this period. Sending starts again when the next period begins. Raise the limit to start sooner.",
+        body: `${figures}${queue} Sending starts again when the next period begins. Raise the limit to start sooner.`,
         action: "campaign_budget",
         actionLabel: "Raise the limit",
       };
+    }
     case "unfunded":
       return {
         headline: "This campaign has no budget yet",
