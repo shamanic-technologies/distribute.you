@@ -137,8 +137,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffTriggerHealth",
   // Monitoring > AI vendors > Credit: which AI vendor is out of credit (VENDOR-CREDIT-1030).
   "staffVendorCredit",
-  // Monitoring > AI vendors > LLMs: each Engine's LLMs ranked by its Rating (LLM-RATING-PER-ENGINE-1112).
-  "staffEngineLlms",
+  // Monitoring > AI vendors > Scripts per Engine: each Engine's scripts ranked by the Rating's draws (SCRIPT-VALUE-RATING-1113-MON-DASH).
+  "staffScriptEngines",
   "staffUnsentAnswers",
   // Monitoring > Alerts: every staff alert recorded instead of emailed (SIGNUP-EMAILS-1111-MONITORING).
   "staffMonitoringAlerts",
