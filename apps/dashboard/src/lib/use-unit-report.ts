@@ -3,7 +3,15 @@
 import { useCallback } from "react";
 import { reportUnit } from "@/lib/api";
 import { useStaffMode } from "@/lib/use-staff-mode";
-import { DASHBOARD_REPORT_SOURCE, type UnitRef, type UnitReportKind, type UnitReportResponse } from "@/lib/unit-reports";
+import {
+  DASHBOARD_REPORT_SOURCE,
+  draftedEdits,
+  editedNote,
+  type DraftedFields,
+  type UnitRef,
+  type UnitReportKind,
+  type UnitReportResponse,
+} from "@/lib/unit-reports";
 
 /**
  * Send one client report of one Unit (SCRIPT-VALUE-RATING-1113, `lib/unit-reports.ts`).
@@ -32,4 +40,22 @@ export function useUnitReport(): (unit: UnitRef, kind: UnitReportKind, note?: st
  */
 export function logReportFailure(context: string, unit: UnitRef) {
   return (err: unknown) => console.error(`[dashboard] ${context}: unit report not stored`, { ...unit, err });
+}
+
+/**
+ * After a save that landed: ONE `edited` report per draft of ours the save changed, naming the
+ * Unit brand-service states beside the field (`draftUnit`, `unitAt` included). `before` = the
+ * fields as known before the save, `sent` = what the save wrote. Nothing changed, the client's
+ * own value, or a draft naming no Unit: nothing sent.
+ */
+export function useDraftEditReports(): (context: string, before: DraftedFields | undefined, sent: Record<string, string | string[] | null | undefined>) => void {
+  const sendReport = useUnitReport();
+  return useCallback(
+    (context, before, sent) => {
+      for (const edit of draftedEdits(before, sent)) {
+        sendReport(edit.unit, "edited", editedNote(edit.keys)).catch(logReportFailure(context, edit.unit));
+      }
+    },
+    [sendReport],
+  );
 }

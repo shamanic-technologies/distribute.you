@@ -164,8 +164,8 @@ import { EMAIL_ANGLES, ANGLE_CHANNEL, angleStrategy, funnelFitsAngles, toggleAng
 import { OrgLaunch } from "./org-launch";
 import { v2NewBrandHref } from "@/lib/v2/routes";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
-import { editedAgainstDraft, editedNote, offerFieldsDraftedUnit } from "@/lib/unit-reports";
-import { logReportFailure, useUnitReport } from "@/lib/use-unit-report";
+import { draftedAfterSave, draftUnitOf, type DraftedField, type DraftedFields } from "@/lib/unit-reports";
+import { useDraftEditReports } from "@/lib/use-unit-report";
 import { stepViewName, withStageTransition } from "./view-transition";
 
 type StepState = StepPhase;
@@ -397,17 +397,19 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [answered, setAnswered] = useState(false);
   const answeredRef = useRef(false);
   answeredRef.current = answered;
-  // What our draft said, per offer, for the edit reports (SCRIPT-VALUE-RATING-1113): a step
-  // confirmed with a changed drafted value tells the Rating our draft was not good.
-  const draftRef = useRef<{ offerId: string; values: Record<string, string> } | null>(null);
-  const sendReport = useUnitReport();
+  // The drafted values the form took, per offer, each with the Unit brand-service names for it
+  // (SCRIPT-VALUE-RATING-1113): a step confirmed with one of them changed tells the Rating that
+  // draft was not good. An answer the visitor had already typed is never in it.
+  const draftRef = useRef<{ offerId: string; fields: DraftedFields } | null>(null);
+  const formRef = useRef({ levers, gives, valueInput });
+  formRef.current = { levers, gives, valueInput };
+  const sendDraftEdits = useDraftEditReports();
   const reportDraftEdits = (offerId: string, sent: Record<string, string | string[]>) => {
     const draft = draftRef.current;
     if (!brandId || !draft || draft.offerId !== offerId) return;
-    const edited = editedAgainstDraft(draft.values, sent);
-    if (edited.length === 0) return;
-    const unit = offerFieldsDraftedUnit(brandId, offerId);
-    sendReport(unit, "edited", editedNote(edited)).catch(logReportFailure("onboarding offer points", unit));
+    sendDraftEdits("onboarding offer points", draft.fields, sent);
+    // A changed value is the visitor's own from here: the same step confirmed again reports nothing.
+    draft.fields = draftedAfterSave(draft.fields, sent);
   };
   const [answerBusy, setAnswerBusy] = useState(false);
   const [answerError, setAnswerError] = useState<string | null>(null);
@@ -879,12 +881,18 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       const r = await extractBrandFields([id], fields, { mode: "suggest", urlStrategy: "landing", offerId });
       const usd = parseUsdEstimate(r.fields.clientLifetimeRevenueUsd?.value);
       setValueInput((cur) => cur || (usd != null ? String(usd) : ""));
-      draftRef.current = {
-        offerId,
-        values: Object.fromEntries(
-          [...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS].map((f) => [f.key, valueLines(r.fields[f.key]?.value).join("\n")]),
-        ),
-      };
+      // Only what the form takes below (an answer still blank) is ours to be edited.
+      const form = formRef.current;
+      const ours = (key: string, value: string): DraftedField => ({
+        value,
+        stillOurDraft: r.drafts?.[key]?.stillOurDraft === true,
+        draftUnit: draftUnitOf(r.drafts?.[key]?.draftUnit),
+      });
+      const taken: DraftedFields = {};
+      for (const f of LEVER_DRAFT_FIELDS) if (!form.levers[f.key].trim()) taken[f.key] = ours(f.key, valueLines(r.fields[f.key]?.value).join("\n"));
+      for (const f of GIVE_DRAFT_FIELDS) if (!form.gives[f.key].trim()) taken[f.key] = ours(f.key, valueLines(r.fields[f.key]?.value).join("\n"));
+      if (!form.valueInput && usd != null) taken.clientLifetimeRevenueUsd = ours("clientLifetimeRevenueUsd", String(usd));
+      draftRef.current = { offerId, fields: taken };
       setLevers((cur) => fillBlank(cur, LEVER_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
       setGives((cur) => fillBlank(cur, GIVE_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
       setDrafted("done");
@@ -1031,6 +1039,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     try {
       const o = await ensureOffer();
       await saveOfferLifetimeRevenue(brandId, o.offerId, parsed.usd);
+      reportDraftEdits(o.offerId, { clientLifetimeRevenueUsd: String(parsed.usd) });
     } catch (e) {
       console.error("[get-started] lifetime revenue save failed:", e);
       reopen("value", "We could not save this. Try again.");

@@ -62,7 +62,7 @@ import {
 import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { AmbiguousThreadSchema, ReplySentSchema, newestThread, replyBodyHtml, type ReplySent } from "./unibox-reply";
 import { z } from "zod";
-import { UnitReportListSchema, UnitReportResponseSchema, type UnitReportBody, type UnitReportResponse, type UnitReportRow } from "./unit-reports";
+import { draftUnitOf, type DraftUnit, UnitReportListSchema, UnitReportResponseSchema, type UnitReportBody, type UnitReportResponse, type UnitReportRow } from "./unit-reports";
 import type { CardFacts } from "./v2/card-risk";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
 import {
@@ -5994,6 +5994,13 @@ export interface UserField {
    */
   value: UserFieldValue | null;
   provenance: FieldProvenance;
+  /**
+   * Is the value still what WE drafted (brand-service decides at the write), and the Unit that
+   * draft made in the ledger: what an edit of this value reports (`lib/unit-reports.ts`).
+   * `draftUnit` null = the client's own value, or a draft that declared no Unit.
+   */
+  stillOurDraft?: boolean;
+  draftUnit?: DraftUnit | null;
 }
 /** The confirmed user-fields map, keyed by user-field key. */
 export type BrandUserFields = Record<string, UserField>;
@@ -6022,10 +6029,15 @@ const UserFieldValueSchema = z.unknown().transform((v): UserFieldValue | null =>
   }
   return null;
 });
-const UserFieldSchema = z.object({
-  value: UserFieldValueSchema,
-  provenance: z.enum(["confirmed", "suggested", "extracted"]),
-});
+const UserFieldSchema = z
+  .object({
+    value: UserFieldValueSchema,
+    provenance: z.enum(["confirmed", "suggested", "extracted"]),
+    stillOurDraft: z.unknown().optional(),
+    draftUnit: z.unknown().optional(),
+  })
+  // Read loosely, like the value: a missing or odd draft state names no draft, never fails the read.
+  .transform((f) => ({ value: f.value, provenance: f.provenance, stillOurDraft: f.stillOurDraft === true, draftUnit: draftUnitOf(f.draftUnit) }));
 export const BrandUserFieldsResponseSchema = z.object({
   fields: z.record(z.string(), UserFieldSchema),
 });
@@ -6148,6 +6160,11 @@ export interface ExtractFieldBrandInfo {
 export interface ExtractFieldsResponse {
   brands: ExtractFieldBrandInfo[];
   fields: Record<string, ExtractFieldResult>;
+  /**
+   * Per key, whether the value served is still our draft and the Unit that draft made
+   * (brand-service, SCRIPT-VALUE-RATING-1113). Unparsed: read each entry through `draftUnitOf`.
+   */
+  drafts?: Record<string, { stillOurDraft?: boolean; draftUnit?: unknown } | undefined>;
 }
 
 /** A previously extracted and cached field (from GET /brands/:id/extracted-fields) */
