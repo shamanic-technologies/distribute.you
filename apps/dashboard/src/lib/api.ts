@@ -62,7 +62,7 @@ import {
 import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { AmbiguousThreadSchema, ReplySentSchema, newestThread, replyBodyHtml, type ReplySent } from "./unibox-reply";
 import { z } from "zod";
-import { UnitReportResponseSchema, type UnitReportBody, type UnitReportResponse } from "./unit-reports";
+import { UnitReportListSchema, UnitReportResponseSchema, type UnitReportBody, type UnitReportResponse, type UnitReportRow } from "./unit-reports";
 import type { CardFacts } from "./v2/card-risk";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
 import {
@@ -9104,6 +9104,21 @@ export async function reportUnit(body: UnitReportBody, token?: string): Promise<
     throw new Error("[dashboard] reportUnit: invalid response shape");
   }
   return parsed.data;
+}
+
+/** The org's own reports of one subject (features-service `GET /orgs/unit-reports`), newest first. */
+export async function listUnitReports(
+  q: { subjectService: string; subjectId: string; outcomeKey?: string },
+  token?: string,
+): Promise<UnitReportRow[]> {
+  const qs = new URLSearchParams({ subjectService: q.subjectService, subjectId: q.subjectId, ...(q.outcomeKey ? { outcomeKey: q.outcomeKey } : {}) });
+  const raw = await apiCall<unknown>(`/features/unit-reports?${qs.toString()}`, { token });
+  const parsed = UnitReportListSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listUnitReports: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listUnitReports: invalid response shape");
+  }
+  return parsed.data.reports;
 }
 
 /**

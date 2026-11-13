@@ -55,6 +55,33 @@ export const UnitReportResponseSchema = z
   .passthrough();
 export type UnitReportResponse = z.infer<typeof UnitReportResponseSchema>;
 
+/** One stored report as features-service serves it back (`GET /orgs/unit-reports`, newest first). */
+export const UnitReportRowSchema = z
+  .object({
+    id: z.string(),
+    outcomeKey: z.string(),
+    subjectService: z.string(),
+    subjectId: z.string(),
+    kind: z.string(),
+    note: z.string().nullish(),
+    unitAt: z.string().nullish(),
+    reportedAt: z.string(),
+  })
+  .passthrough();
+export const UnitReportListSchema = z.object({ reports: z.array(UnitReportRowSchema) }).passthrough();
+export type UnitReportRow = z.infer<typeof UnitReportRowSchema>;
+
+/**
+ * Was the message sent at `sentAt` reported? A `reported` report of `message_written` whose
+ * `unitAt` is that same instant. A report stored without `unitAt` names no message: it marks none.
+ */
+export function isMessageReported(reports: readonly UnitReportRow[] | undefined, sentAt: string | null | undefined): boolean {
+  if (!reports || !sentAt) return false;
+  const at = Date.parse(sentAt);
+  if (Number.isNaN(at)) return false;
+  return reports.some((r) => r.kind === "reported" && r.outcomeKey === "message_written" && r.unitAt != null && Date.parse(r.unitAt) === at);
+}
+
 /** The Unit one offer-fields draft produced (brand-service `offerFieldsDraftedUnit`). */
 export function offerFieldsDraftedUnit(brandId: string, offerId: string | null | undefined): UnitRef {
   return { outcomeKey: "offer_fields_drafted", subjectService: "brand-service", subjectId: offerId || brandId };

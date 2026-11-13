@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  isMessageReported,
   editedAgainstDraft,
   editedDraftedKeys,
   messageWrittenUnit,
@@ -78,5 +79,23 @@ describe("call sites", () => {
   it("no thumbs up, no star", () => {
     const r = src("src/components/v2/report-message.tsx");
     expect(r).not.toMatch(/thumb|star|Helpful|Good job/i);
+  });
+});
+
+describe("the Reported mark comes back after a reload", () => {
+  const row = (unitAt: string | null, kind = "reported") => ({ id: "r", outcomeKey: "message_written", subjectService: "lead-service", subjectId: "l1", kind, unitAt, reportedAt: "2026-11-13T12:00:00.000Z" });
+  it("marks the message whose send time the report names, same instant whatever the spelling", () => {
+    expect(isMessageReported([row("2026-11-12T10:02:00Z")], "2026-11-12T10:02:00.000Z")).toBe(true);
+    expect(isMessageReported([row("2026-11-12T10:02:00Z")], "2026-11-12T11:00:00.000Z")).toBe(false);
+  });
+  it("a report naming no message, or an edit, marks none", () => {
+    expect(isMessageReported([row(null)], "2026-11-12T10:02:00.000Z")).toBe(false);
+    expect(isMessageReported([row("2026-11-12T10:02:00Z", "edited")], "2026-11-12T10:02:00.000Z")).toBe(false);
+    expect(isMessageReported(undefined, "2026-11-12T10:02:00.000Z")).toBe(false);
+  });
+  it("the button reads the served list", () => {
+    const r = src("src/components/v2/report-message.tsx");
+    expect(r).toContain('if (state === "sent" || servedReported)');
+    expect(r).toContain("listUnitReports({ subjectService: \"lead-service\", subjectId: leadId, outcomeKey: \"message_written\" })");
   });
 });
