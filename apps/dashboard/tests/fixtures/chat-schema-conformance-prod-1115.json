@@ -1,0 +1,103 @@
+{
+ "days": 30,
+ "verdict": "ok",
+ "models": [
+  {
+   "provider": "openai",
+   "model": "gpt-6.1-terra",
+   "answeredCalls": 20,
+   "nonConformingCalls": 0,
+   "conformingShare": 1,
+   "verdict": "ok",
+   "sentence": "openai/gpt-6.1-terra: 100% of 20 answers followed the caller's schema.",
+   "lastViolations": null,
+   "lastNonConformingAt": null
+  },
+  {
+   "provider": "deepseek",
+   "model": "deepseek-flash",
+   "answeredCalls": 15,
+   "nonConformingCalls": 0,
+   "conformingShare": 1,
+   "verdict": "not_enough_answers",
+   "sentence": "deepseek/deepseek-flash: 15 schema'd answers so far, not enough to judge.",
+   "lastViolations": null,
+   "lastNonConformingAt": null
+  },
+  {
+   "provider": "google",
+   "model": "gemini-4-hydrogen",
+   "answeredCalls": 10,
+   "nonConformingCalls": 0,
+   "conformingShare": 1,
+   "verdict": "not_enough_answers",
+   "sentence": "google/gemini-4-hydrogen: 10 schema'd answers so far, not enough to judge.",
+   "lastViolations": null,
+   "lastNonConformingAt": null
+  },
+  {
+   "provider": "zai",
+   "model": "glm-5.3",
+   "answeredCalls": 10,
+   "nonConformingCalls": 0,
+   "conformingShare": 1,
+   "verdict": "not_enough_answers",
+   "sentence": "zai/glm-5.3: 10 schema'd answers so far, not enough to judge.",
+   "lastViolations": null,
+   "lastNonConformingAt": null
+  },
+  {
+   "provider": "zai",
+   "model": "glm-5.3-flash",
+   "answeredCalls": 15,
+   "nonConformingCalls": 0,
+   "conformingShare": 1,
+   "verdict": "not_enough_answers",
+   "sentence": "zai/glm-5.3-flash: 15 schema'd answers so far, not enough to judge.",
+   "lastViolations": null,
+   "lastNonConformingAt": null
+  }
+ ],
+ "series": [
+  {
+   "day": "2026-11-15",
+   "provider": "deepseek",
+   "model": "deepseek-flash",
+   "route": "platform-complete",
+   "answeredCalls": 15,
+   "nonConformingCalls": 0
+  },
+  {
+   "day": "2026-11-15",
+   "provider": "google",
+   "model": "gemini-4-hydrogen",
+   "route": "platform-complete",
+   "answeredCalls": 10,
+   "nonConformingCalls": 0
+  },
+  {
+   "day": "2026-11-15",
+   "provider": "openai",
+   "model": "gpt-6.1-terra",
+   "route": "platform-complete",
+   "answeredCalls": 20,
+   "nonConformingCalls": 0
+  },
+  {
+   "day": "2026-11-15",
+   "provider": "zai",
+   "model": "glm-5.3",
+   "route": "platform-complete",
+   "answeredCalls": 10,
+   "nonConformingCalls": 0
+  },
+  {
+   "day": "2026-11-15",
+   "provider": "zai",
+   "model": "glm-5.3-flash",
+   "route": "platform-complete",
+   "answeredCalls": 15,
+   "nonConformingCalls": 0
+  }
+ ]
+}
