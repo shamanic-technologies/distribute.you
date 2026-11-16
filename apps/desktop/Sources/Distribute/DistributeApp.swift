@@ -38,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// The signed-in user: one distribute key in the Keychain, and the runner it feeds.
+/// The signed-in user: one distribute key (`KeyStore`), and the runner it feeds.
 /// Touched from the main thread only (the views and the web view delegate).
 final class Session: ObservableObject {
     static let shared = Session()
@@ -49,19 +49,19 @@ final class Session: ObservableObject {
     let runner = LocalRunner()
 
     private init() {
-        apiKey = Keychain.read()
+        apiKey = KeyStore.read()
         if let apiKey { runner.start(apiKey: apiKey) }
     }
 
     func setKey(_ key: String) {
-        Keychain.save(key)
+        KeyStore.save(key)
         apiKey = key
         runner.start(apiKey: key)
     }
 
     func signOut() {
         runner.stop()
-        Keychain.delete()
+        KeyStore.delete()
         apiKey = nil
         reloadTick += 1
     }
