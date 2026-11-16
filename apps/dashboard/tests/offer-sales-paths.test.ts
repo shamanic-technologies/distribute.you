@@ -98,6 +98,9 @@ describe("offer sales paths, catalogue scope", () => {
   it("labels the producer's default rate as a benchmark", () => {
     expect(rateSourceLabel("default")).toBe("Industry benchmark");
   });
+  it("labels the fleet's measured rate in words, never the raw source (EXPECTED-FLEET-RATE-1116)", () => {
+    expect(rateSourceLabel("fleet_measured")).toBe("Measured across our clients");
+  });
   it("the Sales path page lists the catalogue as a plain table, with no run status", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/offer-sales-path-page.tsx"), "utf8");
     expect(src).toContain('getOfferSalesPaths(brandId, offerId, "catalogue")');
