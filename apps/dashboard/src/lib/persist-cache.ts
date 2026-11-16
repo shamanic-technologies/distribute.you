@@ -222,6 +222,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "pipeQueue",
   // The campaign page's Milestones and What its people went through (FACTORY-USER-DASHBOARD-1102).
   "funnelCampaignPeopleJourneys",
+  // A campaign's Engines in scripts (CAMPAIGN-SCRIPTS-1113): the campaign page's Plan / Strategy / Scripts per Engine.
+  "campaignEngineScripts",
   // Today > Why each one was picked (FACTORY-USER-DASHBOARD-1102).
   "offerEnginePicks",
   // The brand's own LinkedIn company page (Brand settings).

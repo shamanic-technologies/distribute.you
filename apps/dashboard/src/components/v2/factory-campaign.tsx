@@ -1,27 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { PlayIcon } from "@phosphor-icons/react/dist/csr/Play";
-import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { stepLabel, type LegCatalogue } from "@/lib/legs";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
-import { formatRatePct } from "@/lib/brand-conversion-rates";
-import {
-  type EngineCandidateRow,
-  type EnginePlaceFull,
-  type FactoryShadowPlan,
-  type PipeVerdict,
-} from "@/lib/factory-shadow";
-import { milestoneReasonWords, planLegsFromTarget, strategyOfPlace, type PlanNode } from "@/lib/factory-campaign";
+import { milestoneReasonWords } from "@/lib/factory-campaign";
+import { drawRuleWords, scriptLabel, strategyStateWords, type CampaignEngine, type CampaignEngineScriptsRead, type CampaignScriptRow } from "@/lib/campaign-engine-scripts";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { reasonWords } from "@/lib/campaign-targets";
-import { getFunnelCampaignPeopleJourneys } from "@/lib/api";
+import { getFunnelCampaignEngineScripts, getFunnelCampaignPeopleJourneys } from "@/lib/api";
 import { StepMark } from "@/components/marks/step-mark";
-import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, ShareBar, Shimmer } from "@/components/v2/ui";
-import { useFactoryShadow } from "@/components/v2/factory-plan-card";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { CampaignMilestoneCards } from "@/components/v2/today-targets";
 
@@ -33,35 +24,41 @@ import { CampaignMilestoneCards } from "@/components/v2/today-targets";
  * - What its people went through: per step to step, how many people, the share each script made (`people-journeys`);
  * - Milestones: each milestone, Start to its Target: # outcomes, $ per outcome, $ from Start, % conversion, needed per
  *   Target, each MEASURED on the campaign else EXPECTED from its plan, greyed (`milestones`);
- * - Plan: the tree from the Target down, each outcome's Engine with every script competing there, its share of the
- *   Engine's picks, the pick of this pass highlighted;
- * - Strategy per Engine: which ways the brief keeps at each Engine and which it rules out (the brief judge);
- * - Scripts per Engine: each script's share of picks, rate to the next milestone and cost per decision.
- * Every figure is served; nothing is divided, summed or ranked here (the producer serves candidates in its order).
+ * - Plan / Strategy per Engine / Scripts per Engine: features-service's campaign read in SCRIPTS (CAMPAIGN-SCRIPTS-1113,
+ *   owner 2026-11-13 « un pick = toujours un script »): from the Target down, at each Engine the scripts the brief keeps,
+ *   today's share of the Rating's draws among them, the one running now, what the brief rules out in words, and this
+ *   campaign's own runs of each (`engine-scripts`). The old workflow « pick of this pass » is gone with the pick itself.
+ * Every figure is served; nothing is divided, summed or ranked here (the producer serves scripts in its order).
  */
 
 const DASH = <span className="k-fg4">—</span>;
 
 const EXPECTED_TIP = "Expected, from each step's rate on today's estimates. It sharpens as your campaign's own results come in.";
-const SHARE_TIP = "How often the Engine picks this script when it draws from what it believes about each one. A script with little data gets tried now and then.";
+const SHARE_TIP = "How often the Engine draws this script today, among the ones your brief keeps. A script with little data gets tried now and then.";
 
 
 /** The four Factory sections of a campaign page, off ONE read of its factory body (the staff card shares the key). */
 export function FactoryCampaignSections({ campaign }: { campaign: SalesFunnelCampaign }) {
-  const q = useFactoryShadow(campaign.brandId, campaign.id, true);
-  const shadow = q.data ?? null;
+  const q = useCampaignEngineScripts(campaign.brandId, campaign.id);
   // Settled once a read made since mount answered (or failed): never a skeleton that blinks on each poll.
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   return (
     <>
       <FactoryJourneys brandId={campaign.brandId} campaignId={campaign.id} />
       <CampaignMilestoneCards brandId={campaign.brandId} campaignId={campaign.id} />
-      <FactoryPlan shadow={shadow} settled={settled} />
-      <FactoryStrategies shadow={shadow} />
-      <FactoryScripts shadow={shadow} />
+      <FactoryPlan read={q.data ?? null} settled={settled} failed={q.isError && !q.data} />
+      <FactoryStrategies read={q.data ?? null} />
+      <FactoryScripts read={q.data ?? null} />
     </>
   );
 }
+
+/** The campaign's Engines in scripts (features-service `engine-scripts`), one read for the three sections. */
+export function useCampaignEngineScripts(brandId: string, campaignId: string) {
+  return useAuthQuery(["campaignEngineScripts", brandId, campaignId], () => getFunnelCampaignEngineScripts(brandId, campaignId), { ...pollOptions, retry: false });
+}
+
+const enginesOf = (read: CampaignEngineScriptsRead | null): CampaignEngine[] => (read?.state === "ready" ? read.data.engines : []);
 
 // ─── What its people went through ──────────────────────────────────────────────────────────────
 
@@ -130,12 +127,11 @@ function ScriptSplit({ shares }: { shares: Array<number | null> }) {
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────────────────────
 
-export function FactoryPlan({ shadow, settled }: { shadow: FactoryShadowPlan | null; settled: boolean }) {
-  const catalogue = useLegCatalogue();
-  const nodes = shadow ? planLegsFromTarget(shadow) : [];
+export function FactoryPlan({ read, settled, failed }: { read: CampaignEngineScriptsRead | null; settled: boolean; failed: boolean }) {
+  const engines = enginesOf(read);
   return (
     <section>
-      <SectionTitle right={shadow?.engine ? <span>Recomputed every 3 hours</span> : undefined}>Plan</SectionTitle>
+      <SectionTitle right={read?.state === "ready" ? <span>Draws refreshed every 15 minutes</span> : undefined}>Plan</SectionTitle>
       <div className="k-card px-4 py-3.5">
         {!settled ? (
           <div className="space-y-2">
@@ -143,21 +139,19 @@ export function FactoryPlan({ shadow, settled }: { shadow: FactoryShadowPlan | n
             <Shimmer className="h-8 w-5/6" />
             <Shimmer className="h-8 w-4/6" />
           </div>
-        ) : nodes.length === 0 ? (
-          <EmptyNote>Your campaign&apos;s plan is computed every 3 hours. It shows here after the next pass.</EmptyNote>
+        ) : failed ? (
+          <EmptyNote>Could not read your campaign&apos;s plan. Retrying.</EmptyNote>
+        ) : read?.state === "building" ? (
+          <EmptyNote>Your campaign&apos;s plan is being refreshed. It shows here in a few minutes.</EmptyNote>
+        ) : engines.length === 0 ? (
+          <EmptyNote>No outcome of this campaign runs on a script yet.</EmptyNote>
         ) : (
           <>
-            <p className="k-fg2 mb-3 text-[13px]">
-              From your Target down: at each outcome, its Engine picks the script with the best expected value per dollar among those your brief keeps.
-            </p>
+            <p className="k-fg2 mb-3 text-[13px]">From your Target down: at each outcome, its Engine draws one of the scripts your brief keeps, on what each one&apos;s runs led to.</p>
             <ol className="space-y-1.5">
-              {nodes.map((n, depth) => (
-                <PlanNodeRow key={`${n.outcome}-${depth}`} node={n} depth={depth} catalogue={catalogue} />
+              {engines.map((e, depth) => (
+                <PlanEngineRow key={e.outcome} engine={e} depth={depth} />
               ))}
-              <li className="k-fg3 flex items-center gap-2 text-[12px]" style={{ paddingLeft: nodes.length * 16 }}>
-                <PlayIcon size={13} weight="duotone" aria-hidden />
-                Everything starts from {stepLabel(catalogue, shadow?.plan?.startStep) ?? "Start"}.
-              </li>
             </ol>
           </>
         )}
@@ -166,50 +160,47 @@ export function FactoryPlan({ shadow, settled }: { shadow: FactoryShadowPlan | n
   );
 }
 
-function PlanNodeRow({ node, depth, catalogue }: { node: PlanNode; depth: number; catalogue: LegCatalogue }) {
-  const label = stepLabel(catalogue, node.outcome) ?? node.outcomeName;
-  const competing = node.place?.candidates.length ?? 0;
+function PlanEngineRow({ engine, depth }: { engine: CampaignEngine; depth: number }) {
+  const competing = engine.scripts.length;
   return (
     <li style={{ paddingLeft: depth * 16 }}>
       <div className="k-inset rounded-[10px] px-3 py-2">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
-          <StepMark stepKey={node.outcome} size="xs" />
-          <span className="font-medium">{label}</span>
-          {depth === 0 && <span className="k-chip">Target</span>}
-          {node.place ? (
-            <span className="k-fg3 text-[12px]">
-              {competing} {competing === 1 ? "script" : "scripts compete"}
-            </span>
-          ) : node.performedBy ? (
-            <span className="k-fg3 text-[12px]">{node.performedBy}</span>
-          ) : null}
+          <StepMark stepKey={engine.outcome} size="xs" />
+          <span className="font-medium">{engine.label}</span>
+          {engine.isTarget && <span className="k-chip">Target</span>}
+          <span className="k-fg3 text-[12px]">{competing === 0 ? drawRuleWords(engine.drawRule) : `${competing} ${competing === 1 ? "script" : "scripts compete"}`}</span>
         </p>
-        {node.place ? (
+        {competing > 0 && (
           <ul className="mt-1.5 space-y-1">
-            {node.place.candidates.map((c) => (
-              <CandidateLine key={c.candidateId} c={c} />
+            {engine.scripts.map((sc) => (
+              <ScriptLine key={sc.script} sc={sc} runsNow={engine.runsNow === sc.script} />
             ))}
           </ul>
-        ) : node.channelName ? (
-          <p className="mt-1 inline-flex items-center gap-1.5 text-[12px]">
-            {node.pipeId && <ServedPipeMark pipeId={node.pipeId} size={14} />}
-            {node.channelName}
-          </p>
-        ) : null}
+        )}
       </div>
     </li>
   );
 }
 
-function CandidateLine({ c }: { c: EngineCandidateRow }) {
-  const share = c.pickSharePct;
+/** A script's label: its served description on ONE line, whole on hover. */
+function ScriptName({ sc }: { sc: CampaignScriptRow }) {
+  return (
+    <span className="min-w-0 truncate" title={scriptLabel(sc)}>
+      {scriptLabel(sc)}
+    </span>
+  );
+}
+
+function ScriptLine({ sc, runsNow }: { sc: CampaignScriptRow; runsNow: boolean }) {
+  const share = sc.shareOfDrawsPct;
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_120px_auto] items-center gap-3 text-[12px]">
       <span className="flex min-w-0 items-center gap-1.5">
-        <CatalogueName kind="workflow" name={c.workflowDynastyName ?? c.channelName} icon={c.icon} color={c.color} />
-        {c.isEnginePick && (
-          <span className="k-chip" style={{ color: "var(--run)" }}>
-            Pick of this pass
+        <ScriptName sc={sc} />
+        {runsNow && (
+          <span className="k-chip shrink-0" style={{ color: "var(--run)" }}>
+            Running now
           </span>
         )}
       </span>
@@ -223,44 +214,42 @@ function CandidateLine({ c }: { c: EngineCandidateRow }) {
   );
 }
 
-/** A served count that can be fractional (weighted by age, or expected): one decimal under 10, whole above. */
-function formatAbout(n: number): string {
-  return n < 10 ? String(Math.round(n * 10) / 10) : formatCount(Math.round(n));
-}
-
-/** A share of picks as served: whole above 1%, one decimal below (a served 0.4% is never "0%"). */
+/** A share of draws as served: whole above 1%, one decimal below (a served 0.4% is never "0%"). */
 function formatShare(pct: number): string {
   return pct > 0 && pct < 1 ? pct.toFixed(1) : String(Math.round(pct));
 }
 
+/** Dollars as the dashboard prints them; a real amount under one cent never reads as $0.00. */
+const usd = (v: number) => (v > 0 && v < 0.005 ? "<$0.01" : formatUsdAdaptive(v));
+
 // ─── Strategy per Engine ───────────────────────────────────────────────────────────────────────
 
-export function FactoryStrategies({ shadow }: { shadow: FactoryShadowPlan | null }) {
-  const catalogue = useLegCatalogue();
-  const places = shadow?.engine?.places ?? [];
-  const verdicts: PipeVerdict[] = shadow?.pipeVerdicts ?? [];
-  if (!shadow || places.length === 0) return null;
+export function FactoryStrategies({ read }: { read: CampaignEngineScriptsRead | null }) {
+  const engines = enginesOf(read);
+  if (engines.length === 0) return null;
   return (
     <section>
-      <SectionTitle count={places.length} right={<span>Read from your brief</span>}>
+      <SectionTitle count={engines.length} right={<span>Read from your brief</span>}>
         Strategy per Engine
       </SectionTitle>
       <div className="grid gap-3 md:grid-cols-2">
-        {places.map((p) => {
-          const s = strategyOfPlace(p, verdicts);
+        {engines.map((e) => {
+          const keeps = e.rules.filter((r) => r.kind === "requires");
+          const excludes = e.rules.filter((r) => r.kind === "excludes");
           return (
-            <div key={`${p.outcome}-${p.consumer}`} className="k-card px-4 py-3">
+            <div key={e.outcome} className="k-card px-4 py-3">
               <p className="flex items-center gap-2 text-[14px] font-medium">
-                <StepMark stepKey={p.outcome} size="xs" />
-                {stepLabel(catalogue, p.outcome) ?? p.outcomeName}
+                <StepMark stepKey={e.outcome} size="xs" />
+                {e.label}
               </p>
-              <p className="k-fg3 text-[12px]">For {stepLabel(catalogue, p.consumer) ?? p.consumerName}</p>
+              <p className="k-fg3 text-[12px]">{e.strategy ? e.strategy.name : strategyStateWords(e.strategyState)}</p>
+              {e.strategy && <p className="k-fg2 mt-2 text-[13px]">{e.strategy.description}</p>}
               <p className="k-label mt-3">Keeps</p>
-              <p className="mt-1 text-[13px]">{s.kept.length > 0 ? s.kept.join(", ") : "Every way that makes it"}</p>
-              {s.ruledOut.length > 0 && (
+              <p className="mt-1 text-[13px]">{keeps.length > 0 ? keeps.map((r) => r.clientLine ?? r.name).join(", ") : "Every script that makes it"}</p>
+              {excludes.length > 0 && (
                 <>
                   <p className="k-label mt-2.5">Rules out</p>
-                  <p className="k-fg2 mt-1 text-[13px]">{s.ruledOut.join(", ")}</p>
+                  <p className="k-fg2 mt-1 text-[13px]">{excludes.map((r) => r.clientLine ?? r.name).join(", ")}</p>
                 </>
               )}
             </div>
@@ -273,79 +262,107 @@ export function FactoryStrategies({ shadow }: { shadow: FactoryShadowPlan | null
 
 // ─── Scripts per Engine ────────────────────────────────────────────────────────────────────────
 
-export function FactoryScripts({ shadow }: { shadow: FactoryShadowPlan | null }) {
-  const catalogue = useLegCatalogue();
-  const places = shadow?.engine?.places ?? [];
-  if (!shadow || places.length === 0) return null;
+export function FactoryScripts({ read }: { read: CampaignEngineScriptsRead | null }) {
+  const engines = enginesOf(read);
+  if (engines.length === 0) return null;
   return (
     <section className="space-y-4">
-      <SectionTitle count={places.length}>Scripts per Engine</SectionTitle>
-      {places.map((p) => (
-        <ScriptsTable key={`${p.outcome}-${p.consumer}`} place={p} stepKey={p.outcome} label={stepLabel(catalogue, p.outcome) ?? p.outcomeName} next={stepLabel(catalogue, p.consumer) ?? p.consumerName} />
+      <SectionTitle count={engines.length}>Scripts per Engine</SectionTitle>
+      {engines.map((e) => (
+        <ScriptsTable key={e.outcome} engine={e} />
       ))}
     </section>
   );
 }
 
-function ScriptsTable({ place, stepKey, label, next }: { place: EnginePlaceFull; stepKey: string; label: string; next: string }) {
+function ScriptsTable({ engine }: { engine: CampaignEngine }) {
+  // Competing scripts first; the ones the brief rules out and the ones no longer running fold behind one toggle.
+  const [open, setOpen] = useState(false);
+  const folded = engine.ruledOut.length + engine.past.length;
+  const rows = [...engine.scripts, ...(open ? [...engine.ruledOut, ...engine.past] : [])];
   return (
     <div className="k-card overflow-hidden">
       <div className="k-line-subtle flex flex-wrap items-center gap-x-2 border-b px-4 py-2.5">
-        <StepMark stepKey={stepKey} size="xs" />
-        <span className="text-[14px] font-medium">{label}</span>
+        <StepMark stepKey={engine.outcome} size="xs" />
+        <span className="text-[14px] font-medium">{engine.label}</span>
         <span className="k-fg3 text-[12px]">
-          {place.candidates.length} {place.candidates.length === 1 ? "script" : "scripts"} · for {next}
+          {engine.scripts.length} {engine.scripts.length === 1 ? "script" : "scripts"} competing · {drawRuleWords(engine.drawRule)}
         </span>
       </div>
-      {place.candidates.length === 0 ? (
+      {rows.length === 0 && folded === 0 ? (
         <EmptyNote>No script makes this outcome for your campaign yet.</EmptyNote>
       ) : (
         <div className="k-scroll overflow-x-auto">
-          <table className="w-full min-w-[720px] text-[13px]">
+          <table className="w-full min-w-[720px] table-fixed text-[13px]">
             <thead>
               <tr className="k-line-subtle border-b">
                 <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Script</th>
-                <th className="k-label px-3 py-2.5 text-right font-normal">
+                <th className="k-label w-[130px] px-3 py-2.5 text-right font-normal">
                   <span className="inline-flex justify-end">
-                    <ExpectedLabel tip={SHARE_TIP}>Share of picks</ExpectedLabel>
+                    <ExpectedLabel tip={SHARE_TIP}>Share of draws</ExpectedLabel>
                   </span>
                 </th>
-                <th className="k-label px-3 py-2.5 text-right font-normal">% Reach {next}</th>
-                <th className="k-label px-3 py-2.5 text-right font-normal">$ / Decision</th>
-                <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">Your runs</th>
+                <th className="k-label w-[170px] px-3 py-2.5 text-left font-normal">Reached</th>
+                <th className="k-label w-[100px] px-3 py-2.5 text-right font-normal">Cost per run</th>
+                <th className="k-label w-[96px] px-3 py-2.5 pr-4 text-right font-normal">Your runs</th>
               </tr>
             </thead>
             <tbody>
-              {place.candidates.map((c) => (
-                <tr key={c.candidateId} className="k-line-subtle border-b last:border-b-0">
-                  <td className="px-3 py-2 pl-4">
-                    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-                      <CatalogueName kind="workflow" name={c.workflowDynastyName ?? c.channelName} icon={c.icon} color={c.color} />
-                      <span className="k-fg3 text-[12px]">{c.channelName}</span>
-                      {c.isEnginePick && (
-                        <span className="k-chip" style={{ color: "var(--run)" }}>
-                          Pick of this pass
+              {rows.map((sc) => {
+                const reached = sc.campaign.reached.filter((r) => r.outcome != null);
+                const competing = sc.shareOfDrawsPct != null;
+                return (
+                  <tr key={sc.script} className="k-line-subtle border-b last:border-b-0">
+                    <td className="px-3 py-2 pl-4">
+                      <span className={`flex min-w-0 items-center gap-1.5 ${competing ? "" : "k-fg3"}`}>
+                        <ScriptName sc={sc} />
+                        {engine.runsNow === sc.script && (
+                          <span className="k-chip shrink-0" style={{ color: "var(--run)" }}>
+                            Running now
+                          </span>
+                        )}
+                        {sc.llms.map((l, i) => {
+                          const name = l.model ?? l.provider;
+                          return name ? <CatalogueName key={i} kind="llm" name={name} vendorId={l.provider} variant="chip" className="shrink-0" /> : null;
+                        })}
+                      </span>
+                      {sc.ruledOutReason && <span className="k-fg3 mt-0.5 block truncate text-[12px]" title={sc.ruledOutReason}>Ruled out: {sc.ruledOutReason}</span>}
+                      {sc.version == null && <span className="k-fg3 mt-0.5 block text-[12px]">No longer runs</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      <span className="inline-flex items-center justify-end gap-2.5">
+                        {competing && <ShareBar value={sc.shareOfDrawsPct} max={100} color={sc.drawnMost ? "var(--run)" : "var(--accent)"} className="hidden w-14 md:block" />}
+                        {competing ? `${formatShare(sc.shareOfDrawsPct!)}%` : DASH}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {reached.length ? (
+                        <span className="flex min-w-0 flex-wrap gap-1">
+                          {reached.slice(0, 2).map((r) => (
+                            <span key={r.outcome} className="k-chip max-w-full truncate tabular-nums">
+                              {r.label ?? r.outcome} {formatCount(r.runs)}
+                            </span>
+                          ))}
+                          {reached.length > 2 && <span className="k-fg3 text-[12px]">+{reached.length - 2} more</span>}
                         </span>
+                      ) : (
+                        DASH
                       )}
-                      {c.isToday && !c.isEnginePick && <span className="k-chip">Running now</span>}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    <span className="inline-flex items-center justify-end gap-2.5">
-                      {c.pickSharePct != null && <ShareBar value={c.pickSharePct} max={100} color={c.isEnginePick ? "var(--run)" : "var(--accent)"} className="hidden w-14 md:block" />}
-                      {c.pickSharePct != null ? `${formatShare(c.pickSharePct)}%` : DASH}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{c.rateMeanPct != null ? formatRatePct(c.rateMeanPct) : DASH}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{c.costPerDecisionMeanUsd != null ? formatUsdAdaptive(c.costPerDecisionMeanUsd) : DASH}</td>
-                  <td className="px-3 py-2 pr-4 text-right tabular-nums">
-                    {c.clientDecisions != null ? formatAbout(c.clientDecisions) : DASH}
-                    {c.clientOutcomes != null && <span className="k-fg3 text-[12px]"> · {formatAbout(c.clientOutcomes)} reached</span>}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{sc.campaign.costPerRunUsd != null ? usd(sc.campaign.costPerRunUsd) : DASH}</td>
+                    <td className="px-3 py-2 pr-4 text-right tabular-nums">{formatCount(sc.campaign.runs)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          {folded > 0 && (
+            <div className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
+              <button type="button" className="k-btn-ghost h-6 px-2" onClick={() => setOpen((v) => !v)}>
+                {open ? "Hide the others" : `${folded} not competing`}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
