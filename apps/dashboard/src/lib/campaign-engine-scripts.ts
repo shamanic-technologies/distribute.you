@@ -17,6 +17,8 @@ const Template = z.object({ place: z.string().nullable(), templateDynastySlug: z
 export const CampaignScriptRowSchema = z.object({
   script: z.string(),
   dynasty: z.string(),
+  /** The script's short plain-English name (workflow-service, relayed by features-service); null = not named yet. Optional until that ship serves it. */
+  name: z.string().nullish(),
   version: num.nullable(),
   description: z.string().nullable(),
   shareOfDrawsPct: num.nullable(),
@@ -85,7 +87,7 @@ export function strategyStateWords(state: string): string {
   return state;
 }
 
-/** A script's label on screen: its served description (clamped to one line by the page, whole on hover), else its dynasty. */
-export function scriptLabel(row: Pick<CampaignScriptRow, "dynasty" | "description">): string {
-  return row.description ?? row.dynasty;
+/** A script's label on screen: its served short name; until it is named, its served description (clamped to one line by the page), else its dynasty. */
+export function scriptLabel(row: Pick<CampaignScriptRow, "dynasty" | "description" | "name">): string {
+  return row.name ?? row.description ?? row.dynasty;
 }
