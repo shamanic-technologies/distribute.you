@@ -3,7 +3,7 @@
 //
 //   node derive-jev.mjs <live research file> > jev.snapshot.json
 //
-// Reads the Research page's LIVE file (features-service GET /internal/research?basis=user, saved to
+// Reads the Research page's LIVE file (features-service GET /internal/research/engines?basis=user, the Engine file, saved to
 // disk as the blog-data README says) and copies out its four Typed judgment studies, figure for
 // figure. Nothing is re-derived here, so the article and the Research page state the same figures
 // for one read.
