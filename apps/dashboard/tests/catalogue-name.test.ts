@@ -82,7 +82,7 @@ describe("CatalogueName: the one component", () => {
     const files = [
       "components/v2/research-catalog.tsx",
       "components/v2/research-template-outputs.tsx",
-      "components/v2/research-live-workflows.tsx",
+      "components/v2/research-live-scripts.tsx",
       "components/v2/written-with-tags.tsx",
     ];
     for (const f of files) {
@@ -107,11 +107,11 @@ describe("workflow and template marks are the SERVED ones (MARKS-1022, part 2)",
   });
 
   it("each surface passes the served mark: the read's own icon, else the dynasty key to look it up", () => {
-    expect(read("components/v2/research-live-workflows.tsx")).toContain("icon={r.icon} color={r.color}");
-    expect(read("lib/api.ts")).toContain("// The workflow's own mark (MARKS-1022");
-    expect(read("lib/live-workflow-rows.ts")).toContain("icon: r.icon ?? null,");
+    expect(read("components/v2/research-live-scripts.tsx")).toContain("icon={r.icon} color={r.color}");
+    // The live script ranking serves each script's own mark (RESEARCH-BY-ENGINE-1113): read, never dropped by its reader.
+    expect(read("lib/research/live-scripts.ts")).toContain("icon: z.string().nullish(),");
     expect(read("components/v2/research-template-outputs.tsx")).toContain("servedKey={o.templateDynasty.slug}");
-    expect(read("components/v2/research-catalog.tsx")).toContain('servedKey={kind === "models" ? null : r.key}');
+    expect(read("components/v2/research-catalog.tsx")).toContain('servedKey={kind === "llms" ? null : r.key}');
     expect(read("components/v2/run-page.tsx")).toContain("servedKey={template.id}");
     expect(read("components/workflows/workflow-cells.tsx")).toContain("servedKey={template.id}");
     // Customer surfaces never read the staff catalogue: the Written with chip is an LLM only.

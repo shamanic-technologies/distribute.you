@@ -3,7 +3,6 @@ import { readFileSync, readdirSync } from "node:fs";
 import { modelsByTab } from "../src/lib/research/content-status";
 import { join } from "node:path";
 import {
-  fleetWorkflowRows,
   siblingLineAt,
   campaignWorkflowRows,
   shortWorkflowName,
@@ -11,58 +10,15 @@ import {
   tagsThatFit,
   servedCost,
   lastRunText,
-  type FleetRankingRow,
   type ServedFigure,
   type CampaignLadderRow,
 } from "../src/lib/live-workflow-rows";
-
-function fleet(slug: string, o: Partial<FleetRankingRow> = {}): FleetRankingRow {
-  return {
-    rank: 1,
-    workflowDynastySlug: slug,
-    workflowDynastyName: slug.toUpperCase(),
-    assignment: "active",
-    selectable: true,
-    isMature: true,
-    costPerOutcomeUsd: 10,
-    conversionRatePct: 1,
-    outcomes: 3,
-    spentUsd: 30,
-    goesFirst: false,
-    moneyGoesHere: false,
-    figures: {
-      costPerOutcomeUsd: measured(10),
-      conversionRatePct: measured(1),
-      spentUsd: { value: 30, unavailableReason: null },
-      outcomes: 3,
-    },
-    ...o,
-  };
-}
 
 function measured(value: number): ServedFigure {
   return { value, basis: "measured", expectedValue: null, unavailableReason: null };
 }
 
-describe("fleetWorkflowRows", () => {
-  it("keeps the producer's order and flags verbatim, never re-ranking on cost", () => {
-    const out = fleetWorkflowRows([
-      fleet("nobelium", { rank: 2, costPerOutcomeUsd: 45, moneyGoesHere: true }),
-      fleet("raven", { rank: 1, costPerOutcomeUsd: 14, isMature: false, goesFirst: true }),
-      fleet("azalea", { rank: 3, costPerOutcomeUsd: 52 }),
-    ]);
-    expect(out.map((r) => r.slug)).toEqual(["raven", "nobelium", "azalea"]);
-    expect(out.find((r) => r.first)?.slug).toBe("raven");
-    expect(out.find((r) => r.cash)?.slug).toBe("nobelium");
-  });
-
-  it("carries the producer's place, explore price and runnability verbatim", () => {
-    const [r] = fleetWorkflowRows([fleet("a", { place: "explore", explorePriceUsd: 0, executable: true })]);
-    expect(r).toMatchObject({ place: "explore", explorePriceUsd: 0, executable: true });
-    const [old] = fleetWorkflowRows([fleet("b")]);
-    expect(old).toMatchObject({ place: null, explorePriceUsd: null, executable: null });
-  });
-
+describe("placeWords", () => {
   it("names why a row stands there; a cannot-run row says why it cannot run", () => {
     expect(placeWords({ place: "explore", executable: true, assignment: "active" })?.label).toBe("Explored first");
     expect(placeWords({ place: "money", executable: true, assignment: "active" })?.label).toBe("Best mature");
@@ -70,19 +26,6 @@ describe("fleetWorkflowRows", () => {
     expect(placeWords({ place: "cannot_run", executable: false, assignment: "active" })?.label).toBe("Retired: no version runs");
     expect(placeWords({ place: "cannot_run", executable: true, assignment: "deprecated" })?.label).toBe("Deprecated on this leg");
     expect(placeWords({ place: null, executable: null, assignment: "active" })).toBeNull();
-  });
-
-  it("carries the served figures, last run and tactics verbatim (RESEARCH-WF-FIGURES-1022)", () => {
-    const [r] = fleetWorkflowRows([fleet("a", { lastRunAt: "2026-10-22T16:00:00.000Z", tactics: [{ id: "named-angle", name: "Named angle" }] })]);
-    expect(r.figures.costPerOutcomeUsd.value).toBe(10);
-    expect(r).toMatchObject({ lastRunAt: "2026-10-22T16:00:00.000Z", lastRunUnavailableReason: null, tactics: [{ id: "named-angle", name: "Named angle" }] });
-    const [u] = fleetWorkflowRows([fleet("b", { tactics: null, tacticsUnavailableReason: "tactics_unreadable" })]);
-    expect(u).toMatchObject({ tactics: null, tacticsUnavailableReason: "tactics_unreadable", lastRunAt: null });
-  });
-
-  it("a workflow with no spend on the leg states no result yet", () => {
-    const [r] = fleetWorkflowRows([fleet("a", { spentUsd: 0, outcomes: 0, costPerOutcomeUsd: null })]);
-    expect(r.ran).toBe(false);
   });
 });
 
@@ -216,15 +159,14 @@ describe("research reads nothing scoped to the viewer", () => {
     }
   });
 
-  it("the live table reads the fleet ranking at the pipe's leg", () => {
-    const live = readFileSync(join(dir, "research-live-workflows.tsx"), "utf8");
-    // the leg is the pipe's own key, judged proactive the renamed-leg-safe way (never fromKey === null)
-    expect(live).toContain("legFor(useLegCatalogue(), entry?.leg ?? null)");
-    expect(live).toContain("isProactiveFrom(leg.fromKey)");
-    expect(live).not.toContain("legKeyForSteps(");
-    expect(live).toContain("getLegWorkflowRanking(featureSlug, leg)");
-    expect(live).toContain("legWorkflowRankingKey(featureSlug, leg)");
-    expect(live).toContain("enabled: legKey != null");
+  it("the live table reads the fleet ranking of the measure (RESEARCH-BY-ENGINE-1113), no leg, no channel", () => {
+    const live = readFileSync(join(dir, "research-live-scripts.tsx"), "utf8");
+    expect(live).toContain("const rankingQ = useLiveScripts(measure);");
+    for (const gone of ["getLegWorkflowRanking", "legWorkflowRankingKey", "useLegCatalogue", "isProactiveFrom", "featureSlug", "legKey"]) expect(live).not.toContain(gone);
+    const source = readFileSync(join(__dirname, "../src/lib/research/research-source.tsx"), "utf8");
+    expect(source).toContain('queryKey: ["researchLiveScripts", measure ?? ""]');
+    expect(source).toContain('parseLiveScripts(await fetchPart<unknown>("user", "live-scripts", undefined, measure ?? ""))');
+    expect(source).toContain("enabled: measure != null");
     // BEST-TPL-LLM-1022: a workflow fixes no template and no LLM, so neither column is drawn, and no
     // "Why here" column nor summary strip above the table (owner 2026-10-22).
     expect(live).not.toContain("writesWithNow");
@@ -285,31 +227,34 @@ describe("modelsByTab", () => {
 });
 
 describe("siblingLineAt", () => {
-  it("reads the leg's own line first, else the one line, else none", () => {
+  it("reads a leg's own line first, else the one line, else none (the brand Workflows page)", () => {
     const two = { siblingLine: null, siblingLines: [{ legKey: "a", line: "Brand name" }, { legKey: "b", line: "No date" }] };
     expect(siblingLineAt(two, "b")).toBe("No date");
     expect(siblingLineAt(two, "c")).toBeNull();
     expect(siblingLineAt({ siblingLine: "Lightest brief", siblingLines: [] }, "a")).toBe("Lightest brief");
     expect(siblingLineAt(null, "a")).toBeNull();
   });
-  it("the Research row prints the line, the full description on hover", () => {
-    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+  it("the Research row prints the script's one line (a script has no leg), the full description on hover", () => {
+    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
     expect(live).toContain("{line ?? description}");
-    expect(live).toContain("useWorkflowWords(r.slug, statuses, legKey)");
+    expect(live).toContain("useScriptDescription(r.scriptDynastySlug, words, r.executable === false)");
+    expect(live).not.toContain("siblingLineAt");
   });
 });
 
-describe("Research live workflows: the served order, no return (ROI-CONSISTENCY-1103)", () => {
+describe("Research live scripts: the served order, no return (ROI-CONSISTENCY-1103)", () => {
   it("each tab keeps the ranking's served order, and the title counts the live rows", () => {
-    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
     expect(live).not.toContain("byServedRoiDesc");
     expect(live).toContain("return out;");
+    // The rows keep the producer's order, never a cost of ours.
+    expect(live).not.toMatch(/sort\(\(a, b\) => [^)]*(cost|spent|outcomes)/i);
     const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
     // Every count is the ACTIVE count, deprecated never counted (owner 2026-10-23), for all three kinds.
     expect(catalog).toContain("count={countOf(kind)}");
-    expect(catalog).toContain('liveRows.rows.filter((r) => dynasties.statusOf(r.slug) !== "deprecated").length');
-    expect(catalog).toContain("templatesByTab(pipeCatalog(catalog, pipe).templates, templateStatuses)?.active.length");
-    expect(catalog).toContain("modelsByTab(pipeCatalog(catalog, pipe).models, modelStatuses)?.active.length");
+    expect(catalog).toContain("liveRows.rows.filter((r) => r.executable !== false).length");
+    expect(catalog).toContain("templatesByTab(measureCatalog(catalog, measure).templates, templateStatuses)?.active.length");
+    expect(catalog).toContain("modelsByTab(measureCatalog(catalog, measure).llms, modelStatuses)?.active.length");
   });
 });
 
@@ -323,21 +268,22 @@ describe("shortWorkflowName", () => {
     expect(shortWorkflowName("Sales Cold Email Outreach", "Sales Cold Email Outreach")).toBe("Sales Cold Email Outreach");
     expect(shortWorkflowName("Maelstrom", null)).toBe("Maelstrom");
   });
-  it("Research renders the short name and paints before the Research file loads", () => {
+  it("Research renders the served script name and paints before the catalogue loads", () => {
     const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
-    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
     expect(live).toContain("name={nameOf(r)}");
-    expect(catalog).toContain('if (!catalog && !itemKey && kind === "workflows" && liveLeg != null)');
+    expect(live).toContain("const nameOf = (r: LiveScriptRow) => r.scriptDynastyName ?? r.scriptDynastySlug;");
+    expect(catalog).toContain('if (!catalog && !itemKey && kind === "scripts")');
   });
 });
 
-describe("Research pipe workflows: this pipe only, Active / Deprecated tabs (owner 2026-10-22)", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
-  it("lists only the workflows the producer assigns to this pipe", () => {
+describe("Research scripts: this measure only, Active / Deprecated tabs (owner 2026-10-22)", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
+  it("lists only the scripts the producer assigns to this measure", () => {
     expect(src).toContain('.filter((r) => r.assignment === "active")');
   });
-  it("splits on the workflow's own status, Active first, and renders the picked tab", () => {
-    expect(src).toContain('dynastyStatuses.statusOf(r.slug) === "deprecated" ? "deprecated" : "active"');
+  it("splits on the script's SERVED status, Active first, and renders the picked tab", () => {
+    expect(src).toContain('out[r.executable === false ? "deprecated" : "active"].push(r)');
     expect(src.indexOf('{ key: "active", label: "Active" }')).toBeLessThan(src.indexOf('{ key: "deprecated", label: "Deprecated" }'));
     expect(src).toContain('useState<StatusTab>("active")');
     expect(src).toContain("shown.map((r) =>");
@@ -345,15 +291,15 @@ describe("Research pipe workflows: this pipe only, Active / Deprecated tabs (own
   });
 });
 
-describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+describe("Research scripts: the owner's columns (2026-10-22)", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
   const status = readFileSync(join(__dirname, "../src/components/v2/research-status.tsx"), "utf8");
   const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
   const thead = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
 
   it("mark, name, description, tactics, $/outcome, % conversion, $ spent, last run, status: in that order, no ROI", () => {
     expect(thead).not.toContain("RoiLabel");
-    const order = ["w-36`}>Workflow</th>", ">Description</th>", "w-28`}>Tactics</th>", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-24`}>Last run</th>", "w-28`}>Status</th>"];
+    const order = ["`}>Script</th>", ">Description</th>", "w-28`}>Tactics</th>", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-24`}>Last run</th>", "w-28`}>Status</th>"];
     const at = order.map((h) => thead.indexOf(h));
     for (const i of at) expect(i).toBeGreaterThan(-1);
     expect([...at].sort((x, y) => x - y)).toEqual(at);
@@ -361,18 +307,20 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
   });
 
   it("last run is the ranking row's own, as a short relative time", () => {
-    expect(src).toContain("const lastRun = lastRunText(r);");
+    expect(src).toContain("const lastRun = lastRunText({ lastRunAt: r.lastRunAt ?? null, lastRunUnavailableReason: r.lastRunUnavailableReason ?? null });");
     expect(src).toContain("{lastRun ?? DASH}");
   });
 
-  it("every row wears the workflow mark and links its name to its page", () => {
-    expect(src).toContain('<CatalogueName kind="workflow" name={r.name ?? r.slug} label={name} icon={r.icon} color={r.color} className="font-medium" />');
-    expect(src).toContain("title={`Open ${r.name ?? r.slug}`}");
+  it("every row wears the script's served mark and links its name to its page", () => {
+    expect(src).toContain('<CatalogueName kind="workflow" name={r.scriptDynastyName ?? r.scriptDynastySlug} label={name} icon={r.icon} color={r.color} className="font-medium" />');
+    expect(src).toContain("title={`Open ${name}`}");
   });
 
-  it("the description is workflow-service's own words, the runnable one off the status listing, a deprecated one off its newest version", () => {
-    expect(src).toContain("deprecated ? newest.description : statuses.descriptionOf(slug)");
-    expect(status).toContain('["workflowDynastySummaries", featureSlug], () => getRunnableWorkflowDynastySummaries(featureSlug)');
+  it("the description is the producer's own words: a script's off GET /scripts, a workflow dynasty's off its listing, a deprecated one off its newest version", () => {
+    expect(src).toContain("(deprecated ? newest.description : null) ?? words.descriptionOf(slug)");
+    expect(status).toContain('["workflowDynastySummaries", "all"], () => getRunnableWorkflowDynastySummaries()');
+    expect(status).toContain('useAuthQuery(["catalogueScripts"], listActiveScripts');
+    expect(status).toContain("heads.get(slug)?.description?.trim() || workflows.get(slug)?.description || null");
     expect(api).toContain("description: newest?.description ?? null");
     expect(status).toContain('qc.refetchQueries({ queryKey: ["workflowDynastySummaries"] })');
   });
@@ -388,17 +336,19 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
   });
 });
 
-describe("Research pipe workflows: tactics column and the row drawer (owner 2026-10-22)", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+describe("Research scripts: tactics column and the row drawer (owner 2026-10-22)", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
   const drawer = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
   const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 
   it("tactics are the ranking row's own (features-service's verdict), never one catalogue read per row", () => {
-    expect(src).toContain("<TacticTags tactics={r.tactics} reason={r.tacticsUnavailableReason} />");
-    expect(src).toContain("const tactics = r.tactics;");
+    expect(src).toContain("<TacticTags tactics={r.tactics ?? null} reason={r.tacticsUnavailableReason ?? null} />");
+    expect(src).toContain("<TacticsBlock tactics={r.tactics ?? null} reason={r.tacticsUnavailableReason ?? null} />");
     expect(src).not.toContain("getStaffCatalogueObject");
     expect(src).not.toContain("useQueries");
-    expect(api).toContain("tactics: z.array(z.object({ id: z.string(), name: z.string() })).nullish(),");
+    void api;
+    const reader = readFileSync(join(__dirname, "../src/lib/research/live-scripts.ts"), "utf8");
+    expect(reader).toContain("tactics: z.array(z.object({ id: z.string(), name: z.string() })).nullish(),");
   });
 
   it("shows the first tags then +N more, the full list on hover or tap in a portalled popover", () => {
@@ -415,8 +365,8 @@ describe("Research pipe workflows: tactics column and the row drawer (owner 2026
     expect(src).toContain("if (opensDrawer(e.target, e.currentTarget)) onOpen();");
     expect(src).toContain('target.closest("a,button,input,textarea,select,[role=menu],[role=dialog]") == null');
     expect(src).toContain("!row.contains(target)");
-    expect(src).toContain("<WorkflowDrawer");
-    expect(src).toContain("Open workflow page");
+    expect(src).toContain("<ScriptDrawer");
+    expect(src).toContain("Open script page");
   });
 
   it("the drawer is the one Research drawer shell, shared with the template version drawer", () => {
@@ -427,15 +377,15 @@ describe("Research pipe workflows: tactics column and the row drawer (owner 2026
   });
 });
 
-describe("Research workflow recent runs (owner 2026-10-22)", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+describe("Research script recent runs (owner 2026-10-22)", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
   const outputs = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
   const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
   const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 
-  it("the row drawer and the workflow page both list them", () => {
-    expect(src).toContain("<RecentRuns slug={r.slug} limit={10} />");
-    const view = catalog.slice(catalog.indexOf("function WorkflowView("), catalog.indexOf("function TemplateText("));
+  it("the row drawer and the script page both list them", () => {
+    expect(src).toContain("<RecentRuns slug={r.scriptDynastySlug} limit={10} />");
+    const view = catalog.slice(catalog.indexOf("function ScriptView("), catalog.indexOf("function TemplateText("));
     expect(view).toContain("<RecentRuns slug={w.key} limit={20} />");
     expect(view).not.toContain('title="Last runs"');
   });
@@ -445,9 +395,9 @@ describe("Research workflow recent runs (owner 2026-10-22)", () => {
     expect(body).toContain("{instantText(o.createdAt)}");
     expect(body).toContain("const template = runTemplateText(o);");
     expect(body).toContain("{o.model}");
-    // The workflow version each run was on (WF-RUNS-OUTPUTS-1022-DASH), in the row and the email drawer.
+    // The version each run was on (WF-RUNS-OUTPUTS-1022-DASH), in the row and the email drawer.
     expect(body).toContain("{runVersionLabel(slug, o.workflowSlug)}");
-    expect(body).toContain("Workflow version {runVersionLabel(slug, open.workflowSlug)}");
+    expect(body).toContain("Version {runVersionLabel(slug, open.workflowSlug)}");
     expect(body).toContain("onClick={() => setOpen(o)}");
     expect(body).toContain("<ResearchDrawer");
     expect(body).toContain("<OutputsList read={{ outputs: [open], answered: true }} expanded />");
@@ -459,7 +409,7 @@ describe("Research workflow recent runs (owner 2026-10-22)", () => {
     expect(outputs).toContain('useAuthQuery(["workflowDynastyOutputs", slug, limit], () => getWorkflowDynastyOutputs(slug, limit)');
   });
 
-  it("Esc closes only the top drawer (the email over the workflow drawer)", () => {
+  it("Esc closes only the top drawer (the email over the script drawer)", () => {
     expect(outputs).toContain('e.key === "Escape" && openLayers[openLayers.length - 1] === id.current');
   });
 });
@@ -477,7 +427,7 @@ describe("tagsThatFit", () => {
   });
 });
 
-describe("Research Templates: the same Tactics as Workflows (TPL-TACTICS-1023)", () => {
+describe("Research Templates: the same Tactics as Scripts (TPL-TACTICS-1023)", () => {
   const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
   const outputs = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
   const tags = readFileSync(join(__dirname, "../src/components/v2/tactic-tags.tsx"), "utf8");
@@ -489,7 +439,7 @@ describe("Research Templates: the same Tactics as Workflows (TPL-TACTICS-1023)",
     expect(catalog).toContain("<TacticTags tactics={(r as ResearchTemplate).tactics ?? null} reason={(r as ResearchTemplate).tacticsUnavailableReason ?? null} />");
   });
 
-  it("the drawer and the page show the Tactics block, like the workflow drawer", () => {
+  it("the drawer and the page show the Tactics block, like the script drawer", () => {
     expect(outputs).toContain("<TacticsBlock tactics={t.tactics ?? null} reason={t.tacticsUnavailableReason ?? null} />");
     const view = catalog.slice(catalog.indexOf("function TemplateView("));
     expect(view).toContain("<TacticsBlock tactics={t.tactics ?? null} reason={t.tacticsUnavailableReason ?? null} />");
@@ -498,5 +448,34 @@ describe("Research Templates: the same Tactics as Workflows (TPL-TACTICS-1023)",
   it("unknown reads as not judged yet, never None", () => {
     expect(tags).toContain('return reason === "tactics_unreadable" ? "Not readable just now" : "Not judged yet";');
     expect(tags).toContain("if (tactics == null) return <span className=\"k-fg3 text-[12px]\">{unknownTacticsWords(reason)}</span>;");
+  });
+});
+
+describe("the live script ranking reader parses the WHOLE prod population (RESEARCH-BY-ENGINE-1113)", () => {
+  // features-service live-scripts for « Email sent · Start → Positive reply », net pricing, read in prod 2026-11-16.
+  const raw = JSON.parse(readFileSync(join(__dirname, "fixtures/research-live-scripts-email-sent.json"), "utf8"));
+  it("every served row parses, in the served rank order, with its served mark and figures", async () => {
+    const { parseLiveScripts, orderReasonWords } = await import("../src/lib/research/live-scripts");
+    const read = parseLiveScripts(raw);
+    expect(read.rows.length).toBe(raw.rows.length);
+    expect(read.rows.length).toBeGreaterThan(100);
+    expect(read.measure.id).toBe("email_sent/start/conversation");
+    expect(read.pricing).toBe("net");
+    // Script slugs carry their Engine (`email_sent/dy_…`): the reader keeps them verbatim.
+    expect(read.rows.some((r) => r.scriptDynastySlug.includes("/"))).toBe(true);
+    for (const r of read.rows) expect(typeof r.figures.outcomes).toBe("number");
+    // The reader keeps the producer's order and ranks verbatim (several sources are ranked apart: ranks repeat).
+    expect(read.rows.map((r) => r.scriptDynastySlug)).toEqual(raw.rows.map((r: { scriptDynastySlug: string }) => r.scriptDynastySlug));
+    expect(read.rows.map((r) => r.rank)).toEqual(raw.rows.map((r: { rank: number }) => r.rank));
+    // A script workflow-service cannot run (`executable: false`) sits in the Deprecated tab.
+    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
+    expect(live).toContain('out[r.executable === false ? "deprecated" : "active"].push(r)');
+    expect(orderReasonWords(read.orderUnavailableReason)).toMatch(/ranked apart/);
+    expect(orderReasonWords(null)).toBeNull();
+  });
+  it("a body missing a required field is refused loud, never half-read", async () => {
+    const { parseLiveScripts } = await import("../src/lib/research/live-scripts");
+    const broken = { ...raw, rows: [{ ...raw.rows[0], scriptDynastySlug: undefined }] };
+    expect(() => parseLiveScripts(broken)).toThrow(/invalid response shape/);
   });
 });

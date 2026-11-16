@@ -3,13 +3,10 @@
  * whether it is mature, its return, its conversion, its outcomes and its spend, plus which row
  * goes first and which one the money goes to.
  *
- * Two sources, one shape, so the two tables cannot read a workflow two ways:
+ * Research reads its live script ranking straight off features-service's live-scripts read
+ * (`lib/research/live-scripts.ts`, RESEARCH-BY-ENGINE-1113); this module keeps the shared figure
+ * types and the cells' formatting for it, and:
  *
- *  - `fleetWorkflowRows` — Research. The fleet ranking (features-service
- *    `/public/stats/leg-workflow-ranking`) names no org, brand, offer, campaign or audience,
- *    so nothing Research states depends on who is looking. The ORDER and both flags are the
- *    producer's (the best mature workflow holds the money; learning ones cheaper than it sit
- *    above it). Nothing is re-ranked here.
  *  - `campaignWorkflowRows` — the brand's Workflows page. One campaign's own figures: the
  *    CAMPAIGN grain of the per-brand ladder, never a coarser grain wearing its name, and the
  *    realized return of the campaign's own per-workflow group. "Goes first" is the producer's
@@ -74,32 +71,6 @@ export interface LiveWorkflowRow {
   executable: boolean | null;
 }
 
-/** One served fleet ranking row (features-service `LegWorkflowRankingRow`). */
-export interface FleetRankingRow {
-  rank: number;
-  workflowDynastySlug: string;
-  workflowDynastyName: string | null;
-  assignment: string;
-  selectable: boolean;
-  isMature: boolean | null;
-  costPerOutcomeUsd: number | null;
-  conversionRatePct: number | null;
-  outcomes: number;
-  spentUsd: number;
-  goesFirst: boolean;
-  moneyGoesHere: boolean;
-  executable?: boolean;
-  place?: string | null;
-  explorePriceUsd?: number | null;
-  figures: WorkflowFigures;
-  lastRunAt?: string | null;
-  lastRunUnavailableReason?: string | null;
-  tactics?: readonly FollowedTactic[] | null;
-  tacticsUnavailableReason?: string | null;
-  icon?: string | null;
-  color?: string | null;
-}
-
 /** One served figure (features-service `figures.*`): measured, else the pipe's expected one, else why neither. */
 export interface ServedFigure {
   value: number | null;
@@ -130,37 +101,6 @@ export interface ResearchWorkflowRow extends LiveWorkflowRow {
   /** Null with `tacticsUnavailableReason`. */
   tactics: readonly FollowedTactic[] | null;
   tacticsUnavailableReason: string | null;
-}
-
-/** Research: the fleet ranking, verbatim, in the producer's order. */
-export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): ResearchWorkflowRow[] {
-  return [...rows]
-    .sort((a, b) => a.rank - b.rank)
-    .map((r) => ({
-      slug: r.workflowDynastySlug,
-      name: r.workflowDynastyName,
-      icon: r.icon ?? null,
-      color: r.color ?? null,
-      rank: r.rank,
-      costPerOutcomeUsd: r.costPerOutcomeUsd,
-      conversionRatePct: r.conversionRatePct,
-      outcomes: r.outcomes,
-      spentUsd: r.spentUsd,
-      mature: r.isMature,
-      ran: r.spentUsd > 0,
-      assignment: r.assignment,
-      selectable: r.selectable,
-      first: r.goesFirst,
-      cash: r.moneyGoesHere,
-      place: r.place ?? null,
-      explorePriceUsd: r.explorePriceUsd ?? null,
-      executable: r.executable ?? null,
-      figures: r.figures,
-      lastRunAt: r.lastRunAt ?? null,
-      lastRunUnavailableReason: r.lastRunUnavailableReason ?? null,
-      tactics: r.tactics ?? null,
-      tacticsUnavailableReason: r.tacticsUnavailableReason ?? null,
-    }));
 }
 
 /**

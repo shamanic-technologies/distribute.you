@@ -76,16 +76,18 @@ describe("the hook and the switch are staff-only", () => {
 describe("Research reads carry the view, and every cache is keyed on it", () => {
   const source = read("lib/research/research-source.tsx");
   it("every browser query key ends on the view; texts stay view-free", () => {
-    for (const root of ["researchFile", "researchCatalog", "researchPerformance"]) {
+    // Research by Engine (RESEARCH-BY-ENGINE-1113): the Engine roots, each keyed on the view.
+    for (const root of ["researchEngineFile", "researchEngineCatalog", "researchEnginePerformance"]) {
       expect(source).toContain(`["${root}Actual", view] : ["${root}", basis, view]`);
     }
     expect(source).toContain('queryKey: ["researchTexts"]');
     expect(source).toContain('fetchPart<Record<string, string>>("user", "texts")');
-    expect(source).toContain("`/api/research/${basis}/${part}${view ? `?view=${view}` : \"\"}`");
+    expect(source).toContain('if (view) query.set("view", view);');
+    expect(source).toContain("`/api/research/${basis}/${part}${qs ? `?${qs}` : \"\"}`");
   });
   it("live-file forwards view= on file, catalog and performance, never on the texts", () => {
     const live = read("lib/research/live-file.ts");
-    for (const p of ["/v1/features/research?basis=${basis}&view=${view}", "/v1/features/research/catalog?basis=${basis}&view=${view}", "/v1/features/research/performance?basis=${basis}&view=${view}"]) {
+    for (const p of ["/v1/features/research/engines?basis=${basis}&view=${view}", "/v1/features/research/engines/catalog?basis=${basis}&view=${view}", "/v1/features/research/engines/performance?basis=${basis}&view=${view}"]) {
       expect(live).toContain(p);
     }
     expect(live).toContain('readLive<Record<string, string>>("/v1/features/research/templates", staffEmail)');
@@ -107,7 +109,7 @@ describe("the Research route: view validated, memory keyed on it", () => {
       const url = String(u);
       urls.push(url);
       const view = new URL(url).searchParams.get("view");
-      const body = url.includes("/catalog") ? {} : url.includes("/templates") ? { t: "x" } : { studies: [], view };
+      const body = url.includes("/catalog") ? { engines: [] } : url.includes("/templates") ? { t: "x" } : { studies: [], engines: [], view };
       return new Response(JSON.stringify(body), { status: 200 });
     });
     const mod = await import("../src/app/(authed)/api/research/[basis]/[part]/route");
@@ -134,10 +136,10 @@ describe("the Research route: view validated, memory keyed on it", () => {
     expect(mature.view).toBe("mature");
     expect(flash.view).toBe("flash");
     expect(matureAgain.view).toBe("mature");
-    const fileReads = urls.filter((u) => /\/v1\/features\/research\?/.test(u));
+    const fileReads = urls.filter((u) => /\/v1\/features\/research\/engines\?/.test(u));
     expect(fileReads).toEqual([
-      expect.stringContaining("/v1/features/research?basis=user&view=mature"),
-      expect.stringContaining("/v1/features/research?basis=user&view=flash"),
+      expect.stringContaining("/v1/features/research/engines?basis=user&view=mature"),
+      expect.stringContaining("/v1/features/research/engines?basis=user&view=flash"),
     ]);
   });
 
