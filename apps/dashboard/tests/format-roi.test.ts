@@ -15,6 +15,13 @@ describe("formatRoi", () => {
     expect(formatRoi(9.94)).toBe("9.9×");
   });
 
+  it("never prints a tiny positive return as zero (ROI-ROUNDING-1116)", () => {
+    expect(formatRoi(0.0042)).toBe("<0.1×");
+    expect(formatRoi(0.049)).toBe("<0.1×");
+    expect(formatRoi(0.05)).toBe("0.1×");
+    expect(formatRoi(0)).toBe("0.0×");
+  });
+
   it("rounds to a whole number from ten up", () => {
     expect(formatRoi(29.5)).toBe("30×");
     expect(formatRoi(11.7)).toBe("12×");
