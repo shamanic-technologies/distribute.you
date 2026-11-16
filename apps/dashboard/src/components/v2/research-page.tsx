@@ -15,7 +15,8 @@ import {
   MonthsRow,
   Row,
   topicLook,
-  OutcomePipes,
+  OutcomeMeasures,
+  MeasureSteps,
   SectionMark,
   SectionName,
   SectionPath,
@@ -28,14 +29,11 @@ import {
   sectionOf,
   monthText,
 } from "@/components/v2/research-bits";
-import { V2ResearchCatalogView, PipeCatalogLinks } from "@/components/v2/research-catalog";
-import type { ResearchPipe } from "@/lib/research/research";
-import { useResearchPipeLeg } from "@/components/v2/research-live-workflows";
+import { V2ResearchCatalogView, MeasureCatalogLinks } from "@/components/v2/research-catalog";
+import type { ResearchMeasure } from "@/lib/research/research";
 import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ResearchSourceProvider, useResearch, useResearchCatalog } from "@/lib/research/research-source";
-import { useFeatures } from "@/lib/features-context";
-import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
@@ -47,10 +45,11 @@ import {
   sectionStudiesPriceFirst,
   parseResearchPath,
   pointHref,
-  researchPipeEntry,
-  researchWorkflow,
+  researchMeasureEntry,
+  researchScript,
+  researchStudyHref,
   outcomeStudiesOf,
-  pipesOutsideOutcomes,
+  measuresOutsideOutcomes,
   type OutcomeStudies,
   studyById,
   studyOutcomeText,
@@ -64,8 +63,9 @@ import {
 } from "@/lib/research/research";
 
 /**
- * Research (FACTORY-RESEARCH-1102, the GTM Factory way): every study homed under the outcome it measures, a pipe's studies and
- * pages inside its outcome's section, never a pipe heading. Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
+ * Research (FACTORY-RESEARCH-1102, the GTM Factory way; by Engine and script since RESEARCH-BY-ENGINE-1113): every study
+ * homed under the outcome it measures, each Engine's studies and pages inside its outcome's section. Staff only: page
+ * behind StaffOnly, data behind the staff route (research-source.tsx).
  *
  * Built on Keel's own anatomy (see the dashboard-v2-ux skill): the hub is a card grid
  * (mark + question + state, an inset block of stat cells with a mini chart in the mark's
@@ -81,7 +81,7 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   followups: "Best depth",
   opens: "Winner",
   template: "Winner",
-  workflow: "Winner",
+  script: "Winner",
   naming: "Winner",
   layout: "Winner",
   opening: "Winner",
@@ -96,9 +96,6 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   "sourcing-strategy": "Winner",
   // the share of leads reaching an outcome, like the cost curve: a measurement
   conversion: "Comparison",
-  pipe: "Winner",
-  channel: "Winner",
-  leg: "Winner",
   tactic: "Winner",
   // a distribution of delays: it ranks nothing
   delay: "Comparison",
@@ -116,10 +113,10 @@ const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
 };
 
 /** The first bar is a winner only when the verdict is a conclusion; otherwise it merely leads. */
-/** A study's winner, named the shared way when it is a model, a template or a workflow (owner 2026-10-22). */
+/** A study's winner, named the shared way when it is an LLM, a template or a script (owner 2026-10-22). */
 function StudyWinner({ study }: { study: ResearchStudy }) {
   if (!study.winner) return <span className="k-fg4">{"—"}</span>;
-  const kind = study.topic === "llm" ? "llm" : study.topic === "template" ? "template" : study.topic === "workflow" ? "workflow" : null;
+  const kind = study.topic === "llm" ? "llm" : study.topic === "template" ? "template" : study.topic === "script" ? "workflow" : null;
   if (!kind) return <span className="min-w-0 truncate">{study.winner}</span>;
   return <CatalogueName kind={kind} name={study.winner} />;
 }
@@ -241,7 +238,7 @@ function StudyGrid({ studies, base }: { studies: ResearchStudy[]; base: string }
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
       {studies.map((st) => (
-        <StudyCard key={st.id} study={st} href={`${base}/${encodeURIComponent(st.id)}`} />
+        <StudyCard key={st.id} study={st} href={researchStudyHref(base, st.id)} />
       ))}
     </div>
   );
@@ -254,36 +251,38 @@ function studiesMeta(studies: ResearchStudy[]): string {
 }
 
 /**
- * The workflow, template and model pages of the pipes landing on one outcome: one line per pipe (served mark and name)
- * with its page chips. A list inside the outcome's section, never a heading of its own.
+ * The script, template and LLM pages of the Engines landing on one outcome: one line per measure (the Engine's served
+ * mark and name, its step words) with its page chips. A list inside the outcome's section, never a heading of its own.
  */
-function OutcomeCatalogue({ base, pipes }: { base: string; pipes: ResearchPipe[] }) {
-  if (pipes.length === 0) return null;
+function OutcomeCatalogue({ base, measures }: { base: string; measures: ResearchMeasure[] }) {
+  if (measures.length === 0) return null;
   return (
     <div className="k-card mb-3 divide-y divide-[var(--line-subtle)]">
-      <p className="k-label px-4 py-2.5">Workflows, templates and models, by the pipe that runs them</p>
-      {pipes.map((pipe) => (
-        <div key={pipe} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
-          <span className="inline-flex min-w-[200px] items-center gap-2 text-[13px] font-medium">
-            <SectionMark section={{ pipe }} size={16} />
-            <SectionName section={{ pipe }} />
+      <p className="k-label px-4 py-2.5">Scripts, templates and LLMs, by Engine</p>
+      {measures.map((measure) => (
+        <div key={measure} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+          <span className="inline-flex min-w-[360px] items-center gap-2 text-[13px] font-medium">
+            <SectionMark section={{ measure }} size={16} />
+            <SectionName section={{ measure }} />
+            <span className="k-fg3 font-normal">
+              <MeasureSteps measure={measure} />
+            </span>
           </span>
-          <PipeCatalogLinks base={base} pipe={pipe} />
+          <MeasureCatalogLinks base={base} measure={measure} />
         </div>
       ))}
     </div>
   );
 }
 
-/** The served pipes as one line, each by its mark and name (the reminder under an outcome no lead state names). */
-function PipesLine({ pipes }: { pipes: ResearchPipe[] }) {
+/** An Engine's measures as one line, each by its step words (the reminder under an Engine no lead state names). */
+function MeasuresLine({ measures }: { measures: ResearchMeasure[] }) {
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1">
-      {pipes.map((p, i) => (
-        <span key={p} className="inline-flex items-center gap-1">
-          <SectionMark section={{ pipe: p }} size={12} />
-          <SectionName section={{ pipe: p }} />
-          {i < pipes.length - 1 && <span>,</span>}
+      {measures.map((m, i) => (
+        <span key={m} className="inline-flex items-center gap-1">
+          <MeasureSteps measure={m} />
+          {i < measures.length - 1 && <span>,</span>}
         </span>
       ))}
     </span>
@@ -291,10 +290,9 @@ function PipesLine({ pipes }: { pipes: ResearchPipe[] }) {
 }
 
 /**
- * Research, the GTM Factory way (FACTORY-RESEARCH-1102, owner 2026-11-02 « on adaptera la page Research qui est outdate
- * avec tous les pipes »): the Engines first (where a clear winner exists, where the Engine still explores, what each pick
- * costs), then every study homed under the OUTCOME it measures, in the served lead-track order; a pipe is never a
- * heading, its studies and pages sit in its outcome's section.
+ * Research, the GTM Factory way (FACTORY-RESEARCH-1102, owner 2026-11-02; by Engine since RESEARCH-BY-ENGINE-1113): every
+ * study homed under the OUTCOME it measures, in the served lead-track order; each Engine's studies and pages sit in its
+ * outcome's section, then the Engines no lead state names, each its own section.
  */
 function V2ResearchHub({ base }: { base: string }) {
   const RESEARCH = useResearch().file;
@@ -302,11 +300,11 @@ function V2ResearchHub({ base }: { base: string }) {
   const v = RESEARCH.volume;
   const called = RESEARCH.studies.filter((st) => studyState(st) === "conclusion").length;
   const groups = outcomeGroups(RESEARCH);
-  const rowsOf = (metas: typeof groups.other) => metas.map((meta) => outcomeStudiesOf(meta, RESEARCH)).filter((r) => r.studies.length > 0 || r.pipes.length > 0);
+  const rowsOf = (metas: typeof groups.other) => metas.map((meta) => outcomeStudiesOf(meta, RESEARCH)).filter((r) => r.studies.length > 0 || r.measures.length > 0);
   const leadTrackRows = groups.leadTracks.map((t) => ({ ...t, rows: rowsOf(t.entries) })).filter((t) => t.rows.length > 0);
   const otherRows = rowsOf(groups.other);
-  const outside = pipesOutsideOutcomes(RESEARCH);
-  const outcomeBlock = ({ entry, pipes, studies }: OutcomeStudies, line?: string) => {
+  const outside = measuresOutsideOutcomes(RESEARCH);
+  const outcomeBlock = ({ entry, measures, studies }: OutcomeStudies, line?: string) => {
     const id = `outcome-${entry.id}`;
     return (
       <HubSectionBlock
@@ -321,7 +319,7 @@ function V2ResearchHub({ base }: { base: string }) {
         meta={studiesMeta(studies)}
       >
         <p className="k-fg3 mb-3 text-[12px] leading-5">{entry.population}</p>
-        <OutcomeCatalogue base={base} pipes={pipes} />
+        <OutcomeCatalogue base={base} measures={measures} />
         {studies.length > 0 && <StudyGrid studies={studies} base={base} />}
       </HubSectionBlock>
     );
@@ -369,23 +367,23 @@ function V2ResearchHub({ base }: { base: string }) {
 
             {outside.length > 0 && (
               <div>
-                <p className="k-label mb-2 px-1">Other outcomes</p>
+                <p className="k-label mb-2 px-1">Other Engines</p>
                 <div className="space-y-3">
                   {outside.map((g) => {
-                    const id = `outcome-pipes-${g.outcome}`;
+                    const id = `engine-${g.engine.outcome}`;
                     return (
                       <HubSectionBlock
-                        key={g.outcome}
+                        key={g.engine.outcome}
                         id={`research-${id}`}
                         open={open.has(id)}
                         onToggle={() => toggle(id)}
                         animate={ready}
-                        mark={(px) => <SectionMark section={{ pipe: g.pipes[0]! }} size={px} />}
-                        name={g.outcome}
-                        line={<PipesLine pipes={g.pipes} />}
+                        mark={(px) => <SectionMark section={{ measure: g.measures[0]! }} size={px} />}
+                        name={g.engine.name}
+                        line={<MeasuresLine measures={g.measures} />}
                         meta={studiesMeta(g.studies)}
                       >
-                        <OutcomeCatalogue base={base} pipes={g.pipes} />
+                        <OutcomeCatalogue base={base} measures={g.measures} />
                         {g.studies.length > 0 && <StudyGrid studies={g.studies} base={base} />}
                       </HubSectionBlock>
                     );
@@ -420,9 +418,9 @@ function BarsChart({
   chart: ResearchChart;
   color: string;
   winner: string | null;
-  /** A workflow's or template's bar opens that one's own page. */
+  /** A script's or template's bar opens that one's own page. */
   hrefFor?: (p: ResearchPoint) => string | null;
-  /** A workflow's own name (Rampart), shown before what it writes with. */
+  /** A script's own name (Rampart), shown before what it writes with. */
   nameFor?: (p: ResearchPoint) => string | null;
 }) {
   if (!chart.points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
@@ -573,19 +571,16 @@ function PairedBarsChart({
 function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   const RESEARCH = useResearch().file;
   const study = studyById(studyId, RESEARCH);
-  // A workflow bar names the workflow (Rampart) as workflow-service states it, off the research catalogue.
+  // A script bar names the script (Rampart) as workflow-service states it, off the research catalogue.
   const catalog = useResearchCatalog(useResearch().basis).data ?? null;
-  const { getFeature } = useFeatures();
-  const workflowPipe = study?.topic === "workflow" ? study.pipe : null;
-  const workflowChannel = researchPipeEntry(RESEARCH, workflowPipe)?.channel ?? null;
-  const channelName = workflowChannel ? getFeature(workflowChannel)?.name ?? null : null;
-  // The email legs' population and rule (clients, emails, the run-start wait) describe the figures of
-  // a pipe on a PROACTIVE leg only: a meeting study states its own in its sample and chart note.
-  const proactiveLeg = useResearchPipeLeg(study?.pipe ?? null) != null;
-  const workflowName = (p: ResearchPoint): string | null => {
-    if (!workflowPipe || !catalog || !p.key) return null;
-    const w = researchWorkflow(catalog, workflowPipe, p.key);
-    return w?.name ? shortWorkflowName(w.name, channelName) : null;
+  const scriptMeasure = study?.topic === "script" ? study.measure : null;
+  // The email population and rule (clients, emails, the run-start wait) describe the figures of a measure whose
+  // people start from nothing (a first email): a meeting study states its own in its sample and chart note.
+  const fromStart = study?.measure ? researchMeasureEntry(RESEARCH, study.measure)?.startsFrom === null : false;
+  const scriptName = (p: ResearchPoint): string | null => {
+    if (!scriptMeasure || !catalog || !p.key) return null;
+    const w = researchScript(catalog, scriptMeasure, p.key);
+    return w?.label ?? null;
   };
   if (!study) {
     return (
@@ -606,8 +601,8 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   }
   const section = sectionOf(study);
   const outcomeText = studyOutcomeText(study, RESEARCH);
-  const outcomeMeta = study.pipe ? null : outcomeEntry(study.outcome, RESEARCH);
-  const emailLeg = proactiveLeg;
+  const outcomeMeta = study.measure ? null : outcomeEntry(study.outcome, RESEARCH);
+  const emailLeg = fromStart;
   const look = topicLook(study.topic);
   const state = studyState(study);
   const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={section} /> }, { label: topicLabel(study.topic) }];
@@ -696,7 +691,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                 <div key={c.title}>
                   <SectionTitle>{c.title}</SectionTitle>
                   <div className="k-card overflow-hidden">
-                    <BarsChart chart={c} color={look.color} winner={study.winnerLabel ? null : study.winner} hrefFor={(p) => pointHref(base, study, p)} nameFor={workflowName} />
+                    <BarsChart chart={c} color={look.color} winner={study.winnerLabel ? null : study.winner} hrefFor={(p) => pointHref(base, study, p)} nameFor={scriptName} />
                   </div>
                   <ChartNote note={c.note} />
                 </div>
@@ -708,7 +703,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
             <p className="k-label">Details</p>
             <dl className="mt-3 space-y-2.5 text-[13px]">
               <Row
-                k={study.pipe ? "Pipe" : outcomeMeta?.step ? "Outcome" : "Section"}
+                k={study.measure ? "Engine" : outcomeMeta?.step ? "Outcome" : "Section"}
                 v={
                   <span className="inline-flex items-center gap-1.5">
                     <SectionMark section={section} />
@@ -716,8 +711,9 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                   </span>
                 }
               />
-              {study.pipe && <Row k="Outcome" v={outcomeText} />}
-              {outcomeMeta?.step && <Row k={(outcomeMeta.pipes?.length ?? 0) === 1 ? "Pipe" : "Pipes"} v={<OutcomePipes outcome={outcomeMeta.id} prefix={false} />} />}
+              {study.measure && <Row k="Measures" v={<MeasureSteps measure={study.measure} />} />}
+              {study.measure && <Row k="Outcome" v={outcomeText} />}
+              {outcomeMeta?.step && <Row k={(outcomeMeta.measures?.length ?? 0) === 1 ? "Engine" : "Engines"} v={<OutcomeMeasures outcome={outcomeMeta.id} prefix={false} />} />}
               <Row k="Question" v={`${topicLabel(study.topic)}, ${GOAL_LABEL[study.goal]}`} />
               {emailLeg && RESEARCH.volume && <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />}
               {emailLeg && RESEARCH.volume && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
@@ -735,15 +731,15 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
               </p>
             )}
             <p className="k-fg2 mt-2 text-[12px] leading-5">
-              Every pipe buys one outcome, so a pipe is read on its cost per outcome, never a return: the cheaper outcome is the better pipe. A website
-              visit is priced on the emails that carried a link.
+              Every Engine makes one outcome, so a script is read on its cost per outcome, never a return: the cheaper outcome is the better script. A
+              website visit is priced on the emails that carried a link.
             </p>
             {emailLeg && (
               <p className="k-fg2 mt-2 text-[12px] leading-5">
-                Every figure is on the rule every price in the dashboard is on: only people we started writing to at least {RESEARCH.maturation.legs.reply.durationDays}{" "}
-                days before the read count (before {dayText(RESEARCH.maturation.legs.reply.cutoff)}), with every positive reply and website visit they sent since. A
-                bar resting on fewer than {RESEARCH.maturation.legs.reply.outcomesRequired} positive{" "}
-                {RESEARCH.maturation.legs.reply.outcomesRequired === 1 ? "reply" : "replies"} ({RESEARCH.maturation.legs.visit.outcomesRequired} website visits) is
+                Every figure is on the rule every price in the dashboard is on: only people we started writing to at least {RESEARCH.maturation.rules.reply.durationDays}{" "}
+                days before the read count (before {dayText(RESEARCH.maturation.rules.reply.cutoff)}), with every positive reply and website visit they sent since. A
+                bar resting on fewer than {RESEARCH.maturation.rules.reply.outcomesRequired} positive{" "}
+                {RESEARCH.maturation.rules.reply.outcomesRequired === 1 ? "reply" : "replies"} ({RESEARCH.maturation.rules.visit.outcomesRequired} website visits) is
                 ranked where its value puts it and marked Learning.
                 {RESEARCH.maturation.excludedEmails != null &&
                   ` ${RESEARCH.maturation.excludedEmails.toLocaleString("en-US")} emails from more recent runs wait until they are old enough to count.`}
@@ -784,8 +780,8 @@ export function V2Research() {
   const base = v2Href(orgId, brandId, "research");
   const rest = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, "") : "";
   const view = parseResearchPath(rest);
-  // An old link (a retired section name) opens the same page under its pipe.
-  const redirectTo = view.view === "redirect" ? `${base}/${view.to}` : null;
+  // An old link (from before Research was keyed by Engine) opens the hub.
+  const redirectTo = view.view === "redirect" ? (view.to ? `${base}/${view.to}` : base) : null;
   useEffect(() => {
     if (redirectTo) router.replace(redirectTo);
   }, [redirectTo, router]);
@@ -834,34 +830,34 @@ export function V2Research() {
       ) : view.view === "missing" ? (
         <V2ResearchStudy base={base} studyId={rest} />
       ) : (
-        <ServedPipe base={base} pipe={view.pipe} rest={rest}>
+        <ServedMeasure base={base} measure={view.measure} rest={rest}>
           {view.view === "performance" ? (
-            <V2ResearchPerformanceView base={base} pipe={view.pipe} />
+            <V2ResearchPerformanceView base={base} measure={view.measure} />
           ) : (
             <V2ResearchCatalogView
               base={base}
-              pipe={view.pipe}
+              measure={view.measure}
               kind={view.kind}
               itemKey={view.view === "item" || view.view === "version" ? view.key : null}
               versionKey={view.view === "version" ? view.version : null}
               nav={nav}
             />
           )}
-        </ServedPipe>
+        </ServedMeasure>
       )}
     </div>
     </ResearchSourceProvider>
   );
 }
 
-/** A pipe's pages render only for a pipe the live file serves; any other id reads Not found. */
-function ServedPipe({ base, pipe, rest, children }: { base: string; pipe: string; rest: string; children: React.ReactNode }) {
+/** A measure's pages render only for a measure the live file serves; any other id reads Not found. */
+function ServedMeasure({ base, measure, rest, children }: { base: string; measure: string; rest: string; children: React.ReactNode }) {
   const { file } = useResearch();
-  return researchPipeEntry(file, pipe) ? <>{children}</> : <V2ResearchStudy base={base} studyId={rest} />;
+  return researchMeasureEntry(file, measure) ? <>{children}</> : <V2ResearchStudy base={base} studyId={rest} />;
 }
 
 /**
- * On the actual basis, a workflow version whose billed spend no vendor cost prices is left out
+ * On the actual basis, a script version whose billed spend no vendor cost prices is left out
  * whole (priced on its known part it would read cheaper than it was); the page says how much.
  */
 function UnpricedNote() {

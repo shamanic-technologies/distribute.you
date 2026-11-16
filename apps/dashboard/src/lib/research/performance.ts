@@ -1,8 +1,8 @@
 /**
- * Research's Performance tab (owner 2026-10-23, RESEARCH-PERFORMANCE-1023): for one pipe, every
- * workflow x template x LLM combination that sent its emails, all clients pooled, plus the pipe's
+ * Research's Performance tab (owner 2026-10-23, RESEARCH-PERFORMANCE-1023): for one measure of an Engine,
+ * every script x template x LLM combination that made its outcomes, all clients pooled, plus the measure's
  * five since-inception figures and their monthly series. features-service serves every figure
- * (`GET /internal/research/performance`, gateway `/v1/features/research/performance`), each row's
+ * (`GET /internal/research/engines/performance`, gateway `/v1/features/research/engines/performance`), each row's
  * status and its order included (RESEARCH-COMBO-STATUS-1023); this module only types the read, splits
  * rows into the Active / Deprecated tabs on the served status, hides the untested ones unless asked
  * (PERF-COST-ORDER-1024) and words the deprecated parts and the served combination's gaps.
@@ -41,7 +41,7 @@ export interface PerformanceMark {
 export interface PerformanceRow extends PerformanceFigures {
   key: string;
   rank: number;
-  workflow: { key: string; label: string; name: string | null } & PerformanceMark;
+  script: { key: string; label: string; name: string | null } & PerformanceMark;
   /** The template DYNASTY (owner 2026-10-23: a Template column is the dynasty) = its Research page. */
   template: ({ key: string; label: string; dynasty?: ({ key: string; label: string } & PerformanceMark) | null } & PerformanceMark) | null;
   /** The LLM dynasty (= its Research model page). */
@@ -59,7 +59,7 @@ export interface PerformanceRow extends PerformanceFigures {
   deprecatedParts: PerformancePart[];
 }
 
-export type PerformancePart = "workflow" | "template" | "llm";
+export type PerformancePart = "script" | "template" | "llm";
 
 export interface PerformanceServedPart {
   key: string;
@@ -67,9 +67,9 @@ export interface PerformanceServedPart {
 }
 
 export type ServedNowReason =
-  | "pipe_not_read"
-  | "workflow_ranking_not_computed_yet"
-  | "no_runnable_workflow"
+  | "engine_not_read"
+  | "script_ranking_not_computed_yet"
+  | "no_runnable_script"
   | "writer_ranking_not_computed_yet"
   | "no_template_picked"
   | "no_llm_picked"
@@ -77,7 +77,7 @@ export type ServedNowReason =
   | "served_pick_unreadable";
 
 export interface PerformanceServedNow {
-  workflow: PerformanceServedPart | null;
+  script: PerformanceServedPart | null;
   template: PerformanceServedPart | null;
   llm: PerformanceServedPart | null;
   /** That combination's row, same shape as `rows[]`; null with `unavailableReason`. */
@@ -96,17 +96,20 @@ export interface PerformancePoint {
   spentUsd: number;
 }
 
-export interface PipePerformance {
-  pipe: string;
-  /** The bars the figures are read on (features-service names it; "workflow_bars" = the Workflows tab's own). */
+/** One measure's Performance tab, as features-service serves it under its Engine. */
+export interface MeasurePerformance {
+  id: string;
+  engine: string;
+  startsFrom: { key: string; name: string } | null;
+  counts: { key: string; name: string };
+  description: string;
+  /** The bars the figures are read on (features-service names it; "script_bars" = the Scripts tab's own). */
   figuresBasis: string;
   /** "cost_per_outcome" (PERF-COST-ORDER-1024): active first, then $ per outcome ascending, else $ spent. */
   rowOrder?: string;
   /** The order is read on this view's figures whatever the view shown ("flash"). */
   orderView?: string;
-  featureSlug: string | null;
-  legKey: string | null;
-  /** The combination the pipe runs today, read live by features-service (never re-derived here). */
+  /** The combination the measure runs today, read live by features-service (never re-derived here). */
   servedNow: PerformanceServedNow;
   outcomeNoun: string;
   outcomeNounPlural: string;
@@ -115,15 +118,26 @@ export interface PipePerformance {
   series: { grain: "month"; points: PerformancePoint[] } | null;
   unpricedBilledUsd: number;
   unavailableReason: string | null;
+  /** Why the measure has no totals, in features-service's words; null when it has them. */
+  totalsUnavailableReason?: string | null;
 }
 
-/** The served read: every Research pipe's tab, on one cost basis. */
+/** The served read: every Engine's measures, each with its Performance tab, on one cost basis. */
 export interface ResearchPerformance {
   computedAt: string | null;
   /** How old the build is at this read and whether it is stale (RESEARCH-STALE-1024); absent on an older build. */
   freshness?: ResearchFreshness;
   costBasis: string;
-  pipes: Record<string, PipePerformance>;
+  engines: { outcome: string; name: string; measures: MeasurePerformance[] }[];
+}
+
+/** One measure's tab off the served read, or null when the read lists no such measure. */
+export function measurePerformance(read: Pick<ResearchPerformance, "engines">, measure: string): MeasurePerformance | null {
+  for (const e of read.engines) {
+    const m = e.measures.find((x) => x.id === measure);
+    if (m) return m;
+  }
+  return null;
 }
 
 export type PerformanceTab = "active" | "deprecated";
@@ -136,7 +150,7 @@ export function performanceByTab<T extends { status: PerformanceRow["status"] }>
 }
 
 const PART_WORDS: Record<PerformancePart, string> = {
-  workflow: "Workflow deprecated",
+  script: "Script deprecated",
   template: "Template deprecated",
   llm: "LLM retired",
 };
@@ -163,14 +177,14 @@ export function untestedCount(rows: readonly { untested: boolean }[]): number {
 }
 
 const SERVED_NOW_WORDS: Record<ServedNowReason, string> = {
-  pipe_not_read: "We could not read what this pipe runs right now.",
-  workflow_ranking_not_computed_yet: "The workflow ranking is not ready yet.",
-  no_runnable_workflow: "No workflow can run on this pipe right now.",
+  engine_not_read: "We could not read what this Engine runs right now.",
+  script_ranking_not_computed_yet: "The script ranking is not ready yet.",
+  no_runnable_script: "No script can run on this Engine right now.",
   writer_ranking_not_computed_yet: "The template and LLM pick is not ready yet.",
-  no_template_picked: "No template is picked for this pipe yet.",
-  no_llm_picked: "No LLM is picked for this pipe yet.",
+  no_template_picked: "No template is picked for this Engine yet.",
+  no_llm_picked: "No LLM is picked for this Engine yet.",
   combination_not_listed: "This combination has no row in the table yet.",
-  served_pick_unreadable: "We could not read the pick for this pipe.",
+  served_pick_unreadable: "We could not read the pick for this Engine.",
 };
 
 /** Why the running combination has no row, in plain words. */

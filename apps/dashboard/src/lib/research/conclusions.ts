@@ -72,7 +72,7 @@ export function researchConclusions(file: ResearchFile): ResearchConclusionsBody
   for (const study of file.studies) {
     if (study.status !== "measured" || study.verdict?.kind !== "conclusion") continue;
     const outcome = studyOutcomeText(study, file);
-    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.pipe ?? study.outcome}, absent from the file's pipes and outcomes`);
+    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.measure ?? study.outcome}, absent from the file's Engines and outcomes`);
     conclusions.push({
       id: study.id,
       outcome,
@@ -121,7 +121,7 @@ export function researchStudies(file: ResearchFile): ResearchStudiesBody {
   for (const study of file.studies) {
     if (study.status !== "measured") continue;
     const outcome = studyOutcomeText(study, file);
-    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.pipe ?? study.outcome}, absent from the file's pipes and outcomes`);
+    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.measure ?? study.outcome}, absent from the file's Engines and outcomes`);
     studies.push({
       id: study.id,
       outcome,

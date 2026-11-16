@@ -6,35 +6,34 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
-import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
+import { opensDrawer, ResearchLiveScripts, useMeasureScriptRows } from "@/components/v2/research-live-scripts";
 import { TacticTags, TacticsBlock } from "@/components/v2/tactic-tags";
-import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
   ACTIVATE_CONTENT_NOTE,
   DEPRECATE_CONTENT_NOTE,
-  contentNote,
   DeprecationNote,
   StatusMenu,
   StatusWord as ContentStatusWord,
-  useContentPipe,
+  isWorkflowDynasty,
+  scriptStatus,
   useContentStatusWrites,
-  useDynastyStatuses,
   useModelStatuses,
+  useScriptWords,
   useTemplateStatuses,
   useWorkflowDeprecation,
 } from "@/components/v2/research-status";
-import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useModelDynastyOutputs, useTemplateOutputs } from "@/components/v2/research-template-outputs";
-import { modelAliasesOf, modelsByTab, modelStatus, type ContentTarget } from "@/lib/research/content-status";
+import { LLM_OUTPUTS_NOT_CARRIED, OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
+import { modelAliasesOf, modelsByTab, modelStatus } from "@/lib/research/content-status";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { RunCostChart, RunCostFigures, runCostGap } from "@/components/v2/research-run-cost";
-import { usePipeChannel, useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
+import { useResearch, useResearchCatalog, useResearchMeasureEntry, useResearchTexts } from "@/lib/research/research-source";
 import {
   Arrow,
   MonthsRow,
   Row,
   STANDALONE_WORDS,
+  MeasureName,
   SectionMark,
-  SectionName,
   topicLook,
   dayText,
   identityWord,
@@ -53,7 +52,7 @@ import {
   researchTemplateOf,
   researchTemplateVersion,
   researchTemplateVersionHref,
-  researchWorkflow,
+  researchScript,
   templateContentKey,
   templateRowStatus,
   templatesByTab,
@@ -65,19 +64,19 @@ import {
   type ResearchModelVersion,
   type ResearchRef,
   type ResearchCatalog,
-  type ResearchPipe,
+  type ResearchMeasure,
   type ResearchFigures,
   type ResearchTemplate,
   type ResearchTemplateVersion,
-  type ResearchWorkflow,
+  type ResearchScript,
   outcomeUnitOf,
-  pipeCatalog,
+  measureCatalog,
 } from "@/lib/research/research";
 
 /**
- * Research's workflow and template pages: for one pipe, every workflow (or template) that sent
- * its emails, all clients pooled, and one page per workflow and per template. Laid out like v2's
- * Workflows list and workflow page, with the Global column only: the research is fleet-wide.
+ * Research's script, template and LLM pages (RESEARCH-BY-ENGINE-1113): for one measure of an Engine, every script (or
+ * template, or LLM) that made its outcomes, all clients pooled, and one page per script, template and LLM. The
+ * template and the LLM are a script's TACTICS. Fleet-wide, with the Global column only.
  *
  * Every figure, label and date arrives written in features-service's live catalogue; this
  * file lays them out and never divides, ranks or formats a number. The catalogue and the
@@ -86,24 +85,24 @@ import {
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 const KIND_WORD: Record<CatalogKind, { one: string; many: string; title: string }> = {
-  workflows: { one: "workflow", many: "workflows", title: "Workflows" },
+  scripts: { one: "script", many: "scripts", title: "Scripts" },
   templates: { one: "template", many: "templates", title: "Templates" },
-  models: { one: "model", many: "models", title: "Models" },
+  llms: { one: "LLM", many: "LLMs", title: "LLMs" },
 };
-/** A pipe's tab names: the catalogue kinds, then Performance. */
-const TAB_TITLE: Record<ResearchTabKind, string> = { workflows: "Workflows", templates: "Templates", models: "Models", performance: "Performance" };
+/** A measure's tab names: the catalogue kinds, then Performance. */
+const TAB_TITLE: Record<ResearchTabKind, string> = { scripts: "Scripts", templates: "Templates", llms: "LLMs", performance: "Performance" };
 /** Performance has no study topic of its own: it wears the conversion colour (what it measures). */
 const PERFORMANCE_COLOR = "var(--data-teal)";
 
 /**
- * The tabs across a pipe's pages (Workflows, Templates, Models, Performance). Each states its own
+ * The tabs across a measure's pages (Scripts, Templates, LLMs, Performance). Each states its own
  * page's length when that page has answered, never another read's count.
  */
-export function PipeTabs({ base, pipe, current, countOf }: { base: string; pipe: ResearchPipe; current: ResearchTabKind; countOf: (k: ResearchTabKind) => number | null }) {
+export function MeasureTabs({ base, measure, current, countOf }: { base: string; measure: ResearchMeasure; current: ResearchTabKind; countOf: (k: ResearchTabKind) => number | null }) {
   return (
     <div className="mt-5 flex gap-5 border-b border-[var(--line-subtle)]">
       {RESEARCH_TABS.map((k) => (
-        <Link key={k} href={researchCatalogHref(base, pipe, k)} aria-current={k === current ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
+        <Link key={k} href={researchCatalogHref(base, measure, k)} aria-current={k === current ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
           {TAB_TITLE[k]}
           {countOf(k) != null && <span className="k-fg3 tabular-nums">{countOf(k)}</span>}
         </Link>
@@ -113,73 +112,70 @@ export function PipeTabs({ base, pipe, current, countOf }: { base: string; pipe:
 }
 
 /** Each kind wears its study topic's mark and colour. */
-const KIND_TOPIC: Record<CatalogKind, "workflow" | "template" | "llm"> = { workflows: "workflow", templates: "template", models: "llm" };
+const KIND_TOPIC: Record<CatalogKind, "script" | "template" | "llm"> = { scripts: "script", templates: "template", llms: "llm" };
+/** Each kind's shared catalogue mark (`CatalogueName`'s own kind words). */
+const KIND_MARK: Record<CatalogKind, "workflow" | "template" | "llm"> = { scripts: "workflow", templates: "template", llms: "llm" };
 
-/** A model, template or workflow named the shared way (mark + name, a template's version after it), a link when its page exists in this pipe. */
-function RefLink({ base, pipe, kind, r, className = "" }: { base: string; pipe: ResearchPipe; kind: CatalogKind; r: ResearchRef | null; className?: string }) {
+/** An LLM, template or script named the shared way (mark + name, a template's version after it), a link when its page exists in this measure. */
+function RefLink({ base, measure, kind, r, className = "" }: { base: string; measure: ResearchMeasure; kind: CatalogKind; r: ResearchRef | null; className?: string }) {
   if (!r) return <span className="k-fg4">{"—"}</span>;
   return (
     <CatalogueName
-      kind={KIND_TOPIC[kind]}
+      kind={KIND_MARK[kind]}
       name={r.label}
-      href={r.linked ? researchCatalogHref(base, pipe, kind, r.key) : null}
+      href={r.linked ? researchCatalogHref(base, measure, kind, r.key) : null}
       version={r.version?.label ?? null}
-      servedKey={kind === "models" ? null : r.key}
+      servedKey={kind === "llms" ? null : r.key}
       className={className.replace(/\b(block|truncate)\b/g, "").trim()}
     />
   );
 }
 
-/** A workflow row is named by its own name (its model and template have their own columns); the rest by their label. */
-function rowName(kind: CatalogKind, r: ResearchWorkflow | ResearchTemplate | ResearchModel, channelName: string | null): string {
-  return kind === "workflows" ? shortWorkflowName((r as ResearchWorkflow).name ?? r.label, channelName) : r.label;
+/** A row is named by its served label (a script's short name, a template's or an LLM's name). */
+function rowName(_kind: CatalogKind, r: ResearchScript | ResearchTemplate | ResearchModel): string {
+  return r.label;
 }
 
-function useOutcome(pipe: ResearchPipe): { noun: string; plural: string; unit: string } {
-  const outcome = useResearch().file.pipes.find((c) => c.id === pipe)?.outcome ?? "Outcome";
+function useOutcome(measure: ResearchMeasure): { noun: string; plural: string; unit: string } {
+  const outcome = useResearchMeasureEntry(measure)?.counts.name ?? "Outcome";
   const plural = /[^aeiou]y$/i.test(outcome) ? `${outcome.slice(0, -1)}ies` : `${outcome}s`;
   return { noun: outcome, plural, unit: outcomeUnitOf(outcome) };
 }
 
 /**
- * How many of a pipe's workflows, templates and models are ACTIVE (owner 2026-10-23: « le total doit
- * être le nombre d'actifs, on ne compte pas les deprecated », for all three). Workflows read the live
- * ranking's rows at the pipe's leg (else the catalogue's own list, which states no status); each kind
- * is null until its statuses answer, so no count flashes the wrong number.
+ * How many of a measure's scripts, templates and LLMs are ACTIVE (owner 2026-10-23: « le total doit être le nombre
+ * d'actifs, on ne compte pas les deprecated », for all three). Scripts read the live ranking's rows (their served
+ * `executable`); each kind is null until its statuses answer, so no count flashes the wrong number.
  */
-function useActiveCatalogCounts(pipe: ResearchPipe, catalog: ResearchCatalog | null): Record<CatalogKind, number | null> {
-  const liveLeg = useResearchPipeLeg(pipe);
-  const channel = usePipeChannel(pipe);
-  const liveRows = usePipeWorkflowRows(channel, liveLeg);
-  const dynasties = useDynastyStatuses(channel);
+function useActiveCatalogCounts(measure: ResearchMeasure, catalog: ResearchCatalog | null): Record<CatalogKind, number | null> {
+  const liveRows = useMeasureScriptRows(measure);
   const templateStatuses = useTemplateStatuses();
-  // A model's status is the one on THIS pipe (LLM-STATUS-PER-PIPE-1023).
-  const modelStatuses = useModelStatuses(useContentPipe(pipe));
-  const workflows =
-    liveLeg != null
-      ? liveRows.rankingQ.data !== undefined && dynasties.answered
-        ? liveRows.rows.filter((r) => dynasties.statusOf(r.slug) !== "deprecated").length
-        : null
-      : (catalog ? pipeCatalog(catalog, pipe).workflows.length : null);
-  const templates = catalog ? (templatesByTab(pipeCatalog(catalog, pipe).templates, templateStatuses)?.active.length ?? null) : null;
-  const models = catalog ? (modelsByTab(pipeCatalog(catalog, pipe).models, modelStatuses)?.active.length ?? null) : null;
-  return { workflows, templates, models };
+  const modelStatuses = useModelStatuses();
+  const scripts =
+    liveRows.rankingQ.data !== undefined
+      ? liveRows.rows.filter((r) => r.executable !== false).length
+      : catalog
+        ? measureCatalog(catalog, measure).scripts.filter((w) => w.runnable !== false).length
+        : null;
+  const templates = catalog ? (templatesByTab(measureCatalog(catalog, measure).templates, templateStatuses)?.active.length ?? null) : null;
+  const llms = catalog ? (modelsByTab(measureCatalog(catalog, measure).llms, modelStatuses)?.active.length ?? null) : null;
+  return { scripts, templates, llms };
 }
 
 /**
- * The hub's links from a pipe's section to its workflow, template and model pages, each with its active
- * count, and Performance. Every served pipe gets all four (WA-PIPE-RESEARCH-1023): a page with nothing
- * measured yet opens on its Learning state, never hidden.
+ * The hub's links from a measure to its script, template and LLM pages, each with its active count, and
+ * Performance. Every served measure gets all four: a page with nothing measured yet opens on its Learning
+ * state, never hidden.
  */
-export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchPipe }) {
+export function MeasureCatalogLinks({ base, measure }: { base: string; measure: ResearchMeasure }) {
   const catalog = useResearchCatalog(useResearch().basis).data ?? null;
-  const active = useActiveCatalogCounts(pipe, catalog);
+  const active = useActiveCatalogCounts(measure, catalog);
   return (
     <HubChips>
       {CATALOG_KINDS.map((kind) => (
-        <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={topicLook(KIND_TOPIC[kind]).color} label={KIND_WORD[kind].title} count={active[kind]} />
+        <HubChip key={kind} href={researchCatalogHref(base, measure, kind)} color={topicLook(KIND_TOPIC[kind]).color} label={KIND_WORD[kind].title} count={active[kind]} />
       ))}
-      <HubChip href={researchCatalogHref(base, pipe, "performance")} color={PERFORMANCE_COLOR} label={TAB_TITLE.performance} />
+      <HubChip href={researchCatalogHref(base, measure, "performance")} color={PERFORMANCE_COLOR} label={TAB_TITLE.performance} />
     </HubChips>
   );
 }
@@ -188,14 +184,14 @@ export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchP
 
 export function V2ResearchCatalogView({
   base,
-  pipe,
+  measure,
   kind,
   itemKey,
   versionKey = null,
   nav,
 }: {
   base: string;
-  pipe: ResearchPipe;
+  measure: ResearchMeasure;
   kind: CatalogKind;
   itemKey: string | null;
   /** A template version's own page (`templates/<dynasty>/<version>`). */
@@ -205,17 +201,15 @@ export function V2ResearchCatalogView({
   const catalogQuery = useResearchCatalog(useResearch().basis);
   const catalog = catalogQuery.data ?? null;
   const failed = catalogQuery.isError;
-  const listHref = researchCatalogHref(base, pipe, kind);
+  const listHref = researchCatalogHref(base, measure, kind);
   const crumbs = [
     { label: "Research", href: base },
-    { label: <SectionName section={{ pipe }} /> },
+    { label: <MeasureName measure={measure} /> },
     itemKey ? { label: KIND_WORD[kind].title, href: listHref } : { label: KIND_WORD[kind].title },
   ];
-  const liveLeg = useResearchPipeLeg(pipe);
-  const channelName = usePipeChannelName(pipe);
-  // The live workflow list needs nothing from the Research file to paint: it renders at once.
-  if (!catalog && !itemKey && kind === "workflows" && liveLeg != null) {
-    return <CatalogList base={base} pipe={pipe} kind={kind} catalog={null} crumbs={crumbs} nav={nav} />;
+  // The live script list needs nothing from the catalogue to paint: it renders at once.
+  if (!catalog && !itemKey && kind === "scripts") {
+    return <CatalogList base={base} measure={measure} kind={kind} catalog={null} crumbs={crumbs} nav={nav} />;
   }
   if (!catalog) {
     return (
@@ -233,13 +227,13 @@ export function V2ResearchCatalogView({
       </>
     );
   }
-  if (!itemKey) return <CatalogList base={base} pipe={pipe} kind={kind} catalog={catalog} crumbs={crumbs} nav={nav} />;
+  if (!itemKey) return <CatalogList base={base} measure={measure} kind={kind} catalog={catalog} crumbs={crumbs} nav={nav} />;
   const item =
-    kind === "workflows"
-      ? researchWorkflow(catalog, pipe, itemKey)
+    kind === "scripts"
+      ? researchScript(catalog, measure, itemKey)
       : kind === "templates"
-        ? researchTemplateOf(catalog, pipe, itemKey)
-        : researchModel(catalog, pipe, itemKey);
+        ? researchTemplateOf(catalog, measure, itemKey)
+        : researchModel(catalog, measure, itemKey);
   if (!item) {
     return (
       <>
@@ -247,7 +241,7 @@ export function V2ResearchCatalogView({
         <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
           <div className="k-card">
             <EmptyNote>
-              This {KIND_WORD[kind].one} is not in this pipe&apos;s research.{" "}
+              This {KIND_WORD[kind].one} is not in this Engine&apos;s research.{" "}
               <Link href={listHref} className="k-fg underline">
                 See every {KIND_WORD[kind].one}
               </Link>
@@ -260,7 +254,7 @@ export function V2ResearchCatalogView({
   if (kind === "templates" && versionKey) {
     const t = item as ResearchTemplate;
     const version = researchTemplateVersion(t, versionKey);
-    const dynastyHref = researchCatalogHref(base, pipe, "templates", t.key);
+    const dynastyHref = researchCatalogHref(base, measure, "templates", t.key);
     const versionCrumbs = [...crumbs, { label: t.label, href: dynastyHref }, { label: version ? version.label : "Not found" }];
     if (!version) {
       return (
@@ -279,12 +273,12 @@ export function V2ResearchCatalogView({
         </>
       );
     }
-    return <TemplateVersionView base={base} pipe={pipe} t={t} v={version} crumbs={versionCrumbs} />;
+    return <TemplateVersionView base={base} measure={measure} t={t} v={version} crumbs={versionCrumbs} />;
   }
-  const itemCrumbs = [...crumbs, { label: rowName(kind, item, channelName) }];
-  if (kind === "workflows") return <WorkflowView base={base} pipe={pipe} w={item as ResearchWorkflow} crumbs={itemCrumbs} nav={nav} />;
-  if (kind === "templates") return <TemplateView base={base} pipe={pipe} t={item as ResearchTemplate} crumbs={itemCrumbs} nav={nav} />;
-  return <ModelView base={base} pipe={pipe} m={item as ResearchModel} crumbs={itemCrumbs} nav={nav} />;
+  const itemCrumbs = [...crumbs, { label: rowName(kind, item) }];
+  if (kind === "scripts") return <ScriptView base={base} measure={measure} w={item as ResearchScript} crumbs={itemCrumbs} nav={nav} />;
+  if (kind === "templates") return <TemplateView base={base} measure={measure} t={item as ResearchTemplate} crumbs={itemCrumbs} nav={nav} />;
+  return <ModelView base={base} measure={measure} m={item as ResearchModel} crumbs={itemCrumbs} nav={nav} />;
 }
 
 function RowsSkeleton() {
@@ -321,7 +315,7 @@ function Dash({ v }: { v: string | null }) {
   return v == null ? <span className="k-fg4">{"—"}</span> : <>{v}</>;
 }
 
-/** The post columns' headers (THREADS-IDEAS-AB), on a pipe whose rows carry `postFigures`. */
+/** The post columns' headers (THREADS-IDEAS-AB), on a measure whose rows carry `postFigures`. */
 function PostHeads() {
   return (
     <>
@@ -335,7 +329,7 @@ function PostHeads() {
   );
 }
 
-/** One row's post figures, printed as served; a row without them on such a pipe shows dashes. */
+/** One row's post figures, printed as served; a row without them on such a measure shows dashes. */
 function PostCells({ p }: { p: ResearchPostFigures | null | undefined }) {
   if (p == null)
     return (
@@ -361,49 +355,44 @@ function PostCells({ p }: { p: ResearchPostFigures | null | undefined }) {
   );
 }
 
-// ─── A pipe's list ─────────────────────────────────────────────────────────
+// ─── A measure's list ─────────────────────────────────────────────────────────
 
 function CatalogList({
   base,
-  pipe,
+  measure,
   kind,
   catalog,
   crumbs,
   nav,
 }: {
   base: string;
-  pipe: ResearchPipe;
+  measure: ResearchMeasure;
   kind: CatalogKind;
   catalog: ResearchCatalog | null;
   crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
-  const o = useOutcome(pipe);
-  const channelName = usePipeChannelName(pipe);
+  const o = useOutcome(measure);
   const RESEARCH = useResearch().file;
-  const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog ? pipeCatalog(catalog, pipe)[kind] : [];
+  const rows: (ResearchScript | ResearchTemplate | ResearchModel)[] = catalog ? measureCatalog(catalog, measure)[kind] : [];
   const words = KIND_WORD[kind];
   const priced = rows.filter((r) => r.rank != null).length;
   const other = CATALOG_KINDS[(CATALOG_KINDS.indexOf(kind) + 1) % CATALOG_KINDS.length];
-  // Workflows are read LIVE off the producer's ranking at the pipe's leg; the catalogue table
-  // stays for templates, models, and a pipe whose step starts no entry leg.
-  const liveLeg = useResearchPipeLeg(pipe);
-  const live = kind === "workflows" && liveLeg != null;
+  // Scripts are read LIVE off the producer's ranking of the measure; the catalogue table stays for templates and LLMs.
+  const live = kind === "scripts";
   // Every count on the page is the ACTIVE count, deprecated never counted (owner 2026-10-23).
-  const active = useActiveCatalogCounts(pipe, catalog);
+  const active = useActiveCatalogCounts(measure, catalog);
   const countOf = (k: CatalogKind): number | null => active[k];
-  // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by every alias chat-service serves them under (served on the row).
+  // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, LLMs by every alias chat-service serves them under (served on the row).
   const templateStatuses = useTemplateStatuses();
-  // Models: the status on THIS pipe, set on this pipe only (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23).
-  const contentPipe = useContentPipe(pipe);
-  const modelStatuses = useModelStatuses(contentPipe);
+  const modelStatuses = useModelStatuses();
   const writes = useContentStatusWrites();
-  // Templates and models sit in two tabs, Active and Deprecated (owner 2026-10-21, models 2026-10-23),
+  // Templates and LLMs sit in two tabs, Active and Deprecated (owner 2026-10-21, LLMs 2026-10-23),
   // the tab in the URL. No row shows before the statuses answer, so none flashes in a tab it then leaves.
   const search = useSearchParams();
   const tab = templateTab(search?.get("status"));
-  const tabbed = kind === "templates" || kind === "models";
-  const statusFailed = kind === "templates" ? templateStatuses.failed : kind === "models" ? modelStatuses.failed : false;
+  const tabbed = kind === "templates" || kind === "llms";
+  const statusFailed = kind === "templates" ? templateStatuses.failed : kind === "llms" ? modelStatuses.failed : false;
   const byTab: Record<TemplateTab, (ResearchTemplate | ResearchModel)[]> | null =
     !tabbed || statusFailed
       ? null
@@ -411,12 +400,12 @@ function CatalogList({
         ? templatesByTab(rows as ResearchTemplate[], templateStatuses)
         : modelsByTab(rows as ResearchModel[], modelStatuses);
   const statusPending = tabbed && !statusFailed && !byTab;
-  // A post-writing pipe (Threads posts): its templates and LLMs carry post figures, shown as their own
-  // columns in place of the per-outcome ones (THREADS-IDEAS-AB). Every other pipe renders as before.
+  // A post-writing measure (Threads posts): its templates and LLMs carry post figures, shown as their own
+  // columns in place of the per-outcome ones (THREADS-IDEAS-AB). Every other measure renders as before.
   const posts = tabbed && hasPostFigures(rows as (ResearchTemplate | ResearchModel)[]);
   // Templates and models render in the served order (features-service's rank). Never re-sorted here (owner 2026-10-23).
   // No « row 1 goes next »: since SCRIPT-VALUE-RATING-1113 the Rating picks a SCRIPT, never a template or an LLM.
-  const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = tabbed ? (byTab?.[tab] ?? []) : rows;
+  const shown: (ResearchScript | ResearchTemplate | ResearchModel)[] = tabbed ? (byTab?.[tab] ?? []) : rows;
   const pickTab = (next: TemplateTab) => {
     // The history API, null state: Next keeps useSearchParams in step (apps/dashboard CLAUDE.md).
     window.history.replaceState(null, "", next === "active" ? window.location.pathname : `${window.location.pathname}?status=${next}`);
@@ -425,7 +414,7 @@ function CatalogList({
   const [selected, setSelected] = useState<string | null>(null);
   const selectedTemplate = kind === "templates" ? ((shown as ResearchTemplate[]).find((r) => r.key === selected) ?? null) : null;
   // A Models row opens its summary in the same right drawer (owner 2026-10-24); its name opens its page.
-  const selectedModel = kind === "models" ? ((shown as ResearchModel[]).find((r) => r.key === selected) ?? null) : null;
+  const selectedModel = kind === "llms" ? ((shown as ResearchModel[]).find((r) => r.key === selected) ?? null) : null;
   return (
     <>
       <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
@@ -433,17 +422,17 @@ function CatalogList({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {live ? "Workflows on this pipe, ranked live" : `${rows.length} ${rows.length === 1 ? words.one : words.many}, ${priced} with a ${o.noun.toLowerCase()}`}
+              {live ? "Scripts making this outcome, ranked live" : `${rows.length} ${rows.length === 1 ? words.one : words.many}, ${priced} with a ${o.noun.toLowerCase()}`}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {live ? (
-                <>Every workflow on this pipe, all clients pooled, ranked as features-service serves them.</>
+                <>Every script of this Engine, all clients pooled, ranked as features-service serves them.</>
               ) : (
                 <>
-                  Every {words.one} that wrote this pipe&apos;s {posts ? "posts" : "emails"}, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
+                  Every {words.one} that wrote for this Engine&apos;s {posts ? "posts" : "outcomes"}, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
                   {kind === "templates"
-                    ? "Click a row for its workflows, models and last emails; its name opens its page."
-                    : kind === "models"
+                    ? "Click a row for its scripts, LLMs and last emails; its name opens its page."
+                    : kind === "llms"
                       ? "Click a row for its summary and last runs; its name opens its page."
                       : "Open one for its months and its last runs."}
                 </>
@@ -455,15 +444,15 @@ function CatalogList({
           )}
         </div>
 
-        <PipeTabs base={base} pipe={pipe} current={kind} countOf={(k) => (k === "performance" ? null : countOf(k))} />
+        <MeasureTabs base={base} measure={measure} current={kind} countOf={(k) => (k === "performance" ? null : countOf(k))} />
 
         <section className="mt-6">
           <SectionTitle
             count={countOf(kind)}
             right={
               <span className="inline-flex items-center gap-1.5">
-                <SectionMark section={{ pipe }} size={14} />
-                <SectionName section={{ pipe }} />
+                <SectionMark section={{ measure }} size={14} />
+                <MeasureName measure={measure} />
               </span>
             }
           >
@@ -480,21 +469,15 @@ function CatalogList({
             </div>
           )}
           {live ? (
-            <ResearchLiveWorkflows base={base} pipe={pipe} legKey={liveLeg} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
+            <ResearchLiveScripts base={base} measure={measure} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
           ) : (
             <div>
               <div className="k-card min-w-0 overflow-hidden">
                 <div className="k-scroll relative overflow-x-auto">
-                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : posts ? "min-w-[1200px]" : kind === "templates" ? "min-w-[1100px]" : "min-w-[1040px]"} text-[13px]`}>
+                  <table className={`w-full ${posts ? "min-w-[1200px]" : kind === "templates" ? "min-w-[1100px]" : "min-w-[1040px]"} text-[13px]`}>
                     <thead>
                       <tr className="border-b border-[var(--line-subtle)]">
                         <th className={TH}>{words.title.slice(0, -1)}</th>
-                        {kind === "workflows" && (
-                          <>
-                            <th className={`${TH} w-40`}>LLM</th>
-                            <th className={`${TH} w-40`}>Template</th>
-                          </>
-                        )}
                         {kind === "templates" && (
                           <>
                             {/* Owner 2026-10-23: Template, Tactics, % Conversion, $ / outcome, # outcomes, $ Spent, Status. No return below a
@@ -513,9 +496,9 @@ function CatalogList({
                             <th className={`${TH} w-28`}>Status</th>
                           </>
                         )}
-                        {kind === "models" ? (
+                        {kind === "llms" ? (
                           <>
-                            {/* Owner 2026-10-23: Model, $ / outcome, % Conversion, # outcomes, $ Spent, Status; 10-24: $ / run left of $ Spent.
+                            {/* Owner 2026-10-23: LLM, $ / outcome, % Conversion, # outcomes, $ Spent, Status; 10-24: $ / run left of $ Spent.
                                 No return per model (ROI-CONSISTENCY-1103). */}
                             {posts ? (
                               <PostHeads />
@@ -530,16 +513,8 @@ function CatalogList({
                             <th className={`${TH} w-28 text-right`}>$ Spent</th>
                             <th className={`${TH} ${posts ? "w-36" : "w-56"}`}>Status</th>
                           </>
-                        ) : kind === "workflows" ? (
-                          <>
-                            <th className={`${TH} w-36 text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
-                            <th className={`${TH} w-28 text-right`}>Rate</th>
-                            <th className={`${TH} w-28 text-right`}>{o.plural}</th>
-                            <th className={`${TH} w-28 text-right`}>Emails</th>
-                            <th className={`${TH} w-28 text-right`}>Invested</th>
-                          </>
                         ) : null}
-                        <th className={`${TH} w-10`} aria-label={kind === "workflows" ? "Open" : "Status menu"} />
+                        <th className={`${TH} w-10`} aria-label="Status menu" />
                       </tr>
                     </thead>
                     <tbody>
@@ -562,26 +537,22 @@ function CatalogList({
                           <td colSpan={posts ? 13 : 10}>
                             <EmptyNote>
                               {rows.length === 0
-                                ? `No ${words.one} has written this pipe's emails yet.`
+                                ? `No ${words.one} has written for this Engine yet.`
                                 : tab === "active"
-                                  ? `No ${words.one} on this pipe is active.`
-                                  : `No ${words.one} on this pipe is deprecated.`}
+                                  ? `No ${words.one} here is active.`
+                                  : `No ${words.one} here is deprecated.`}
                             </EmptyNote>
                           </td>
                         </tr>
                       ) : (
                         shown.map((r) => {
-                          const href = researchCatalogHref(base, pipe, kind, r.key);
-                          const drawerRow = kind === "templates" || kind === "models";
+                          const href = researchCatalogHref(base, measure, kind, r.key);
+                          const drawerRow = kind === "templates" || kind === "llms";
                           const picked = drawerRow && selected === r.key;
-                          const served = kind === "models" ? modelAliasesOf(r as ResearchModel) : { aliases: [], gap: null };
+                          const served = kind === "llms" ? modelAliasesOf(r as ResearchModel) : { aliases: [], gap: null };
                           const modelKeys = served.aliases;
-                          const target: ContentTarget | null =
-                            kind === "templates"
-                              ? { kind: "template", key: templateContentKey(r as ResearchTemplate), label: r.label }
-                              : modelKeys.length && contentPipe
-                                ? { kind: "model", aliases: modelKeys, label: r.label, pipe: contentPipe }
-                                : null;
+                          // Only a template's status is written here: an LLM's was set per channel, a grain Research no longer has.
+                          const target = kind === "templates" ? ({ kind: "template", key: templateContentKey(r as ResearchTemplate), label: r.label } as const) : null;
                           // A template row's word is the status that picked its tab (the dynasty's), never its head
                           // version's own: a head served a few minutes behind an upgrade read Deprecated under Active.
                           const status =
@@ -600,8 +571,8 @@ function CatalogList({
                               aria-selected={drawerRow ? picked : undefined}
                               className={`k-row group h-10 cursor-pointer ${picked ? "k-selected" : ""}`}
                             >
-                              <td className={`max-w-0 pl-4 pr-3 ${kind === "models" ? "py-1.5" : ""}`}>
-                                {kind === "models" ? (
+                              <td className={`max-w-0 pl-4 pr-3 ${kind === "llms" ? "py-1.5" : ""}`}>
+                                {kind === "llms" ? (
                                   <ModelNameLines m={r as ResearchModel} href={href} />
                                 ) : (
                                 <span className="flex min-w-0 items-center gap-1.5">
@@ -615,7 +586,7 @@ function CatalogList({
                                       <CatalogueName
                                         kind="template"
                                         name={r.label}
-                                        label={rowName(kind, r, channelName)}
+                                        label={rowName(kind, r)}
                                         icon={(r as ResearchTemplate).icon ?? null}
                                         color={(r as ResearchTemplate).color ?? null}
                                         className="font-medium"
@@ -623,12 +594,12 @@ function CatalogList({
                                     </Link>
                                   ) : (
                                     <CatalogueName
-                                      kind={KIND_TOPIC[kind]}
+                                      kind={KIND_MARK[kind]}
                                       name={r.label}
-                                      label={rowName(kind, r, channelName)}
+                                      label={rowName(kind, r)}
                                       href={href}
-                                      icon={(r as ResearchWorkflow).icon ?? null}
-                                      color={(r as ResearchWorkflow).color ?? null}
+                                      icon={(r as ResearchScript).icon ?? null}
+                                      color={(r as ResearchScript).color ?? null}
                                       className="font-medium"
                                     />
                                   )}
@@ -636,17 +607,6 @@ function CatalogList({
                                 </span>
                                 )}
                               </td>
-                              {kind === "workflows" && (
-                                <>
-                                  {/* Each cell opens that model's or template's own page; the rest of the row opens the workflow. */}
-                                  <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
-                                    <RefLink base={base} pipe={pipe} kind="models" r={(r as ResearchWorkflow).model} className="block min-w-0 truncate" />
-                                  </td>
-                                  <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
-                                    <RefLink base={base} pipe={pipe} kind="templates" r={(r as ResearchWorkflow).template} className="block min-w-0 truncate" />
-                                  </td>
-                                </>
-                              )}
                               {kind === "templates" && (
                                 <>
                                   <td className="max-w-0 px-3 py-2">
@@ -671,7 +631,7 @@ function CatalogList({
                                   </td>
                                 </>
                               )}
-                              {kind === "models" ? (
+                              {kind === "llms" ? (
                                 <>
                                   {posts ? (
                                     <PostCells p={(r as ResearchModel).postFigures} />
@@ -699,32 +659,16 @@ function CatalogList({
                                     />
                                   </td>
                                 </>
-                              ) : kind === "workflows" ? (
-                                <>
-                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                    <Money value={r.cost} unit={o.unit} />
-                                  </td>
-                                  <td className="px-3 text-right tabular-nums">
-                                    <Dash v={r.rate} />
-                                  </td>
-                                  <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
-                                  <td className="px-3 text-right tabular-nums">{r.emails}</td>
-                                  <td className="px-3 text-right tabular-nums">{r.spend}</td>
-                                </>
                               ) : null}
                               <td className="pl-1 pr-4 text-right">
-                                {kind === "workflows" ? (
-                                  <span className="k-btn-ghost inline-flex h-6 w-6 justify-center px-0 opacity-0 group-hover:opacity-100">
-                                    <Chevron />
-                                  </span>
-                                ) : target ? (
+                                {target ? (
                                   <StatusMenu
                                     status={status}
                                     label={r.label}
                                     onDeprecate={() => writes.askDeprecate(target)}
                                     onActivate={() => writes.activate(target)}
-                                    deprecateNote={contentNote(target, DEPRECATE_CONTENT_NOTE)}
-                                    activateNote={contentNote(target, ACTIVATE_CONTENT_NOTE)}
+                                    deprecateNote={DEPRECATE_CONTENT_NOTE}
+                                    activateNote={ACTIVATE_CONTENT_NOTE}
                                   />
                                 ) : null}
                               </td>
@@ -737,11 +681,9 @@ function CatalogList({
                 </div>
                 <div className="k-fg3 flex items-center gap-3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
                   <span className="min-w-0 truncate">
-                    {kind === "workflows"
-                      ? `${priced} of ${rows.length} priced per ${o.noun.toLowerCase()}; the rest have not earned one yet and are listed by volume.`
-                      : `${priced} of ${rows.length} priced per ${o.noun.toLowerCase()}. Ranked as features-service serves them.`}
+                    {`${priced} of ${rows.length} priced per ${o.noun.toLowerCase()}. Ranked as features-service serves them.`}
                   </span>
-                  <Link href={researchCatalogHref(base, pipe, other)} className="k-btn-ghost ml-auto h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]">
+                  <Link href={researchCatalogHref(base, measure, other)} className="k-btn-ghost ml-auto h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]">
                     See the {KIND_WORD[other].many}
                   </Link>
                 </div>
@@ -749,9 +691,9 @@ function CatalogList({
               {selectedTemplate && (
                 <TemplateOutputsPanel
                   t={selectedTemplate}
-                  href={researchCatalogHref(base, pipe, "templates", selectedTemplate.key)}
+                  href={researchCatalogHref(base, measure, "templates", selectedTemplate.key)}
                   base={base}
-                  pipe={pipe}
+                  measure={measure}
                   catalog={catalog}
                   outcome={o}
                   onClose={() => setSelected(null)}
@@ -760,9 +702,9 @@ function CatalogList({
               {selectedModel && (
                 <ModelPanel
                   m={selectedModel}
-                  href={researchCatalogHref(base, pipe, "models", selectedModel.key)}
+                  href={researchCatalogHref(base, measure, "llms", selectedModel.key)}
                   base={base}
-                  pipe={pipe}
+                  measure={measure}
                   outcome={o}
                   onClose={() => setSelected(null)}
                 />
@@ -796,7 +738,7 @@ function Header({
   icon = null,
   color = null,
 }: {
-  topic: "workflow" | "template" | "llm";
+  topic: "script" | "template" | "llm";
   title: string;
   /** The item's served mark (MARKS-1022); none for a model, which wears its product logo. */
   icon?: string | null;
@@ -807,7 +749,7 @@ function Header({
 }) {
   return (
     <div className="mt-2 flex min-w-0 items-center gap-3">
-      <CatalogueObjectMark kind={topic} name={title} icon={icon} color={color} size={40} />
+      <CatalogueObjectMark kind={topic === "script" ? "workflow" : topic} name={title} icon={icon} color={color} size={40} />
       <div className="min-w-0">
         <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{title}</h1>
         {sub && (
@@ -821,8 +763,8 @@ function Header({
   );
 }
 
-function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
-  const o = useOutcome(pipe);
+function KpiStrip({ f, measure }: { f: ResearchFigures; measure: ResearchMeasure }) {
+  const o = useOutcome(measure);
   // No return tile: a workflow, template or LLM sits below a campaign's Target (ROI-CONSISTENCY-1103).
   return (
     <div className="k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-4 md:divide-x">
@@ -834,7 +776,7 @@ function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
   );
 }
 
-function Charts({ f, topic }: { f: ResearchFigures; topic: "workflow" | "template" | "llm" }) {
+function Charts({ f, topic }: { f: ResearchFigures; topic: "script" | "template" | "llm" }) {
   if (!f.charts.length) {
     return (
       <div className="k-card">
@@ -893,49 +835,53 @@ function MeasuredNote() {
   );
 }
 
-function WorkflowView({
+function ScriptView({
   base,
-  pipe,
+  measure,
   w,
   crumbs,
   nav,
 }: {
   base: string;
-  pipe: ResearchPipe;
-  w: ResearchWorkflow;
+  measure: ResearchMeasure;
+  w: ResearchScript;
   crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
-  const o = useOutcome(pipe);
-  const channelName = usePipeChannelName(pipe);
-  const tplHref = w.template?.linked ? researchCatalogHref(base, pipe, "templates", w.template.key) : null;
-  const why = useWorkflowDeprecation(w.key);
+  const o = useOutcome(measure);
+  // A script's tactics (RESEARCH-BY-ENGINE-1113): the LLM and the template it writes with, each its own page.
+  const llm = w.tactics?.llm ?? null;
+  const template = w.tactics?.template ?? null;
+  const tplHref = template?.linked ? researchCatalogHref(base, measure, "templates", template.key) : null;
+  const status = scriptStatus(w.runnable);
+  const why = useWorkflowDeprecation(w.key, status === "deprecated" && isWorkflowDynasty(w.key));
   return (
     <>
       <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
-          topic="workflow"
-          title={shortWorkflowName(w.name ?? w.label, channelName)}
+          topic="script"
+          title={w.label}
           icon={w.icon ?? null}
           color={w.color ?? null}
           chips={
             <>
+              <ContentStatusWord status={status} />
               <span className="k-chip inline-flex items-center gap-1.5">
-                <SectionMark section={{ pipe }} size={12} />
-                <SectionName section={{ pipe }} />
+                <SectionMark section={{ measure }} size={12} />
+                <MeasureName measure={measure} />
               </span>
-              {w.model && <CatalogueName kind="llm" variant="chip" name={w.model.label} href={w.model.linked ? researchCatalogHref(base, pipe, "models", w.model.key) : null} />}
-              {w.template && <CatalogueName kind="template" variant="chip" name={w.template.label} href={tplHref} version={w.template.version?.label ?? null} servedKey={w.template.key} />}
+              {llm && <CatalogueName kind="llm" variant="chip" name={llm.label} href={llm.linked ? researchCatalogHref(base, measure, "llms", llm.key) : null} />}
+              {template && <CatalogueName kind="template" variant="chip" name={template.label} href={tplHref} version={template.version?.label ?? null} servedKey={template.key} />}
             </>
           }
         />
         <DeprecationNote deprecation={why.deprecation} />
-        <KpiStrip f={w} pipe={pipe} />
+        <KpiStrip f={w} measure={measure} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
-            <Charts f={w} topic="workflow" />
+            <Charts f={w} topic="script" />
             <section>
               <SectionTitle right={<span>Every client, newest first</span>}>Recent runs</SectionTitle>
               <div className="k-card overflow-hidden">
@@ -947,28 +893,28 @@ function WorkflowView({
             <p className="k-label">Details</p>
             <dl className="mt-3 space-y-2.5 text-[13px]">
               <Row
-                k="Pipe"
+                k="Engine"
                 v={
                   <span className="inline-flex items-center gap-1.5">
-                    <SectionMark section={{ pipe }} />
-                    <SectionName section={{ pipe }} />
+                    <SectionMark section={{ measure }} />
+                    <MeasureName measure={measure} />
                   </span>
                 }
               />
               <Row k="Outcome" v={o.noun} />
-              <Row k="Model" v={w.model ? <RefLink base={base} pipe={pipe} kind="models" r={w.model} className={w.model.linked ? "text-[var(--accent)]" : ""} /> : null} />
-              <Row
-                k="Template"
-                v={
-                  w.template ? <RefLink base={base} pipe={pipe} kind="templates" r={w.template} className={tplHref ? "text-[var(--accent)]" : ""} /> : null
-                }
-              />
+            </dl>
+            <p className="k-label mt-5">Tactics</p>
+            <dl className="mt-3 space-y-2.5 text-[13px]">
+              <Row k="LLM" v={llm ? <RefLink base={base} measure={measure} kind="llms" r={llm} className={llm.linked ? "text-[var(--accent)]" : ""} /> : null} />
+              <Row k="Template" v={template ? <RefLink base={base} measure={measure} kind="templates" r={template} className={tplHref ? "text-[var(--accent)]" : ""} /> : null} />
+            </dl>
+            <dl className="mt-5 space-y-2.5 text-[13px]">
               <Row k="Invested" v={w.spend} />
               <Row k="Sample" v={<span className="k-fg2 text-[12px]">{w.sample}</span>} />
             </dl>
             <MeasuredNote />
-            <button type="button" onClick={() => nav(researchCatalogHref(base, pipe, "workflows"))} className="k-btn mt-4">
-              Every workflow
+            <button type="button" onClick={() => nav(researchCatalogHref(base, measure, "scripts"))} className="k-btn mt-4">
+              Every script
             </button>
           </aside>
         </div>
@@ -1028,8 +974,8 @@ function TemplateRowChip({ t }: { t: ResearchTemplate }) {
 
 /** The words a model row on its own prints for why it is outside any LLM dynasty. */
 const MODEL_STANDALONE_WORDS: Record<string, string> = {
-  no_dynasty_in_chat_service: "chat-service places this model in no dynasty: it is listed on its own.",
-  llm_dynasties_unreadable: "chat-service's dynasties could not be read for this build: every model is listed on its own.",
+  no_dynasty_in_chat_service: "chat-service places this LLM in no dynasty: it is listed on its own.",
+  llm_dynasties_unreadable: "chat-service's dynasties could not be read for this build: every LLM is listed on its own.",
 };
 
 /** The quiet second line under a model's name: the version its dynasty runs now, or why it stands alone. */
@@ -1060,33 +1006,31 @@ function ModelNameLines({ m, href }: { m: ResearchModel; href: string }) {
   );
 }
 
-/** An LLM dynasty's last emails on this pipe; a model in no dynasty has no such read. */
-function ModelOutputs({ m, read, expanded = false }: { m: ResearchModel; read: ReturnType<typeof useModelDynastyOutputs>; expanded?: boolean }) {
-  if (!m.dynasty) return <EmptyNote>This model is in no dynasty, so its emails are not read here.</EmptyNote>;
-  return <OutputsList read={read} expanded={expanded} empty="No email written with this model on this pipe is on record." />;
+/** An LLM's last emails: not carried by Engine yet (content generation reads them per channel only), said so in words. */
+function ModelOutputs() {
+  return <EmptyNote>{LLM_OUTPUTS_NOT_CARRIED}</EmptyNote>;
 }
 
 /**
- * The Models list's right panel (owner 2026-10-24): the dynasty's figures on this pipe, the workflows
- * that write with it, its last 5 emails on this pipe (every client, every template), and its page.
+ * The LLMs list's right panel (owner 2026-10-24): the dynasty's figures for this Engine, the scripts that write
+ * with it, its last emails (not carried by Engine yet), and its page.
  */
 function ModelPanel({
   m,
   href,
   base,
-  pipe,
+  measure,
   outcome,
   onClose,
 }: {
   m: ResearchModel;
   href: string;
   base: string;
-  pipe: ResearchPipe;
+  measure: ResearchMeasure;
   outcome: { noun: string; plural: string };
   onClose: () => void;
 }) {
   const second = modelSecondLine(m);
-  const read = useModelDynastyOutputs(m.dynasty?.slug ?? null, useContentPipe(pipe), 5);
   return (
     <ResearchDrawer
       label={m.label}
@@ -1108,7 +1052,7 @@ function ModelPanel({
       }
       footer={
         <Link href={href} onClick={onClose} className="k-btn inline-flex items-center gap-1.5">
-          Open model page
+          Open LLM page
           <Arrow />
         </Link>
       }
@@ -1124,12 +1068,12 @@ function ModelPanel({
         <TemplateFigures f={m} outcome={outcome} more />
       </div>
       <div className="border-b border-[var(--line-subtle)] px-4 py-3">
-        <p className="k-label">Workflows</p>
-        {m.workflows.length ? (
+        <p className="k-label">Scripts</p>
+        {m.scripts.length ? (
           <ul className="mt-1.5 space-y-0.5 text-[13px]">
-            {m.workflows.map((w) => (
+            {m.scripts.map((w) => (
               <li key={w.key}>
-                <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} onClick={onClose} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
+                <Link href={researchCatalogHref(base, measure, "scripts", w.key)} onClick={onClose} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
                   <CatalogueName kind="workflow" name={w.label} servedKey={w.key} className="flex-1" />
                   <Arrow />
                 </Link>
@@ -1137,11 +1081,11 @@ function ModelPanel({
             ))}
           </ul>
         ) : (
-          <p className="k-fg3 mt-1.5 text-[12px]">No workflow writes most of its emails with it.</p>
+          <p className="k-fg3 mt-1.5 text-[12px]">No script writes most of its emails with it.</p>
         )}
       </div>
       <p className="k-label px-4 pt-3">Last 5 emails written</p>
-      <ModelOutputs m={m} read={read} />
+      <ModelOutputs />
     </ResearchDrawer>
   );
 }
@@ -1151,8 +1095,8 @@ function ModelPanel({
  * serves them (they add up to the page's figures). The head is the version the dynasty runs now; a
  * version chat-service no longer serves reads Retired. A click opens the version's figures in a drawer.
  */
-function ModelVersionsTable({ pipe, m, versions }: { pipe: ResearchPipe; m: ResearchModel; versions: ResearchModelVersion[] }) {
-  const o = useOutcome(pipe);
+function ModelVersionsTable({ measure, m, versions }: { measure: ResearchMeasure; m: ResearchModel; versions: ResearchModelVersion[] }) {
+  const o = useOutcome(measure);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const open = openKey ? (versions.find((v) => v.key === openKey) ?? null) : null;
   return (
@@ -1222,7 +1166,7 @@ function ModelVersionsTable({ pipe, m, versions }: { pipe: ResearchPipe; m: Rese
           </div>
           {open.modelIds.length > 0 && (
             <div className="px-4 py-3">
-              <p className="k-label">Model ids</p>
+              <p className="k-label">LLM ids</p>
               <p className="k-mono k-fg2 mt-1 break-words text-[12px] leading-5">{open.modelIds.join(", ")}</p>
             </div>
           )}
@@ -1248,18 +1192,18 @@ function ServedWord({ served }: { served: boolean }) {
  */
 function VersionsTable({
   base,
-  pipe,
+  measure,
   t,
   versions,
   statuses,
 }: {
   base: string;
-  pipe: ResearchPipe;
+  measure: ResearchMeasure;
   t: ResearchTemplate;
   versions: ResearchTemplateVersion[];
   statuses: ReturnType<typeof useTemplateStatuses>;
 }) {
-  const o = useOutcome(pipe);
+  const o = useOutcome(measure);
   // A click opens the version in a drawer (owner 2026-10-21); its page is one link away.
   const [openKey, setOpenKey] = useState<string | null>(null);
   const open = openKey ? (versions.find((v) => v.key === openKey) ?? null) : null;
@@ -1313,7 +1257,7 @@ function VersionsTable({
         <TemplateVersionDrawer
           version={open}
           dynastyLabel={t.label}
-          href={researchTemplateVersionHref(base, pipe, t.key, open.key)}
+          href={researchTemplateVersionHref(base, measure, t.key, open.key)}
           status={<ContentStatusWord status={statuses.map.get(open.key) ?? null} pending={!statuses.answered} deprecation={statuses.deprecationOf(open.key)} />}
           outcome={o}
           onClose={() => setOpenKey(null)}
@@ -1327,11 +1271,11 @@ function VersionsTable({
  * One version of a dynasty on its own page (owner 2026-10-21): what it is a version of, its status,
  * its figures, its months, its text and its last 5 emails.
  */
-function TemplateVersionView({ base, pipe, t, v, crumbs }: { base: string; pipe: ResearchPipe; t: ResearchTemplate; v: ResearchTemplateVersion; crumbs: Crumb[] }) {
-  const o = useOutcome(pipe);
+function TemplateVersionView({ base, measure, t, v, crumbs }: { base: string; measure: ResearchMeasure; t: ResearchTemplate; v: ResearchTemplateVersion; crumbs: Crumb[] }) {
+  const o = useOutcome(measure);
   const statuses = useTemplateStatuses();
   const outputs = useTemplateOutputs(v.key, 5);
-  const dynastyHref = researchCatalogHref(base, pipe, "templates", t.key);
+  const dynastyHref = researchCatalogHref(base, measure, "templates", t.key);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
@@ -1348,14 +1292,14 @@ function TemplateVersionView({ base, pipe, t, v, crumbs }: { base: string; pipe:
               {v.head && <span className="k-chip">Head</span>}
               <ContentStatusWord status={statuses.map.get(v.key) ?? null} pending={!statuses.answered} deprecation={statuses.deprecationOf(v.key)} />
               <span className="k-chip inline-flex items-center gap-1.5">
-                <SectionMark section={{ pipe }} size={12} />
-                <SectionName section={{ pipe }} />
+                <SectionMark section={{ measure }} size={12} />
+                <MeasureName measure={measure} />
               </span>
             </>
           }
         />
         <DeprecationNote deprecation={statuses.deprecationOf(v.key)} />
-        <KpiStrip f={v} pipe={pipe} />
+        <KpiStrip f={v} measure={measure} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-6">
@@ -1376,18 +1320,18 @@ function TemplateVersionView({ base, pipe, t, v, crumbs }: { base: string; pipe:
 
 function TemplateView({
   base,
-  pipe,
+  measure,
   t,
   crumbs,
   nav,
 }: {
   base: string;
-  pipe: ResearchPipe;
+  measure: ResearchMeasure;
   t: ResearchTemplate;
   crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
-  const o = useOutcome(pipe);
+  const o = useOutcome(measure);
   const statuses = useTemplateStatuses();
   // Why it was deprecated only while the dynasty is (the status its tab reads), never an upgraded head's note.
   const why = templateRowStatus(t, statuses) === "deprecated" ? statuses.deprecationOf(templateContentKey(t)) : null;
@@ -1419,22 +1363,22 @@ function TemplateView({
                 </span>
               )}
               <span className="k-chip inline-flex items-center gap-1.5">
-                <SectionMark section={{ pipe }} size={12} />
-                <SectionName section={{ pipe }} />
+                <SectionMark section={{ measure }} size={12} />
+                <MeasureName measure={measure} />
               </span>
               <span className="k-chip tabular-nums">
-                {t.workflows.length} {t.workflows.length === 1 ? "workflow" : "workflows"}
+                {t.scripts.length} {t.scripts.length === 1 ? "script" : "scripts"}
               </span>
             </>
           }
         />
         <DeprecationNote deprecation={why} />
-        <KpiStrip f={t} pipe={pipe} />
+        <KpiStrip f={t} measure={measure} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
             <Charts f={t} topic="template" />
-            {versions.length > 0 && <VersionsTable base={base} pipe={pipe} t={t} versions={versions} statuses={statuses} />}
+            {versions.length > 0 && <VersionsTable base={base} measure={measure} t={t} versions={versions} statuses={statuses} />}
             <TemplateText
               templateKey={t.key}
               hasText={t.hasText}
@@ -1446,10 +1390,10 @@ function TemplateView({
               head={
                 <>
                   <th className={`${TH} w-44`}>Time</th>
-                  <th className={TH}>Workflow</th>
+                  <th className={TH}>Script</th>
                   <th className={`${TH} w-20`}>Version</th>
                   {versions.length > 0 && <th className={`${TH} w-24`}>Template</th>}
-                  <th className={`${TH} w-36`}>Model</th>
+                  <th className={`${TH} w-36`}>LLM</th>
                   <th className={`${TH} w-36 text-right`}>Tokens</th>
                 </>
               }
@@ -1457,8 +1401,8 @@ function TemplateView({
                 <tr key={`${r.when}-${i}`} className="k-row h-10">
                   <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{r.when}</td>
                   <td className="max-w-0 px-3">
-                    {r.workflow ? (
-                      <CatalogueName kind="workflow" name={r.workflow.label} href={researchCatalogHref(base, pipe, "workflows", r.workflow.key)} servedKey={r.workflow.key} />
+                    {r.script ? (
+                      <CatalogueName kind="workflow" name={r.script.label} href={researchCatalogHref(base, measure, "scripts", r.script.key)} servedKey={r.script.key} />
                     ) : (
                       <span className="k-fg4">{"—"}</span>
                     )}
@@ -1472,7 +1416,7 @@ function TemplateView({
                     </td>
                   )}
                   <td className="max-w-0 truncate px-3">
-                    <RefLink base={base} pipe={pipe} kind="models" r={r.model} className="block truncate" />
+                    <RefLink base={base} measure={measure} kind="llms" r={r.model} className="block truncate" />
                   </td>
                   <td className="k-mono k-fg2 pl-3 pr-4 text-right text-[12px]">
                     <Dash v={r.tokens} />
@@ -1489,11 +1433,11 @@ function TemplateView({
               <p className="k-label">Details</p>
               <dl className="mt-3 space-y-2.5 text-[13px]">
                 <Row
-                  k="Pipe"
+                  k="Engine"
                   v={
                     <span className="inline-flex items-center gap-1.5">
-                      <SectionMark section={{ pipe }} />
-                      <SectionName section={{ pipe }} />
+                      <SectionMark section={{ measure }} />
+                      <MeasureName measure={measure} />
                     </span>
                   }
                 />
@@ -1506,12 +1450,12 @@ function TemplateView({
               <MeasuredNote />
             </aside>
             <div className="k-card p-4">
-              <p className="k-label">Workflows that write with it</p>
-              {t.workflows.length ? (
+              <p className="k-label">Scripts that write with it</p>
+              {t.scripts.length ? (
                 <ul className="mt-2 space-y-1 text-[13px]">
-                  {t.workflows.map((w) => (
+                  {t.scripts.map((w) => (
                     <li key={w.key}>
-                      <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
+                      <Link href={researchCatalogHref(base, measure, "scripts", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
                         <CatalogueName kind="workflow" name={w.label} servedKey={w.key} className="flex-1" />
                         <Arrow />
                       </Link>
@@ -1519,9 +1463,9 @@ function TemplateView({
                   ))}
                 </ul>
               ) : (
-                <p className="k-fg3 mt-2 text-[12px] leading-5">No workflow wrote most of its emails with it; it was a secondary template.</p>
+                <p className="k-fg3 mt-2 text-[12px] leading-5">No script wrote most of its emails with it; it was a secondary template.</p>
               )}
-              <button type="button" onClick={() => nav(researchCatalogHref(base, pipe, "templates"))} className="k-btn mt-4">
+              <button type="button" onClick={() => nav(researchCatalogHref(base, measure, "templates"))} className="k-btn mt-4">
                 Every template
               </button>
             </div>
@@ -1534,24 +1478,23 @@ function TemplateView({
 
 function ModelView({
   base,
-  pipe,
+  measure,
   m,
   crumbs,
   nav,
 }: {
   base: string;
-  pipe: ResearchPipe;
+  measure: ResearchMeasure;
   m: ResearchModel;
   crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
-  const o = useOutcome(pipe);
-  const modelStatuses = useModelStatuses(useContentPipe(pipe));
+  const o = useOutcome(measure);
+  const modelStatuses = useModelStatuses();
   const aliases = modelAliasesOf(m).aliases;
   const why = modelStatuses.deprecationOf(aliases);
   const versions = m.models ?? [];
   const second = modelSecondLine(m);
-  const outputs = useModelDynastyOutputs(m.dynasty?.slug ?? null, useContentPipe(pipe), 5);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
@@ -1563,22 +1506,22 @@ function ModelView({
           chips={
             <>
               <span className="k-chip inline-flex items-center gap-1.5">
-                <SectionMark section={{ pipe }} size={12} />
-                <SectionName section={{ pipe }} />
+                <SectionMark section={{ measure }} size={12} />
+                <MeasureName measure={measure} />
               </span>
               <span className="k-chip tabular-nums">
-                {m.workflows.length} {m.workflows.length === 1 ? "workflow" : "workflows"}
+                {m.scripts.length} {m.scripts.length === 1 ? "script" : "scripts"}
               </span>
             </>
           }
         />
         <DeprecationNote deprecation={why} />
-        <KpiStrip f={m} pipe={pipe} />
+        <KpiStrip f={m} measure={measure} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
             <section>
-              <SectionTitle right={<span>Every client, workflow and template of this pipe</span>}>Cost per run</SectionTitle>
+              <SectionTitle right={<span>Every client, script and template of this Engine</span>}>Cost per run</SectionTitle>
               <div className="k-card px-4 pb-3 pt-3">
                 <RunCostFigures c={m.runCost} />
                 <div className="mt-4">
@@ -1587,11 +1530,11 @@ function ModelView({
               </div>
             </section>
             <Charts f={m} topic="llm" />
-            {versions.length > 0 && <ModelVersionsTable pipe={pipe} m={m} versions={versions} />}
+            {versions.length > 0 && <ModelVersionsTable measure={measure} m={m} versions={versions} />}
             <section>
               <SectionTitle right={<span>Every client and template, newest first</span>}>Last 5 emails written</SectionTitle>
               <div className="k-card overflow-hidden">
-                <ModelOutputs m={m} read={outputs} />
+                <ModelOutputs />
               </div>
             </section>
             <RunsTable
@@ -1600,7 +1543,7 @@ function ModelView({
               head={
                 <>
                   <th className={`${TH} w-44`}>Time</th>
-                  <th className={TH}>Workflow</th>
+                  <th className={TH}>Script</th>
                   <th className={`${TH} w-40`}>Template</th>
                   <th className={`${TH} w-20`}>Version</th>
                   <th className={`${TH} w-36 text-right`}>Tokens</th>
@@ -1610,14 +1553,14 @@ function ModelView({
                 <tr key={`${r.when}-${i}`} className="k-row h-10">
                   <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{r.when}</td>
                   <td className="max-w-0 px-3">
-                    {r.workflow ? (
-                      <CatalogueName kind="workflow" name={r.workflow.label} href={researchCatalogHref(base, pipe, "workflows", r.workflow.key)} servedKey={r.workflow.key} />
+                    {r.script ? (
+                      <CatalogueName kind="workflow" name={r.script.label} href={researchCatalogHref(base, measure, "scripts", r.script.key)} servedKey={r.script.key} />
                     ) : (
                       <span className="k-fg4">{"—"}</span>
                     )}
                   </td>
                   <td className="max-w-0 px-3">
-                    <RefLink base={base} pipe={pipe} kind="templates" r={r.template} className="block truncate" />
+                    <RefLink base={base} measure={measure} kind="templates" r={r.template} className="block truncate" />
                   </td>
                   <td className="k-mono k-fg2 px-3 text-[12px]">
                     <Dash v={r.version} />
@@ -1634,11 +1577,11 @@ function ModelView({
               <p className="k-label">Details</p>
               <dl className="mt-3 space-y-2.5 text-[13px]">
                 <Row
-                  k="Pipe"
+                  k="Engine"
                   v={
                     <span className="inline-flex items-center gap-1.5">
-                      <SectionMark section={{ pipe }} />
-                      <SectionName section={{ pipe }} />
+                      <SectionMark section={{ measure }} />
+                      <MeasureName measure={measure} />
                     </span>
                   }
                 />
@@ -1651,12 +1594,12 @@ function ModelView({
               <MeasuredNote />
             </aside>
             <div className="k-card p-4">
-              <p className="k-label">Workflows that write with it</p>
-              {m.workflows.length ? (
+              <p className="k-label">Scripts that write with it</p>
+              {m.scripts.length ? (
                 <ul className="mt-2 space-y-1 text-[13px]">
-                  {m.workflows.map((w) => (
+                  {m.scripts.map((w) => (
                     <li key={w.key}>
-                      <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
+                      <Link href={researchCatalogHref(base, measure, "scripts", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
                         <CatalogueName kind="workflow" name={w.label} servedKey={w.key} className="flex-1" />
                         <Arrow />
                       </Link>
@@ -1664,10 +1607,10 @@ function ModelView({
                   ))}
                 </ul>
               ) : (
-                <p className="k-fg3 mt-2 text-[12px] leading-5">No workflow wrote most of its emails with it; it ran as a secondary model.</p>
+                <p className="k-fg3 mt-2 text-[12px] leading-5">No script wrote most of its emails with it; it ran as a secondary LLM.</p>
               )}
-              <button type="button" onClick={() => nav(researchCatalogHref(base, pipe, "models"))} className="k-btn mt-4">
-                Every model
+              <button type="button" onClick={() => nav(researchCatalogHref(base, measure, "llms"))} className="k-btn mt-4">
+                Every LLM
               </button>
             </div>
           </div>

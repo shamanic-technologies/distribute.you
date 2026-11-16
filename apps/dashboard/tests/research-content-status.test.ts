@@ -8,31 +8,30 @@ import {
   modelAliasesOf,
   modelDeprecation,
   modelStatus,
+  scriptFiguresBySlug,
   statusWord,
-  templatePipes,
+  templateMeasures,
 } from "../src/lib/research/content-status";
 import type { ResearchCatalog } from "../src/lib/research/research";
 
 const SRC = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
-// A catalogue slice: only the fields the lookups read.
+// A catalogue slice by Engine (RESEARCH-BY-ENGINE-1113): only the fields the lookups read, measure ids as prod serves them.
+const REPLY = "email_sent/start/conversation";
+const VISIT = "website_visit/start/website_visit";
+const MEETING = "meeting_booked/conversation/meeting_booked";
 function catalog(): ResearchCatalog {
-  const wf = (key: string, model: string | null, alias: string | null) =>
-    ({ key, writesWithNow: model ? { version: "v1", template: null, model: { key: model, label: model, linked: true }, modelAlias: alias } : null }) as never;
-  const tpl = (key: string) => ({ key, label: key, workflows: [] }) as never;
+  const sc = (key: string, outcomes: number, cost: number | null) => ({ key, figures: { outcomes, costPerOutcomeUsd: { value: cost } } }) as never;
+  const tpl = (key: string) => ({ key, label: key, scripts: [] }) as never;
+  const measure = (id: string, scripts: never[], templates: never[]) =>
+    ({ id, engine: id.split("/")[0], startsFrom: null, counts: { key: "x", name: "X" }, description: "d", scripts, templates, llms: [] }) as never;
   return {
-    "cold-email-positive-reply": {
-      workflows: [wf("a", "glm-5.3", "glm-pro"), wf("b", "gemini-3.1-pro", null), wf("c", null, null), wf("e", "deepseek-v4.1-flash", "deepseek-pro")],
-      templates: [tpl("cold-email-v59"), tpl("shared")],
-      models: [],
-    },
-    "cold-email-website-visit": {
-      workflows: [wf("d", "gemini-3.8-flash", "flash-pro"), wf("f", "deepseek-v4.1-flash", "deepseek-flash"), wf("g", "glm-5.3", "glm-pro")],
-      templates: [tpl("shared"), tpl("cold-email-v68")],
-      models: [],
-    },
-    "meeting-booking": { workflows: [], templates: [], models: [] },
+    engines: [
+      { outcome: "email_sent", name: "Email sent", measures: [measure(REPLY, [sc("a", 0, null), sc("b", 3, 120)], [tpl("cold-email-v59"), tpl("shared")])] },
+      { outcome: "website_visit", name: "Website visit", measures: [measure(VISIT, [sc("a", 2, 40), sc("c", 5, 9)], [tpl("shared"), tpl("cold-email-v68")])] },
+      { outcome: "meeting_booked", name: "Meeting booked", measures: [measure(MEETING, [], [])] },
+    ],
   };
 }
 
@@ -70,34 +69,45 @@ describe("TEMPLATE-MODEL-STATUS-1019: lookups", () => {
     expect(modelStatus([], (x) => st[x])).toBeNull();
   });
 
-  it("lists a template's legs, the current one first", () => {
-    expect(templatePipes(catalog(), "shared", "cold-email-website-visit")).toEqual(["cold-email-website-visit", "cold-email-positive-reply"]);
-    expect(templatePipes(catalog(), "shared", "cold-email-positive-reply")).toEqual(["cold-email-positive-reply", "cold-email-website-visit"]);
-    expect(templatePipes(catalog(), "cold-email-v68", "cold-email-positive-reply")).toEqual(["cold-email-website-visit"]);
-    expect(templatePipes(null, "shared", "cold-email-positive-reply")).toEqual([]);
+  it("lists the measures a template writes for, the current one first", () => {
+    expect(templateMeasures(catalog(), "shared", VISIT)).toEqual([VISIT, REPLY]);
+    expect(templateMeasures(catalog(), "shared", REPLY)).toEqual([REPLY, VISIT]);
+    expect(templateMeasures(catalog(), "cold-email-v68", REPLY)).toEqual([VISIT]);
+    expect(templateMeasures(null, "shared", REPLY)).toEqual([]);
+  });
+
+  it("a script's modal figures are its own served row's, the first one that made an outcome winning", () => {
+    const by = scriptFiguresBySlug(catalog());
+    // `a` made nothing on the reply measure, 2 visits on the visit one: the served row with outcomes wins.
+    expect(by.get("a")).toEqual({ outcomes: 2, cost: 40 });
+    expect(by.get("b")).toEqual({ outcomes: 3, cost: 120 });
+    expect(by.get("c")).toEqual({ outcomes: 5, cost: 9 });
+    expect(scriptFiguresBySlug(null).size).toBe(0);
   });
 });
 
 describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
   const status = read("components/v2/research-status.tsx");
   const list = read("components/v2/research-catalog.tsx");
-  const live = read("components/v2/research-live-workflows.tsx");
+  const live = read("components/v2/research-live-scripts.tsx");
   const api = read("lib/api.ts");
 
   it("reads and writes the gateway's staff routes", () => {
-    for (const path of ['"/content/templates"', '"/content/models"', "/content/templates/${encodeURIComponent(type)}/status", "/content/models/${encodeURIComponent(model)}/status", "/content/templates/${encodeURIComponent(type)}/outputs?limit=", '"/workflows/retire-by-content"', "/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/status"]) {
+    for (const path of ['"/content/templates"', '"/content/models"', "/content/templates/${encodeURIComponent(type)}/status", "/content/templates/${encodeURIComponent(type)}/outputs?limit=", '"/workflows/retire-by-content"', "/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/status"]) {
       expect(api).toContain(path);
     }
+    // A model's status is read, never written, since Research has no channel x leg grain (RESEARCH-BY-ENGINE-1113).
+    expect(api).not.toContain("/content/models/${encodeURIComponent(model)}/status");
   });
 
-  it("the modal lists the workflows with a DRY RUN before anything is written", () => {
-    expect(status).toContain("retireWorkflowsByContent(b, { dryRun: true })");
+  it("the modal lists the scripts with a DRY RUN before anything is written", () => {
+    expect(status).toContain("retireWorkflowsByContent({ promptType: target.key }, { dryRun: true })");
   });
 
-  it("confirming deprecates the template or model, THEN retires its workflows", () => {
+  it("confirming deprecates the template, THEN retires its scripts", () => {
     const confirm = status.slice(status.indexOf("const confirm = async"), status.indexOf("if (typeof document"));
     const setAt = confirm.indexOf("setContentTemplateStatus(target.key, change)");
-    const retireAt = confirm.indexOf("retireWorkflowsByContent(b, { dryRun: false, reason: workflowReason })");
+    const retireAt = confirm.indexOf("retireWorkflowsByContent({ promptType: target.key }, { dryRun: false, reason: workflowReason })");
     expect(setAt).toBeGreaterThan(-1);
     expect(retireAt).toBeGreaterThan(setAt);
   });
@@ -109,39 +119,39 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(activate).not.toContain("setWorkflowDynastyStatus");
   });
 
-  it("Models: Model, $ / outcome, % Conversion, # outcomes, $ Spent, Status, in that order, no ROI (owner 2026-10-23, ROI-CONSISTENCY-1103)", () => {
-    const head = list.slice(list.indexOf('{kind === "models" ? ('), list.indexOf("</thead>"));
+  it("LLMs: LLM, $ / outcome, % Conversion, # outcomes, $ Spent, Status, in that order, no ROI (owner 2026-10-23, ROI-CONSISTENCY-1103)", () => {
+    const head = list.slice(list.indexOf('{kind === "llms" ? ('), list.indexOf("</thead>"));
     expect(head).not.toContain("RoiLabel");
     const order = ["{`$ ${o.unit}`}", ">% Conversion</th>", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    const models = head.slice(0, head.indexOf(') : kind === "workflows" ? ('));
+    const models = head.slice(0, head.indexOf(") : null}"));
     expect(models).not.toContain("Emails");
-    const roiAt = list.indexOf('{kind === "models" ? (', list.indexOf("<tbody>"));
+    const roiAt = list.indexOf('{kind === "llms" ? (', list.indexOf("<tbody>"));
     const cells = list.slice(roiAt, list.indexOf("<ContentStatusWord", roiAt));
     expect(cells).toContain("<Dash v={r.cost} />");
-    // $ Spent prints the row's own served spend on every pipe; post columns sit before it (THREADS-IDEAS-AB).
+    // $ Spent prints the row's own served spend on every measure; post columns sit before it (THREADS-IDEAS-AB).
     expect(cells.indexOf("{r.outcomes}")).toBeLessThan(cells.indexOf("r.spend}"));
     expect(cells.indexOf("<PostCells")).toBeLessThan(cells.indexOf("r.spend}"));
   });
 
   it("Templates: Template, Tactics, % Conversion, $ / outcome, # outcomes, $ Spent, Status, in that order, no ROI (owner 2026-10-23, ROI-CONSISTENCY-1103)", () => {
-    const head = list.slice(list.indexOf("Owner 2026-10-23: Template, Tactics"), list.indexOf('{kind === "models" ? ('));
+    const head = list.slice(list.indexOf("Owner 2026-10-23: Template, Tactics"), list.indexOf('{kind === "llms" ? ('));
     expect(head).not.toContain("RoiLabel");
     const order = [">Tactics</th>", ">% Conversion</th>", "{`$ ${o.unit}`}", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(head).not.toContain("Workflows</th>");
+    expect(head).not.toContain("Scripts</th>");
     // Served order, never re-sorted in the browser (RESEARCH-TPL-SERVED-ORDER-1023).
     expect(list).toContain("tabbed ? (byTab?.[tab] ?? []) : rows;");
     const lib = read("lib/research/research.ts");
     expect(lib).not.toContain("templatesInTableOrder");
-    const shownAt = list.indexOf("const shown: (ResearchWorkflow");
+    const shownAt = list.indexOf("const shown: (ResearchScript");
     expect(list.slice(shownAt, list.indexOf("\n", shownAt))).not.toMatch(/\.sort\(|toSorted/);
   });
 
   it("Templates: % Conversion (served), no ROI, no Leg / # column, ⋮, and the outputs drawer on a row click", () => {
-    // Owner 2026-10-22: one leg per pipe page (Leg said nothing), the Active tab already states the status,
+    // Owner 2026-10-22: no Leg column (it said nothing), the Active tab already states the status,
     // and the ROI order number meant nothing beside the ROI itself.
     expect(list).not.toContain(">Leg</th>");
     expect(list).not.toContain("<FirstAndMore");
@@ -155,8 +165,8 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list).toContain("<StatusMenu");
   });
 
-  it("Models: a row click opens the model drawer, the name opens its page (owner 2026-10-24)", () => {
-    expect(list).toContain('const drawerRow = kind === "templates" || kind === "models";');
+  it("LLMs: a row click opens the LLM drawer, the name opens its page (owner 2026-10-24)", () => {
+    expect(list).toContain('const drawerRow = kind === "templates" || kind === "llms";');
     expect(list).toContain("drawerRow ? opensDrawer(e.target, e.currentTarget) && setSelected(r.key) : nav(href)");
     expect(list).toContain("<ModelPanel");
     // $ / run (owner 2026-10-24): the served average, left of $ Spent, and the figures + curve in the drawer and on the page.
@@ -164,22 +174,31 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list.indexOf(">$ / run</th>")).toBeGreaterThan(list.indexOf("{`# ${o.plural}`}</th>"));
     expect(list).toContain("<Dash v={(r as ResearchModel).runCost?.averageDisplay ?? null} />");
     expect(list.match(/<RunCostChart c=\{m\.runCost\}/g)?.length).toBe(2);
-    expect(list).toContain("useModelDynastyOutputs(m.dynasty?.slug ?? null, useContentPipe(pipe), 5)");
+    // An LLM's last emails are read per channel x leg by content generation, a grain Research by Engine no longer has:
+    // the drawer and the page say « not carried », never another grain's emails (RESEARCH-BY-ENGINE-1113).
+    expect(list.match(/<ModelOutputs \/>/g)?.length).toBe(2);
+    expect(list).toContain("<EmptyNote>{LLM_OUTPUTS_NOT_CARRIED}</EmptyNote>");
+    expect(list).not.toContain("useModelDynastyOutputs");
   });
 
-  it("Models: Status + ⋮ keyed on the SERVED aliases, never the workflows join, no Leg column", () => {
-    expect(list).toContain('{ kind: "model", aliases: modelKeys, label: r.label, pipe: contentPipe }');
+  it("LLMs: Status read off the SERVED aliases without a channel, never written from Research (no Engine grain for it)", () => {
+    // RESEARCH-BY-ENGINE-1113 supersedes LLM-STATUS-PER-PIPE-1023: the status was set per channel x leg; Research reads it, never writes it.
+    expect(list).toContain('const target = kind === "templates" ? ({ kind: "template"');
     expect(list).toContain("modelAliasesOf(r as ResearchModel)");
     expect(list).toContain("gap={served.gap}");
+    expect(list).toContain("useModelStatuses()");
+    for (const src of [status, list]) {
+      expect(src).not.toContain("setContentModelStatus");
+      expect(src).not.toContain("useContentPipe");
+      expect(src).not.toContain("featureSlug");
+    }
     expect(status).not.toContain("useModelAliases");
     expect(read("lib/research/content-status.ts")).not.toContain("writesWithNow");
-    // Several aliases: the confirm and the menu name each one.
-    expect(status).toContain("This deprecates each of them.");
-    expect(list).toContain("contentNote(target, DEPRECATE_CONTENT_NOTE)");
+    expect(list).toContain("deprecateNote={DEPRECATE_CONTENT_NOTE}");
   });
 
-  it("Workflows: each row carries the dynasty status and its ⋮", () => {
-    expect(live).toContain("<WorkflowStatusCells slug={r.slug}");
+  it("Scripts: each row carries its SERVED status and its ⋮", () => {
+    expect(live).toContain("<ScriptStatusCells slug={r.scriptDynastySlug} label={name} served={scriptStatus(r.executable)} />");
     expect(live).toContain("w-28`}>Status</th>");
     expect(live).not.toContain(">#</th>");
   });
@@ -192,15 +211,15 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     }
   });
 
-  it("the Workflows table's Status and LLM/Template cells paint from disk (owner 2026-10-21), the actual basis never", () => {
+  it("the Scripts table's cells paint from disk (owner 2026-10-21), the actual basis never", () => {
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("SENSITIVE_QUERY_ROOTS"), persist.indexOf("PERSISTABLE_QUERY_ROOTS"));
     const persistable = persist.slice(persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
-    for (const root of ["workflowDynastyStatuses", "researchCatalog"]) expect(persistable).toContain(`"${root}",`);
-    expect(sensitive).not.toContain('"workflowDynastyStatuses"');
-    expect(sensitive).toContain('"researchCatalogActual"');
+    for (const root of ["workflowDynastySummaries", "researchEngineCatalog", "researchLiveScripts"]) expect(persistable).toContain(`"${root}",`);
+    expect(sensitive).not.toContain('"workflowDynastySummaries"');
+    expect(sensitive).toContain('"researchEngineCatalogActual"');
     const source = read("lib/research/research-source.tsx");
-    expect(source).toContain('basis === "actual" ? ["researchCatalogActual", view]');
+    expect(source).toContain('basis === "actual" ? ["researchEngineCatalogActual", view]');
   });
 });
 
@@ -241,7 +260,6 @@ describe("DEPRECATION-REASON-1020: every Deprecate asks why; every deprecated it
   it("every deprecation write carries a reason, typed so none can be sent without one", () => {
     expect(api).toContain('export type CatalogueStatusChange = { status: "active" } | { status: "deprecated"; reason: string };');
     expect(api).toContain("setContentTemplateStatus(type: string, change: CatalogueStatusChange)");
-    expect(api).toContain("setContentModelStatus(model: string, change: CatalogueStatusChange, pipe: ContentPipe)");
     expect(api).toContain("setWorkflowDynastyStatus(workflowDynastySlug: string, change: CatalogueStatusChange)");
     expect(api).toContain('run: { dryRun: true } | { dryRun: false; reason: string }');
   });
@@ -250,14 +268,14 @@ describe("DEPRECATION-REASON-1020: every Deprecate asks why; every deprecated it
     expect(status).toContain("disabled={busy || listed === undefined || !reason}");
     expect(status).toContain("disabled={busy || !reason}");
     expect(status.match(/<WhyField /g)?.length).toBe(2);
-    // A workflow's Deprecate opens the Why? modal, never writes on the menu click.
+    // A script's Deprecate opens the Why? modal, never writes on the menu click.
     expect(status).toContain("onDeprecate={() => setAsking(true)}");
   });
 
   it("every deprecated row and page shows its served why", () => {
     expect(list).toContain("deprecation={deprecation}");
     expect(status).toContain("deprecation={why.deprecation}");
-    // workflow, template dynasty, template version, model pages
+    // script, template dynasty, template version, LLM pages
     expect(list.match(/<DeprecationNote /g)?.length).toBe(4);
     expect(api).toContain('new URLSearchParams({ workflowDynastySlug, status: "all" })');
   });

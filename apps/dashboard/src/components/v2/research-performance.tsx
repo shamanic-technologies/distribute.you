@@ -9,11 +9,9 @@ import { LearningFigure } from "@/components/v2/roi-label";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ResearchStaleNote, SectionMark, SectionName } from "@/components/v2/research-bits";
 import { StatusWord } from "@/components/v2/research-status";
-import { PipeTabs } from "@/components/v2/research-catalog";
-import { usePipeChannelName } from "@/components/v2/research-live-workflows";
+import { MeasureTabs } from "@/components/v2/research-catalog";
 import { useResearch, useResearchCatalog, useResearchPerformance } from "@/lib/research/research-source";
-import { pipeCatalog, researchCatalogHref, type ResearchPipe } from "@/lib/research/research";
-import { shortWorkflowName } from "@/lib/live-workflow-rows";
+import { measureCatalog, researchCatalogHref, type ResearchMeasure } from "@/lib/research/research";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/pipe-stats";
 import {
@@ -26,16 +24,17 @@ import {
   type PerformancePoint,
   type PerformanceRow,
   type PerformanceTab,
-  type PipePerformance,
+  measurePerformance,
+  type MeasurePerformance,
   type PerformanceServedNow,
 } from "@/lib/research/performance";
 
 /**
- * Research › <pipe> › Performance (owner 2026-10-23, RESEARCH-PERFORMANCE-1023): every workflow x
- * template x LLM combination that sent this pipe's emails, all clients pooled, since inception.
- * Five cards for the pipe on top, the combination running now in a one-row table (PERF-COST-ORDER-1024),
- * then every combination in Active / Deprecated tabs on 2/3, the pipe's five curves on 1/3. A
- * combination is Active only when its workflow, template and LLM all are. Untested rows ($0 spent,
+ * Research › <Engine> › Performance (owner 2026-10-23, RESEARCH-PERFORMANCE-1023): every script x
+ * template x LLM combination that made this measure's outcomes, all clients pooled, since inception.
+ * Five cards for the measure on top, the combination running now in a one-row table (PERF-COST-ORDER-1024),
+ * then every combination in Active / Deprecated tabs on 2/3, the measure's five curves on 1/3. A
+ * combination is Active only when its script, template and LLM all are. Untested rows ($0 spent,
  * served flag) are hidden until "Show untested" is on (owner 2026-10-24).
  *
  * Every figure, each row's status (and which part deprecated it), the row order and every point of a
@@ -51,18 +50,17 @@ const TABS: { key: PerformanceTab; label: string }[] = [
   { key: "deprecated", label: "Deprecated" },
 ];
 
-export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: ResearchPipe }) {
+export function V2ResearchPerformanceView({ base, measure }: { base: string; measure: ResearchMeasure }) {
   const { basis } = useResearch();
   const q = useResearchPerformance(basis);
   const catalog = useResearchCatalog(basis).data ?? null;
-  const perf: PipePerformance | null = q.data?.pipes[pipe] ?? null;
+  const perf: MeasurePerformance | null = q.data ? measurePerformance(q.data, measure) : null;
   const failed = q.data === undefined && q.isError;
   const rows = perf?.rows ?? [];
-  const channelName = usePipeChannelName(pipe);
 
-  const catalogModels = useMemo(() => new Set((catalog ? pipeCatalog(catalog, pipe).models : []).map((m) => m.key)), [catalog, pipe]);
-  const catalogTemplates = useMemo(() => new Set((catalog ? pipeCatalog(catalog, pipe).templates : []).map((t) => t.key)), [catalog, pipe]);
-  const listedWorkflows = useMemo(() => new Set((catalog ? pipeCatalog(catalog, pipe).workflows : []).map((w) => w.key)), [catalog, pipe]);
+  const catalogModels = useMemo(() => new Set((catalog ? measureCatalog(catalog, measure).llms : []).map((m) => m.key)), [catalog, measure]);
+  const catalogTemplates = useMemo(() => new Set((catalog ? measureCatalog(catalog, measure).templates : []).map((t) => t.key)), [catalog, measure]);
+  const listedScripts = useMemo(() => new Set((catalog ? measureCatalog(catalog, measure).scripts : []).map((w) => w.key)), [catalog, measure]);
   // The tabs split on features-service's own status: a combination with one part that can no longer run is Deprecated.
   const byTab = q.data !== undefined ? performanceByTab(rows) : null;
   const [tab, setTab] = useState<PerformanceTab>("active");
@@ -70,9 +68,9 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
   const untested = byTab ? untestedCount(byTab.active) : 0;
   // The Deprecated tab shows every row; the Active tab hides the untested ones unless asked.
   const shown = byTab ? (tab === "active" ? visibleRows(byTab.active, showUntested) : byTab.deprecated) : [];
-  const nav: RowNav = { base, pipe, channelName, listedWorkflows, catalogTemplates, catalogModels };
+  const nav: RowNav = { base, measure, listedScripts, catalogTemplates, catalogModels };
 
-  const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={{ pipe }} /> }, { label: "Performance" }];
+  const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={{ measure }} /> }, { label: "Performance" }];
   const unit = perf ? `/ ${perf.outcomeNoun}` : "";
   const t = perf?.totals ?? null;
   const points = perf?.series?.points ?? [];
@@ -88,14 +86,14 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
               {!byTab ? "Performance" : `${byTab.active.length} active combinations`}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
-              {`Every workflow, template and LLM sent together on this pipe, all clients pooled. Lowest $ ${unit} first, else lowest $ spent, on the Flash figures.`}
+              {`Every script, template and LLM that worked together for this Engine, all clients pooled. Lowest $ ${unit} first, else lowest $ spent, on the Flash figures.`}
             </p>
           </div>
           {/* red only when features-service calls this build stale; fresh = nothing, as before */}
           <ResearchStaleNote freshness={q.data?.freshness} />
         </div>
 
-        <PipeTabs base={base} pipe={pipe} current="performance" countOf={(k) => (k === "performance" && byTab ? byTab.active.length : null)} />
+        <MeasureTabs base={base} measure={measure} current="performance" countOf={(k) => (k === "performance" && byTab ? byTab.active.length : null)} />
 
         {failed ? (
           <div className="k-card mt-6">
@@ -103,11 +101,11 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
           </div>
         ) : perf?.unavailableReason ? (
           <div className="k-card mt-6">
-            <EmptyNote>{UNAVAILABLE_WORDS[perf.unavailableReason] ?? "This pipe has no combination to show yet."}</EmptyNote>
+            <EmptyNote>{UNAVAILABLE_WORDS[perf.unavailableReason] ?? "This Engine has no combination to show yet."}</EmptyNote>
           </div>
         ) : (
           <>
-            {/* No return tile: a workflow / template / LLM combination sits below a campaign's Target
+            {/* No return tile: a script / template / LLM combination sits below a campaign's Target
                 (owner 2026-11-03, ROI-CONSISTENCY-1103). */}
             <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
               <StatTile label={`$ ${unit}`}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.costPerOutcomeUsd} format={formatUsdAdaptive} /> : DASH}</StatTile>
@@ -137,8 +135,8 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                           </button>
                         )}
                         <span className="k-fg3 inline-flex items-center gap-1.5 text-[12px]">
-                          <SectionMark section={{ pipe }} size={12} />
-                          <SectionName section={{ pipe }} />
+                          <SectionMark section={{ measure }} size={12} />
+                          <SectionName section={{ measure }} />
                         </span>
                       </>
                     }
@@ -160,12 +158,12 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                             <td colSpan={8}>
                               <EmptyNote>
                                 {rows.length === 0
-                                  ? `No email has gone out on this pipe yet.`
+                                  ? `Nothing has gone out for this Engine yet.`
                                   : tab === "deprecated"
-                                    ? "No combination on this pipe is deprecated."
+                                    ? "No combination here is deprecated."
                                     : byTab.active.length > 0
                                       ? "Every active combination is untested so far."
-                                      : "No combination on this pipe is active."}
+                                      : "No combination here is active."}
                               </EmptyNote>
                             </td>
                           </tr>
@@ -176,7 +174,7 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                     </table>
                   </div>
                   <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-                    Active means its workflow, template and LLM are all active. The rows add up to the cards above.
+                    Active means its script, template and LLM are all active. The rows add up to the cards above.
                   </div>
                 </div>
               </section>
@@ -198,9 +196,8 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
 
 interface RowNav {
   base: string;
-  pipe: ResearchPipe;
-  channelName: string | null;
-  listedWorkflows: Set<string>;
+  measure: ResearchMeasure;
+  listedScripts: Set<string>;
   catalogTemplates: Set<string>;
   catalogModels: Set<string>;
 }
@@ -211,7 +208,7 @@ function ComboHead({ unit, outcomes }: { unit: string; outcomes: string }) {
     <thead>
       <tr className="border-b border-[var(--line-subtle)]">
         {/* Template is the free column: its served names are the longest; a long one truncates, its full name on hover. */}
-        <th className={`${TH} w-[116px]`}>Workflow</th>
+        <th className={`${TH} w-[116px]`}>Script</th>
         <th className={TH}>Template</th>
         <th className={`${TH} w-[96px]`}>LLM</th>
         <th className={`${TH} w-[72px] text-right`}>{`$ ${unit}`}</th>
@@ -232,11 +229,11 @@ function ComboRow({ row, nav }: { row: PerformanceRow; nav: RowNav }) {
         <CatalogueName
           kind="workflow"
           variant="chip"
-          name={row.workflow.name ?? row.workflow.label}
-          label={shortWorkflowName(row.workflow.name ?? row.workflow.label, nav.channelName)}
-          icon={row.workflow.icon ?? null}
-          color={row.workflow.color ?? null}
-          href={nav.listedWorkflows.has(row.workflow.key) ? researchCatalogHref(nav.base, nav.pipe, "workflows", row.workflow.key) : null}
+          name={row.script.name ?? row.script.label}
+          label={row.script.label}
+          icon={row.script.icon ?? null}
+          color={row.script.color ?? null}
+          href={nav.listedScripts.has(row.script.key) ? researchCatalogHref(nav.base, nav.measure, "scripts", row.script.key) : null}
           className="max-w-full"
         />
       </td>
@@ -249,7 +246,7 @@ function ComboRow({ row, nav }: { row: PerformanceRow; nav: RowNav }) {
             name={row.template.dynasty?.label ?? row.template.label}
             icon={row.template.dynasty?.icon ?? row.template.icon ?? null}
             color={row.template.dynasty?.color ?? row.template.color ?? null}
-            href={nav.catalogTemplates.has(templateDynastyKey(row.template)) ? researchCatalogHref(nav.base, nav.pipe, "templates", templateDynastyKey(row.template)) : null}
+            href={nav.catalogTemplates.has(templateDynastyKey(row.template)) ? researchCatalogHref(nav.base, nav.measure, "templates", templateDynastyKey(row.template)) : null}
             className="max-w-full"
           />
         ) : (
@@ -262,7 +259,7 @@ function ComboRow({ row, nav }: { row: PerformanceRow; nav: RowNav }) {
             kind="llm"
             variant="chip"
             name={row.llm.label}
-            href={nav.catalogModels.has(row.llm.key) ? researchCatalogHref(nav.base, nav.pipe, "models", row.llm.key) : null}
+            href={nav.catalogModels.has(row.llm.key) ? researchCatalogHref(nav.base, nav.measure, "llms", row.llm.key) : null}
             className="max-w-full"
           />
         ) : (
@@ -285,7 +282,7 @@ function ComboRow({ row, nav }: { row: PerformanceRow; nav: RowNav }) {
 }
 
 /**
- * The combination the pipe runs today, as features-service reads it live (`servedNow`): its row in the
+ * The combination the measure runs today, as features-service reads it live (`servedNow`): its row in the
  * table's own columns; with no row, the three part names it picked and why there are no figures.
  */
 function RunningNow({ answered, served, unit, outcomes, nav }: { answered: boolean; served: PerformanceServedNow | null; unit: string; outcomes: string; nav: RowNav }) {
@@ -309,8 +306,8 @@ function RunningNow({ answered, served, unit, outcomes, nav }: { answered: boole
             ) : (
               <tr>
                 <td colSpan={8} className="px-4 py-3">
-                  <p className="text-[13px]">{served ? [served.workflow?.label, served.template?.label, served.llm?.label].map((x) => x ?? "—").join(" × ") : "—"}</p>
-                  <p className="k-fg3 mt-0.5 text-[12px]">{servedNowReasonWords(served ? served.unavailableReason : "pipe_not_read")}</p>
+                  <p className="text-[13px]">{served ? [served.script?.label, served.template?.label, served.llm?.label].map((x) => x ?? "—").join(" × ") : "—"}</p>
+                  <p className="k-fg3 mt-0.5 text-[12px]">{servedNowReasonWords(served ? served.unavailableReason : "engine_not_read")}</p>
                 </td>
               </tr>
             )}
@@ -322,7 +319,7 @@ function RunningNow({ answered, served, unit, outcomes, nav }: { answered: boole
 }
 
 const UNAVAILABLE_WORDS: Record<string, string> = {
-  no_writer_recorded_on_pipe: "This pipe answers in a chat, so no template is on record for its messages yet.",
+  no_writer_recorded_on_engine: "No template or LLM is on record for this Engine's outcomes yet.",
 };
 
 /** The template's Research page key: its dynasty's, else its own (a template on its own is its own page). */
@@ -394,7 +391,7 @@ function Stacked({ value, tag, grey = false }: { value: string; tag: string; gre
   );
 }
 
-/** One served monthly series as a line; the served expected value dotted when the pipe's figure is the expected one. */
+/** One served monthly series as a line; the served expected value dotted when the measure's figure is the expected one. */
 function SeriesCard({
   title,
   answered,
@@ -410,7 +407,7 @@ function SeriesCard({
   format: (v: number) => string;
   expected?: number | null;
 }) {
-  // The curve starts the first month anything was spent: the months before it are not the pipe's history.
+  // The curve starts the first month anything was spent: the months before it are not the measure's history.
   const from = points.findIndex((p) => p.spentUsd > 0);
   const rows = (from < 0 ? [] : points.slice(from)).map((p) => ({ label: p.label, month: p.month, v: pick(p) }));
   const drawn = rows.some((r) => r.v != null);

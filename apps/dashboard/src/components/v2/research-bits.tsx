@@ -18,33 +18,23 @@ import { RocketLaunchIcon } from "@phosphor-icons/react/dist/csr/RocketLaunch";
 import { StrategyIcon } from "@phosphor-icons/react/dist/csr/Strategy";
 import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { PercentIcon } from "@phosphor-icons/react/dist/csr/Percent";
-import { PipeIcon } from "@phosphor-icons/react/dist/csr/Pipe";
-import { BroadcastIcon } from "@phosphor-icons/react/dist/csr/Broadcast";
-import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { CrosshairIcon } from "@phosphor-icons/react/dist/csr/Crosshair";
 import { HourglassIcon } from "@phosphor-icons/react/dist/csr/Hourglass";
 import { TargetIcon } from "@phosphor-icons/react/dist/csr/Target";
 import { GlobeIcon } from "@phosphor-icons/react/dist/csr/Globe";
 import { WarningCircleIcon } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
-import { ChannelChip } from "@/components/v2/offer-sales-paths";
-import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import type { AcquisitionChannelDef } from "@/lib/acquisition-channels";
-import { legFor } from "@/lib/legs";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { useStaffCatalogueObject } from "@/components/v2/staff-catalogue-data";
-import { featureLegId } from "@/lib/outbound-leg-key";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getPublicCatalogueSteps } from "@/lib/api";
 import { useResearch } from "@/lib/research/research-source";
 import { staleText, type ResearchFreshness } from "@/lib/research/freshness";
 import {
   outcomeEntry,
-  researchPipeEntry,
-  type ResearchPipeEntry,
+  researchEngineOf,
+  researchMeasureEntry,
   type ResearchChart,
-  type ResearchPipe,
+  type ResearchMeasure,
   type ResearchOutcome,
   type ResearchPoint,
   type ResearchStudy,
@@ -52,7 +42,7 @@ import {
 } from "@/lib/research/research";
 
 /**
- * The pieces every Research view draws with (the hub, a question, the workflow and template
+ * The pieces every Research view draws with (the hub, a question, the script and template
  * pages): a topic's mark, a section's mark and name, and the monthly charts. Every value arrives
  * written in features-service's live Research file; these only lay it out.
  */
@@ -63,7 +53,7 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   followups: { color: "var(--data-amber)", Icon: ArrowsClockwiseIcon },
   opens: { color: "var(--data-sky)", Icon: EyeSlashIcon },
   template: { color: "var(--data-rose)", Icon: FileTextIcon },
-  workflow: { color: "var(--data-lime)", Icon: FlowArrowIcon },
+  script: { color: "var(--data-lime)", Icon: FlowArrowIcon },
   // a template question too (which prompt), so it wears the template colour with its own mark
   naming: { color: "var(--data-rose)", Icon: IdentificationBadgeIcon },
   // how the first email is written (its shape, its first words): the same prompt family as a template
@@ -73,19 +63,16 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   // when the email went out, in the prospect's timezone: a sending-schedule question
   weekday: { color: "var(--data-sky)", Icon: CalendarIcon },
   hour: { color: "var(--data-sky)", Icon: ClockIcon },
-  // a typed question answered with a probability (Jev): what the pipes ask before they act
+  // a typed question answered with a probability (Jev): what the Engines ask before they act
   judgment: { color: "var(--data-violet)", Icon: ScalesIcon },
   // the same people before and after something went live (the AI answering positive replies)
   launch: { color: "var(--data-sky)", Icon: RocketLaunchIcon },
-  // the play a pipe ran under: who it serves and which workflows it may run, so the workflow colour
+  // a strategy: who an Engine serves and which scripts it may run, so the script colour
   strategy: { color: "var(--data-lime)", Icon: StrategyIcon },
   "sourcing-strategy": { color: "var(--data-lime)", Icon: MagnifyingGlassIcon },
-  // an outcome's own questions (owner 2026-10-18): the share of leads that reach it, and where it
-  // comes from (which pipe, channel, leg); a tactic is a rule a workflow follows, like a strategy
+  // an outcome's own questions (owner 2026-10-18): the share of leads that reach it; a tactic is a rule a
+  // script follows, like a strategy
   conversion: { color: "var(--data-teal)", Icon: PercentIcon },
-  pipe: { color: "var(--data-sky)", Icon: PipeIcon },
-  channel: { color: "var(--data-sky)", Icon: BroadcastIcon },
-  leg: { color: "var(--data-sky)", Icon: ArrowRightIcon },
   tactic: { color: "var(--data-lime)", Icon: CrosshairIcon },
   // how long a person takes to answer: a timing question, like the hour of the day
   delay: { color: "var(--data-sky)", Icon: HourglassIcon },
@@ -148,51 +135,41 @@ export function ResearchLive({ file }: { file: { computedAt?: string | null; rea
   );
 }
 
-/** The section a study sits in: its pipe, or its outcome. */
-export type ResearchSection = { pipe: ResearchPipe } | { outcome: ResearchOutcome };
+/** The section a study sits in: its measure (of an Engine), or its outcome. */
+export type ResearchSection = { measure: ResearchMeasure } | { outcome: ResearchOutcome };
 export function sectionOf(study: ResearchStudy): ResearchSection {
-  if (study.pipe) return { pipe: study.pipe };
-  if (!study.outcome) throw new Error(`[dashboard] research study ${study.id} names neither a pipe nor an outcome`);
+  if (study.measure) return { measure: study.measure };
+  if (!study.outcome) throw new Error(`[dashboard] research study ${study.id} names neither a measure nor an outcome`);
   return { outcome: study.outcome };
 }
 
-/** A served pipe's catalogue id (`<channel slug>|<leg key>`), the key features-service names and marks it by. */
-export function researchPipeId(entry: Pick<ResearchPipeEntry, "channel" | "leg">): string {
-  return featureLegId(entry.channel, entry.leg);
-}
-
 /**
- * What the catalogue serves for a section (owner 2026-10-18: « les pipes ont maintenant leur nom
- * et leur logo »): a pipe's own name, icon and colour (staff catalogue pipe); an outcome row is its
- * step, named and marked off the PUBLIC step catalogue as the Outcomes pages wear it; Jev is no
- * catalogue object (no step), so it is named and wears its topic mark.
+ * What the catalogue serves for a section: a measure wears its ENGINE's step (the Engine's outcome key), named by
+ * the Engine's served name; an outcome row is its step, named and marked off the PUBLIC step catalogue as the
+ * Outcomes pages wear it; Jev is no catalogue object (no step), so it is named and wears its topic mark.
  */
 const unreadableSections = new Set<string>();
 function useServedSection(section: ResearchSection) {
   const { file } = useResearch();
-  const entry = "pipe" in section ? researchPipeEntry(file, section.pipe) : null;
-  const pipeId = entry ? researchPipeId(entry) : null;
-  const stepId = "outcome" in section ? outcomeEntry(section.outcome, file)?.step ?? null : null;
-  const pipe = useStaffCatalogueObject("pipes", pipeId);
+  const engine = "measure" in section ? researchEngineOf(file, section.measure) : null;
+  const stepId = "measure" in section ? (engine?.outcome ?? null) : outcomeEntry(section.outcome, file)?.step ?? null;
   const steps = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000, enabled: !!stepId });
   const step = stepId ? steps.data?.find((s) => s.key === stepId) ?? null : null;
-  const id = pipeId ?? stepId;
-  const isError = pipeId ? pipe.isError && pipe.data === undefined : !!stepId && ((steps.isError && steps.data === undefined) || (steps.data !== undefined && !step));
-  if (id && isError && !unreadableSections.has(id)) {
-    unreadableSections.add(id);
-    console.error("[v2] research section unreadable in the catalogue", { id, error: pipeId ? pipe.error?.message : steps.error?.message ?? "step not in the public catalogue" });
+  const isError = !!stepId && ((steps.isError && steps.data === undefined) || (steps.data !== undefined && !step));
+  if (stepId && isError && !unreadableSections.has(stepId)) {
+    unreadableSections.add(stepId);
+    console.error("[v2] research section unreadable in the catalogue", { id: stepId, error: steps.error?.message ?? "step not in the public catalogue" });
   }
-  const name = pipeId ? pipe.data?.name ?? null : step?.name ?? null;
-  const icon = pipeId ? pipe.data?.icon ?? null : step?.icon ?? null;
-  const color = pipeId ? pipe.data?.color ?? null : null;
-  return { id, name, icon, color, failed: !!id && isError };
+  // A measure is named by its Engine as the Research read serves it; its mark is the Engine's step.
+  const name = engine ? engine.name : step?.name ?? null;
+  return { id: stepId, name, icon: step?.icon ?? null, color: null, failed: !!stepId && isError, loaded: !stepId || steps.data !== undefined || isError };
 }
 
-/** A section's mark, as served: a pipe's icon in its colour, an outcome's step icon, Jev's topic mark. */
+/** A section's mark, as served: an Engine's (or an outcome's) step icon, Jev's topic mark. */
 export function SectionMark({ section, size = 16 }: { section: ResearchSection; size?: number }) {
   const served = useServedSection(section);
   if (!served.id) return <TopicMark topic="judgment" size={size} />;
-  if (served.name || served.failed) return <CatalogueMark icon={served.icon} color={served.color} name={served.name ?? served.id} size={size} />;
+  if (served.loaded) return <CatalogueMark icon={served.icon} color={served.color} name={served.name ?? served.id} size={size} />;
   return (
     <span
       aria-hidden="true"
@@ -202,7 +179,7 @@ export function SectionMark({ section, size = 16 }: { section: ResearchSection; 
   );
 }
 
-/** A section's served NAME ("Dotterel", "Positive reply"; Jev is named), a Shimmer until the catalogue answers. */
+/** A section's served NAME (an Engine's, « Email sent »; an outcome's, « Positive reply »; Jev is named), a Shimmer until it answers. */
 export function SectionName({ section }: { section: ResearchSection }) {
   const served = useServedSection(section);
   if (!served.id) return <>Jev</>;
@@ -211,44 +188,66 @@ export function SectionName({ section }: { section: ResearchSection }) {
   return <Shimmer className="inline-block h-4 w-20 align-middle" />;
 }
 
-type InOrderItem = { step: string } | { channel: string; def: AcquisitionChannelDef };
-
-/** Served words joined by arrows, a channel chip (or, compact, its name) in its place. */
-function InOrder({ items, compact }: { items: InOrderItem[]; compact: boolean }) {
+/** Served step words joined by arrows. */
+function InOrder({ items }: { items: string[] }) {
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
       {items.map((it, i) => (
         <span key={i} className="inline-flex items-center gap-x-1.5">
           {i > 0 && <span className="k-fg3 font-normal">→</span>}
-          {"step" in it ? (
-            <span>{it.step}</span>
-          ) : compact ? (
-            <span>{it.channel}</span>
-          ) : (
-            <ChannelChip name={it.channel} def={it.def} notRun={false} compact />
-          )}
+          <span>{it}</span>
         </span>
       ))}
     </span>
   );
 }
 
-/**
- * The line under an outcome row's name (owner 2026-10-18): the pipes that land on it, each by its
- * served name, or null for a section that is no outcome (Jev).
- */
-export function OutcomePipes({ outcome, prefix = true }: { outcome: ResearchOutcome; prefix?: boolean }) {
+/** A measure's words in order: the step its people start from (« Start » when from nothing), then the step it counts. */
+export function MeasureSteps({ measure }: { measure: ResearchMeasure }) {
   const { file } = useResearch();
-  const pipes = outcomeEntry(outcome, file)?.pipes ?? [];
-  if (!pipes.length) return null;
+  const m = researchMeasureEntry(file, measure);
+  if (!m) return <span className="k-fg4">{"—"}</span>;
+  return <InOrder items={[m.startsFrom?.name ?? "Start", m.counts.name]} />;
+}
+
+/**
+ * A measure's name where a page names it (a crumb, a title chip): its Engine's served name, and its step words beside
+ * it when the Engine counts more than one thing (« Meeting booked · Form submitted → Meeting booked »).
+ */
+export function MeasureName({ measure }: { measure: ResearchMeasure }) {
+  const { file } = useResearch();
+  const several = (researchEngineOf(file, measure)?.measures.length ?? 0) > 1;
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <SectionName section={{ measure }} />
+      {several && (
+        <span className="k-fg3 inline-flex items-center gap-1.5">
+          ·<MeasureSteps measure={measure} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * The line under an outcome row's name: the Engines whose measures land on it, each once by its served name, or null
+ * for a section that is no outcome (Jev).
+ */
+export function OutcomeMeasures({ outcome, prefix = true }: { outcome: ResearchOutcome; prefix?: boolean }) {
+  const { file } = useResearch();
+  const measures = (outcomeEntry(outcome, file)?.measures ?? []).filter((m) => researchMeasureEntry(file, m) != null);
+  // One entry per ENGINE (served order): an Engine counting several things lands here once.
+  const engines: ResearchMeasure[] = [];
+  for (const m of measures) if (!engines.some((x) => researchEngineOf(file, x)?.outcome === researchEngineOf(file, m)?.outcome)) engines.push(m);
+  if (!engines.length) return null;
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1">
-      {prefix && <span>{pipes.length === 1 ? "Pipe:" : "Pipes:"}</span>}
-      {pipes.map((p, i) => (
-        <span key={p} className="inline-flex items-center gap-1">
-          <SectionMark section={{ pipe: p }} size={12} />
-          <SectionName section={{ pipe: p }} />
-          {i < pipes.length - 1 && <span>,</span>}
+      {prefix && <span>{engines.length === 1 ? "Engine:" : "Engines:"}</span>}
+      {engines.map((m, i) => (
+        <span key={m} className="inline-flex items-center gap-1">
+          <SectionMark section={{ measure: m }} size={12} />
+          <SectionName section={{ measure: m }} />
+          {i < engines.length - 1 && <span>,</span>}
         </span>
       ))}
     </span>
@@ -256,23 +255,13 @@ export function OutcomePipes({ outcome, prefix = true }: { outcome: ResearchOutc
 }
 
 /**
- * A section's PATH, read IN ORDER like a campaign's path (the reminder under its served name): a pipe is `Lead found → [channel] →
- * Positive reply` (the leg's two steps with the channel doing it between them); an outcome row names
- * the pipes that land on it (`OutcomePipes`); Jev has none (null), since it is not an outcome. Every
- * word is served (the leg catalogue, the channel list): a Shimmer until they answer.
- * `compact` writes the channel as a word, for a line that sits inside a chip.
+ * A section's PATH, read IN ORDER (the reminder under its served name): a measure is `<from> → <counts>` (served
+ * step words, « Start » when its people start from nothing); an outcome row names the Engines that land on it
+ * (`OutcomeMeasures`); Jev has none (null), since it is not an outcome.
  */
-export function SectionPath({ section, compact = false }: { section: ResearchSection; compact?: boolean }) {
-  const catalogue = useLegCatalogue();
-  const channels = useAcquisitionChannels();
-  const { file } = useResearch();
-  if ("outcome" in section) return <OutcomePipes outcome={section.outcome} />;
-  const k = researchPipeEntry(file, section.pipe);
-  if (!k) return <span className="k-fg4">{"—"}</span>;
-  const leg = legFor(catalogue, k.leg);
-  const def = channels.find((d) => d.featureSlug === k.channel);
-  if (!leg?.fromLabel || !def) return <Shimmer className="inline-block h-4 w-56 align-middle" />;
-  return <InOrder items={[{ step: leg.fromLabel }, { channel: def.name, def }, { step: leg.toLabel }]} compact={compact} />;
+export function SectionPath({ section }: { section: ResearchSection; compact?: boolean }) {
+  if ("outcome" in section) return <OutcomeMeasures outcome={section.outcome} />;
+  return <MeasureSteps measure={section.measure} />;
 }
 
 /** A topic's mark: a soft tile in its colour, drawn like a section's mark. */
@@ -509,7 +498,7 @@ export function Row({ k, v }: { k: string; v: React.ReactNode | null }) {
 
 /** Why a template is listed on its own, in words. */
 export const STANDALONE_WORDS: Record<string, string> = {
-  no_dynasty_on_pipe: "No dynasty on this pipe lists this version.",
+  no_dynasty_on_engine: "No dynasty on this Engine lists this version.",
   template_dynasties_unreadable: "Content generation's dynasties could not be read, so every version is listed on its own.",
 };
 

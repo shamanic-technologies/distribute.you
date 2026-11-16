@@ -7,11 +7,11 @@ import { parseResearchPath, researchCatalogHref, RESEARCH_TABS } from "../src/li
 const src = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
 describe("Research Performance tab (owner 2026-10-23, RESEARCH-PERFORMANCE-1023)", () => {
-  it("is the 4th tab of a pipe and has its own route", () => {
-    expect(RESEARCH_TABS).toEqual(["workflows", "templates", "models", "performance"]);
-    expect(parseResearchPath("cold-email-positive-reply/performance")).toEqual({ view: "performance", pipe: "cold-email-positive-reply" });
-    expect(parseResearchPath("cold-email-positive-reply/performance/x").view).toBe("missing");
-    expect(researchCatalogHref("/r", "cold-email-website-visit", "performance")).toBe("/r/cold-email-website-visit/performance");
+  it("is the 4th tab of an Engine measure and has its own route", () => {
+    expect(RESEARCH_TABS).toEqual(["scripts", "templates", "llms", "performance"]);
+    expect(parseResearchPath("engines/email_sent~start~conversation/performance")).toEqual({ view: "performance", measure: "email_sent/start/conversation" });
+    expect(parseResearchPath("engines/email_sent~start~conversation/performance/x").view).toBe("missing");
+    expect(researchCatalogHref("/r", "website_visit/start/website_visit", "performance")).toBe("/r/engines/website_visit~start~website_visit/performance");
   });
 
   it("splits rows into tabs on the SERVED status, in the served order (RESEARCH-COMBO-STATUS-1023)", () => {
@@ -27,7 +27,7 @@ describe("Research Performance tab (owner 2026-10-23, RESEARCH-PERFORMANCE-1023)
 
   it("a deprecated row says which part made it so, in plain words", () => {
     expect(deprecatedPartsWords(["llm"])).toBe("LLM retired");
-    expect(deprecatedPartsWords(["workflow", "template"])).toBe("Workflow deprecated · Template deprecated");
+    expect(deprecatedPartsWords(["script", "template"])).toBe("Script deprecated · Template deprecated");
     expect(deprecatedPartsWords([])).toBeNull();
   });
 
@@ -35,7 +35,7 @@ describe("Research Performance tab (owner 2026-10-23, RESEARCH-PERFORMANCE-1023)
     const page = src("src/components/v2/research-performance.tsx");
     expect(page).toContain("performanceByTab(rows)");
     expect(page).toContain("deprecatedPartsWords(row.deprecatedParts)");
-    for (const banned of ["combinationStatus", "modelStatus", "useModelStatuses", "useTemplateStatuses", "useDynastyStatuses"]) expect(page).not.toContain(banned);
+    for (const banned of ["combinationStatus", "modelStatus", "useModelStatuses", "useTemplateStatuses", "useScriptWords"]) expect(page).not.toContain(banned);
   });
 
   it("the page renders served figures, never sorts or divides", () => {
@@ -70,7 +70,8 @@ describe("Research Performance tab (owner 2026-10-23, RESEARCH-PERFORMANCE-1023)
     // Both tables share one header and one row component.
     expect(page.match(/<ComboHead /g)?.length).toBe(2);
     expect(servedNowReasonWords("combination_not_listed")).toBe("This combination has no row in the table yet.");
-    expect(servedNowReasonWords("no_llm_picked")).toBe("No LLM is picked for this pipe yet.");
+    expect(servedNowReasonWords("no_llm_picked")).toBe("No LLM is picked for this Engine yet.");
+    expect(servedNowReasonWords("no_runnable_script")).toBe("No script can run on this Engine right now.");
   });
 
   it("no estimated or expected figure on a row any more (owner 2026-10-24)", () => {

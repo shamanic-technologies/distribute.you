@@ -163,8 +163,6 @@ export function V2WorkflowPage() {
                   <ResearchModelChip
                     orgId={orgId}
                     brandId={brandId}
-                    channel={spec.featureSlug}
-                    legKey={spec.legKey}
                     dynasty={dynasty}
                     label={model.label}
                   />
@@ -173,8 +171,6 @@ export function V2WorkflowPage() {
                   <ResearchTemplateChip
                     orgId={orgId}
                     brandId={brandId}
-                    channel={spec.featureSlug}
-                    legKey={spec.legKey}
                     templateKey={ranked.row.contentPromptType}
                     label={template.label}
                     version={template.version}

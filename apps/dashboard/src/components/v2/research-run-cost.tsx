@@ -4,9 +4,9 @@ import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { EmptyNote } from "@/components/v2/ui";
 import { runUsdText, type ResearchRunCost } from "@/lib/research/research";
 
-/** Why a model has no cost per run on this pipe, in plain words (features-service `unavailableReason`). */
+/** Why a model has no cost per run on this measure, in plain words (features-service `unavailableReason`). */
 const RUN_COST_GAP: Record<string, string> = {
-  no_run_on_pipe: "It wrote nothing on this pipe yet.",
+  no_run_on_engine: "It wrote nothing for this Engine yet.",
   no_run_cost_known: "None of its runs here has a known cost yet.",
   not_on_vendor_basis: "Its run costs are not on the vendor basis in this view.",
   run_costs_unreadable: "Its run costs could not be read for this build.",
@@ -20,7 +20,7 @@ export function runCostGap(c: ResearchRunCost | null | undefined): string {
 const tokensText = (n: number | null) => (n == null ? null : `${Math.round(n).toLocaleString("en-US")} tokens`);
 
 /**
- * A model's cost per writing run on this pipe (owner 2026-10-24): the average, its input and output halves
+ * A model's cost per writing run on this measure (owner 2026-10-24): the average, its input and output halves
  * (cache folded into input), each as served. Nothing divided here.
  */
 export function RunCostFigures({ c }: { c: ResearchRunCost | null | undefined }) {

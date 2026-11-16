@@ -30,7 +30,7 @@ import { LeadsFoundPeople } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
 import { CostPerUnit, NetworkLogo, PublishedBody, PublishedOutcomePage, usePublishedOutcomeLabel, usePublishedOutcomes } from "@/components/v2/published-outcome-page";
 import { ResearchDrawer } from "@/components/v2/research-template-outputs";
-import { opensDrawer } from "@/components/v2/research-live-workflows";
+import { opensDrawer } from "@/components/v2/research-live-scripts";
 import { isPublishedOutcomeKey, type PublishedOutcomeKey, type PublishedUnits } from "@/lib/v2/published-units";
 import { BarSpark, EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { OutcomePinButton } from "@/components/v2/outcome-pins";
