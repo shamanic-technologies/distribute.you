@@ -15,7 +15,9 @@ import {
   funnelRowSettled,
   funnelSortKey,
   funnelTypeOf,
+  capWindowWords,
   isOngoingFunnelCampaign,
+  periodSpentUsd,
   splitFunnelCampaigns,
   type FunnelCampaignCopy,
   type FunnelCampaignRow,
@@ -215,7 +217,7 @@ function Suggested({ brandId, offerId, campaigns }: { brandId: string; offerId: 
 type TypeFilter = "all" | "proactive" | "reactive";
 type SortKey = "default" | "roi" | "invested";
 const TYPE_LABEL: Record<TypeFilter, string> = { all: "Every type", proactive: "Daily", reactive: "Triggered" };
-const SORT_LABEL: Record<SortKey, string> = { default: "Default", roi: "Expected ROI", invested: "$ Invested" };
+const SORT_LABEL: Record<SortKey, string> = { default: "Default", roi: "Expected ROI", invested: "$ Spent" };
 
 function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
   const q = useFunnelCampaigns(brandId, null);
@@ -237,6 +239,7 @@ function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
     })),
   });
   const capsById = new Map((q.data ?? []).map((c, i) => [c.id, capsQs[i]?.data ?? null]));
+  const capsSettledById = new Map((q.data ?? []).map((c, i) => [c.id, capsQs[i]?.data !== undefined || capsQs[i]?.isError === true]));
   const capsStamp = capsQs.map((x) => x.dataUpdatedAt).join(",");
 
   const [view, setView] = useState<"running" | "past">("running");
@@ -269,13 +272,15 @@ function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
     if (sort === "default") return kept;
     const value = (c: SalesFunnelCampaign) => {
       const r = rowById.get(c.id);
-      return (sort === "roi" ? r?.expectedReturn?.roiMultiple : r?.investedUsd) ?? -Infinity;
+      return (sort === "roi" ? r?.expectedReturn?.roiMultiple : periodSpentUsd(capsById.get(c.id) ?? null)) ?? -Infinity;
     };
     return [...kept].sort((a, b) => value(b) - value(a));
-  }, [base, search, type, sort, rowById, copyById]);
+    // capsStamp moves exactly when one of the caps does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base, search, type, sort, rowById, copyById, capsStamp]);
 
-  // The biggest served $ Spent in view scales each row's bar (display only).
-  const spentMax = Math.max(0, ...shown.map((c) => rowById.get(c.id)?.investedUsd ?? 0));
+  // The biggest $ Spent this period in view (billing's figure) scales each row's bar (display only).
+  const spentMax = Math.max(0, ...shown.map((c) => periodSpentUsd(capsById.get(c.id) ?? null) ?? 0));
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   if (settled && !q.data && q.isError) return <p className="text-[13px] text-[var(--data-rose)]">Could not read this brand&apos;s campaigns.</p>;
   return (
@@ -332,6 +337,7 @@ function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
               copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}
               copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ, c.createdAt)}
               caps={capsById.get(c.id) ?? null}
+              capsSettled={capsSettledById.get(c.id) ?? false}
               spentMax={spentMax}
               offerName={offerNameOf(c.offerId)}
             />
@@ -373,6 +379,7 @@ export function CampaignLine({
   copy,
   copySettled,
   caps,
+  capsSettled = true,
   spentMax = null,
   offerName = null,
 }: {
@@ -384,6 +391,8 @@ export function CampaignLine({
   copy: FunnelCampaignCopy | null;
   copySettled: boolean;
   caps: SalesFunnelCaps | null;
+  /** The caps read answered (billing); until then the $ Spent cell shimmers. */
+  capsSettled?: boolean;
   spentMax?: number | null;
   /** The offer it sells, named when the brand holds several. */
   offerName?: string | null;
@@ -411,6 +420,13 @@ export function CampaignLine({
     if (copySettled && copy && !copy.path) console.error("[funnel-campaigns] path not served", { id: copy.id, reason: copy.copyUnavailableReason ?? null });
   }, [copy, copySettled]);
   const wait = <Shimmer className="ml-auto h-4 w-12 rounded" />;
+  // $ Spent = the max budget's current period, as billing serves it (owner 2026-11-16).
+  const periodBudget = caps?.maxBudget ?? null;
+  const periodSpent = periodSpentUsd(caps);
+  useEffect(() => {
+    if (periodBudget && periodBudget.consumedCents === null)
+      console.error("[funnel-campaigns] period spend not served", { id: campaign.id, reason: periodBudget.consumedUnavailableReason, detail: periodBudget.consumedUnavailableDetail });
+  }, [periodBudget, campaign.id]);
   const catalogue = useLegCatalogue();
   const catalogueReady = catalogue.steps.size > 0;
   const targetLabel = stepLabel(catalogue, campaign.target);
@@ -473,8 +489,17 @@ export function CampaignLine({
       </div>
       <div className="hidden text-right @[68rem]:block">
         <div className="k-label">$ Spent</div>
-        <div className="mt-0.5 text-[13px] tabular-nums">{!rowSettled ? wait : row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH}</div>
-        {rowSettled && row?.investedUsd != null && spentMax ? <ShareBar value={row.investedUsd} max={spentMax} className="ml-auto mt-1.5 w-full" /> : null}
+        {/* Owner 2026-11-16: spent over the budget's CURRENT period ("$45 this month"), billing's figure. */}
+        <div className="mt-0.5 text-[13px] tabular-nums">
+          {!capsSettled ? wait : periodBudget && periodSpent !== null ? (
+            <>
+              {formatUsdAdaptive(periodSpent)} <span className="k-fg3 text-[11px]">{capWindowWords(periodBudget.period)}</span>
+            </>
+          ) : (
+            DASH
+          )}
+        </div>
+        {periodSpent !== null && spentMax ? <ShareBar value={periodSpent} max={spentMax} className="ml-auto mt-1.5 w-full" /> : null}
       </div>
       <div className="flex @md:justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="@md:text-right">

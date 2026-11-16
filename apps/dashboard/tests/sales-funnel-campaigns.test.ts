@@ -309,7 +309,10 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     expect(f).not.toContain("row.roiMultiple");
     expect(f).not.toContain("r?.roiMultiple");
     expect(f).toContain("row.costEconomics?.realizedReturn");
-    expect(f).toContain("formatUsdAdaptive(row.investedUsd)");
+    // $ Spent = the max budget's CURRENT period, billing's served consumedCents (owner 2026-11-16), never lifetime invested.
+    expect(f).toContain("formatUsdAdaptive(periodSpent)");
+    expect(f).toContain("capWindowWords(periodBudget.period)");
+    expect(f).not.toContain("formatUsdAdaptive(row.investedUsd)");
     expect(f).not.toContain("row.description");
     expect(src("src/lib/api.ts")).toContain("/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?");
   });
@@ -329,6 +332,16 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     expect(funnelOnLabel("reactive", caps)).toBe("Up to $80/month");
     expect(funnelOnLabel("proactive", null)).toBe("On");
     expect(f).toContain("Not funded yet · Set a budget");
+  });
+
+  it("$ Spent reads the budget's current period: today / this week / this month, null without a $ budget", async () => {
+    const { periodSpentUsd, capWindowWords } = await import("../src/lib/sales-funnel-campaigns");
+    const budget = (period: string, consumedCents: string | null) => ({ maxBudget: { amountCents: "22000", consumedCents, remainingCents: null, period, periodStart: "2026-11-01", periodEnd: null, reached: false, consumedUnavailableReason: null, consumedUnavailableDetail: null }, maxVolume: null }) as unknown as Parameters<typeof periodSpentUsd>[0];
+    expect(periodSpentUsd(budget("monthly", "4512"))).toBe(45.12);
+    expect(periodSpentUsd(budget("daily", null))).toBeNull();
+    expect(periodSpentUsd({ maxBudget: null, maxVolume: null } as unknown as Parameters<typeof periodSpentUsd>[0])).toBeNull();
+    expect(periodSpentUsd(null)).toBeNull();
+    expect(["daily", "weekly", "monthly"].map(capWindowWords)).toEqual(["today", "this week", "this month"]);
   });
 
   it("a missing served field reads — and is logged by name", () => {
