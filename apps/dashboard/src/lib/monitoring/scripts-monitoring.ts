@@ -104,12 +104,46 @@ export type EngineOutcome = z.infer<typeof EngineOutcomeSchema>;
 export const EngineMonitoringSchema = z.object({ since: z.string(), minRunsForRed: num, outcomes: z.array(EngineOutcomeSchema) }).passthrough();
 export type EngineMonitoring = z.infer<typeof EngineMonitoringSchema>;
 
+/**
+ * Writer proofs (PROVEN-BEFORE-PEOPLE-1116): a "writer combination" = one stored script version that writes to a person,
+ * with the LLM its tactics state. Before it may write to real people, its LLM answers up to 5 recorded production cases
+ * live (nothing sent) and Jev judges every field a person would read. `red` (served) = a LIVE combination whose latest
+ * proof failed, the only broken state; unproven / no cases / being proven / interrupted are a normal "not yet".
+ */
+export const WriterProofCombinationSchema = z
+  .object({
+    outcome: z.string(),
+    dynasty: z.string(),
+    version: num,
+    llm: z.string().nullable(),
+    live: z.boolean(),
+    state: z.string(),
+    usable: num,
+    sample: num,
+    spendAtMostUsd: numOrNull,
+    provedAt: z.string().nullable(),
+    failures: z.array(z.string()),
+    red: z.boolean(),
+  })
+  .passthrough();
+export type WriterProofCombination = z.infer<typeof WriterProofCombinationSchema>;
+
+export const WriterProofsSchema = z
+  .object({
+    engines: z.array(z.object({ outcome: z.string(), enforced: z.boolean(), cases: num }).passthrough()),
+    combinations: z.array(WriterProofCombinationSchema),
+  })
+  .passthrough();
+export type WriterProofs = z.infer<typeof WriterProofsSchema>;
+
 export const ScriptsMonitoringSchema = z
   .object({
     since: z.string(),
     outcomes: z.array(ScriptOutcomeSchema),
     // Absent until workflow-service serves campaign Engines.
     engines: EngineMonitoringSchema.optional(),
+    // Absent until workflow-service serves writer proofs (PROVEN-BEFORE-PEOPLE-1116).
+    writerProofs: WriterProofsSchema.optional(),
   })
   .passthrough();
 export type ScriptsMonitoring = z.infer<typeof ScriptsMonitoringSchema>;
@@ -198,4 +232,63 @@ export function enginesInOrder(e: EngineMonitoring): EngineOutcome[] {
   return [...e.outcomes].sort(
     (a, b) => rank(a) - rank(b) || (b.window.workflow?.runs ?? 0) - (a.window.workflow?.runs ?? 0) || (b.window.script?.runs ?? 0) - (a.window.script?.runs ?? 0),
   );
+}
+
+/** The chart's buckets for one combination's served state: only a live failed one is red. */
+export type ProofBucket = "proven" | "failing" | "failedOff" | "running" | "notYet";
+
+export const PROOF_BUCKETS: readonly ProofBucket[] = ["failing", "failedOff", "running", "notYet", "proven"];
+
+export function proofBucket(c: WriterProofCombination): ProofBucket {
+  if (c.red) return "failing";
+  if (c.state === "passed") return "proven";
+  if (c.state === "failed") return "failedOff";
+  if (c.state === "running") return "running";
+  return "notYet";
+}
+
+/** Each bucket in plain words. */
+export const PROOF_BUCKET_WORDS: Record<ProofBucket, string> = {
+  proven: "Proven",
+  failing: "Failing, live",
+  failedOff: "Failed, not drawn",
+  running: "Being proven",
+  notYet: "Not proven yet",
+};
+
+/** A combination's served state in plain words (its row in the list). */
+export function proofStateWords(state: string): string {
+  if (state === "passed") return "Proven";
+  if (state === "failed") return "Failed";
+  if (state === "running") return "Being proven";
+  if (state === "no_cases") return "Not provable yet: too few recorded cases";
+  if (state === "error" || state === "abandoned") return "Interrupted, retried";
+  if (state === "unproven") return "Not proven yet";
+  return state;
+}
+
+/** Live combinations that failed their proof (the served `red`): the only red. */
+export function redWriters(wp: WriterProofs | undefined): WriterProofCombination[] {
+  return (wp?.combinations ?? []).filter((c) => c.red);
+}
+
+/** Per Engine, its combinations tallied by bucket, in the served Engine order then any Engine only a combination names. */
+export function proofsByEngine(wp: WriterProofs): Array<{ outcome: string; enforced: boolean; cases: number | null; counts: Record<ProofBucket, number>; total: number }> {
+  const outcomes = [...wp.engines.map((e) => e.outcome)];
+  for (const c of wp.combinations) if (!outcomes.includes(c.outcome)) outcomes.push(c.outcome);
+  return outcomes
+    .map((outcome) => {
+      const e = wp.engines.find((x) => x.outcome === outcome);
+      const counts: Record<ProofBucket, number> = { proven: 0, failing: 0, failedOff: 0, running: 0, notYet: 0 };
+      const mine = wp.combinations.filter((c) => c.outcome === outcome);
+      for (const c of mine) counts[proofBucket(c)] += 1;
+      return { outcome, enforced: e?.enforced ?? false, cases: e ? e.cases : null, counts, total: mine.length };
+    })
+    .sort((a, b) => b.counts.failing - a.counts.failing || b.total - a.total);
+}
+
+/** Failed combinations to name under the chart: live ones (red) first, served order kept inside each group. */
+export function failedWriters(wp: WriterProofs): WriterProofCombination[] {
+  const failed = wp.combinations.filter((c) => c.state === "failed");
+  return [...failed.filter((c) => c.red), ...failed.filter((c) => !c.red)];
 }
