@@ -192,10 +192,19 @@ describe("copilot wiring", () => {
   });
 
   it("reads the user's latest conversation, and the proxy records the brand on it", () => {
-    expect(chat).toContain("getLatestChatSession(COPILOT_CONFIG_KEY)");
+    expect(chat).toContain("getLatestChatSession(COPILOT_CONFIG_KEY, { limit: CHAT_HISTORY_PAGE_SIZE })");
     expect(chat).toContain("isThisBrandsSession(latest, brandId)");
     const route = src("src/app/(authed)/api/v1/chat/route.ts");
     expect(route).toContain('headers["x-brand-id"] = context.brandId');
+  });
+
+  it("a page load reads only the newest messages, older ones on scroll up (MON-PAGE-SPEED-1114)", () => {
+    expect(chat).toContain("before: olderCursor");
+    expect(chat).toContain("keepPlaceRef.current = { height: el.scrollHeight, top: el.scrollTop }");
+    expect(chat).toContain("if (e.currentTarget.scrollTop < 160) void loadOlder()");
+    const api = src("src/lib/api.ts");
+    expect(api).toContain('params.set("limit", String(page.limit))');
+    expect(api).toContain('if (page.before) params.set("before", page.before)');
   });
 
   it("restores the stored conversation and offers a new one", () => {
