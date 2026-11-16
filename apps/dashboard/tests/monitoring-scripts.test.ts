@@ -132,7 +132,8 @@ describe("Monitoring > Scripts: page and hub", () => {
     expect(MONITORING_PAGES).toContain("scripts/engines");
     expect(parseMonitoringPath("/scripts/engines")).toEqual({ view: "page", page: "scripts/engines" });
     const page = read("components/v2/monitoring-page.tsx");
-    expect(page).toContain('view.page === "scripts/engines" && <ScriptsPage />');
+    expect(page).toContain('view.page === "scripts/engines" && (');
+    expect(page.slice(page.indexOf('view.page === "scripts/engines" && ('), page.indexOf('view.page === "scripts/campaigns"'))).toContain("<ScriptsPage />");
     const hub = page.slice(page.indexOf("function Hub("), page.indexOf("function Section("));
     expect(hub.indexOf('<ScriptsTile href={href("scripts/engines")} />')).toBeGreaterThan(-1);
     expect(hub.indexOf("<ScriptsTile")).toBeLessThan(hub.indexOf("<Section "));
