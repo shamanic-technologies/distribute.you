@@ -80,13 +80,15 @@ describe("the browser paints Research from disk on the billed basis only", () =>
   const persistable = persist.slice(persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
   const source = read("lib/research/research-source.tsx");
   it("billed roots persisted, actual roots never", () => {
-    for (const root of ["researchFile", "researchPerformance"]) {
+    for (const root of ["researchEngineFile", "researchEngineCatalog", "researchEnginePerformance", "researchLiveScripts"]) {
       expect(persistable).toContain(`"${root}",`);
       expect(sensitive).not.toContain(`"${root}",`);
     }
-    for (const root of ["researchFileActual", "researchPerformanceActual"]) expect(sensitive).toContain(`"${root}",`);
-    expect(source).toContain('basis === "actual" ? ["researchFileActual", view]');
-    expect(source).toContain('basis === "actual" ? ["researchPerformanceActual", view]');
+    for (const root of ["researchEngineFileActual", "researchEngineCatalogActual", "researchEnginePerformanceActual"]) expect(sensitive).toContain(`"${root}",`);
+    // The pipe-keyed roots are gone: no pipe-era copy can paint (RESEARCH-BY-ENGINE-1113).
+    for (const old of ["researchFile", "researchCatalog", "researchPerformance", "legWorkflowRanking"]) expect(persist).not.toContain(`"${old}",`);
+    expect(source).toContain('basis === "actual" ? ["researchEngineFileActual", view]');
+    expect(source).toContain('basis === "actual" ? ["researchEnginePerformanceActual", view]');
   });
   it("the file is re-read after a restore (no infinite staleTime) and the hub prefetches Performance and texts", () => {
     const fileQuery = source.slice(source.indexOf("function researchFileQuery("), source.indexOf("function researchPerformanceQuery("));

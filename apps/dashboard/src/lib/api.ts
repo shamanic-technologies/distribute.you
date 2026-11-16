@@ -2013,18 +2013,35 @@ const ChatSessionHistorySchema = z.object({
   // The brand(s) the session was opened for (chat-service records `x-brand-id`), null when none.
   brandIds: z.array(z.string()).nullish(),
   messages: z.array(ChatHistoryMessageSchema),
+  // A paged read (chat-service `limit`, MON-PAGE-SPEED-1114): older messages exist before the first one.
+  hasOlder: z.boolean().optional(),
+  olderCursor: z.string().nullish(),
 });
 export type ChatSessionHistory = z.infer<typeof ChatSessionHistorySchema>;
 
+/** Messages the Copilot reads per page: its first paint on every page, older ones on scroll. */
+export const CHAT_HISTORY_PAGE_SIZE = 30;
+
 /**
  * The signed-in user's most recent session for a chat config (any device), or null when they
- * have none yet (404, a first visit). Gateway `GET /v1/chat/sessions/latest` (api-service
+ * have none yet (404, a first visit; also an older page whose cursor is gone). Gateway `GET /v1/chat/sessions/latest` (api-service
  * v0.112.75) over chat-service `/sessions/latest`.
  */
-export async function getLatestChatSession(configKey: string, token?: string): Promise<ChatSessionHistory | null> {
+export async function getLatestChatSession(
+  configKey: string,
+  page?: { limit: number; before?: string },
+  token?: string,
+): Promise<ChatSessionHistory | null> {
+  // `limit` = only the newest messages (a page load stays small whatever the session length);
+  // `before` = the served `olderCursor`, to read the page just older (scroll up).
+  const params = new URLSearchParams({ configKey });
+  if (page) {
+    params.set("limit", String(page.limit));
+    if (page.before) params.set("before", page.before);
+  }
   let raw: unknown;
   try {
-    raw = await apiCall<unknown>(`/chat/sessions/latest?configKey=${encodeURIComponent(configKey)}`, { token });
+    raw = await apiCall<unknown>(`/chat/sessions/latest?${params}`, { token });
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
@@ -2653,30 +2670,21 @@ export async function getBrandPublishedUnits(brandId: string, outcomeKey: Publis
 }
 
 // ─── GTM Factory shadow (features-service #2123, api-service #1406; FACTORY-P1-DASH), staff surfaces only ───
-import {
-  FactoryShadowPlanSchema,
-  FactoryShadowMonitoringSchema,
-  type FactoryShadowPlan,
-  type FactoryShadowMonitoring,
-} from "./factory-shadow";
+import { FactoryShadowMonitoringSchema, type FactoryShadowMonitoring } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
 import { PeopleJourneysSchema, type PeopleJourneys } from "./factory-campaign";
 import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
-/**
- * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
- * and the running line vs the best line to the Target, each priced. Null = no pass has covered it yet (the producer's
- * 404 `factory_shadow_not_computed`).
- */
-export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunnelCampaignId: string): Promise<FactoryShadowPlan | null> {
+/** A campaign's Engines in scripts (features-service CAMPAIGN-SCRIPTS-1113): what competes, today's draws, its own runs. 503 = being built. */
+export async function getFunnelCampaignEngineScripts(brandId: string, salesFunnelCampaignId: string): Promise<CampaignEngineScriptsRead> {
   try {
     const raw = await apiCall<unknown>(
-      `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/factory-shadow`,
+      `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/engine-scripts`,
     );
-    return parseStaff("getFunnelCampaignFactoryShadow", FactoryShadowPlanSchema, raw);
+    return { state: "ready", data: parseStaff("getFunnelCampaignEngineScripts", CampaignEngineScriptsSchema, raw) };
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404 && err.body?.error === "factory_shadow_not_computed") return null;
+    if (err instanceof ApiError && err.status === 503 && err.body?.reason === SCRIPT_RATING_NOT_BUILT_YET) return { state: "building" };
     throw err;
   }
 }
@@ -9478,99 +9486,6 @@ export interface PlatformPrompt {
 }
 
 
-/** One served figure: the measured value, else the pipe's expected one (basis says which), else why neither. */
-const ServedFigureSchema = z.object({
-  value: z.number().nullable(),
-  basis: z.enum(["measured", "expected"]).nullable(),
-  source: z.string().nullable(),
-  expectedValue: z.number().nullable(),
-  unavailableReason: z.string().nullable(),
-});
-const WorkflowFiguresSchema = z
-  .object({
-    pricing: z.enum(["gross", "net"]),
-    half: z.enum(["mature", "flash"]),
-    costPerOutcomeUsd: ServedFigureSchema,
-    conversionRatePct: ServedFigureSchema,
-    spentUsd: z.object({ value: z.number().nullable(), basis: z.literal("measured").nullable(), unavailableReason: z.string().nullable() }),
-    outcomes: z.number(),
-    contacted: z.number(),
-  })
-  .passthrough();
-
-const LegWorkflowRankingSchema = z
-  .object({
-    featureSlug: z.string(),
-    legKey: z.string(),
-    grain: z.literal("fleet"),
-    computedAt: z.string().nullable(),
-    maturity: z.object({
-      durationDays: z.number(),
-      outcomesRequired: z.number(),
-      cutoffIso: z.string().nullable(),
-      measured: z.boolean(),
-    }),
-    rows: z.array(
-      z.object({
-        rank: z.number(),
-        workflowDynastySlug: z.string(),
-        workflowDynastyName: z.string().nullable(),
-        assignment: z.string(),
-        selectable: z.boolean(),
-        isMature: z.boolean().nullable(),
-        costPerOutcomeUsd: z.number().nullable(),
-        conversionRatePct: z.number().nullable(),
-        outcomes: z.number(),
-        spentUsd: z.number(),
-        goesFirst: z.boolean(),
-        moneyGoesHere: z.boolean(),
-        // Why the row stands where it does (WF-ORDER-EXPLORE-1018): `.optional()` while a stored
-        // ranking from before features-service served them can still answer.
-        executable: z.boolean().optional(),
-        place: z.string().nullish(),
-        explorePriceUsd: z.number().nullish(),
-        // ONE set of figures per workflow (RESEARCH-WF-FIGURES-1022), on the read's `pricing`: the list, its
-        // drawer and the workflow page print these, so the three cannot disagree. Required: every row serves it.
-        figures: WorkflowFiguresSchema,
-        // When a run of it last started on the pipe, every org; null = never ran, or the reason says why.
-        lastRunAt: z.string().nullish(),
-        lastRunUnavailableReason: z.string().nullish(),
-        // The tactics its CURRENT version follows (Jev's verdicts), read live by features-service.
-        tactics: z.array(z.object({ id: z.string(), name: z.string() })).nullish(),
-        tacticsUnavailableReason: z.string().nullish(),
-        // The workflow's own mark (MARKS-1022, features-service v0.179.351): a Phosphor name + `#RRGGBB`.
-        icon: z.string().nullish(),
-        color: z.string().nullish(),
-      }),
-    ),
-  })
-  .passthrough();
-
-export type LegWorkflowRanking = z.infer<typeof LegWorkflowRankingSchema>;
-
-/** The query key of the fleet ranking read (net pricing), shared by every reader so they share one cache. */
-export function legWorkflowRankingKey(featureSlug: string, legKey: string) {
-  return ["legWorkflowRanking", featureSlug, legKey, "net"] as const;
-}
-
-/**
- * EVERY WORKFLOW ON ONE LEG, RANKED AT THE FLEET GRAIN (features-service
- * `/public/stats/leg-workflow-ranking`, via api-service). Names no org, brand, offer,
- * campaign or audience: the Research pages read it so nothing they state depends on who
- * is looking. `computedAt: null` = the producer has not built it yet (no rows).
- */
-export async function getLegWorkflowRanking(featureSlug: string, legKey: string, token?: string): Promise<LegWorkflowRanking> {
-  // Every money reader asks what the orgs paid (repo rule): `figures` follow it; the legacy row fields stay incurred.
-  const query = new URLSearchParams({ featureSlug, leg: legKey, pricing: "net" });
-  const raw = await apiCall<unknown>(`/public/features/leg-workflow-ranking?${query.toString()}`, { token });
-  const parsed = LegWorkflowRankingSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getLegWorkflowRanking: invalid response shape", parsed.error.issues);
-    throw new Error("[dashboard] getLegWorkflowRanking: invalid response shape");
-  }
-  return parsed.data;
-}
-
 /** What a staff prompt edit produced, as workflow-service states it (#454). */
 export interface WorkflowPromptEditResult {
   action: "upgraded" | "forked";
@@ -13264,19 +13179,6 @@ export async function setContentTemplateStatus(type: string, change: CatalogueSt
   await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/status`, { method: "PUT", body: change });
 }
 
-/** A pipe: one channel (feature slug) x one leg, the grain a writer model's status is set on. */
-export type ContentPipe = { featureSlug: string; legKey: string };
-
-/**
- * A writer model's status on ONE pipe (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23: « la deprecation
- * manuelle doit être par pipe »): every other pipe keeps its own. content-generation 400s a write without one.
- */
-export async function setContentModelStatus(model: string, change: CatalogueStatusChange, pipe: ContentPipe): Promise<void> {
-  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, {
-    method: "PUT",
-    body: { ...change, featureSlug: pipe.featureSlug, legKey: pipe.legKey },
-  });
-}
 
 const TemplateOutputsSchema = z.object({
   type: z.string(),
@@ -13351,37 +13253,6 @@ export async function getTemplateDynastyOutputs(slug: string, limit = 5): Promis
   return parseStaff("getTemplateDynastyOutputs", TemplateDynastyOutputsSchema, raw).outputs;
 }
 
-const ModelDynastyOutputsSchema = z.object({
-  slug: z.string(),
-  outputs: z.array(
-    z.object({
-      generationId: z.string(),
-      createdAt: z.string(),
-      // The template version the sequence was written with.
-      promptType: z.string(),
-      templateDynasty: z.object({ slug: z.string(), name: z.string(), position: z.number() }).nullish(),
-      workflowSlug: z.string().nullable(),
-      // The model version (concrete id) that wrote it.
-      model: z.string(),
-      tokensInput: z.number().nullable(),
-      tokensOutput: z.number().nullable(),
-      subject: z.string().nullable(),
-      emails: z.array(z.object({ step: z.number(), bodyText: z.string(), daysSinceLastStep: z.number().nullable() })),
-    }),
-  ),
-});
-export type ModelDynastyOutput = z.infer<typeof ModelDynastyOutputsSchema>["outputs"][number];
-
-/**
- * STAFF ONLY. The last outputs written by ANY version of an LLM dynasty on ONE pipe, every org and
- * template, newest first (content-generation-service via api-service
- * `/v1/content/model-dynasties/:slug/outputs`, MODEL-OUTPUTS-1024). `slug` = chat-service's dynasty slug.
- */
-export async function getModelDynastyOutputs(slug: string, pipe: ContentPipe, limit = 5): Promise<ModelDynastyOutput[]> {
-  const q = `featureSlug=${encodeURIComponent(pipe.featureSlug)}&legKey=${encodeURIComponent(pipe.legKey)}&limit=${limit}`;
-  const raw = await apiCall<unknown>(`/content/model-dynasties/${encodeURIComponent(slug)}/outputs?${q}`);
-  return parseStaff("getModelDynastyOutputs", ModelDynastyOutputsSchema, raw).outputs;
-}
 
 const RetireByContentSchema = z.object({
   dryRun: z.boolean(),
@@ -13502,8 +13373,9 @@ export interface RunnableWorkflowDynasty extends SiblingLines {
  * `description` (workflow-service `WorkflowSummary.description`, its runnable version's): the
  * Research Workflows table states both, Status and Description.
  */
-export async function getRunnableWorkflowDynastySummaries(featureSlug: string): Promise<RunnableWorkflowDynasty[]> {
-  const query = new URLSearchParams({ featureSlug });
+export async function getRunnableWorkflowDynastySummaries(featureSlug?: string): Promise<RunnableWorkflowDynasty[]> {
+  // No channel = every runnable dynasty (Research by Engine, RESEARCH-BY-ENGINE-1113: a measure spans channels).
+  const query = new URLSearchParams(featureSlug ? { featureSlug } : {});
   const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`);
   const rows = parseStaff("getRunnableWorkflowDynastySummaries", WorkflowSummariesRunnableSchema, raw).workflows;
   const out = new Map<string, RunnableWorkflowDynasty>();
@@ -13596,6 +13468,7 @@ export async function getStaffSophieReplies(days: number): Promise<StaffSophieRe
 
 // ─── Monitoring > AI vendors > Credit (VENDOR-CREDIT-1030) ───
 import { VendorCreditSchema as StaffVendorCreditSchema, type VendorCredit as StaffVendorCredit } from "./monitoring/vendor-credit";
+import { CampaignEngineScriptsSchema, SCRIPT_RATING_NOT_BUILT_YET, type CampaignEngineScriptsRead } from "./campaign-engine-scripts";
 import { SCRIPT_ENGINES_NOT_BUILT_YET, ScriptEnginesSchema, type ScriptEnginesRead } from "./monitoring/script-engines";
 
 /** chat-service's stored "vendor out of credit" fact per AI provider it calls, through api-service's staff passthrough. */

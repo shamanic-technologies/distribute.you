@@ -14,6 +14,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   ApiError,
+  CHAT_HISTORY_PAGE_SIZE,
   ChatChoicesRecordSchema,
   ChatOpenPageRecordSchema,
   getChatSessionHistory,
@@ -252,6 +253,12 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   const [openerWanted, setOpenerWanted] = useState(false);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Older messages of the shown conversation, read on scroll up (MON-PAGE-SPEED-1114): a page
+  // load reads only the newest page. Null = nothing older to read.
+  const [olderCursor, setOlderCursor] = useState<string | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  // Set while older messages are prepended: keeps the reader's place instead of jumping down.
+  const keepPlaceRef = useRef<{ height: number; top: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { figures, settled, revPending, winPending } = useAccountFigures(brandId);
   const { open: dockOpen, pending: askedText, clearPending, draft: startedText, clearDraft } = useCopilotDock();
@@ -400,13 +407,14 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     const localSid = loadSessionId(storageKey);
     setPhase("loading");
     const load = async (): Promise<ChatSessionHistory | null> => {
-      const latest = await getLatestChatSession(COPILOT_CONFIG_KEY);
+      const latest = await getLatestChatSession(COPILOT_CONFIG_KEY, { limit: CHAT_HISTORY_PAGE_SIZE });
       if (isThisBrandsSession(latest, brandId)) return latest;
       return localSid ? getChatSessionHistory(localSid) : null;
     };
     load()
       .then((h) => {
         if (cancelled) return;
+        setOlderCursor(h?.hasOlder ? (h.olderCursor ?? null) : null);
         if (!h) {
           sessionIdRef.current = null;
           setMessages([]);
@@ -432,6 +440,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
         }
         sessionIdRef.current = null;
         saveSessionId(storageKey, null);
+        setOlderCursor(null);
         setMessages([]);
         setHistoryChoices(new Map());
         setHistoryPages(new Map());
@@ -540,9 +549,12 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       }
       sessionIdRef.current = sid;
       saveSessionId(storageKey, sid);
-      const h = await getChatSessionHistory(sid);
+      // The newest page of that conversation (it is the latest one), else the whole one by id.
+      const latest = await getLatestChatSession(COPILOT_CONFIG_KEY, { limit: CHAT_HISTORY_PAGE_SIZE });
+      const h = latest?.sessionId === sid ? latest : await getChatSessionHistory(sid);
       // The user started a turn meanwhile: the stored answer shows on the next load.
       if (abort.signal.aborted || busyRef.current || turnsInFlightRef.current > 0) return;
+      setOlderCursor(h.hasOlder ? (h.olderCursor ?? null) : null);
       setMessages(historyToUIMessages(h.messages));
       setHistoryChoices(choicesByTurn(h.messages));
       setHistoryPages(openPagesByTurn(h.messages));
@@ -570,12 +582,40 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     userSpokeRef.current = false;
     sessionIdRef.current = null;
     saveSessionId(storageKey, null);
+    setOlderCursor(null);
     setMessages([]);
     setHistoryChoices(new Map());
     setHistoryPages(new Map());
     setHistoryCredits(new Map());
     setOpenerWanted(true);
   }, [stop, storageKey, setMessages]);
+
+  // Scrolling up reads the page just older and puts it above, the reader keeps their place.
+  const loadOlder = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    const el = scrollRef.current;
+    if (!olderCursor || loadingOlder || !sid || !el) return;
+    setLoadingOlder(true);
+    try {
+      const h = await getLatestChatSession(COPILOT_CONFIG_KEY, { limit: CHAT_HISTORY_PAGE_SIZE, before: olderCursor });
+      // A new chat or another conversation replaced this one meanwhile: drop the page.
+      if (!h || h.sessionId !== sessionIdRef.current) return;
+      keepPlaceRef.current = { height: el.scrollHeight, top: el.scrollTop };
+      setOlderCursor(h.hasOlder ? (h.olderCursor ?? null) : null);
+      const older = historyToUIMessages(h.messages);
+      setMessages((prev) => {
+        const have = new Set(prev.map((m) => m.id));
+        return [...older.filter((m) => !have.has(m.id)), ...prev];
+      });
+      setHistoryChoices((prev) => new Map([...choicesByTurn(h.messages), ...prev]));
+      setHistoryPages((prev) => new Map([...openPagesByTurn(h.messages), ...prev]));
+      setHistoryCredits((prev) => new Map([...creditsRequiredByTurn(h.messages), ...prev]));
+    } catch (err) {
+      console.error("[copilot] could not load earlier messages", err);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [olderCursor, loadingOlder, setMessages]);
 
   // The user never waits on the Copilot: a message sent while an answer streams (the new
   // chat's opener reading the account, typically) stops that answer and goes out at once.
@@ -599,15 +639,23 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     submit(draft);
   };
 
-  // Follow the conversation down as it streams.
+  // Follow the conversation down as it streams; older messages put above keep the reader's place.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    const keep = keepPlaceRef.current;
+    keepPlaceRef.current = null;
     const frame = requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = keep ? el.scrollHeight - keep.height + keep.top : el.scrollHeight;
     });
     return () => cancelAnimationFrame(frame);
   }, [messages]);
+
+  // A first page too short to scroll still reaches the older messages.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (phase === "ready" && olderCursor && el && el.scrollHeight <= el.clientHeight) void loadOlder();
+  }, [phase, olderCursor, messages, loadOlder]);
 
   // The box grows with what is typed (capped, then it scrolls).
   useEffect(() => {
@@ -638,6 +686,9 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       <div
         ref={scrollRef}
         className="k-scroll min-h-0 flex-1 overflow-y-auto"
+        onScroll={(e) => {
+          if (e.currentTarget.scrollTop < 160) void loadOlder();
+        }}
         // A dashboard link the model wrote opens beside the panel; the chat keeps its place.
         onClickCapture={(e) => {
           const a = (e.target as HTMLElement).closest("a");
@@ -650,6 +701,13 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       >
         <div className="mx-auto w-full max-w-[760px] px-4 pb-6 pt-2">
           <AccountCard orgId={orgId} brandId={brandId} figures={figures} revPending={revPending} winPending={winPending} />
+
+          {loadingOlder && (
+            <div className="mt-6 space-y-2" aria-label="Loading earlier messages">
+              <Shimmer className="h-4 w-2/3" />
+              <Shimmer className="h-4 w-1/3" />
+            </div>
+          )}
 
           {phase === "loading" && (
             <div className="mt-6 space-y-2">

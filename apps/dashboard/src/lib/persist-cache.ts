@@ -89,9 +89,9 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "workflowRankLadderActual",
   "campaignWorkflowRevenueActual",
   "workflowRunsActual",
-  "researchCatalogActual",
-  "researchFileActual",
-  "researchPerformanceActual",
+  "researchEngineCatalogActual",
+  "researchEngineFileActual",
+  "researchEnginePerformanceActual",
   // Staff Research status (TEMPLATE-MODEL-STATUS-1019): template/model/workflow statuses, the
   // workflows a deprecation would stop, a template's last emails (every client's copy).
   "contentTemplateStatuses",
@@ -148,7 +148,6 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffConnectorIntake",
   // GTM Factory shadow (FACTORY-P1-DASH): staff-only reads, never persisted to disk.
   "staffFactoryShadow",
-  "factoryShadowPlan",
   "staffPlanFollowing",
   "salesFunnelPlanChanges",
   // Monitoring > Scripts (FACTORY-P3): staff-only read, never persisted to disk.
@@ -224,6 +223,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "pipeQueue",
   // The campaign page's Milestones and What its people went through (FACTORY-USER-DASHBOARD-1102).
   "funnelCampaignPeopleJourneys",
+  // A campaign's Engines in scripts (CAMPAIGN-SCRIPTS-1113): the campaign page's Plan / Strategy / Scripts per Engine.
+  "campaignEngineScripts",
   // Today > Why each one was picked (FACTORY-USER-DASHBOARD-1102).
   "offerEnginePicks",
   // The brand's own LinkedIn company page (Brand settings).
@@ -233,14 +234,14 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The platform step, leg and channel catalogue — no org, no auth, one answer for
   // every tenant.
   "publicCatalogue",
-  // Research's fleet ranking of one leg's workflows — no org, one answer for every tenant.
-  "legWorkflowRanking",
-  // Research's Workflows table cells (owner 2026-10-21, « It should be instant »): the billed-basis
-  // catalogue (LLM, Template) and which dynasties can run (Status). Staff-only reads, on staff disks.
-  "researchCatalog",
-  // The Research file (hub, every study) and the Performance tab, billed basis (owner 2026-10-23, « instantanées »).
-  "researchFile",
-  "researchPerformance",
+  // Research's fleet ranking of one measure's scripts (RESEARCH-BY-ENGINE-1113) — no org, one answer for every tenant.
+  "researchLiveScripts",
+  // Research's Scripts table cells (owner 2026-10-21, « It should be instant »): the billed-basis
+  // catalogue by Engine (LLM, Template). Staff-only reads, on staff disks.
+  "researchEngineCatalog",
+  // The Research file (hub, every study) and the Performance tab by Engine, billed basis (owner 2026-10-23, « instantanées »).
+  "researchEngineFile",
+  "researchEnginePerformance",
   "workflowDynastyStatuses",
   // The same listing with each runnable workflow's description (Status + Description cells).
   "workflowDynastySummaries",

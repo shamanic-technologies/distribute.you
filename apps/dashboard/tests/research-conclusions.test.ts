@@ -36,7 +36,7 @@ describe("research conclusions: what a backend service may quote", () => {
 
   it("leaves Learning points and valueless buckets out", () => {
     const study: ResearchStudy = {
-      id: "t", pipe: "cold-email-website-visit", topic: "layout", goal: "roi", question: "q?", status: "measured", headline: "h", winner: "A", crowned: true,
+      id: "t", engine: "website_visit", measure: "website_visit/start/website_visit", topic: "layout", goal: "roi", question: "q?", status: "measured", headline: "h", winner: "A", crowned: true,
       verdict: { kind: "conclusion", reason: "A beats B" },
       result: { display: "$2", unit: "per website visit", sample: "10 website visits · 100 emails" },
       charts: [{ kind: "bars", title: "Cost", lowerIsBetter: true, points: [
@@ -55,7 +55,7 @@ describe("research conclusions: what a backend service may quote", () => {
 
   it("names the outcome in plain words, never a section id", () => {
     for (const c of body.conclusions) expect(["Positive reply", "Website visit", "Meeting booked", "Typed judgment"]).toContain(c.outcome);
-    expect(JSON.stringify(body)).not.toMatch(/"crew"|"pipe"/);
+    expect(JSON.stringify(body)).not.toMatch(/"crew"|"pipe"|"measure"|"engine"/);
   });
 
   it("refuses the vendor-cost basis", () => {
@@ -99,7 +99,7 @@ describe("the service key", () => {
     const body = await ok.json();
     expect(body.conclusions.length).toBeGreaterThan(0);
     expect(body.conclusions.every((c: { verdict: { kind: string } }) => c.verdict.kind === "conclusion")).toBe(true);
-    expect(urls.every((u) => u.endsWith("/v1/features/research?basis=user&view=mature"))).toBe(true);
+    expect(urls.every((u) => u.endsWith("/v1/features/research/engines?basis=user&view=mature"))).toBe(true);
   });
 
   it("the route serves no stale copy: features-service not built yet is an error, never a snapshot", async () => {

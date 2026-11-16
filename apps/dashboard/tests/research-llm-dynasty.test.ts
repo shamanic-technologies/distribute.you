@@ -43,7 +43,7 @@ describe("Models pages read the served dynasty", () => {
     expect(view).toContain("sub={second?.text ?? null}");
   });
   it("a model page lists its served versions, each opening a drawer", () => {
-    expect(src).toContain("<ModelVersionsTable pipe={pipe} m={m} versions={versions} />");
+    expect(src).toContain("<ModelVersionsTable measure={measure} m={m} versions={versions} />");
     const table = src.slice(src.indexOf("function ModelVersionsTable("), src.indexOf("function ServedWord("));
     expect(table).toContain("<ResearchDrawer");
     expect(table).toContain("<TemplateFigures f={open} outcome={o} more />");

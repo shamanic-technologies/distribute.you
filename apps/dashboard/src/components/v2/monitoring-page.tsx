@@ -68,8 +68,10 @@ import { FactoryShadowPage, FactoryShadowTile, PlanFollowingPage, PlanFollowingT
 import { planStateWords } from "@/lib/plan-following";
 import { CodeIcon } from "@phosphor-icons/react/dist/csr/Code";
 import { ScriptsPage, ScriptsTile, useScriptsMonitoring } from "@/components/v2/monitoring-scripts";
+import { WriterProofsSection, WriterProofsTile } from "@/components/v2/monitoring-writer-proofs";
 import { CampaignEnginesPage, CampaignEnginesTile, useEngineNames } from "@/components/v2/monitoring-campaign-engines";
-import { brokenEngines, brokenOutcomes, enginesOnWorkflow, guardStateWords, outcomeName } from "@/lib/monitoring/scripts-monitoring";
+import { brokenEngines, brokenOutcomes, enginesOnWorkflow, guardStateWords, outcomeName, redWriters } from "@/lib/monitoring/scripts-monitoring";
+import { scriptName } from "@/lib/monitoring/script-engines";
 import { verdictReasonWords } from "@/lib/factory-shadow";
 import { ScriptEnginesPage, ScriptEnginesTile, boardWords, useScriptEngines } from "@/components/v2/monitoring-script-engines";
 import { boardBroken } from "@/lib/monitoring/script-engines";
@@ -374,7 +376,12 @@ export function V2Monitoring() {
         {view.page === "tools/intake" && <ConnectorIntakePage />}
         {view.page === "factory/plan" && <FactoryShadowPage />}
         {view.page === "factory/following" && <PlanFollowingPage />}
-        {view.page === "scripts/engines" && <ScriptsPage />}
+        {view.page === "scripts/engines" && (
+          <div className="space-y-10">
+            <WriterProofsSection />
+            <ScriptsPage />
+          </div>
+        )}
         {view.page === "scripts/campaigns" && <CampaignEnginesPage />}
         {view.page === "ai/credit" && <VendorCreditPage />}
         {view.page === "ai/schema" && <SchemaConformancePage />}
@@ -498,6 +505,7 @@ function Hub({ base }: { base: string }) {
   const scriptsBroken = scripts.data ? brokenOutcomes(scripts.data) : undefined;
   const scriptGuards = scripts.data?.outcomes.flatMap((o) => (o.guard ? [o.guard.state] : [])) ?? [];
   const enginesBroken = scripts.data ? brokenEngines(scripts.data.engines) : undefined;
+  const writersRed = scripts.data?.writerProofs ? redWriters(scripts.data.writerProofs) : undefined;
   const engineName = useEngineNames();
   const enginesOnWf = scripts.data?.engines ? enginesOnWorkflow(scripts.data.engines) : scripts.data ? null : undefined;
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
@@ -556,6 +564,8 @@ function Hub({ base }: { base: string }) {
         <PlanFollowingTile href={href("factory/following")} />
         {/* A stored script that fails more often than the code it replaced, or whose guard rolled the fleet back (FACTORY-P3): red here IS the alert, never an email. */}
         <ScriptsTile href={href("scripts/engines")} />
+        {/* A LIVE writer combination (script x its LLM) that failed its proof on recorded production cases (PROVEN-BEFORE-PEOPLE-1116, DIS-800): red here IS the alert, never an email; unproven / being proven is a normal "not yet". */}
+        <WriterProofsTile href={href("scripts/engines")} />
         {/* A campaign outcome whose script fails more often than the workflow it replaces (MIGRATE-1105 S2b): red here IS the alert; still on a workflow is a normal "not yet". */}
         <CampaignEnginesTile href={href("scripts/campaigns")} />
         {/* An AI vendor that refused a call for lack of credit and has not served one since (VENDOR-CREDIT-1030, DeepSeek 2026-10-29): red here IS the alert, never an email. */}
@@ -1039,7 +1049,7 @@ function Hub({ base }: { base: string }) {
       <SectionTitle count={2}>Scripts</SectionTitle>
       <Section section="scripts" count={2} grid={false}>
         <HubChips>
-          <HubChip href={href("scripts/engines")} color={scriptsBroken?.length ? "var(--data-rose)" : "var(--data-teal)"} label="Engines" />
+          <HubChip href={href("scripts/engines")} color={scriptsBroken?.length || writersRed?.length ? "var(--data-rose)" : "var(--data-teal)"} label="Engines" />
           <HubChip href={href("scripts/campaigns")} color={enginesBroken?.length ? "var(--data-rose)" : "var(--data-teal)"} label="Campaigns" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -1067,6 +1077,20 @@ function Hub({ base }: { base: string }) {
                 )
               ),
               note: "rolls back on too many errors",
+            },
+            {
+              label: "Writers failing proof",
+              value: scripts.data && (scripts.data.writerProofs ? <span style={{ color: writersRed?.length ? "var(--data-rose)" : undefined }}>{writersRed?.length}</span> : "Not served"),
+              note: writersRed?.length
+                ? writersRed.map((c) => `${scriptName(c.dynasty, c.outcome)} · ${c.llm ?? "no LLM"}`).join(", ")
+                : scripts.data?.writerProofs
+                  ? `of ${scripts.data.writerProofs.combinations.length} writers, live ones`
+                  : "proofs not deployed yet",
+            },
+            {
+              label: "Writers proven",
+              value: scripts.data && (scripts.data.writerProofs ? scripts.data.writerProofs.combinations.filter((c) => c.state === "passed").length : "Not served"),
+              note: "5 recorded cases each, nothing sent",
             },
           ]}
         />
@@ -1277,7 +1301,7 @@ function Section({ section, count, grid = true, children }: { section: SectionKe
 }
 
 /** Research's study card: mark + section·title in its colour + the question, then an inset block of two cells. The whole card is the link. */
-function Card({ href, page, cells, error }: { href: string; page: MonitoringPage; cells: [Cell, Cell]; error: boolean }) {
+function Card({ href, page, cells, error }: { href: string; page: MonitoringPage; cells: [Cell, Cell] | [Cell, Cell, Cell, Cell]; error: boolean }) {
   const meta = PAGE[page];
   const look = SECTION_LOOK[meta.section];
   return (
@@ -1294,7 +1318,7 @@ function Card({ href, page, cells, error }: { href: string; page: MonitoringPage
       </div>
       <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
         {cells.map((c, i) => (
-          <div key={c.label} className={`min-w-0 p-3 ${i === 0 ? "border-r border-[var(--line-subtle)]" : ""}`}>
+          <div key={c.label} className={`min-w-0 p-3 ${i % 2 === 0 ? "border-r border-[var(--line-subtle)]" : ""} ${i >= 2 ? "border-t border-[var(--line-subtle)]" : ""}`}>
             <p className="k-label">{c.label}</p>
             <div className="mt-1.5 flex items-end justify-between gap-2">
               <p className="min-w-0 truncate text-[20px] font-medium leading-6 tabular-nums">

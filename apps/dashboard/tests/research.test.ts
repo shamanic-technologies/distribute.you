@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   parseResearchPath,
+  firstMeasureListing,
   researchCatalogHref,
-  researchPipeFor,
   researchTemplateOf,
   researchTemplateVersion,
   researchTemplateVersionHref,
@@ -14,8 +14,9 @@ import {
   templatesByTab,
   templateTab,
   type ResearchCatalog,
+  type ResearchMeasureCatalog,
+  type ResearchScript,
   type ResearchTemplate,
-  type ResearchWorkflow,
 } from "../src/lib/research/research";
 import { modelTagFromName } from "../src/lib/written-by";
 
@@ -66,69 +67,71 @@ describe("Research is GA", () => {
   });
 });
 
-describe("the maturity rule is features-service's, read per leg and applied everywhere", () => {
+describe("the maturity rule is features-service's, read per counted outcome and applied everywhere", () => {
   it("draws the line under every chart and states it on the page", () => {
     const src = read("components/v2/research-page.tsx");
     expect(read("components/v2/research-bits.tsx")).toContain("<ChartNote note={chart.note} />");
     expect(src).toContain("<ChartNote note={c.note} />");
     expect(src).toContain("{RESEARCH.maturation.note}");
     // the page reads the rule's own figures, never a measured latency
-    expect(src).toContain("RESEARCH.maturation.legs.reply.durationDays");
+    expect(src).toContain("RESEARCH.maturation.rules.reply.durationDays");
     expect(src).not.toMatch(/maturation\.(reply|click)\.pAt/);
   });
 });
 
-describe("workflow and template pages (the research catalogue)", () => {
+describe("script, template and LLM pages (the research catalogue, by Engine)", () => {
   const base = "/v2/orgs/o/brands/b/research";
 
-  it("reads every path under /research, and never mistakes a study for a pipe page", () => {
+  it("reads every path under /research, and never mistakes a study for an Engine page", () => {
     expect(parseResearchPath("")).toEqual({ view: "hub" });
-    expect(parseResearchPath("cold-email-positive-reply-template-roi")).toEqual({ view: "study", id: "cold-email-positive-reply-template-roi" });
-    expect(parseResearchPath("cold-email-positive-reply/workflows")).toEqual({ view: "list", pipe: "cold-email-positive-reply", kind: "workflows" });
-    expect(parseResearchPath("cold-email-website-visit/templates/cold-email-v19")).toEqual({ view: "item", pipe: "cold-email-website-visit", kind: "templates", key: "cold-email-v19" });
-    expect(parseResearchPath("cold-email-positive-reply/models/gemini-3.1-pro")).toEqual({ view: "item", pipe: "cold-email-positive-reply", kind: "models", key: "gemini-3.1-pro" });
-    // any pipe id parses: the page answers Not found for one the served file does not list
-    expect(parseResearchPath("nobody/workflows").view).toBe("list");
-    expect(parseResearchPath("cold-email-positive-reply/audiences").view).toBe("missing");
-    expect(researchCatalogHref(base, "cold-email-positive-reply", "workflows", "a b")).toBe(`${base}/cold-email-positive-reply/workflows/a%20b`);
+    expect(parseResearchPath("email_sent~start~conversation:template-roi")).toEqual({ view: "study", id: "email_sent/start/conversation:template-roi" });
+    expect(parseResearchPath("engines/email_sent~start~conversation/scripts")).toEqual({ view: "list", measure: "email_sent/start/conversation", kind: "scripts" });
+    expect(parseResearchPath("engines/website_visit~start~website_visit/templates/cold-email-v19")).toEqual({ view: "item", measure: "website_visit/start/website_visit", kind: "templates", key: "cold-email-v19" });
+    expect(parseResearchPath("engines/email_sent~start~conversation/llms/gemini-3.1-pro")).toEqual({ view: "item", measure: "email_sent/start/conversation", kind: "llms", key: "gemini-3.1-pro" });
+    // any measure id parses: the page answers Not found for one the served file does not list
+    expect(parseResearchPath("engines/nobody/scripts").view).toBe("list");
+    expect(parseResearchPath("engines/email_sent~start~conversation/audiences").view).toBe("missing");
+    expect(researchCatalogHref(base, "email_sent/start/conversation", "scripts", "a b")).toBe(`${base}/engines/email_sent~start~conversation/scripts/a%20b`);
   });
 
-  it("maps a campaign's channel and leg to its served research pipe", () => {
-    const pipes = [
-      { id: "cold-email-positive-reply", channel: "sales-cold-email-outreach", leg: "lead_found_to_conversation", outcome: "Positive reply", description: "d" },
-      { id: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: "lead_found_to_website_visit", outcome: "Website visit", description: "d" },
-    ];
-    expect(researchPipeFor(pipes, "sales-cold-email-outreach", "lead_found_to_conversation")).toBe("cold-email-positive-reply");
-    expect(researchPipeFor(pipes, "sales-cold-email-outreach", "lead_found_to_website_visit")).toBe("cold-email-website-visit");
-    expect(researchPipeFor(pipes, "sales-cold-email-outreach", null)).toBeNull();
+  it("a script's template and LLM chips on the brand workflow page land on the first measure listing them (no channel, no leg)", () => {
+    const cat = { engines: [{ outcome: "e", name: "E", measures: [
+      { id: "e/start/a", engine: "e", startsFrom: null, counts: { key: "a", name: "A" }, description: "", scripts: [], templates: [], llms: [] },
+      { id: "e/start/b", engine: "e", startsFrom: null, counts: { key: "b", name: "B" }, description: "", scripts: [{ key: "wf" }], templates: [], llms: [] },
+    ] }] } as unknown as ResearchCatalog;
+    expect(firstMeasureListing(cat, (m: ResearchMeasureCatalog) => m.scripts.some((w) => w.key === "wf"))).toBe("e/start/b");
+    expect(firstMeasureListing(cat, (m: ResearchMeasureCatalog) => m.scripts.some((w) => w.key === "none"))).toBeNull();
+    const link = read("components/v2/research-template-link.tsx");
+    expect(link).not.toMatch(/channel|legKey/);
   });
 
   it("wires the links: hub chips, clickable study bars, template chips, and the template link on the brand workflow page", () => {
     const page = read("components/v2/research-page.tsx");
-    expect(page).toContain("<PipeCatalogLinks base={base} pipe={pipe} />");
+    expect(page).toContain("<MeasureCatalogLinks base={base} measure={measure} />");
     expect(page).toContain("hrefFor={(p) => pointHref(base, study, p)}");
     const cat = read("components/v2/research-catalog.tsx");
-    expect(cat).toContain('researchCatalogHref(base, pipe, "templates", w.template.key)');
+    expect(cat).toContain('researchCatalogHref(base, measure, "templates", template.key)');
     expect(cat).not.toMatch(/\.sort\(|text-gray-|InfoTooltip/);
     const wf = read("components/v2/workflow-page.tsx");
     expect(wf).toContain("<ResearchTemplateChip");
     expect(read("components/v2/research-template-link.tsx")).not.toContain("useIsAdminUser");
     expect(wf).toContain("<ResearchModelChip");
     // a workflow's alias is never mapped to a model: the chip follows the model Research measured
-    expect(read("components/v2/research-template-link.tsx")).toContain("researchWorkflow(catalog, pipe, dynasty)?.model");
+    expect(read("components/v2/research-template-link.tsx")).toContain("researchScript(catalog, measure, dynasty)?.model");
     // the chips read the catalogue from the staff-only route (research.ts carries no data any more)
     expect(read("components/v2/research-template-link.tsx")).toContain('useResearchCatalog("user")');
   });
 });
 
-describe("the workflows catalogue names each workflow and gives its LLM and template their own columns", () => {
-  it("the list renders LLM and Template columns whose cells link to the model and template pages", () => {
+describe("a script page names the script and gives its LLM and template as its TACTICS (RESEARCH-BY-ENGINE-1113)", () => {
+  it("the tactics are the served `tactics`, each a link to its own page", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
-    expect(src).toContain("<th className={`${TH} w-40`}>LLM</th>");
-    expect(src).toContain("<th className={`${TH} w-40`}>Template</th>");
-    expect(src).toContain('kind="models" r={(r as ResearchWorkflow).model}');
-    expect(src).toContain('kind="templates" r={(r as ResearchWorkflow).template}');
-    expect(src).toContain("onClick={(e) => e.stopPropagation()}");
+    const view = src.slice(src.indexOf("function ScriptView("), src.indexOf("function TemplateText("));
+    expect(view).toContain("const llm = w.tactics?.llm ?? null;");
+    expect(view).toContain("const template = w.tactics?.template ?? null;");
+    expect(view).toContain('<p className="k-label mt-5">Tactics</p>');
+    expect(view).toContain('<Row k="LLM" v={llm ? <RefLink base={base} measure={measure} kind="llms" r={llm}');
+    expect(view).toContain('<Row k="Template" v={template ? <RefLink base={base} measure={measure} kind="templates" r={template}');
   });
 });
 
@@ -145,18 +148,35 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
       { ...fig, key: "cold-email-v40", label: "v40", head: false, hasText: true },
       { ...fig, key: "cold-email-v44", label: "v44", head: true, hasText: true },
     ],
-    workflows: [],
+    scripts: [],
     runs: [],
   };
-  const old: ResearchTemplate = { ...fig, key: "cold-email-v12", label: "v12", hasText: true, workflows: [], runs: [] };
-  const empty = { workflows: [], templates: [], models: [] };
-  const catalog: ResearchCatalog = { "cold-email-positive-reply": { ...empty, templates: [dyn, old] }, "cold-email-website-visit": empty, "meeting-booking": empty };
+  const old: ResearchTemplate = { ...fig, key: "cold-email-v12", label: "v12", hasText: true, scripts: [], runs: [] };
+  const REPLY = "email_sent/start/conversation";
+  const measure = (id: string, lists: Partial<ResearchMeasureCatalog> = {}) => ({
+    id,
+    engine: id.split("/")[0],
+    startsFrom: null,
+    counts: { key: "x", name: "X" },
+    description: "d",
+    scripts: [],
+    templates: [],
+    llms: [],
+    ...lists,
+  });
+  const catalogWith = (lists: Partial<ResearchMeasureCatalog>): ResearchCatalog => ({
+    engines: [
+      { outcome: "email_sent", name: "Email sent", measures: [measure(REPLY, lists)] },
+      { outcome: "website_visit", name: "Website visit", measures: [measure("website_visit/start/website_visit")] },
+    ],
+  });
+  const catalog = catalogWith({ templates: [dyn, old] });
 
   it("opens a version's key on its dynasty's page, and a row's own key on itself", () => {
-    expect(researchTemplateOf(catalog, "cold-email-positive-reply", "cold-email-v40")?.key).toBe("cold-reply-free-offer-blind");
-    expect(researchTemplateOf(catalog, "cold-email-positive-reply", "cold-reply-free-offer-blind")?.key).toBe("cold-reply-free-offer-blind");
-    expect(researchTemplateOf(catalog, "cold-email-positive-reply", "cold-email-v12")?.key).toBe("cold-email-v12");
-    expect(researchTemplateOf(catalog, "cold-email-positive-reply", "nope")).toBeNull();
+    expect(researchTemplateOf(catalog, REPLY, "cold-email-v40")?.key).toBe("cold-reply-free-offer-blind");
+    expect(researchTemplateOf(catalog, REPLY, "cold-reply-free-offer-blind")?.key).toBe("cold-reply-free-offer-blind");
+    expect(researchTemplateOf(catalog, REPLY, "cold-email-v12")?.key).toBe("cold-email-v12");
+    expect(researchTemplateOf(catalog, REPLY, "nope")).toBeNull();
   });
 
   it("reads content-generation status and outputs on the head version, a pre-dynasty row on its own key", () => {
@@ -206,38 +226,38 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
   });
 
   it("a version has its own page under its dynasty; one segment still opens the dynasty", () => {
-    const href = researchTemplateVersionHref("/r", "cold-email-positive-reply", "cold-reply-free-offer-blind", "cold-email-v40");
-    expect(href).toBe("/r/cold-email-positive-reply/templates/cold-reply-free-offer-blind/cold-email-v40");
+    const href = researchTemplateVersionHref("/r", REPLY, "cold-reply-free-offer-blind", "cold-email-v40");
+    expect(href).toBe("/r/engines/email_sent~start~conversation/templates/cold-reply-free-offer-blind/cold-email-v40");
     expect(parseResearchPath(href.slice(3))).toEqual({
       view: "version",
-      pipe: "cold-email-positive-reply",
+      measure: REPLY,
       kind: "templates",
       key: "cold-reply-free-offer-blind",
       version: "cold-email-v40",
     });
-    expect(parseResearchPath("cold-email-positive-reply/templates/cold-email-v40")).toEqual({ view: "item", pipe: "cold-email-positive-reply", kind: "templates", key: "cold-email-v40" });
+    expect(parseResearchPath("engines/email_sent~start~conversation/templates/cold-email-v40")).toEqual({ view: "item", measure: REPLY, kind: "templates", key: "cold-email-v40" });
     // Only templates have versions; a deeper path is missing.
-    expect(parseResearchPath("cold-email-positive-reply/workflows/a/b").view).toBe("missing");
-    expect(parseResearchPath("cold-email-positive-reply/templates/a/b/c").view).toBe("missing");
+    expect(parseResearchPath("engines/email_sent~start~conversation/scripts/a/b").view).toBe("missing");
+    expect(parseResearchPath("engines/email_sent~start~conversation/templates/a/b/c").view).toBe("missing");
     expect(researchTemplateVersion(dyn, "cold-email-v40")?.label).toBe("v40");
     expect(researchTemplateVersion(dyn, "cold-email-v99")).toBeNull();
   });
 
-  it("the models a row wrote with: its workflows' models, then its runs', each once, first seen first", () => {
+  it("the LLMs a row wrote with: its scripts' LLMs, then its runs', each once, first seen first", () => {
     const claude = { key: "claude-opus", label: "Claude Opus 5.5", linked: true };
     const gemini = { key: "gemini-flash", label: "Gemini 3 Flash", linked: true };
-    const wf = { ...fig, key: "wf-a", label: "A", name: "A", model: claude, template: null, runs: [] } as ResearchWorkflow;
+    const wf = { ...fig, key: "wf-a", label: "A", name: "A", model: claude, template: null, runs: [] } as ResearchScript;
     const row: ResearchTemplate = {
       ...dyn,
-      workflows: [{ key: "wf-a", label: "A" }, { key: "wf-gone", label: "Gone" }],
+      scripts: [{ key: "wf-a", label: "A" }, { key: "wf-gone", label: "Gone" }],
       runs: [
-        { when: "", model: gemini, workflow: null, version: null, tokens: null },
-        { when: "", model: claude, workflow: null, version: null, tokens: null },
+        { when: "", model: gemini, script: null, version: null, tokens: null },
+        { when: "", model: claude, script: null, version: null, tokens: null },
       ],
     };
-    const cat: ResearchCatalog = { ...catalog, "cold-email-positive-reply": { ...empty, workflows: [wf], templates: [row] } };
-    expect(templateModels(cat, "cold-email-positive-reply", row).map((m) => m.key)).toEqual(["claude-opus", "gemini-flash"]);
-    expect(templateModels(null, "cold-email-positive-reply", row).map((m) => m.key)).toEqual(["gemini-flash", "claude-opus"]);
+    const cat = catalogWith({ scripts: [wf], templates: [row] });
+    expect(templateModels(cat, REPLY, row).map((m) => m.key)).toEqual(["claude-opus", "gemini-flash"]);
+    expect(templateModels(null, REPLY, row).map((m) => m.key)).toEqual(["gemini-flash", "claude-opus"]);
   });
 
   it("a model named only by its label wears its product mark", () => {
@@ -252,7 +272,7 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
     expect(cat).toContain("templatesByTab(rows as ResearchTemplate[], templateStatuses)");
     expect(cat).toContain('window.history.replaceState(null, "",');
     expect(cat).toContain("<TemplateVersionDrawer");
-    expect(cat).toContain("researchTemplateVersionHref(base, pipe, t.key, open.key)");
+    expect(cat).toContain("researchTemplateVersionHref(base, measure, t.key, open.key)");
     expect(cat).toContain("<TemplateVersionView");
     const panel = read("components/v2/research-template-outputs.tsx");
     expect(panel).toContain("useTemplateRowOutputs(t, 4)");
