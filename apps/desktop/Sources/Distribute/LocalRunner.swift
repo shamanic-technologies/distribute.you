@@ -56,10 +56,9 @@ final class LocalRunner: ObservableObject {
         var declared: Bool
     }
 
-    /// Above this many organizations (staff reach every org) the app does not ask each one
-    /// for its state: it serves the ones turned on from this Mac.
-    static let scanLimit = 25
-    private static let pinnedKey = "localLlmOrgIds"
+    /// Above this many organizations (staff reach every org) the menu lists only the ones
+    /// that declared it: a switch per org of the whole fleet is not a menu.
+    static let menuLimit = 25
 
     @Published private(set) var orgs: [Org] = []
     @Published private(set) var tooManyOrgs = false
@@ -79,11 +78,6 @@ final class LocalRunner: ObservableObject {
         if on == 0 { return "AI runs on distribute (not on this Mac)" }
         if busy > 0 { return "Claude Code is answering (\(answered) done)" }
         return "AI runs on my Claude Code (\(answered) answered)"
-    }
-
-    private var pinned: [String] {
-        get { UserDefaults.standard.stringArray(forKey: Self.pinnedKey) ?? [] }
-        set { UserDefaults.standard.set(newValue, forKey: Self.pinnedKey) }
     }
 
     // MARK: Lifecycle (main thread)
@@ -116,19 +110,13 @@ final class LocalRunner: ObservableObject {
         ClaudeCLI.stopAll()
     }
 
-    /// The menu's switch: declare (or stop) for one organization, and remember it here.
+    /// The menu's switch: declare (or stop) for one organization.
     func setDeclared(orgId: String, _ on: Bool) {
         guard let api else { return }
         Task { [weak self] in
             do {
                 _ = try await api.json("PUT", "local-llm", orgId: orgId, body: ["enabled": on])
-                await MainActor.run {
-                    guard let self else { return }
-                    var ids = self.pinned.filter { $0 != orgId }
-                    if on { ids.append(orgId) }
-                    self.pinned = ids
-                    self.problem = nil
-                }
+                await MainActor.run { self?.problem = nil }
                 await self?.refresh(api)
             } catch {
                 await MainActor.run { self?.problem = "Could not change it: \(error.localizedDescription)" }
@@ -138,20 +126,24 @@ final class LocalRunner: ObservableObject {
 
     // MARK: Which organizations to serve
 
+    /// `GET /v1/local-llm/orgs` answers in ONE call which organizations the user is a member
+    /// of have declared it, wherever the declaration was made (this menu, the dashboard, the
+    /// MCP). Membership, not staff reach: a staff Mac never runs a customer's calls on the
+    /// staff member's own subscription (the gateway decides, api-service LOCAL-CLAUDE-ORGS-1116).
     private func refresh(_ api: DistributeAPI) async {
         do {
+            let declared = try await api.json("GET", "local-llm/orgs")
+            let ids = (declared["orgs"] as? [[String: Any]] ?? []).compactMap { $0["orgId"] as? String }
             let me = try await api.json("GET", "me")
             let all = (me["organizations"] as? [[String: Any]] ?? []).compactMap { org -> (String, String)? in
                 guard let id = org["id"] as? String else { return nil }
                 return (id, org["name"] as? String ?? id)
             }
-            let pinned = await MainActor.run { self.pinned }
-            let many = all.count > Self.scanLimit
-            let candidates = many ? all.filter { pinned.contains($0.0) } : all
-            var next: [Org] = []
-            for (id, name) in candidates {
-                let state = try await api.json("GET", "local-llm", orgId: id)
-                next.append(Org(id: id, name: name, declared: state["declared"] as? Bool ?? false))
+            let names = Dictionary(all, uniquingKeysWith: { first, _ in first })
+            let many = all.count > Self.menuLimit
+            var next = ids.map { Org(id: $0, name: names[$0] ?? $0, declared: true) }
+            if !many {
+                next += all.filter { !ids.contains($0.0) }.map { Org(id: $0.0, name: $0.1, declared: false) }
             }
             let found = next
             await MainActor.run {
