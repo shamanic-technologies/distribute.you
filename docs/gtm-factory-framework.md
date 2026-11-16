@@ -182,9 +182,9 @@ Every script belongs to a dynasty of versions. The pick keeps the exact version 
 
 ## 8. The pick and the Supplier rating
 
-A **pick is always a script**. An LLM model or a template is a tactic of the script that uses it, never a candidate of its own: two models are two scripts (or two versions of one).
+A **pick is always a script**. A model is a script of the LLM completion Engine: two models are two scripts there, never two copies of the writer that asks. A writer exists once, writes its prompt and asks for a completion; it never names a model.
 
-A **candidate place** is a pair (consuming Engine, outcome it calls): the writer's Engine calling Message written and the reply judge's Engine calling the same outcome make two candidate places, and each can settle on a different script.
+A **candidate place** is a pair (asking script, outcome it calls): the free offer writer and the three-line writer both call LLM completion, they make two candidate places, and each can settle on a different model. A place with little history of its own starts from the wider place: (asking script, outcome), then (asking Engine, outcome), then the outcome alone. No threshold decides the switch: the wider place's belief counts as about one credited run, and the script's own credited runs replace it as they land.
 
 The **Supplier rating** is an Engine like any other. At each tick it reads the ledger and produces one **Rating** for the whole fleet: per candidate at each candidate place, its beliefs about value per dollar. Outcomes are rare, so one brand's runs seldom say enough alone. Every picking script calls the Rating's Provider.
 
