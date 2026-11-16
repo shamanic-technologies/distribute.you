@@ -3,10 +3,10 @@
 //
 //   node derive-cost.mjs <live research file> > cost.snapshot.json
 //
-// Reads the Research page's LIVE file (features-service GET /internal/research?basis=user, saved to
+// Reads the Research page's LIVE file (features-service GET /internal/research/engines?basis=user, the Engine file, saved to
 // disk as the blog-data README says) and copies out its two average-cost studies, word for word and figure for figure:
-// what a positive reply cost (`cold-email-positive-reply-cost-over-time`) and what a website visit cost
-// (`cold-email-website-visit-cost-over-time`), each with its months, its average since inception, and the 95% interval
+// what a positive reply cost (`email_sent/start/conversation:cost-over-time`, the Positive reply Engine's cost study) and what a website visit cost
+// (`website_visit/start/website_visit:cost-over-time`), each with its months, its average since inception, and the 95% interval
 // features-service printed in its verdict. Nothing is re-derived here, so the article and the Research
 // page state the same figures for one read. Aggregates only: no text, no client, no lead.
 import { readFileSync } from "node:fs";
@@ -27,7 +27,8 @@ function study(id) {
   if (!ci) throw new Error(`${id}: cannot read the interval in "${s.verdict.reason}"`);
   const chart = s.charts.find((c) => c.kind === "months");
   if (!chart?.cumulative) throw new Error(`${id}: no month chart with its running average`);
-  const sample = s.result.sample.match(/^([\d,]+) [a-z ]+ · ([\d,]+) emails/);
+  // the sample says "emails" (until 2026-11) or "people emailed" (since): one count either way
+  const sample = s.result.sample.match(/^([\d,]+) [a-z ]+ · ([\d,]+) (?:emails|people emailed)/);
   if (!sample) throw new Error(`${id}: cannot read the sample "${s.result.sample}"`);
   const num = (x) => Number(String(x).replace(/,/g, ""));
   // `partial`: the month the maturity cutoff falls inside, drawn dotted (features-service sets it)
@@ -47,9 +48,9 @@ const snapshot = {
   generatedAt: R.generatedAt,
   readOn: R.readOn,
   windowFrom: R.window.from,
-  durationDays: R.maturation.legs.reply.durationDays,
-  cutoff: R.maturation.legs.reply.cutoff,
-  reply: study("cold-email-positive-reply-cost-over-time"),
-  visit: study("cold-email-website-visit-cost-over-time"),
+  durationDays: R.maturation.rules.reply.durationDays,
+  cutoff: R.maturation.rules.reply.cutoff,
+  reply: study("email_sent/start/conversation:cost-over-time"),
+  visit: study("website_visit/start/website_visit:cost-over-time"),
 };
 process.stdout.write(`${JSON.stringify(snapshot, null, 2)}\n`);

@@ -39,11 +39,14 @@ What stays here serves the published ARTICLES only: `extract.sh` -> `derive.mjs`
 the follow-up article reads) and the per-article folders below with their committed snapshots.
 `derive.mjs` still writes its `research` block into `facts.json`; nothing reads it any more.
 
-To read a Research study for an article, save the live file (billed basis) from inside the
-features-service container on the box, then hand it to the article's derive script:
+To read a Research study for an article, save the live Engine file (`/internal/research/engines`,
+billed basis; the pipe-keyed `/internal/research` file is retired) from inside the
+features-service container on the box, then hand it to the article's derive script. Study ids are
+in Engine words (`email_sent/start/conversation:cost-over-time`, was
+`cold-email-positive-reply-cost-over-time`); the maturity rules sit under `maturation.rules`:
 
 ```sh
-ssh root@<box> 'docker exec distribute-features-service-1 node -e "fetch(\"http://localhost:8080/internal/research?basis=user\",{headers:{\"x-api-key\":process.env.FEATURES_SERVICE_API_KEY}}).then(r=>r.text()).then(t=>process.stdout.write(t))"' > /tmp/research.json
+ssh root@<box> 'docker exec distribute-features-service-1 node -e "fetch(\"http://localhost:8080/internal/research/engines?basis=user\",{headers:{\"x-api-key\":process.env.FEATURES_SERVICE_API_KEY}}).then(r=>r.text()).then(t=>process.stdout.write(t))"' > /tmp/research.json
 ```
 
 ## Emails too young to count (two rules, one per surface)
