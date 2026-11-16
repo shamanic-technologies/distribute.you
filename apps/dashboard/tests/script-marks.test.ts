@@ -13,10 +13,7 @@ describe("every script the dashboard names wears its own served mark", () => {
     expect(parsed.picks.map((p) => p.icon ?? null)).toEqual(["envelope-simple", null, null]);
   });
 
-  it("Today's picks, the Plan, Scripts per Engine and the people journeys pass the served mark", () => {
+  it("Today's picks pass the served mark (the people journeys section is gone, owner 2026-11-17)", () => {
     expect(read("components/v2/engine-picks-section.tsx")).toContain('<CatalogueObjectMark kind="workflow" name={name} icon={p.icon} color={p.color} size={28} />');
-    const factory = read("components/v2/factory-campaign.tsx");
-    // Plan / Scripts per Engine read the campaign's script rows (CAMPAIGN-SCRIPTS-1113), which serve no mark yet: features-service relays one with the script name.
-    expect(factory).toContain("name={sc.workflowName} icon={sc.icon} color={sc.color}");
   });
 });

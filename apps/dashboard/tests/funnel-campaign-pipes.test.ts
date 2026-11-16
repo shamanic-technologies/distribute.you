@@ -24,11 +24,12 @@ describe("sales-funnel campaign page: the GTM Factory anatomy", () => {
     expect(body).toContain("tabs={tabs}");
   });
 
-  it("draws What its people went through, Milestones, Plan, Strategy per Engine, Scripts per Engine in that order", () => {
+  it("draws Milestones, Plan, Strategy per Engine, Scripts per Engine in that order; no « What its people went through » (owner 2026-11-17: Milestones carries the same counts with their cost)", () => {
     const at = factory.indexOf("export function FactoryCampaignSections(");
     const fn = factory.slice(at, factory.indexOf("// ─── Milestones"));
     expect(fn).toContain("useCampaignEngineScripts(campaign.brandId, campaign.id)");
-    const order = ["<FactoryJourneys", "<CampaignMilestoneCards", "<FactoryPlan", "<FactoryStrategies", "<FactoryScripts"].map((m) => fn.indexOf(m));
+    expect(fn).not.toContain("<FactoryJourneys");
+    const order = ["<CampaignMilestoneCards", "<FactoryPlan", "<FactoryStrategies", "<FactoryScripts"].map((m) => fn.indexOf(m));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((x, y) => x - y)).toEqual(order);
   });
@@ -40,9 +41,9 @@ describe("sales-funnel campaign page: the GTM Factory anatomy", () => {
   });
 });
 
-describe("milestones and people journeys (features-service, served measured-or-expected)", () => {
+describe("milestones (features-service, served measured-or-expected)", () => {
   it("parse the served bodies; a figure carries its basis or its reason", async () => {
-    const { CampaignMilestonesSchema, PeopleJourneysSchema } = await import("../src/lib/factory-campaign");
+    const { CampaignMilestonesSchema } = await import("../src/lib/factory-campaign");
     const none = { value: null, basis: null, unavailableReason: "start_is_the_market" };
     const m = CampaignMilestonesSchema.parse({
       salesFunnelCampaignId: "c", brandId: "b", pricing: "net", target: "paid_client", planComputedAt: "x", milestonesUnavailableReason: null,
@@ -52,14 +53,12 @@ describe("milestones and people journeys (features-service, served measured-or-e
       ],
     });
     expect(m.milestones[1].costFromStartUsd.basis).toBe("measured");
-    const j = PeopleJourneysSchema.parse({ salesFunnelCampaignId: "c", brandId: "b", pricing: "net", transitions: [{ pipeId: "p", fromStep: "start", fromLabel: "Start", toStep: "lead_found", toLabel: "Lead", people: 23, shareBasis: "spend", scripts: [{ workflowDynastySlug: "s", workflowName: "Lead Sourcing Alterf", sharePct: 86 }], scriptsUnavailableReason: null }] });
-    expect(j.transitions[0].scripts[0].sharePct).toBe(86);
   });
   it("the page reads both through the gateway on net pricing, and never shows the planner's internal ROI", () => {
     const api = read("lib/api.ts");
     // Milestones: the campaign-targets row of ONE campaign, counted from produced Units (LEAD-GENERIC-1106).
     expect(api).toContain("/campaign-targets?pricing=net&salesFunnelCampaignId=${encodeURIComponent(salesFunnelCampaignId)}");
-    expect(api).toContain("/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/people-journeys?pricing=net");
+    expect(api).not.toContain("/people-journeys");
     const code = read("components/v2/factory-campaign.tsx");
     expect(code).not.toContain("figures.roi");
     expect(code).not.toContain("costPerTargetUsd");

@@ -40,27 +40,6 @@ export const CampaignMilestonesSchema = z
   .passthrough();
 export type CampaignMilestones = z.infer<typeof CampaignMilestonesSchema>;
 
-// `icon` / `color`: the script's served mark (features-service SCRIPT-MARKS-1103), null until it has one.
-const JourneyScriptSchema = z
-  .object({ workflowDynastySlug: z.string(), workflowName: z.string(), sharePct: z.number(), icon: z.string().nullish(), color: z.string().nullish() })
-  .passthrough();
-const JourneyTransitionSchema = z
-  .object({
-    pipeId: z.string(),
-    fromStep: z.string(),
-    fromLabel: z.string(),
-    toStep: z.string(),
-    toLabel: z.string(),
-    // LEDGER-ONLY-1107-P2: the ledger's Units of the step; null when the ledger holds none (never 0).
-    people: z.number().nullable(),
-    scripts: z.array(JourneyScriptSchema),
-    scriptsUnavailableReason: z.string().nullable(),
-  })
-  .passthrough();
-export type JourneyTransition = z.infer<typeof JourneyTransitionSchema>;
-
-export const PeopleJourneysSchema = z.object({ salesFunnelCampaignId: z.string(), transitions: z.array(JourneyTransitionSchema) }).passthrough();
-export type PeopleJourneys = z.infer<typeof PeopleJourneysSchema>;
 
 /** Why a milestone has no figure, in the client's words. A reason with no words is logged by the caller. */
 export function milestoneReasonWords(reason: string | null): string | null {

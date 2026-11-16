@@ -17,7 +17,6 @@ import {
   getCampaignRevenueWindow,
   getFeatureRevenueByCampaign,
   getFeatureRevenueByWorkflow,
-  getFunnelCampaignPeopleJourneys,
   getFunnelCampaignSpendCharts,
   getOfferCompanyLifecycle,
   getOfferDealsLifecycle,
@@ -32,7 +31,6 @@ import {
   OfferOutcomesSchema,
 } from "../src/lib/api";
 import { DealsLifecycleSchema } from "../src/lib/deals-board";
-import { PeopleJourneysSchema } from "../src/lib/factory-campaign";
 import { FeatureRevenueResponseSchema } from "../src/lib/revenue-parse";
 
 const fixture = JSON.parse(readFileSync(path.resolve(__dirname, "fixtures/ledger-p2-prod-1107.json"), "utf8"));
@@ -57,7 +55,6 @@ function bodyFor(url: string): unknown {
     return bodies.campaignRevenueWindow;
   }
   if (p.endsWith("/spend-charts") && p.includes("sales-funnel-campaigns")) return bodies.funnelSpendCharts;
-  if (p.endsWith("/people-journeys")) return bodies.peopleJourneys;
   if (p.endsWith(`/sales-funnel-campaigns`)) return q.get("fields") === "copy" ? bodies.funnelCopies : bodies.funnelRows;
   if (p.endsWith(`/offers/${OFF}/spend-charts`)) return bodies.offerSpendCharts;
   if (p.endsWith("/outcome-cost-series")) return bodies.offerOutcomeCostSeries;
@@ -92,7 +89,6 @@ describe("every v2 reader parses the CURRENT prod body (LEDGER-ONLY-1107-P2)", (
     ["listFunnelCampaignRows", () => listFunnelCampaignRows(B, OFF)],
     ["listFunnelCampaignCopies", () => listFunnelCampaignCopies(B, OFF)],
     ["getFunnelCampaignSpendCharts", () => getFunnelCampaignSpendCharts(B, SFC)],
-    ["getFunnelCampaignPeopleJourneys", () => getFunnelCampaignPeopleJourneys(B, SFC)],
     ["getOfferSpendCharts", () => getOfferSpendCharts(OFF, B)],
     ["getOfferOutcomeCostSeries", () => getOfferOutcomeCostSeries(OFF, B)],
     ["getOfferOutcomes", () => getOfferOutcomes(OFF, B)],
@@ -115,7 +111,6 @@ describe("a null served by the ledger stays null, never 0", () => {
     ["offerOutcomes", OfferOutcomesSchema],
     ["audienceStats", FeatureAudienceStatsResponseSchema],
     ["dealsLifecycle", DealsLifecycleSchema],
-    ["peopleJourneys", PeopleJourneysSchema],
   ];
   for (const [key, schema] of schemas) {
     it(`${key}: no fake 0`, () => {
