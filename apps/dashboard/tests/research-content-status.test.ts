@@ -89,7 +89,6 @@ describe("TEMPLATE-MODEL-STATUS-1019: lookups", () => {
 describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
   const status = read("components/v2/research-status.tsx");
   const list = read("components/v2/research-catalog.tsx");
-  const live = read("components/v2/research-live-scripts.tsx");
   const api = read("lib/api.ts");
 
   it("reads and writes the gateway's staff routes", () => {
@@ -197,12 +196,6 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list).toContain("deprecateNote={DEPRECATE_CONTENT_NOTE}");
   });
 
-  it("Scripts: each row carries its SERVED status and its ⋮", () => {
-    expect(live).toContain("<ScriptStatusCells slug={r.scriptDynastySlug} label={name} served={scriptStatus(r.executable)} />");
-    expect(live).toContain("w-28`}>Status</th>");
-    expect(live).not.toContain(">#</th>");
-  });
-
   it("every new root is held out of the disk cache", () => {
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("SENSITIVE_QUERY_ROOTS"), persist.indexOf("PERSISTABLE_QUERY_ROOTS"));
@@ -215,7 +208,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("SENSITIVE_QUERY_ROOTS"), persist.indexOf("PERSISTABLE_QUERY_ROOTS"));
     const persistable = persist.slice(persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
-    for (const root of ["workflowDynastySummaries", "researchEngineCatalog", "researchLiveScripts"]) expect(persistable).toContain(`"${root}",`);
+    for (const root of ["workflowDynastySummaries", "researchEngineCatalog"]) expect(persistable).toContain(`"${root}",`);
     expect(sensitive).not.toContain('"workflowDynastySummaries"');
     expect(sensitive).toContain('"researchEngineCatalogActual"');
     const source = read("lib/research/research-source.tsx");

@@ -287,7 +287,7 @@ async function refetchAfterWrite(qc: ReturnType<typeof useQueryClient>) {
     qc.refetchQueries({ queryKey: [...STATUS_ROOTS.models] }),
     qc.refetchQueries({ queryKey: ["workflowDynastySummaries"] }),
     qc.invalidateQueries({ queryKey: ["workflowDynastyDeprecation"] }),
-    qc.invalidateQueries({ queryKey: ["researchLiveScripts"] }),
+    qc.invalidateQueries({ queryKey: ["staffScriptEngines"] }),
   ]);
 }
 

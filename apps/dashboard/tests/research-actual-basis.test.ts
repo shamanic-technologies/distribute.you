@@ -81,12 +81,11 @@ describe("Research keeps no snapshot: every byte is read live, server-side, staf
       "/v1/features/research/engines?basis=",
       "/v1/features/research/engines/catalog?basis=",
       "/v1/features/research/engines/performance?basis=",
-      "/v1/features/research/engines/live-scripts?measure=",
       "/v1/features/research/templates",
     ])
       expect(live).toContain(path);
     // No pipe-keyed read is left (RESEARCH-BY-ENGINE-1113).
-    for (const old of ["/v1/features/research?", "/v1/features/research/catalog?", "/v1/features/research/performance?"]) expect(live).not.toContain(old);
+    for (const old of ["/v1/features/research?", "/v1/features/research/catalog?", "/v1/features/research/performance?", "live-scripts"]) expect(live).not.toContain(old);
     expect(live).not.toMatch(/snapshot\b(?! is kept)/i);
   });
   it("the live reader is imported by server routes only", () => {

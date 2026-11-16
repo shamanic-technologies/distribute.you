@@ -3,7 +3,7 @@
  * (RESEARCH-BY-ENGINE-1113, owner 2026-11-13).
  *
  * Every study, catalogue page and template text is served LIVE by features-service
- * (`GET /internal/research/engines[/catalog|/performance|/live-scripts]` and `/internal/research/templates`; rebuilt every 15 min), read
+ * (`GET /internal/research/engines[/catalog|/performance]` and `/internal/research/templates`; rebuilt every 15 min), read
  * through the staff route `/api/research/{basis}/{part}` and `research-source.tsx`. No snapshot is
  * kept in this repo. Every study is fleet-wide (all orgs). Nothing here divides or ranks: every
  * value, label and sentence arrives written, and this module only types and looks it up.

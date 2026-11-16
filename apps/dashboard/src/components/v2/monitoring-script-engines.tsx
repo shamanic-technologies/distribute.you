@@ -198,15 +198,6 @@ function ShareChart({ e, charted, outcome }: { e: ScriptEngine; charted: string[
 
 function EngineBlock({ e }: { e: ScriptEngine }) {
   const stepName = useStepName();
-  const [open, setOpen] = useState(false);
-  const [retiredOpen, setRetiredOpen] = useState(false);
-  const { top, more, retired } = splitScripts(e);
-  const charted = chartScripts(e);
-  const colorOf = (k: string) => {
-    const i = charted.indexOf(k);
-    return i >= 0 ? SERIES[i] : null;
-  };
-  const rows = [...top, ...(open ? more : []), ...(retiredOpen ? retired : [])];
   return (
     <section className="space-y-2">
       <SectionTitle
@@ -227,46 +218,67 @@ function EngineBlock({ e }: { e: ScriptEngine }) {
         {basisWords(e.basis)}. {n(e.runnableScripts)} runnable, {n(e.runs)} runs in 30 days.
         {e.outcomeValueUsd != null && ` One ${stepName(e.outcome)} is worth ${usd(e.outcomeValueUsd)}${e.outcomeValueSource ? ` (${e.outcomeValueSource})` : ""}.`}
       </p>
-      <div className="k-card overflow-hidden">
-        <ShareChart e={e} charted={charted} outcome={e.outcome} />
-        <div className="k-scroll overflow-x-auto">
-          <table className="w-full table-fixed text-[13px]">
-            <thead>
-              <tr>
-                {COLS.map((c) => (
-                  <th
-                    key={c.head}
-                    className={`k-label px-3 py-2.5 first:pl-4 last:pr-4 ${c.width ?? ""} ${c.wide ? WIDE : ""} ${c.right ? "text-right" : "text-left"}`}
-                  >
-                    {c.head}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => (
-                <ScriptRow key={s.scriptDynasty} s={s} outcome={e.outcome} color={colorOf(s.scriptDynasty)} stepName={stepName} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {e.scripts.length === 0 && <p className="k-fg3 border-t k-line-subtle px-4 py-2.5 text-[12px]">No script makes this outcome yet.</p>}
-        {(more.length > 0 || retired.length > 0) && (
-          <div className="k-fg3 flex flex-wrap items-center gap-2 border-t k-line-subtle px-4 py-2.5 text-[12px] tabular-nums">
-            {more.length > 0 && (
-              <button type="button" className="k-btn-ghost h-6 px-2" onClick={() => setOpen((v) => !v)}>
-                {open ? "Show fewer" : `+${n(more.length)} more`}
-              </button>
-            )}
-            {retired.length > 0 && (
-              <button type="button" className="k-btn-ghost h-6 px-2" onClick={() => setRetiredOpen((v) => !v)}>
-                {retiredOpen ? "Hide retired" : `${n(retired.length)} retired`}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      <EngineScriptsCard e={e} />
     </section>
+  );
+}
+
+/**
+ * One Engine's scripts as the Rating ranks them today: the share chart, one row per script (served order), the
+ * « +N more » and retired folds. Monitoring and Research (a measure's live scripts) draw this one card over the same
+ * read (`useScriptEngines`), so both pages print the same figures.
+ */
+export function EngineScriptsCard({ e }: { e: ScriptEngine }) {
+  const stepName = useStepName();
+  const [open, setOpen] = useState(false);
+  const [retiredOpen, setRetiredOpen] = useState(false);
+  const { top, more, retired } = splitScripts(e);
+  const charted = chartScripts(e);
+  const colorOf = (k: string) => {
+    const i = charted.indexOf(k);
+    return i >= 0 ? SERIES[i] : null;
+  };
+  const rows = [...top, ...(open ? more : []), ...(retiredOpen ? retired : [])];
+  return (
+    <div className="k-card overflow-hidden">
+      <ShareChart e={e} charted={charted} outcome={e.outcome} />
+      <div className="k-scroll overflow-x-auto">
+        <table className="w-full table-fixed text-[13px]">
+          <thead>
+            <tr>
+              {COLS.map((c) => (
+                <th
+                  key={c.head}
+                  className={`k-label px-3 py-2.5 first:pl-4 last:pr-4 ${c.width ?? ""} ${c.wide ? WIDE : ""} ${c.right ? "text-right" : "text-left"}`}
+                >
+                  {c.head}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((s) => (
+              <ScriptRow key={s.scriptDynasty} s={s} outcome={e.outcome} color={colorOf(s.scriptDynasty)} stepName={stepName} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {e.scripts.length === 0 && <p className="k-fg3 border-t k-line-subtle px-4 py-2.5 text-[12px]">No script makes this outcome yet.</p>}
+      {(more.length > 0 || retired.length > 0) && (
+        <div className="k-fg3 flex flex-wrap items-center gap-2 border-t k-line-subtle px-4 py-2.5 text-[12px] tabular-nums">
+          {more.length > 0 && (
+            <button type="button" className="k-btn-ghost h-6 px-2" onClick={() => setOpen((v) => !v)}>
+              {open ? "Show fewer" : `+${n(more.length)} more`}
+            </button>
+          )}
+          {retired.length > 0 && (
+            <button type="button" className="k-btn-ghost h-6 px-2" onClick={() => setRetiredOpen((v) => !v)}>
+              {retiredOpen ? "Hide retired" : `${n(retired.length)} retired`}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

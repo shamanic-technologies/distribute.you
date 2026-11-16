@@ -61,12 +61,11 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(readerBody("getFunnelCampaignPeopleJourneys")).toContain("?pricing=net");
   });
 
-  it("Research's live script ranking requests net pricing (Research script figures, RESEARCH-BY-ENGINE-1113)", () => {
-    // The per-channel ranking reader is gone with the pipe; its Engine twin is read server-side by the staff route.
+  it("Research reads no workflow ranking: a measure's live scripts are the Rating's script board (RESEARCH-NATIVE-ENGINE-1116-P3-DASH)", () => {
     expect(apiSrc).not.toContain("export async function getLegWorkflowRanking");
     const live = fs.readFileSync(path.join(__dirname, "../src/lib/research/live-file.ts"), "utf-8");
-    const body = live.slice(live.indexOf("export async function readLiveScripts"));
-    expect(body).toContain("/v1/features/research/engines/live-scripts?measure=${encodeURIComponent(measure)}&pricing=net");
+    expect(live).not.toContain("live-scripts");
+    expect(live).not.toContain("readLiveScripts");
   });
 
   it("fetchFeatureAudienceStats requests net pricing", () => {

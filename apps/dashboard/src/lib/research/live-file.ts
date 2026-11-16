@@ -9,10 +9,9 @@ import type { ResearchPerformance } from "@/lib/research/performance";
  *   GET /v1/features/research/engines?basis=                 the file (studies, Engines and their measures, outcomes)
  *   GET /v1/features/research/engines/catalog?basis=         the script, template and LLM pages per measure
  *   GET /v1/features/research/engines/performance?basis=     the Performance tab per measure
- *   GET /v1/features/research/engines/live-scripts?measure=  one measure's scripts as the fleet ranks them now
  *   GET /v1/features/research/templates                      the template texts, by template id
  *
- * Every read but the texts and the live scripts also carries `view=mature|flash` (MATURITY-VIEW-1023): which
+ * Every read but the texts also carries `view=mature|flash` (MATURITY-VIEW-1023): which
  * build features-service serves, the staff Mature / Flash switch (`lib/v2/maturity-view-cookie.ts`).
  *
  * No snapshot is kept anywhere: any failure (the 503 `research_not_computed_yet` before
@@ -72,9 +71,4 @@ export async function readLivePerformance(basis: ResearchBasisParam, view: Resea
   const perf = await readLive<ResearchPerformance>(`/v1/features/research/engines/performance?basis=${basis}&view=${view}`, staffEmail);
   if (!Array.isArray(perf.engines)) throw new Error("[research] live performance: invalid shape (engines missing)");
   return perf;
-}
-
-/** One measure's scripts as the fleet ranks them right now, on what the orgs paid (`pricing=net`, the repo's money rule). */
-export async function readLiveScripts(measure: string, staffEmail: string): Promise<unknown> {
-  return readLive<unknown>(`/v1/features/research/engines/live-scripts?measure=${encodeURIComponent(measure)}&pricing=net`, staffEmail);
 }
