@@ -159,25 +159,17 @@ describe("research reads nothing scoped to the viewer", () => {
     }
   });
 
-  it("the live table reads the fleet ranking of the measure (RESEARCH-BY-ENGINE-1113), no leg, no channel", () => {
+  it("a measure's live scripts are its Engine's row of the Rating's script board, Monitoring's card (RESEARCH-NATIVE-ENGINE-1116-P3-DASH)", () => {
     const live = readFileSync(join(dir, "research-live-scripts.tsx"), "utf8");
-    expect(live).toContain("const rankingQ = useLiveScripts(measure);");
-    for (const gone of ["getLegWorkflowRanking", "legWorkflowRankingKey", "useLegCatalogue", "isProactiveFrom", "featureSlug", "legKey"]) expect(live).not.toContain(gone);
-    const source = readFileSync(join(__dirname, "../src/lib/research/research-source.tsx"), "utf8");
-    expect(source).toContain('queryKey: ["researchLiveScripts", measure ?? ""]');
-    expect(source).toContain('parseLiveScripts(await fetchPart<unknown>("user", "live-scripts", undefined, measure ?? ""))');
-    expect(source).toContain("enabled: measure != null");
-    // BEST-TPL-LLM-1022: a workflow fixes no template and no LLM, so neither column is drawn, and no
-    // "Why here" column nor summary strip above the table (owner 2026-10-22).
-    expect(live).not.toContain("writesWithNow");
-    expect(live).not.toContain(">LLM</th>");
-    expect(live).not.toContain(">Template</th>");
-    expect(live).not.toContain("WhyHere");
-    expect(live).not.toContain("<LiveRankingStrip");
-    expect(live).not.toContain("<LiveWorkflowChips");
-    expect(live).not.toContain("listChannelWorkflowStacks");
-    expect(live).toContain("table-fixed");
-    expect(live).not.toContain("useParams");
+    expect(live).toContain("const engine = useResearchMeasureEntry(measure)?.engine ?? null;");
+    expect(live).toContain("const boardQ = useScriptEngines();");
+    expect(live).toContain("read.board.engines.find((e) => e.outcome === engine)");
+    expect(live).toContain("<EngineScriptsCard e={engine} />");
+    for (const gone of ["useLiveScripts", "parseLiveScripts", "researchLiveScripts", "live-scripts", "getLegWorkflowRanking", "featureSlug", "legKey", "RoiLabel"]) expect(live).not.toContain(gone);
+    const mon = readFileSync(join(dir, "monitoring-script-engines.tsx"), "utf8");
+    expect(mon).toContain("export function EngineScriptsCard({ e }: { e: ScriptEngine })");
+    // Monitoring draws the same card: one source, the same figures on both pages.
+    expect(mon.slice(mon.indexOf("function EngineBlock("), mon.indexOf("export function EngineScriptsCard"))).toContain("<EngineScriptsCard e={e} />");
   });
 });
 
@@ -234,25 +226,13 @@ describe("siblingLineAt", () => {
     expect(siblingLineAt({ siblingLine: "Lightest brief", siblingLines: [] }, "a")).toBe("Lightest brief");
     expect(siblingLineAt(null, "a")).toBeNull();
   });
-  it("the Research row prints the script's one line (a script has no leg), the full description on hover", () => {
-    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
-    expect(live).toContain("{line ?? description}");
-    expect(live).toContain("useScriptDescription(r.scriptDynastySlug, words, r.executable === false)");
-    expect(live).not.toContain("siblingLineAt");
-  });
 });
 
-describe("Research live scripts: the served order, no return (ROI-CONSISTENCY-1103)", () => {
-  it("each tab keeps the ranking's served order, and the title counts the live rows", () => {
-    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
-    expect(live).not.toContain("byServedRoiDesc");
-    expect(live).toContain("return out;");
-    // The rows keep the producer's order, never a cost of ours.
-    expect(live).not.toMatch(/sort\(\(a, b\) => [^)]*(cost|spent|outcomes)/i);
+describe("Research live scripts: the title counts the Engine's runnable scripts", () => {
+  it("every count is the ACTIVE count (owner 2026-10-23): the board's served runnable scripts, templates and LLMs by status", () => {
     const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
-    // Every count is the ACTIVE count, deprecated never counted (owner 2026-10-23), for all three kinds.
     expect(catalog).toContain("count={countOf(kind)}");
-    expect(catalog).toContain("liveRows.rows.filter((r) => r.executable !== false).length");
+    expect(catalog).toContain("? (live.engine?.runnableScripts ?? 0)");
     expect(catalog).toContain("templatesByTab(measureCatalog(catalog, measure).templates, templateStatuses)?.active.length");
     expect(catalog).toContain("modelsByTab(measureCatalog(catalog, measure).llms, modelStatuses)?.active.length");
   });
@@ -268,123 +248,18 @@ describe("shortWorkflowName", () => {
     expect(shortWorkflowName("Sales Cold Email Outreach", "Sales Cold Email Outreach")).toBe("Sales Cold Email Outreach");
     expect(shortWorkflowName("Maelstrom", null)).toBe("Maelstrom");
   });
-  it("Research renders the served script name and paints before the catalogue loads", () => {
+  it("the script page still paints before the catalogue loads", () => {
     const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
-    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
-    expect(live).toContain("name={nameOf(r)}");
-    expect(live).toContain("const nameOf = (r: LiveScriptRow) => r.scriptDynastyName ?? r.scriptDynastySlug;");
     expect(catalog).toContain('if (!catalog && !itemKey && kind === "scripts")');
   });
 });
 
-describe("Research scripts: this measure only, Active / Deprecated tabs (owner 2026-10-22)", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
-  it("lists only the scripts the producer assigns to this measure", () => {
-    expect(src).toContain('.filter((r) => r.assignment === "active")');
-  });
-  it("splits on the script's SERVED status, Active first, and renders the picked tab", () => {
-    expect(src).toContain('out[r.executable === false ? "deprecated" : "active"].push(r)');
-    expect(src.indexOf('{ key: "active", label: "Active" }')).toBeLessThan(src.indexOf('{ key: "deprecated", label: "Deprecated" }'));
-    expect(src).toContain('useState<StatusTab>("active")');
-    expect(src).toContain("shown.map((r) =>");
-    expect(src).toContain("<RecordsTabs");
-  });
-});
-
-describe("Research scripts: the owner's columns (2026-10-22)", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
-  const status = readFileSync(join(__dirname, "../src/components/v2/research-status.tsx"), "utf8");
-  const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
-  const thead = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
-
-  it("mark, name, description, tactics, $/outcome, % conversion, $ spent, last run, status: in that order, no ROI", () => {
-    expect(thead).not.toContain("RoiLabel");
-    const order = ["`}>Script</th>", ">Description</th>", "w-28`}>Tactics</th>", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-24`}>Last run</th>", "w-28`}>Status</th>"];
-    const at = order.map((h) => thead.indexOf(h));
-    for (const i of at) expect(i).toBeGreaterThan(-1);
-    expect([...at].sort((x, y) => x - y)).toEqual(at);
-    expect(src).toContain("const COLS = 9;");
-  });
-
-  it("last run is the ranking row's own, as a short relative time", () => {
-    expect(src).toContain("const lastRun = lastRunText({ lastRunAt: r.lastRunAt ?? null, lastRunUnavailableReason: r.lastRunUnavailableReason ?? null });");
-    expect(src).toContain("{lastRun ?? DASH}");
-  });
-
-  it("every row wears the script's served mark and links its name to its page", () => {
-    expect(src).toContain('<CatalogueName kind="workflow" name={r.scriptDynastyName ?? r.scriptDynastySlug} label={name} icon={r.icon} color={r.color} className="font-medium" />');
-    expect(src).toContain("title={`Open ${name}`}");
-  });
-
-  it("the description is the producer's own words: a script's off GET /scripts, a workflow dynasty's off its listing, a deprecated one off its newest version", () => {
-    expect(src).toContain("(deprecated ? newest.description : null) ?? words.descriptionOf(slug)");
-    expect(status).toContain('["workflowDynastySummaries", "all"], () => getRunnableWorkflowDynastySummaries()');
-    expect(status).toContain('useAuthQuery(["catalogueScripts"], listActiveScripts');
-    expect(status).toContain("heads.get(slug)?.description?.trim() || workflows.get(slug)?.description || null");
-    expect(api).toContain("description: newest?.description ?? null");
-    expect(status).toContain('qc.refetchQueries({ queryKey: ["workflowDynastySummaries"] })');
-  });
-
-  it("every figure is the ranking row's served `figures`, list and drawer alike, never a return", () => {
-    expect(src).not.toContain("roiMultiple");
-    expect(src).not.toContain("roiDetail");
-    expect(src).not.toContain("RoiValue");
-    expect(src.match(/servedCost\(r\.figures\.costPerOutcomeUsd\)/g)).toHaveLength(2);
-    expect(src.match(/<RateValue f=\{r\.figures\.conversionRatePct\} \/>/g)).toHaveLength(2);
-    expect(src.match(/<SpentValue f=\{r\.figures\.spentUsd\} \/>/g)).toHaveLength(2);
-    expect(src).toContain('{f.basis === "expected" && <span className="k-fg3 ml-1 text-[11px] font-normal">expected</span>}');
-  });
-});
-
-describe("Research scripts: tactics column and the row drawer (owner 2026-10-22)", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
-  const drawer = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
-  const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
-
-  it("tactics are the ranking row's own (features-service's verdict), never one catalogue read per row", () => {
-    expect(src).toContain("<TacticTags tactics={r.tactics ?? null} reason={r.tacticsUnavailableReason ?? null} />");
-    expect(src).toContain("<TacticsBlock tactics={r.tactics ?? null} reason={r.tacticsUnavailableReason ?? null} />");
-    expect(src).not.toContain("getStaffCatalogueObject");
-    expect(src).not.toContain("useQueries");
-    void api;
-    const reader = readFileSync(join(__dirname, "../src/lib/research/live-scripts.ts"), "utf8");
-    expect(reader).toContain("tactics: z.array(z.object({ id: z.string(), name: z.string() })).nullish(),");
-  });
-
-  it("shows the first tags then +N more, the full list on hover or tap in a portalled popover", () => {
-    // One shared component for workflows and templates (tactic-tags.tsx, TPL-TACTICS-1023).
-    const src = readFileSync(join(__dirname, "../src/components/v2/tactic-tags.tsx"), "utf8");
-    expect(src).toContain("setFit(tagsThatFit(widths, el.clientWidth, MORE_W, TAG_GAP));");
-    expect(src).toContain("new ResizeObserver(measure)");
-    expect(src).toContain("<MoreTactics label={`+${rest} more`} tactics={tactics} />");
-    expect(src).toContain('onPointerEnter={(e) => e.pointerType === "mouse" && show()}');
-    expect(src).toContain('createPortal(\n          <div className="k-popover fixed');
-  });
-
-  it("the name is a link to the page; any other click on the row opens the drawer", () => {
-    expect(src).toContain("if (opensDrawer(e.target, e.currentTarget)) onOpen();");
-    expect(src).toContain('target.closest("a,button,input,textarea,select,[role=menu],[role=dialog]") == null');
-    expect(src).toContain("!row.contains(target)");
-    expect(src).toContain("<ScriptDrawer");
-    expect(src).toContain("Open script page");
-  });
-
-  it("the drawer is the one Research drawer shell, shared with the template version drawer", () => {
-    expect(src).toContain("<ResearchDrawer");
-    expect(drawer).toContain("export function ResearchDrawer(");
-    expect(drawer.slice(drawer.indexOf("export function TemplateVersionDrawer("), drawer.indexOf("export function ResearchDrawer("))).toContain("<ResearchDrawer");
-    expect(drawer).toContain("k-popover k-drawer-in fixed inset-y-0 right-0");
-  });
-});
-
 describe("Research script recent runs (owner 2026-10-22)", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
   const outputs = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
   const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
   const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 
-  it("the row drawer and the script page both list them", () => {
-    expect(src).toContain("<RecentRuns slug={r.scriptDynastySlug} limit={10} />");
+  it("the script page lists them", () => {
     const view = catalog.slice(catalog.indexOf("function ScriptView("), catalog.indexOf("function TemplateText("));
     expect(view).toContain("<RecentRuns slug={w.key} limit={20} />");
     expect(view).not.toContain('title="Last runs"');
@@ -448,34 +323,5 @@ describe("Research Templates: the same Tactics as Scripts (TPL-TACTICS-1023)", (
   it("unknown reads as not judged yet, never None", () => {
     expect(tags).toContain('return reason === "tactics_unreadable" ? "Not readable just now" : "Not judged yet";');
     expect(tags).toContain("if (tactics == null) return <span className=\"k-fg3 text-[12px]\">{unknownTacticsWords(reason)}</span>;");
-  });
-});
-
-describe("the live script ranking reader parses the WHOLE prod population (RESEARCH-BY-ENGINE-1113)", () => {
-  // features-service live-scripts for « Email sent · Start → Positive reply », net pricing, read in prod 2026-11-16.
-  const raw = JSON.parse(readFileSync(join(__dirname, "fixtures/research-live-scripts-email-sent.json"), "utf8"));
-  it("every served row parses, in the served rank order, with its served mark and figures", async () => {
-    const { parseLiveScripts, orderReasonWords } = await import("../src/lib/research/live-scripts");
-    const read = parseLiveScripts(raw);
-    expect(read.rows.length).toBe(raw.rows.length);
-    expect(read.rows.length).toBeGreaterThan(100);
-    expect(read.measure.id).toBe("email_sent/start/conversation");
-    expect(read.pricing).toBe("net");
-    // Script slugs carry their Engine (`email_sent/dy_…`): the reader keeps them verbatim.
-    expect(read.rows.some((r) => r.scriptDynastySlug.includes("/"))).toBe(true);
-    for (const r of read.rows) expect(typeof r.figures.outcomes).toBe("number");
-    // The reader keeps the producer's order and ranks verbatim (several sources are ranked apart: ranks repeat).
-    expect(read.rows.map((r) => r.scriptDynastySlug)).toEqual(raw.rows.map((r: { scriptDynastySlug: string }) => r.scriptDynastySlug));
-    expect(read.rows.map((r) => r.rank)).toEqual(raw.rows.map((r: { rank: number }) => r.rank));
-    // A script workflow-service cannot run (`executable: false`) sits in the Deprecated tab.
-    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-scripts.tsx"), "utf8");
-    expect(live).toContain('out[r.executable === false ? "deprecated" : "active"].push(r)');
-    expect(orderReasonWords(read.orderUnavailableReason)).toMatch(/ranked apart/);
-    expect(orderReasonWords(null)).toBeNull();
-  });
-  it("a body missing a required field is refused loud, never half-read", async () => {
-    const { parseLiveScripts } = await import("../src/lib/research/live-scripts");
-    const broken = { ...raw, rows: [{ ...raw.rows[0], scriptDynastySlug: undefined }] };
-    expect(() => parseLiveScripts(broken)).toThrow(/invalid response shape/);
   });
 });

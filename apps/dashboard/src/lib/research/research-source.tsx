@@ -8,7 +8,6 @@ import { useMaturityView } from "@/lib/v2/use-maturity-view";
 import type { MaturityView } from "@/lib/v2/maturity-view-cookie";
 import { researchMeasureEntry, type ResearchCatalog, type ResearchFile, type ResearchMeasure, type ResearchMeasureEntry } from "@/lib/research/research";
 import type { ResearchPerformance } from "@/lib/research/performance";
-import { parseLiveScripts } from "@/lib/research/live-scripts";
 
 /**
  * Where Research's data comes from: the staff-only `/api/research/{basis}/{part}` route, never a
@@ -18,7 +17,7 @@ import { parseLiveScripts } from "@/lib/research/live-scripts";
  * so one switch in the top bar moves the hub, every study and every script, template and LLM page.
  *
  * The billed-basis file, catalogue, Performance tab and live script rankings are persisted to disk
- * (`researchEngineFile`, `researchEngineCatalog`, `researchEnginePerformance`, `researchLiveScripts`, staff
+ * (`researchEngineFile`, `researchEngineCatalog`, `researchEnginePerformance`, staff
  * browsers only; renamed from the pipe-keyed roots by RESEARCH-BY-ENGINE-1113, so no pipe-era copy paints):
  * every Research page paints on the first frame, then re-reads (owner 2026-10-21 « It should be instant »,
  * 2026-10-23 « instantanées »). The actual-basis reads (our margin) sit under their own roots
@@ -30,10 +29,9 @@ import { parseLiveScripts } from "@/lib/research/live-scripts";
  */
 export type ResearchBasis = "user" | "actual";
 
-async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "texts" | "performance" | "live-scripts", view?: MaturityView, measure?: string): Promise<T> {
+async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "texts" | "performance", view?: MaturityView): Promise<T> {
   const query = new URLSearchParams();
   if (view) query.set("view", view);
-  if (measure) query.set("measure", measure);
   const qs = query.toString();
   const res = await fetch(`/api/research/${basis}/${part}${qs ? `?${qs}` : ""}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`[research] ${basis}/${part} answered ${res.status}`);
@@ -83,20 +81,6 @@ export function useResearchPerformance(basis: ResearchBasis) {
 /** The template texts, the same on both bases. */
 export function useResearchTexts(enabled: boolean) {
   return useQuery({ ...TEXTS_QUERY, enabled });
-}
-
-/**
- * One measure's scripts as the fleet ranks them right now (net pricing; the same body on both bases and
- * views), polled like every v2 read. Disabled (never sent) without a measure.
- */
-export function useLiveScripts(measure: ResearchMeasure | null) {
-  return useQuery({
-    queryKey: ["researchLiveScripts", measure ?? ""],
-    queryFn: async () => parseLiveScripts(await fetchPart<unknown>("user", "live-scripts", undefined, measure ?? "")),
-    ...pollOptions,
-    retry: false,
-    enabled: measure != null,
-  });
 }
 
 export interface ResearchSource {

@@ -234,8 +234,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The platform step, leg and channel catalogue — no org, no auth, one answer for
   // every tenant.
   "publicCatalogue",
-  // Research's fleet ranking of one measure's scripts (RESEARCH-BY-ENGINE-1113) — no org, one answer for every tenant.
-  "researchLiveScripts",
   // Research's Scripts table cells (owner 2026-10-21, « It should be instant »): the billed-basis
   // catalogue by Engine (LLM, Template). Staff-only reads, on staff disks.
   "researchEngineCatalog",

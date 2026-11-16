@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
-import { opensDrawer, ResearchLiveScripts, useMeasureScriptRows } from "@/components/v2/research-live-scripts";
+import { opensDrawer, ResearchLiveScripts, useMeasureEngineScripts } from "@/components/v2/research-live-scripts";
 import { TacticTags, TacticsBlock } from "@/components/v2/tactic-tags";
 import {
   ACTIVATE_CONTENT_NOTE,
@@ -148,12 +148,12 @@ function useOutcome(measure: ResearchMeasure): { noun: string; plural: string; u
  * `executable`); each kind is null until its statuses answer, so no count flashes the wrong number.
  */
 function useActiveCatalogCounts(measure: ResearchMeasure, catalog: ResearchCatalog | null): Record<CatalogKind, number | null> {
-  const liveRows = useMeasureScriptRows(measure);
+  const live = useMeasureEngineScripts(measure);
   const templateStatuses = useTemplateStatuses();
   const modelStatuses = useModelStatuses();
   const scripts =
-    liveRows.rankingQ.data !== undefined
-      ? liveRows.rows.filter((r) => r.executable !== false).length
+    live.boardQ.data?.state === "ready"
+      ? (live.engine?.runnableScripts ?? 0)
       : catalog
         ? measureCatalog(catalog, measure).scripts.filter((w) => w.runnable !== false).length
         : null;
@@ -422,11 +422,11 @@ function CatalogList({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {live ? "Scripts making this outcome, ranked live" : `${rows.length} ${rows.length === 1 ? words.one : words.many}, ${priced} with a ${o.noun.toLowerCase()}`}
+              {live ? "Scripts making this outcome, as the Rating ranks them today" : `${rows.length} ${rows.length === 1 ? words.one : words.many}, ${priced} with a ${o.noun.toLowerCase()}`}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {live ? (
-                <>Every script of this Engine, all clients pooled, ranked as features-service serves them.</>
+                <>Every script of this Engine, all clients pooled, as the Rating draws them today.</>
               ) : (
                 <>
                   Every {words.one} that wrote for this Engine&apos;s {posts ? "posts" : "outcomes"}, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
@@ -469,7 +469,7 @@ function CatalogList({
             </div>
           )}
           {live ? (
-            <ResearchLiveScripts base={base} measure={measure} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
+            <ResearchLiveScripts measure={measure} />
           ) : (
             <div>
               <div className="k-card min-w-0 overflow-hidden">

@@ -3,9 +3,8 @@
  * whether it is mature, its return, its conversion, its outcomes and its spend, plus which row
  * goes first and which one the money goes to.
  *
- * Research reads its live script ranking straight off features-service's live-scripts read
- * (`lib/research/live-scripts.ts`, RESEARCH-BY-ENGINE-1113); this module keeps the shared figure
- * types and the cells' formatting for it, and:
+ * Research reads a measure's live scripts off the Rating's script board (`research-live-scripts.tsx`,
+ * RESEARCH-NATIVE-ENGINE-1116-P3-DASH); this module keeps the shared figure types and cell formatting, and:
  *
  *  - `campaignWorkflowRows` — the brand's Workflows page. One campaign's own figures: the
  *    CAMPAIGN grain of the per-brand ladder, never a coarser grain wearing its name, and the
