@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getModelDynastyOutputs, getTemplateDynastyOutputs, getTemplateOutputs, getWorkflowDynastyOutputs, type ContentPipe, type TemplateOutput, type WorkflowRunOutput } from "@/lib/api";
+import { getTemplateDynastyOutputs, getTemplateOutputs, getWorkflowDynastyOutputs, type TemplateOutput, type WorkflowRunOutput } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { Arrow, instantText } from "@/components/v2/research-bits";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
@@ -17,7 +17,7 @@ import {
   templateModels,
   type ResearchCatalog,
   type ResearchFigures,
-  type ResearchPipe,
+  type ResearchMeasure,
   type ResearchRef,
   type ResearchTemplate,
 } from "@/lib/research/research";
@@ -51,17 +51,10 @@ export function useTemplateRowOutputs(t: Pick<ResearchTemplate, "key" | "dynasty
 }
 
 /**
- * The last `limit` outputs an LLM dynasty wrote on ONE pipe, every client and template, newest first
- * (MODEL-OUTPUTS-1024). A model in no dynasty, or a pipe not resolved yet, reads nothing.
+ * An LLM's last outputs are not on any Research read by Engine: content generation serves them per channel x leg only
+ * (MODEL-OUTPUTS-1024), a grain Research no longer has. The pages say so, in these words, until it serves them by Engine.
  */
-export function useModelDynastyOutputs(slug: string | null, pipe: ContentPipe | null, limit: number) {
-  const q = useAuthQuery(
-    ["modelDynastyOutputs", slug ?? "", pipe?.featureSlug ?? "", pipe?.legKey ?? "", limit],
-    () => getModelDynastyOutputs(slug ?? "", pipe as ContentPipe, limit),
-    { ...pollOptions, retry: false, enabled: slug != null && pipe != null },
-  );
-  return { outputs: q.data, answered: q.data !== undefined || q.isFetchedAfterMount };
-}
+export const LLM_OUTPUTS_NOT_CARRIED = "Not carried by Engine yet: content generation does not list an LLM's last emails by Engine.";
 
 /** Outputs as a list: subject and each email as sent, never a client or a lead. `expanded` opens every email in full. */
 export function OutputsList({ read, expanded = false, empty = "Nothing written with this template is on record." }: { read: ReturnType<typeof useTemplateOutputs>; expanded?: boolean; empty?: string }) {
@@ -112,19 +105,19 @@ function Fig({ k, v }: { k: React.ReactNode; v: React.ReactNode }) {
 }
 
 /** A model as a tag that opens its page when it has one: the shared LLM chip. */
-function ModelTag({ base, pipe, r }: { base: string; pipe: ResearchPipe; r: ResearchRef }) {
-  return <CatalogueName kind="llm" variant="chip" name={r.label} href={r.linked ? researchCatalogHref(base, pipe, "models", r.key) : null} />;
+function ModelTag({ base, measure, r }: { base: string; measure: ResearchMeasure; r: ResearchRef }) {
+  return <CatalogueName kind="llm" variant="chip" name={r.label} href={r.linked ? researchCatalogHref(base, measure, "llms", r.key) : null} />;
 }
 
 /**
- * The Templates list's right panel (owner 2026-10-21): the selected template's workflows and models,
+ * The Templates list's right panel (owner 2026-10-21): the selected template's scripts and LLMs,
  * each opening its page; its figures; its last 4 email sequences; and its page.
  */
 export function TemplateOutputsPanel({
   t,
   href,
   base,
-  pipe,
+  measure,
   catalog,
   outcome,
   onClose,
@@ -132,13 +125,13 @@ export function TemplateOutputsPanel({
   t: ResearchTemplate;
   href: string;
   base: string;
-  pipe: ResearchPipe;
+  measure: ResearchMeasure;
   catalog: ResearchCatalog | null;
   outcome: OutcomeWords;
   onClose: () => void;
 }) {
   const read = useTemplateRowOutputs(t, 4);
-  const models = templateModels(catalog, pipe, t);
+  const models = templateModels(catalog, measure, t);
   return (
     <ResearchDrawer
       label={t.label}
@@ -163,7 +156,7 @@ export function TemplateOutputsPanel({
     >
       <div className="border-b border-[var(--line-subtle)] px-4 py-3">
         {t.dynasty?.description && <p className="k-fg2 mb-3 text-[13px] leading-5">{t.dynasty.description}</p>}
-        {/* Tactics where the workflow drawer has them: under the description, above the figures. */}
+        {/* Tactics where the script drawer has them: under the description, above the figures. */}
         <div className="mb-3">
           <TacticsBlock tactics={t.tactics ?? null} reason={t.tacticsUnavailableReason ?? null} />
         </div>
@@ -171,12 +164,12 @@ export function TemplateOutputsPanel({
       </div>
       <div className="space-y-4 border-b border-[var(--line-subtle)] px-4 py-3">
         <div>
-          <p className="k-label">Workflows</p>
-          {t.workflows.length ? (
+          <p className="k-label">Scripts</p>
+          {t.scripts.length ? (
             <ul className="mt-1.5 space-y-0.5 text-[13px]">
-              {t.workflows.map((w) => (
+              {t.scripts.map((w) => (
                 <li key={w.key}>
-                  <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} onClick={onClose} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
+                  <Link href={researchCatalogHref(base, measure, "scripts", w.key)} onClick={onClose} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
                     <CatalogueName kind="workflow" name={w.label} servedKey={w.key} className="flex-1" />
                     <Arrow />
                   </Link>
@@ -184,7 +177,7 @@ export function TemplateOutputsPanel({
               ))}
             </ul>
           ) : (
-            <p className="k-fg3 mt-1.5 text-[12px]">No workflow writes most of its emails with it.</p>
+            <p className="k-fg3 mt-1.5 text-[12px]">No script writes most of its emails with it.</p>
           )}
         </div>
         <div>
@@ -192,11 +185,11 @@ export function TemplateOutputsPanel({
           {models.length ? (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {models.map((m) => (
-                <ModelTag key={m.key} base={base} pipe={pipe} r={m} />
+                <ModelTag key={m.key} base={base} measure={measure} r={m} />
               ))}
             </div>
           ) : (
-            <p className="k-fg3 mt-1.5 text-[12px]">No model on record yet.</p>
+            <p className="k-fg3 mt-1.5 text-[12px]">No LLM on record yet.</p>
           )}
         </div>
       </div>
@@ -290,7 +283,7 @@ export function TemplateVersionDrawer({
 /**
  * The Research right drawer (owner 2026-10-21): a `k-popover` sliding in from the right, portalled
  * to the shell's layer, Esc or a click outside closes it. Header (`head` + `right` + ×), a scrolling
- * body, a footer. One shell for every Research drawer (template version, workflow).
+ * body, a footer. One shell for every Research drawer (template version, script).
  */
 export function ResearchDrawer({
   label,
@@ -368,7 +361,7 @@ export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
     );
   }
   if (read.runs === undefined) return <EmptyNote>We could not read its recent runs just now. It retries on its own.</EmptyNote>;
-  if (read.runs.length === 0) return <EmptyNote>No run of this workflow wrote an email yet.</EmptyNote>;
+  if (read.runs.length === 0) return <EmptyNote>No run of it wrote an email yet.</EmptyNote>;
   return (
     <>
       <ol className="divide-y divide-[var(--line-subtle)]">
@@ -383,7 +376,7 @@ export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
                 title="Open the email it wrote"
               >
                 <span className="k-mono k-fg2 w-[136px] shrink-0 text-[12px]">{instantText(o.createdAt)}</span>
-                <span className="k-mono k-fg3 w-8 shrink-0 truncate text-[12px]" title={`Workflow version ${o.workflowSlug}`}>
+                <span className="k-mono k-fg3 w-8 shrink-0 truncate text-[12px]" title={`Version ${o.workflowSlug}`}>
                   {runVersionLabel(slug, o.workflowSlug)}
                 </span>
                 {o.templateDynasty ? (
@@ -409,7 +402,7 @@ export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
               <p className="k-label">Run</p>
               <p className="truncate text-[13px] font-medium">{runTemplateText(open) ?? instantText(open.createdAt)}</p>
               <p className="k-fg3 truncate text-[12px]" title={open.workflowSlug}>
-                Workflow version {runVersionLabel(slug, open.workflowSlug)}
+                Version {runVersionLabel(slug, open.workflowSlug)}
               </p>
             </>
           }

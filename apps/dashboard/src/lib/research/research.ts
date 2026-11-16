@@ -1,8 +1,9 @@
 /**
- * Our research, as the staff Research page (dashboard v2) renders it.
+ * Our research, as the staff Research page (dashboard v2) renders it, by Engine and script
+ * (RESEARCH-BY-ENGINE-1113, owner 2026-11-13).
  *
  * Every study, catalogue page and template text is served LIVE by features-service
- * (`GET /internal/research[/catalog|/templates]`, LIVE-RESEARCH-1018; rebuilt every 15 min), read
+ * (`GET /internal/research/engines[/catalog|/performance|/live-scripts]` and `/internal/research/templates`; rebuilt every 15 min), read
  * through the staff route `/api/research/{basis}/{part}` and `research-source.tsx`. No snapshot is
  * kept in this repo. Every study is fleet-wide (all orgs). Nothing here divides or ranks: every
  * value, label and sentence arrives written, and this module only types and looks it up.
@@ -10,21 +11,19 @@
  * Alias-free so it carries real unit tests.
  */
 import type { ResearchFreshness } from "./freshness";
-import { sameLegKey } from "../outbound-leg-key";
 import { formatUsdAdaptive } from "../format-number";
 
 /**
- * A PIPE is one leg x one channel: the channel doing the work, the leg (from step -> to step) it buys.
- * Its id is SERVED (`file.pipes[].id`, WA-PIPE-RESEARCH-1023): the three studied pipes keep their
- * historical ids, every other catalogue pipe holding a workflow is `<channel slug>|<leg>`. Never a
- * local list: a pipe the producer adds renders by itself.
+ * A MEASURE is what one Engine counts (features-service RESEARCH-BY-ENGINE-1113): the Engine (one per
+ * outcome), the step its people start from (null = from nothing) and the step it counts. Its id is
+ * SERVED (`engines[].measures[].id`, `<engine>/<startsFrom|start>/<counts>`). Never a local list: a
+ * measure the producer adds renders by itself.
  */
-export type ResearchPipe = string;
+export type ResearchMeasure = string;
 /**
- * An OUTCOME row: one outcome asked across every pipe that lands on it (owner 2026-10-18: what one
- * costs and what share of leads reach it, overall then per pipe, channel, leg, workflow, lead
- * strategy and tactic). Its id is the step's served label in words joined by dashes
- * (`positive-reply`, `meeting-booked`); the list comes from the data, so a step a pipe's data
+ * An OUTCOME row: one outcome asked across every measure that lands on it (owner 2026-10-18: what one
+ * costs and what share of leads reach it). Its id is the step's served label in words joined by dashes
+ * (`positive-reply`, `meeting-booked`); the list comes from the data, so a step a measure's data
  * measures later arrives by itself. `judgment` (Jev) is no outcome: it sits under Other.
  */
 export type ResearchOutcome = string;
@@ -34,7 +33,7 @@ export type ResearchTopic =
   | "followups"
   | "opens"
   | "template"
-  | "workflow"
+  | "script"
   | "naming"
   | "layout"
   | "opening"
@@ -46,9 +45,6 @@ export type ResearchTopic =
   | "strategy"
   | "sourcing-strategy"
   | "conversion"
-  | "pipe"
-  | "channel"
-  | "leg"
   | "tactic"
   | "delay"
   | "niche"
@@ -56,14 +52,14 @@ export type ResearchTopic =
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
-  /** On a workflow or template study's bars: which one the bar is, so the row opens its page. */
+  /** On a script or template study's bars: which one the bar is, so the row opens its page. */
   key?: string;
   label: string;
   value: number;
   display: string;
   /** The counts behind the value, printed beside it so a reader can weigh it. */
   note: string;
-  /** LEARNING under features-service's per-leg rule: fewer outcomes than the leg requires.
+  /** LEARNING under features-service's maturity rule: fewer outcomes than the rule requires.
    *  Drawn at its rank, and marked. (The field keeps its historical name.) */
   thin: boolean;
   /** On a month chart: the month the maturity cutoff falls inside, so only part of its people
@@ -105,9 +101,11 @@ export interface ResearchDelayStat {
 
 export interface ResearchStudy {
   id: string;
-  /** The pipe section the study sits in; null on an outcome study, which names its `outcome`. */
-  pipe: ResearchPipe | null;
-  /** Set exactly when `pipe` is null: the outcome section the study sits in. */
+  /** The Engine the study measures (its `outcome` key); null on an outcome-section study. */
+  engine: string | null;
+  /** The measure section the study sits in; null on an outcome study, which names its `outcome`. */
+  measure: ResearchMeasure | null;
+  /** Set exactly when `measure` is null: the outcome section the study sits in. */
   outcome?: ResearchOutcome;
   topic: ResearchTopic;
   goal: ResearchGoal;
@@ -149,7 +147,7 @@ export interface ResearchFile {
   costBasis?: "user" | "actual";
   /** Actual basis only: billed spend no vendor cost is on record for, left out of every figure. */
   unpricedBilledUsd?: number;
-  /** Actual basis only: emails left out because their workflow version's spend is unpriced. */
+  /** Actual basis only: emails left out because their script version's spend is unpriced. */
   unpricedEmails?: number;
   window: { from: string; to: string };
   /** The day the data was read out of production. */
@@ -158,59 +156,81 @@ export interface ResearchFile {
   volume?: {
     emails: number;
     orgs: number;
-    workflows: number;
+    scripts: number;
     linkedEmails: number;
     byMonth: { label: string; emails: number }[];
   };
   /**
-   * features-service's MATURITY RULE, per leg (features-service#1196), the one every price in the
-   * dashboard is on, read off its channel catalogue and never measured here: only the leads whose
-   * serving run STARTED at least `durationDays` before the read (before `cutoff`) count, with every
-   * outcome they produced since, and a figure resting on fewer than `outcomesRequired` outcomes is
-   * Learning.
+   * features-service's MATURITY RULE, the one every price in the dashboard is on, never measured
+   * here: only the leads whose serving run STARTED at least `durationDays` before the read (before
+   * `cutoff`) count, with every outcome they produced since, and a figure resting on fewer than
+   * `outcomesRequired` outcomes is Learning. One rule per counted outcome (`reply`, `visit`).
    */
   maturation: {
     rule: "run_start";
-    /** The longest duration of the two legs, in days. */
+    /** The longest duration of the rules, in days. */
     days: number;
-    /** The earliest cutoff of the two legs: runs started on or after it wait. */
+    /** The earliest cutoff of the rules: runs started on or after it wait. */
     cutoff: string;
     windowEnd: string;
-    legs: Record<"reply" | "visit", { durationDays: number; outcomesRequired: number; cutoff: string }>;
+    rules: Record<"reply" | "visit", { durationDays: number; outcomesRequired: number; cutoff: string }>;
     /** Emails from runs too recent to count yet (not served by features-service yet). */
     excludedEmails?: number;
     /** Emails no record ties to a serving run: in the cohort, as features-service counts them (not served yet). */
     noRunStart?: number;
     note: string;
   };
-  /** Every pipe, in the served order: the three studied ones, then every catalogue pipe holding a workflow. */
-  pipes: ResearchPipeEntry[];
+  /** Every Engine, in the served order, each with the measures it counts. */
+  engines: ResearchEngineEntry[];
   /**
    * The outcome rows, in the order the data lands on them, then the sections with no step (Jev):
-   * `step` is the outcome's step key (null: no outcome, the Other group), `pipes` the pipes that land
-   * on it, `population` who the figures rest on.
+   * `step` is the outcome's step key (null: no outcome, the Other group), `measures` the measures that
+   * land on it, `population` who the figures rest on.
    */
   outcomes?: ResearchOutcomeEntry[];
   studies: ResearchStudy[];
-  /** How many workflows, templates and models each pipe's pages list: the length of the live catalogue, stated by the staff route. */
-  catalogCounts: Record<ResearchPipe, { workflows: number; templates: number; models: number }>;
+  /** What features-service could not carry from the old read, in its own words: printed « not carried ». */
+  notCarried?: unknown[];
 }
 
-/** One served pipe: its id, channel, leg (served spelling), the outcome its leg lands on, in words. */
-export interface ResearchPipeEntry {
-  id: ResearchPipe;
-  channel: string;
-  leg: string;
-  outcome: string;
+/** A step as the Research read names it: its catalogue key and its served name. */
+export interface ResearchStepRef {
+  key: string;
+  name: string;
+}
+
+/** One served measure: its id, its Engine, the step it starts from (null = from nothing), the step it counts. */
+export interface ResearchMeasureEntry {
+  id: ResearchMeasure;
+  engine: string;
+  startsFrom: ResearchStepRef | null;
+  counts: ResearchStepRef;
   description: string;
 }
 
-/** A served pipe by id, or null when the file does not list it (an old link, a pipe withdrawn). */
-export function researchPipeEntry(file: Pick<ResearchFile, "pipes">, pipe: ResearchPipe | null | undefined): ResearchPipeEntry | null {
-  return pipe ? (file.pipes.find((p) => p.id === pipe) ?? null) : null;
+/** One served Engine: its outcome key, its served name, its measures. */
+export interface ResearchEngineEntry {
+  outcome: string;
+  name: string;
+  measures: ResearchMeasureEntry[];
 }
 
-/** The unit a pipe's cost per outcome reads in (« / reply », « / visit », « / signup »): its served outcome's head noun. */
+/** Every measure the file serves, Engine by Engine, in the served order. */
+export function researchMeasures(file: Pick<ResearchFile, "engines">): ResearchMeasureEntry[] {
+  return file.engines.flatMap((e) => e.measures);
+}
+
+/** A served measure by id, or null when the file does not list it (an old link, a measure withdrawn). */
+export function researchMeasureEntry(file: Pick<ResearchFile, "engines">, measure: ResearchMeasure | null | undefined): ResearchMeasureEntry | null {
+  return measure ? (researchMeasures(file).find((m) => m.id === measure) ?? null) : null;
+}
+
+/** The Engine a measure belongs to, or null when the file lists none. */
+export function researchEngineOf(file: Pick<ResearchFile, "engines">, measure: ResearchMeasure | null | undefined): ResearchEngineEntry | null {
+  return measure ? (file.engines.find((e) => e.measures.some((m) => m.id === measure)) ?? null) : null;
+}
+
+/** The unit a measure's cost per outcome reads in (« / reply », « / visit », « / signup »): its served outcome's head noun. */
 export function outcomeUnitOf(outcome: string): string {
   const words = outcome.toLowerCase().split(" ").filter(Boolean);
   const last = words[words.length - 1] ?? "outcome";
@@ -224,8 +244,8 @@ export interface ResearchOutcomeEntry {
   outcome: string;
   /** The step the outcome is (features-service's key), or null for a section that is no outcome (Jev). */
   step?: string | null;
-  /** The pipes that land on it. */
-  pipes?: ResearchPipe[];
+  /** The measures that land on it. */
+  measures?: ResearchMeasure[];
   /**
    * The lead track a lead-state section belongs to (features-service RESEARCH-LEAD-TRACK-1025: "crm_lifecycle" |
    * "website_visits"), absent on a section that is no lead state (Jev, Other). Two lead tracks are never summed.
@@ -237,7 +257,7 @@ export interface ResearchOutcomeEntry {
   population: string;
 }
 
-/** The figures a workflow or a template is listed with, fleet-wide, all written by features-service. */
+/** The figures a script or a template is listed with, fleet-wide, all written by features-service. */
 export interface ResearchFigures {
   /** Its place in the ROI order (the study's own), or null when it has no priced outcome yet. */
   rank: number | null;
@@ -253,9 +273,9 @@ export interface ResearchFigures {
 }
 
 /**
- * What a POST-writing pipe's template or LLM row produced (features-service THREADS-IDEAS-AB): posts published,
+ * What a POST-writing measure's template or LLM row produced (features-service THREADS-IDEAS-AB): posts published,
  * their views and engagements, the visits and signups they brought, what they cost. Null (or absent on an
- * older build) on a pipe whose writer records no posts, e.g. cold email. Printed as served, never recomputed.
+ * older build) on a measure whose writer records no posts, e.g. cold email. Printed as served, never recomputed.
  */
 export interface ResearchPostFigures {
   posts: number;
@@ -268,7 +288,7 @@ export interface ResearchPostFigures {
   costPerSignupUsd: number | null;
 }
 
-/** The pipe's rows carry post figures: its list shows the post columns (formatting only, no figure computed). */
+/** The measure's rows carry post figures: its list shows the post columns (formatting only, no figure computed). */
 export function hasPostFigures(rows: readonly { postFigures?: ResearchPostFigures | null }[]): boolean {
   return rows.some((r) => r.postFigures != null);
 }
@@ -283,7 +303,7 @@ export function costPerSignupText(usd: number | null): string {
   return usd == null ? "Learning" : formatUsdAdaptive(usd);
 }
 
-/** A reference to another catalogue page; `linked` when that page exists in this pipe. */
+/** A reference to another catalogue page; `linked` when that page exists on this measure. */
 export interface ResearchRef {
   key: string;
   label: string;
@@ -295,25 +315,29 @@ export interface ResearchRef {
   version?: { key: string; label: string } | null;
 }
 
-export interface ResearchWorkflow extends ResearchFigures {
+export interface ResearchScript extends ResearchFigures {
   key: string;
   label: string;
-  /** The workflow's own mark (MARKS-1022): a Phosphor name and `#RRGGBB`. Absent on an older catalogue. */
+  /** The script's own mark (MARKS-1022): a Phosphor name and `#RRGGBB`. Absent on an older catalogue. */
   icon?: string | null;
   color?: string | null;
-  /** The workflow's own name as workflow-service states it (Maelstrom, ...); null when it states none. */
+  /** The script's own name as workflow-service states it (Maelstrom, ...); null when it states none. */
   name: string | null;
+  /** workflow-service can run a version of it now (false = deprecated). */
+  runnable?: boolean;
   model: ResearchRef | null;
-  /** `linked`: the template has its own page in this pipe. */
+  /** `linked`: the template has its own page on this measure. */
   template: ResearchRef | null;
+  /** Its tactics (RESEARCH-BY-ENGINE-1113): the LLM and the template it writes with, each its own page. */
+  tactics?: { llm: ResearchRef | null; template: ResearchRef | null } | null;
   /**
-   * What the workflow's runnable version writes with NOW (features-service RESEARCH-PAGES-ALL-1018),
+   * What the script's runnable version writes with NOW (features-service RESEARCH-PAGES-ALL-1018),
    * each with its own page even before it sent anything. Absent on a catalogue built before it.
    */
   writesWithNow?: { version: string; template: ResearchRef | null; model: ResearchRef | null; modelAlias: string | null } | null;
   /**
    * What the row's FIGURES were written with (RESEARCH-DEPRECATED-LLM-TEMPLATE-1019, features-service v0.179.302):
-   * set on deprecated workflows too, where `writesWithNow` is null. Absent on a catalogue built before it.
+   * set on deprecated scripts too, where `writesWithNow` is null. Absent on a catalogue built before it.
    */
   wroteWith?: { model: ResearchRef | null; template: ResearchRef | null; version: string | null; modelAlias: string | null } | null;
   runs: { when: string; version: string; status: string; duration: string | null; cost: string | null }[];
@@ -336,7 +360,7 @@ export interface ResearchTemplateDynasty {
 }
 
 /** Why a template version is listed on its own, outside any dynasty. */
-export type TemplateStandaloneReason = "no_dynasty_on_pipe" | "template_dynasties_unreadable";
+export type TemplateStandaloneReason = "no_dynasty_on_engine" | "template_dynasties_unreadable";
 
 /** One version of a dynasty, with its own figures (they add up to the dynasty's page exactly). */
 export interface ResearchTemplateVersion extends ResearchFigures {
@@ -365,7 +389,7 @@ export interface ResearchTemplate extends ResearchFigures {
    */
   tactics?: { id: string; name: string }[] | null;
   tacticsUnavailableReason?: string | null;
-  /** Posts, views, engagements, visits, signups on a post-writing pipe; null elsewhere, absent on an older build. */
+  /** Posts, views, engagements, visits, signups on a post-writing measure; null elsewhere, absent on an older build. */
   postFigures?: ResearchPostFigures | null;
   hasText: boolean;
   dynasty?: ResearchTemplateDynasty | null;
@@ -376,11 +400,11 @@ export interface ResearchTemplate extends ResearchFigures {
   statusUnavailableReason?: string | null;
   /** Every version, oldest first, as features-service serves them. */
   versions?: ResearchTemplateVersion[];
-  workflows: { key: string; label: string }[];
+  scripts: { key: string; label: string }[];
   runs: {
     when: string;
     model: ResearchRef | null;
-    workflow: { key: string; label: string } | null;
+    script: { key: string; label: string } | null;
     version: string | null;
     tokens: string | null;
     /** The template version the sequence was written with. */
@@ -390,7 +414,7 @@ export interface ResearchTemplate extends ResearchFigures {
 
 /**
  * An LLM DYNASTY as chat-service names it (LLM-DYNASTY-1022-FS, features-service #1944): every version
- * of one model line under one name (« Gemini Flash »), its slug the word a workflow calls, which runs
+ * of one model line under one name (« Gemini Flash »), its slug the word a script calls, which runs
  * the head (`headModelId`).
  */
 export interface ResearchLlmDynasty {
@@ -401,7 +425,7 @@ export interface ResearchLlmDynasty {
   headModelId: string;
   /** The slug answers chat-service today. */
   servedToday: boolean;
-  /** Names workflows wrote before dynasties; each runs the head. */
+  /** Names scripts wrote before dynasties; each runs the head. */
   legacyAliases: string[];
 }
 
@@ -410,8 +434,8 @@ export type ModelStandaloneReason = "no_dynasty_in_chat_service" | "llm_dynastie
 
 /** One version of an LLM dynasty, with its own share of the page's figures (they add up to it). */
 /**
- * What ONE writing run of a model costs on a pipe (features-service `CatalogRunCost`, MODEL-RUN-COST-1024): every
- * client, workflow and template of the pipe pooled; billed gross, committed; cache folded into input. `history` is
+ * What ONE writing run of a model costs on a measure (features-service `CatalogRunCost`, MODEL-RUN-COST-1024): every
+ * client, script and template of the measure pooled; billed gross, committed; cache folded into input. `history` is
  * the cumulative average per UTC day a priced run was written, its last point = `averageUsd`. Absent on an older build.
  */
 export interface ResearchRunCost {
@@ -456,7 +480,7 @@ export interface ResearchModel extends ResearchFigures {
   key: string;
   label: string;
   runCost?: ResearchRunCost | null;
-  /** Posts, views, engagements, visits, signups on a post-writing pipe; null elsewhere, absent on an older build. */
+  /** Posts, views, engagements, visits, signups on a post-writing measure; null elsewhere, absent on an older build. */
   postFigures?: ResearchPostFigures | null;
   dynasty?: ResearchLlmDynasty | null;
   standaloneReason?: ModelStandaloneReason | null;
@@ -471,34 +495,43 @@ export interface ResearchModel extends ResearchFigures {
   modelIds?: string[];
   formerAliases?: string[];
   aliasesUnavailableReason?: ModelAliasGap | null;
-  workflows: { key: string; label: string }[];
-  runs: { when: string; workflow: { key: string; label: string } | null; template: ResearchRef | null; version: string | null; tokens: string | null }[];
+  scripts: { key: string; label: string }[];
+  runs: { when: string; script: { key: string; label: string } | null; template: ResearchRef | null; version: string | null; tokens: string | null }[];
 }
 
 /** Why a model has no alias now: chat-service unreadable, unknown to it, or retired (no alias resolves to it). */
 export type ModelAliasGap = "model_ids_unreadable" | "model_not_in_chat_service" | "no_alias_serves_it";
 
-/** Keyed by served pipe id; a pipe the catalogue has not built yet is absent (read through `pipeCatalog`). */
-export type ResearchCatalog = Partial<Record<ResearchPipe, ResearchPipeCatalog>>;
-export interface ResearchPipeCatalog {
-  workflows: ResearchWorkflow[];
+/** One measure's catalogue lists, as features-service serves them (`engines[].measures[]`). */
+export interface ResearchMeasureCatalog {
+  scripts: ResearchScript[];
   templates: ResearchTemplate[];
-  models: ResearchModel[];
+  llms: ResearchModel[];
 }
-const EMPTY_PIPE_CATALOG: ResearchPipeCatalog = { workflows: [], templates: [], models: [] };
-/** A pipe's catalogue lists; a pipe with nothing built yet reads empty (Learning), never a crash. */
-export function pipeCatalog(c: ResearchCatalog, pipe: ResearchPipe): ResearchPipeCatalog {
-  return c[pipe] ?? EMPTY_PIPE_CATALOG;
+/** The served catalogue: every Engine, each measure with its scripts, templates and LLMs. */
+export interface ResearchCatalog {
+  computedAt?: string | null;
+  engines: { outcome: string; name: string; measures: (ResearchMeasureEntry & ResearchMeasureCatalog)[] }[];
+  notCarried?: unknown[];
 }
-/** The pipes the catalogue lists, in its served order. */
-export function catalogPipes(c: ResearchCatalog): ResearchPipe[] {
-  return Object.keys(c);
+const EMPTY_MEASURE_CATALOG: ResearchMeasureCatalog = { scripts: [], templates: [], llms: [] };
+/** A measure's catalogue lists; a measure with nothing built yet reads empty (Learning), never a crash. */
+export function measureCatalog(c: ResearchCatalog, measure: ResearchMeasure): ResearchMeasureCatalog {
+  for (const e of c.engines) {
+    const m = e.measures.find((x) => x.id === measure);
+    if (m) return m;
+  }
+  return EMPTY_MEASURE_CATALOG;
 }
-export type CatalogKind = "workflows" | "templates" | "models";
-export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"];
+/** The measures the catalogue lists, in its served order. */
+export function catalogMeasures(c: ResearchCatalog): ResearchMeasure[] {
+  return c.engines.flatMap((e) => e.measures.map((m) => m.id));
+}
+export type CatalogKind = "scripts" | "templates" | "llms";
+export const CATALOG_KINDS: CatalogKind[] = ["scripts", "templates", "llms"];
 /**
- * A pipe's tabs: the three catalogue lists, then Performance (owner 2026-10-23), every workflow x
- * template x LLM combination that sent the pipe's emails, served by features-service on its own read.
+ * A measure's tabs: the three catalogue lists, then Performance (owner 2026-10-23), every script x
+ * template x LLM combination that made the measure's outcomes, served by features-service on its own read.
  */
 export type ResearchTabKind = CatalogKind | "performance";
 export const RESEARCH_TABS: ResearchTabKind[] = [...CATALOG_KINDS, "performance"];
@@ -558,7 +591,7 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   followups: "Follow-ups",
   opens: "Open tracking",
   template: "Template",
-  workflow: "Workflow",
+  script: "Script",
   naming: "Naming the client",
   layout: "Email layout",
   opening: "Email opening",
@@ -570,9 +603,6 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   strategy: "Lead strategy",
   "sourcing-strategy": "Sourcing strategy",
   conversion: "Conversion over time",
-  pipe: "Pipe",
-  channel: "Channel",
-  leg: "Leg",
   tactic: "Tactic",
   delay: "Time to reply",
   niche: "B2B niche",
@@ -584,17 +614,17 @@ export function topicLabel(topic: ResearchTopic): string {
   return TOPIC_LABEL[topic] ?? "Study";
 }
 
-export function studiesFor(pipe: ResearchPipe, file: ResearchFile): ResearchStudy[] {
-  return file.studies.filter((s) => s.pipe === pipe);
+export function studiesFor(measure: ResearchMeasure, file: ResearchFile): ResearchStudy[] {
+  return file.studies.filter((s) => s.measure === measure);
 }
 
 export function studiesForOutcome(outcome: ResearchOutcome, file: ResearchFile): ResearchStudy[] {
-  return file.studies.filter((s) => s.pipe === null && s.outcome === outcome);
+  return file.studies.filter((s) => s.measure === null && s.outcome === outcome);
 }
 
 /** The outcome a study measures, in plain words, read off its section's entry in the file. */
 export function studyOutcomeText(study: ResearchStudy, file: ResearchFile): string | null {
-  if (study.pipe) return file.pipes.find((p) => p.id === study.pipe)?.outcome ?? null;
+  if (study.measure) return researchMeasureEntry(file, study.measure)?.counts.name ?? null;
   return file.outcomes?.find((o) => o.id === study.outcome)?.outcome ?? null;
 }
 
@@ -620,78 +650,86 @@ export function studySpark(study: ResearchStudy): { kind: "line" | "bars"; point
   return first ? { kind: "bars", points: first.points } : null;
 }
 
-// Retired section names still live in old links (sent reports, social-service records): each maps to its pipe, never shown.
-const LEGACY_SECTION: Record<string, ResearchPipe> = { herald: "cold-email-positive-reply", scout: "cold-email-website-visit", pilot: "meeting-booking" };
-
-/** An old link's path rewritten onto its pipe, or null when it names no retired section. */
-function legacyPath(parts: string[]): string | null {
-  const [first, ...rest] = parts;
-  const enc = (segs: string[]) => segs.map((p) => encodeURIComponent(p)).join("/");
-  if (rest.length > 0) return Object.hasOwn(LEGACY_SECTION, first) ? enc([LEGACY_SECTION[first], ...rest]) : null;
-  const dash = first.indexOf("-");
-  const head = dash > 0 ? first.slice(0, dash) : "";
-  return head && Object.hasOwn(LEGACY_SECTION, head) ? enc([`${LEGACY_SECTION[head]}${first.slice(dash)}`]) : null;
+/**
+ * A key as it sits in ONE path segment: served ids carry `/` (a measure `email_sent/start/conversation`, a
+ * script `email_sent/dy_…`), written `~` in the URL (no served id carries one) so no `%2F` ever reaches the router.
+ */
+export function urlKey(key: string): string {
+  return encodeURIComponent(key.split("/").join("~"));
+}
+/** The served key a URL segment names (`urlKey` undone). */
+export function keyFromUrl(segment: string): string {
+  return decodeURIComponent(segment).split("~").join("/");
 }
 
-/** What a path under `/research` shows. Study ids carry no slash, so they never collide. */
+/** The path segment every Engine page sits under: `/research/engines/<measure>/<kind>/…`. */
+const ENGINES_SEGMENT = "engines";
+
+/** What a path under `/research` shows. */
 export type ResearchView =
   | { view: "hub" }
   | { view: "study"; id: string }
-  | { view: "list"; pipe: ResearchPipe; kind: CatalogKind }
-  /** The pipe's Performance tab: one row per workflow x template x LLM. */
-  | { view: "performance"; pipe: ResearchPipe }
-  | { view: "item"; pipe: ResearchPipe; kind: CatalogKind; key: string }
+  | { view: "list"; measure: ResearchMeasure; kind: CatalogKind }
+  /** The measure's Performance tab: one row per script x template x LLM. */
+  | { view: "performance"; measure: ResearchMeasure }
+  | { view: "item"; measure: ResearchMeasure; kind: CatalogKind; key: string }
   /** One version of a template dynasty: `templates/<dynasty>/<version>`. */
-  | { view: "version"; pipe: ResearchPipe; kind: "templates"; key: string; version: string }
-  /** An old link: `to` is the same page's path under `/research` today, for a client replace. */
+  | { view: "version"; measure: ResearchMeasure; kind: "templates"; key: string; version: string }
+  /** An old link: `to` is the page to open under `/research` today ("" = the hub), for a client replace. */
   | { view: "redirect"; to: string }
   | { view: "missing" };
 export function parseResearchPath(rest: string): ResearchView {
-  const parts = rest.split("/").filter(Boolean).map((p) => decodeURIComponent(p));
+  const parts = rest.split("/").filter(Boolean);
   if (parts.length === 0) return { view: "hub" };
-  const legacy = legacyPath(parts);
-  if (legacy !== null) return { view: "redirect", to: legacy };
-  if (parts.length === 1) return { view: "study", id: parts[0] };
-  const [pipe, kind, key, ...extra] = parts;
-  // Any pipe id parses: whether the file serves it is the page's to say (a new pipe needs no build).
-  if (kind === "performance") return key ? { view: "missing" } : { view: "performance", pipe };
+  if (parts.length === 1) return { view: "study", id: keyFromUrl(parts[0]) };
+  // A link from before Research was keyed by Engine (`<old section>/<kind>/…`) has no Engine to land on: the hub.
+  if (parts[0] !== ENGINES_SEGMENT) return { view: "redirect", to: "" };
+  const [, m, kind, key, ...extra] = parts.map((p) => keyFromUrl(p));
+  if (!m || !kind) return { view: "missing" };
+  // Any measure id parses: whether the file serves it is the page's to say (a new measure needs no build).
+  if (kind === "performance") return key ? { view: "missing" } : { view: "performance", measure: m };
   if (!(CATALOG_KINDS as string[]).includes(kind)) return { view: "missing" };
-  if (kind === "templates" && key && extra.length === 1) return { view: "version", pipe, kind, key, version: extra[0] };
+  if (kind === "templates" && key && extra.length === 1) return { view: "version", measure: m, kind, key, version: extra[0] };
   if (extra.length) return { view: "missing" };
   const k = kind as CatalogKind;
-  return key ? { view: "item", pipe, kind: k, key } : { view: "list", pipe, kind: k };
+  return key ? { view: "item", measure: m, kind: k, key } : { view: "list", measure: m, kind: k };
 }
 
-export function researchCatalogHref(base: string, pipe: ResearchPipe, kind: ResearchTabKind, key?: string): string {
-  return `${base}/${encodeURIComponent(pipe)}/${kind}${key ? `/${encodeURIComponent(key)}` : ""}`;
+/** A study's own page. */
+export function researchStudyHref(base: string, id: string): string {
+  return `${base}/${urlKey(id)}`;
+}
+
+export function researchCatalogHref(base: string, measure: ResearchMeasure, kind: ResearchTabKind, key?: string): string {
+  return `${base}/${ENGINES_SEGMENT}/${urlKey(measure)}/${kind}${key ? `/${urlKey(key)}` : ""}`;
 }
 
 /** A template version's own page: under its dynasty's (`templates/<dynasty>/<version>`). */
-export function researchTemplateVersionHref(base: string, pipe: ResearchPipe, dynastyKey: string, versionKey: string): string {
-  return `${researchCatalogHref(base, pipe, "templates", dynastyKey)}/${encodeURIComponent(versionKey)}`;
+export function researchTemplateVersionHref(base: string, measure: ResearchMeasure, dynastyKey: string, versionKey: string): string {
+  return `${researchCatalogHref(base, measure, "templates", dynastyKey)}/${urlKey(versionKey)}`;
 }
 
-/** The page a study's bar opens: its workflow's or template's own, when the bar names one. */
+/** The page a study's bar opens: its script's, template's or LLM's own, when the bar names one. */
 export function pointHref(base: string, study: ResearchStudy, point: ResearchPoint): string | null {
-  if (!point.key || !study.pipe) return null;
-  if (study.topic === "workflow") return researchCatalogHref(base, study.pipe, "workflows", point.key);
-  if (study.topic === "template") return researchCatalogHref(base, study.pipe, "templates", point.key);
-  if (study.topic === "llm") return researchCatalogHref(base, study.pipe, "models", point.key);
+  if (!point.key || !study.measure) return null;
+  if (study.topic === "script") return researchCatalogHref(base, study.measure, "scripts", point.key);
+  if (study.topic === "template") return researchCatalogHref(base, study.measure, "templates", point.key);
+  if (study.topic === "llm") return researchCatalogHref(base, study.measure, "llms", point.key);
   return null;
 }
 
-export function researchWorkflow(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchWorkflow | null {
-  return pipeCatalog(c, pipe).workflows.find((w) => w.key === key) ?? null;
+export function researchScript(c: ResearchCatalog, measure: ResearchMeasure, key: string): ResearchScript | null {
+  return measureCatalog(c, measure).scripts.find((w) => w.key === key) ?? null;
 }
-export function researchTemplate(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchTemplate | null {
-  return pipeCatalog(c, pipe).templates.find((t) => t.key === key) ?? null;
+export function researchTemplate(c: ResearchCatalog, measure: ResearchMeasure, key: string): ResearchTemplate | null {
+  return measureCatalog(c, measure).templates.find((t) => t.key === key) ?? null;
 }
 /**
  * The Templates row a template KEY belongs to: the row itself, else the dynasty that lists it as a
- * version (a workflow names the version it writes with; its page is the dynasty's).
+ * version (a script names the version it writes with; its page is the dynasty's).
  */
-export function researchTemplateOf(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchTemplate | null {
-  const rows = pipeCatalog(c, pipe).templates;
+export function researchTemplateOf(c: ResearchCatalog, measure: ResearchMeasure, key: string): ResearchTemplate | null {
+  const rows = measureCatalog(c, measure).templates;
   return rows.find((t) => t.key === key) ?? rows.find((t) => (t.versions ?? []).some((v) => v.key === key)) ?? null;
 }
 /** The key the content-generation status and outputs of a row are read on: its head version's, else its own. */
@@ -739,16 +777,16 @@ export function templatesByTab<T extends Pick<ResearchTemplate, "key" | "dynasty
 }
 
 /**
- * The models a Templates row wrote with, first seen first: each workflow's model (the catalogue's
- * workflow rows, matched by key), then the models its last runs name. A display join of served
+ * The models a Templates row wrote with, first seen first: each script's model (the catalogue's
+ * script rows, matched by key), then the models its last runs name. A display join of served
  * refs; nothing counted or ranked.
  */
-export function templateModels(c: ResearchCatalog | null, pipe: ResearchPipe, t: Pick<ResearchTemplate, "workflows" | "runs">): ResearchRef[] {
+export function templateModels(c: ResearchCatalog | null, measure: ResearchMeasure, t: Pick<ResearchTemplate, "scripts" | "runs">): ResearchRef[] {
   const seen = new Map<string, ResearchRef>();
   const add = (r: ResearchRef | null | undefined) => {
     if (r && !seen.has(r.key)) seen.set(r.key, r);
   };
-  for (const w of t.workflows) add(c ? researchWorkflow(c, pipe, w.key)?.model : null);
+  for (const w of t.scripts) add(c ? researchScript(c, measure, w.key)?.model : null);
   for (const r of t.runs) add(r.model);
   return [...seen.values()];
 }
@@ -762,45 +800,44 @@ export function modelHeadLabel(m: Pick<ResearchModel, "dynasty" | "models">): st
   return (m.models ?? []).find((v) => v.head)?.label ?? null;
 }
 
-export function researchModel(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchModel | null {
-  return pipeCatalog(c, pipe).models.find((m) => m.key === key) ?? null;
-}
-
-/** The served research pipe a campaign is (its channel and its leg, either spelling), if the file lists one. */
-export function researchPipeFor(pipes: readonly ResearchPipeEntry[] | null | undefined, channel: string | null | undefined, legKey: string | null | undefined): ResearchPipe | null {
-  if (!pipes || !channel || !legKey) return null;
-  return pipes.find((p) => p.channel === channel && sameLegKey(p.leg, legKey))?.id ?? null;
+export function researchModel(c: ResearchCatalog, measure: ResearchMeasure, key: string): ResearchModel | null {
+  return measureCatalog(c, measure).llms.find((m) => m.key === key) ?? null;
 }
 
 /**
- * FACTORY-RESEARCH-1102 (owner 2026-11-02): the studies are homed under their OUTCOME, never a pipe heading. An outcome
- * section holds its own studies (price over time first) then the studies of every pipe the file says lands on it
- * (`pipes[]`, served), with those pipes' workflow, template and model pages.
+ * The first measure (served order) whose catalogue lists `has`: where a page opened from outside Research
+ * (a script's template or LLM chip) lands. Null when no measure lists it.
+ */
+export function firstMeasureListing(c: ResearchCatalog, has: (m: ResearchMeasureCatalog) => boolean): ResearchMeasure | null {
+  for (const e of c.engines) for (const m of e.measures) if (has(m)) return m.id;
+  return null;
+}
+
+/**
+ * FACTORY-RESEARCH-1102 (owner 2026-11-02), by Engine since RESEARCH-BY-ENGINE-1113: the studies are homed under their
+ * OUTCOME. An outcome section holds its own studies (price over time first) then the studies of every measure the file
+ * says lands on it (`measures[]`, served), with those measures' script, template and LLM pages.
  */
 export interface OutcomeStudies {
   entry: ResearchOutcomeEntry;
-  pipes: ResearchPipe[];
+  measures: ResearchMeasure[];
   studies: ResearchStudy[];
 }
 export function outcomeStudiesOf(entry: ResearchOutcomeEntry, file: ResearchFile): OutcomeStudies {
-  const pipes = (entry.pipes ?? []).filter((p) => file.pipes.some((x) => x.id === p));
-  return { entry, pipes, studies: [...sectionStudiesPriceFirst(entry.id, studiesForOutcome(entry.id, file)), ...pipes.flatMap((p) => studiesFor(p, file))] };
+  const measures = (entry.measures ?? []).filter((m) => researchMeasureEntry(file, m) != null);
+  return { entry, measures, studies: [...sectionStudiesPriceFirst(entry.id, studiesForOutcome(entry.id, file)), ...measures.flatMap((m) => studiesFor(m, file))] };
 }
 
 /**
- * The pipes no outcome section lists (a pipe whose outcome is no lead state: Lead found, a post published), grouped by
- * the outcome the file names for each pipe (`pipes[].outcome`, served words), in the file's order.
+ * The measures no outcome section lists (a measure whose outcome is no lead state: Lead found, a post published), grouped
+ * by their ENGINE (served name), in the file's order.
  */
-export function pipesOutsideOutcomes(file: ResearchFile): Array<{ outcome: string; pipes: ResearchPipe[]; studies: ResearchStudy[] }> {
-  const homed = new Set((file.outcomes ?? []).flatMap((o) => o.pipes ?? []));
-  const groups: Array<{ outcome: string; pipes: ResearchPipe[]; studies: ResearchStudy[] }> = [];
-  for (const p of file.pipes) {
-    if (homed.has(p.id)) continue;
-    const g = groups.find((x) => x.outcome === p.outcome);
-    if (g) {
-      g.pipes.push(p.id);
-      g.studies.push(...studiesFor(p.id, file));
-    } else groups.push({ outcome: p.outcome, pipes: [p.id], studies: studiesFor(p.id, file) });
+export function measuresOutsideOutcomes(file: ResearchFile): Array<{ engine: ResearchEngineEntry; measures: ResearchMeasure[]; studies: ResearchStudy[] }> {
+  const homed = new Set((file.outcomes ?? []).flatMap((o) => o.measures ?? []));
+  const groups: Array<{ engine: ResearchEngineEntry; measures: ResearchMeasure[]; studies: ResearchStudy[] }> = [];
+  for (const e of file.engines) {
+    const measures = e.measures.map((m) => m.id).filter((m) => !homed.has(m));
+    if (measures.length) groups.push({ engine: e, measures, studies: measures.flatMap((m) => studiesFor(m, file)) });
   }
   return groups;
 }

@@ -1,13 +1,14 @@
 import type { ResearchFile, ResearchStudy } from "../../src/lib/research/research";
 
 /**
- * A small HAND-WRITTEN Research file (not a copy of production): one study per verdict, so the
- * conclusions/studies readers are tested on their rules. The real file is served live by
- * features-service, which guards its own content.
+ * A small HAND-WRITTEN Research file by Engine (RESEARCH-BY-ENGINE-1113; its Engines and measures sliced from the
+ * prod read of 2026-11-16): one study per verdict, so the conclusions/studies readers are tested on their rules. The
+ * real file is served live by features-service, which guards its own content.
  */
 const study = (id: string, kind: "conclusion" | "signal" | "noise" | null): ResearchStudy => ({
   id,
-  pipe: "cold-email-positive-reply",
+  engine: "email_sent",
+  measure: "email_sent/start/conversation",
   topic: "template",
   goal: "roi",
   question: `Which template wins (${id})?`,
@@ -45,18 +46,38 @@ export const RESEARCH_FILE_FIXTURE = {
     days: 21,
     cutoff: "2026-09-27",
     windowEnd: "2026-10-18",
-    legs: { reply: { durationDays: 21, outcomesRequired: 1, cutoff: "2026-09-27" }, visit: { durationDays: 21, outcomesRequired: 10, cutoff: "2026-09-27" } },
+    rules: { reply: { durationDays: 21, outcomesRequired: 1, cutoff: "2026-09-27" }, visit: { durationDays: 21, outcomesRequired: 10, cutoff: "2026-09-27" } },
     note: "A bar is read on the people we started writing to at least 21 days before the read.",
   },
-  pipes: [
-    { id: "cold-email-positive-reply", channel: "sales-cold-email-outreach", leg: "lead_found_to_conversation", outcome: "Positive reply", description: "d" },
-    { id: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: "lead_found_to_website_visit", outcome: "Website visit", description: "d" },
+  engines: [
+    {
+      outcome: "email_sent",
+      name: "Email sent",
+      measures: [
+        {
+          id: "email_sent/start/conversation",
+          engine: "email_sent",
+          startsFrom: null,
+          counts: { key: "conversation", name: "Positive reply" },
+          description: "Positive reply, from nothing",
+        },
+      ],
+    },
+    {
+      outcome: "website_visit",
+      name: "Website visit",
+      measures: [
+        {
+          id: "website_visit/start/website_visit",
+          engine: "website_visit",
+          startsFrom: null,
+          counts: { key: "website_visit", name: "Website visit" },
+          description: "Website visit, from nothing",
+        },
+      ],
+    },
   ],
   outcomes: [],
   studies: [study("s-conclusion", "conclusion"), study("s-signal", "signal"), study("s-noise", "noise"), study("s-none", null)],
-  catalogCounts: {
-    "cold-email-positive-reply": { workflows: 0, templates: 0, models: 0 },
-    "cold-email-website-visit": { workflows: 0, templates: 0, models: 0 },
-    "meeting-booking": { workflows: 0, templates: 0, models: 0 },
-  },
+  notCarried: [],
 } as unknown as ResearchFile;

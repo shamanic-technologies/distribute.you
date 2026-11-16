@@ -3,52 +3,27 @@
  * the lookups only. Every status is content-generation-service's; this module NAMES it and joins
  * served keys, it never decides one. Alias-free so it carries real unit tests.
  */
-import { canonicalLegKey, sameLegKey } from "../outbound-leg-key";
-import { catalogPipes, pipeCatalog, type ResearchCatalog, type ResearchModel, type ResearchPipe, type ResearchPipeEntry } from "./research";
+import { catalogMeasures, measureCatalog, type ResearchCatalog, type ResearchMeasure, type ResearchModel } from "./research";
+
+/** What a deprecation acts on: a template TYPE. */
+export type ContentTarget = { kind: "template"; key: string; label: string };
 
 /**
- * What a deprecation acts on: a template TYPE, or every model ALIAS a concrete model is served under
- * (never the concrete id: content-generation-service sets a status per alias).
+ * Each script's figures off the Research catalogue, every measure (served order): outcomes and cost per outcome, the
+ * ones its own row serves. A script on several measures keeps the first row that made an outcome. Nothing computed.
  */
-export type ContentTarget =
-  | { kind: "template"; key: string; label: string }
-  | { kind: "model"; aliases: string[]; label: string; pipe: ContentPipe };
-
-/**
- * A pipe as content-generation keys a writer model's status (LLM-STATUS-PER-PIPE-1023): one channel
- * (feature slug) x one leg. Structurally `ContentPipe` of `lib/api`, restated so this module stays alias-free.
- */
-export type ContentPipe = { featureSlug: string; legKey: string };
-
-/** A Research pipe's content pipe: its channel and its leg, in the leg's current spelling. */
-export function contentPipeOf(entry: Pick<ResearchPipeEntry, "channel" | "leg"> | null | undefined): ContentPipe | null {
-  if (!entry?.channel || !entry.leg) return null;
-  return { featureSlug: entry.channel, legKey: canonicalLegKey(entry.channel, entry.leg) };
-}
-
-export function samePipe(a: ContentPipe, b: ContentPipe): boolean {
-  return a.featureSlug === b.featureSlug && sameLegKey(a.legKey, b.legKey);
-}
-
-/** One status staff stated for a model alias on one pipe, as content-generation serves it. */
-export type ModelPipeStatusRow = ContentPipe & {
-  status: string;
-  statusReason?: string | null;
-  statusChangedBy?: string | null;
-  statusChangedAt?: string | null;
-};
-
-/**
- * An alias's status on one pipe: the status staff stated there, else `active` (no entry = active,
- * the producer's rule). The alias's top-level status is never read: it is always `active` now.
- */
-export function aliasStatusOnPipe(pipeStatuses: readonly ModelPipeStatusRow[] | null | undefined, pipe: ContentPipe): ModelPipeStatusRow | { status: "active" } {
-  return (pipeStatuses ?? []).find((p) => samePipe(p, pipe)) ?? { status: "active" };
-}
-
-/** The Research pipe a content pipe is, by channel and leg; null when the Research file lists none. */
-export function researchPipeOf(pipes: readonly Pick<ResearchPipeEntry, "id" | "channel" | "leg">[], pipe: ContentPipe): ResearchPipe | null {
-  return pipes.find((p) => p.channel === pipe.featureSlug && sameLegKey(canonicalLegKey(p.channel, p.leg), pipe.legKey))?.id ?? null;
+export function scriptFiguresBySlug(catalog: ResearchCatalog | null): Map<string, { outcomes: number; cost: number | null }> {
+  const out = new Map<string, { outcomes: number; cost: number | null }>();
+  if (!catalog) return out;
+  for (const m of catalogMeasures(catalog)) {
+    for (const sc of measureCatalog(catalog, m).scripts) {
+      const f = (sc as { figures?: { outcomes?: number; costPerOutcomeUsd?: { value: number | null } } }).figures;
+      if (!f || typeof f.outcomes !== "number") continue;
+      const had = out.get(sc.key);
+      if (!had || (had.outcomes === 0 && f.outcomes > 0)) out.set(sc.key, { outcomes: f.outcomes, cost: f.costPerOutcomeUsd?.value ?? null });
+    }
+  }
+  return out;
 }
 
 /** A model's status over its aliases: Deprecated only once every one is; null while any is unstated. */
@@ -60,7 +35,7 @@ export function modelStatus(aliases: readonly string[], statusOf: (alias: string
 }
 
 /**
- * The Models list's two tabs (owner 2026-10-23, like Templates and Workflows): Deprecated once every
+ * The LLMs list's two tabs (owner 2026-10-23, like Templates and Scripts): Deprecated once every
  * alias it is served under is, or when no alias serves it now (it cannot write); Active otherwise.
  * Null until the statuses answer, so no row lands in a tab it then leaves.
  */
@@ -90,7 +65,7 @@ export function statusWord(status: string | null | undefined): "Active" | "Depre
  * The ALIASES a model's status is set on, as features-service serves them on its Research row (read
  * off chat-service's own alias list): `glm-5.3` is `glm-pro`, and one model can be served under two
  * (`deepseek-v4.1-flash` is `deepseek-flash` and `deepseek-pro`, both acted on). Never guessed from
- * the workflows: a model no workflow writes with today still has its aliases.
+ * the scripts: a model no script writes with today still has its aliases.
  * `gap` is the plain sentence a row prints when there is none, so a status is never blank.
  */
 export function modelAliasesOf(m: Pick<ResearchModel, "key" | "aliases" | "aliasesUnavailableReason">): { aliases: string[]; gap: string | null } {
@@ -110,13 +85,13 @@ export function aliasList(aliases: readonly string[]): string {
 }
 
 /**
- * The pipes (legs) a template writes for: every pipe whose Research catalogue lists it, the
- * current pipe first, then the catalogue's order.
+ * The measures a template writes for: every measure whose Research catalogue lists it, the current
+ * measure first, then the catalogue's order.
  */
-export function templatePipes(catalog: ResearchCatalog | null, key: string, current: ResearchPipe): ResearchPipe[] {
+export function templateMeasures(catalog: ResearchCatalog | null, key: string, current: ResearchMeasure): ResearchMeasure[] {
   if (!catalog) return [];
-  const on = catalogPipes(catalog).filter((p) => pipeCatalog(catalog, p).templates.some((t) => t.key === key));
-  return on.includes(current) ? [current, ...on.filter((p) => p !== current)] : on;
+  const on = catalogMeasures(catalog).filter((m) => measureCatalog(catalog, m).templates.some((t) => t.key === key));
+  return on.includes(current) ? [current, ...on.filter((m) => m !== current)] : on;
 }
 
 /** Why, who and when, as a producer serves a deprecation (DEPRECATION-REASON-1020). */
