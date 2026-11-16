@@ -108,6 +108,17 @@ export function centsToUsd(cents: string | null | undefined): number | null {
   return n / 100;
 }
 
+/**
+ * $ spent over the max budget's CURRENT period (today / this week / this month), billing's served
+ * `consumedCents`, as dollars for display (owner 2026-11-16). Null when no $ budget is set or billing
+ * could not count it (its reason rides `consumedUnavailableReason`).
+ */
+export function periodSpentUsd(caps: SalesFunnelCaps | null): number | null {
+  const b = caps?.maxBudget ?? null;
+  if (!b || b.consumedCents === null) return null;
+  return centsToUsd(b.consumedCents);
+}
+
 /** The producer's word for a status or reason, capitalised (never renamed). */
 export function producerWord(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
