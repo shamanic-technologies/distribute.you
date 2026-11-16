@@ -183,10 +183,10 @@ function PlanEngineRow({ engine, depth }: { engine: CampaignEngine; depth: numbe
   );
 }
 
-/** A script's label: its served description on ONE line, whole on hover. */
+/** A script's label (its served short name, else its description) on ONE line; the description whole on hover. */
 function ScriptName({ sc }: { sc: CampaignScriptRow }) {
   return (
-    <span className="min-w-0 truncate" title={scriptLabel(sc)}>
+    <span className="min-w-0 truncate" title={sc.description ?? scriptLabel(sc)}>
       {scriptLabel(sc)}
     </span>
   );

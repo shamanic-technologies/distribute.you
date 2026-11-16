@@ -43,7 +43,6 @@ const NEVER_ON_DISK_ON_CUSTOMER_FILES: Record<string, string> = {
   brandLedgerRuns: "staff cost data (our margin)",
   staffBrandLinkedinPosts: "staff Posting surface, read live",
   staffMyLinkedinPosts: "staff Profile surface, read live",
-  factoryShadowPlan: "staff GTM Factory plan",
   staffPipeStats: "staff pipe figures",
 };
 

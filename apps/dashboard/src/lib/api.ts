@@ -2013,18 +2013,35 @@ const ChatSessionHistorySchema = z.object({
   // The brand(s) the session was opened for (chat-service records `x-brand-id`), null when none.
   brandIds: z.array(z.string()).nullish(),
   messages: z.array(ChatHistoryMessageSchema),
+  // A paged read (chat-service `limit`, MON-PAGE-SPEED-1114): older messages exist before the first one.
+  hasOlder: z.boolean().optional(),
+  olderCursor: z.string().nullish(),
 });
 export type ChatSessionHistory = z.infer<typeof ChatSessionHistorySchema>;
 
+/** Messages the Copilot reads per page: its first paint on every page, older ones on scroll. */
+export const CHAT_HISTORY_PAGE_SIZE = 30;
+
 /**
  * The signed-in user's most recent session for a chat config (any device), or null when they
- * have none yet (404, a first visit). Gateway `GET /v1/chat/sessions/latest` (api-service
+ * have none yet (404, a first visit; also an older page whose cursor is gone). Gateway `GET /v1/chat/sessions/latest` (api-service
  * v0.112.75) over chat-service `/sessions/latest`.
  */
-export async function getLatestChatSession(configKey: string, token?: string): Promise<ChatSessionHistory | null> {
+export async function getLatestChatSession(
+  configKey: string,
+  page?: { limit: number; before?: string },
+  token?: string,
+): Promise<ChatSessionHistory | null> {
+  // `limit` = only the newest messages (a page load stays small whatever the session length);
+  // `before` = the served `olderCursor`, to read the page just older (scroll up).
+  const params = new URLSearchParams({ configKey });
+  if (page) {
+    params.set("limit", String(page.limit));
+    if (page.before) params.set("before", page.before);
+  }
   let raw: unknown;
   try {
-    raw = await apiCall<unknown>(`/chat/sessions/latest?configKey=${encodeURIComponent(configKey)}`, { token });
+    raw = await apiCall<unknown>(`/chat/sessions/latest?${params}`, { token });
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
@@ -2653,12 +2670,7 @@ export async function getBrandPublishedUnits(brandId: string, outcomeKey: Publis
 }
 
 // ─── GTM Factory shadow (features-service #2123, api-service #1406; FACTORY-P1-DASH), staff surfaces only ───
-import {
-  FactoryShadowPlanSchema,
-  FactoryShadowMonitoringSchema,
-  type FactoryShadowPlan,
-  type FactoryShadowMonitoring,
-} from "./factory-shadow";
+import { FactoryShadowMonitoringSchema, type FactoryShadowMonitoring } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
 import { PeopleJourneysSchema, type PeopleJourneys } from "./factory-campaign";
@@ -2673,23 +2685,6 @@ export async function getFunnelCampaignEngineScripts(brandId: string, salesFunne
     return { state: "ready", data: parseStaff("getFunnelCampaignEngineScripts", CampaignEngineScriptsSchema, raw) };
   } catch (err) {
     if (err instanceof ApiError && err.status === 503 && err.body?.reason === SCRIPT_RATING_NOT_BUILT_YET) return { state: "building" };
-    throw err;
-  }
-}
-
-/**
- * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
- * and the running line vs the best line to the Target, each priced. Null = no pass has covered it yet (the producer's
- * 404 `factory_shadow_not_computed`).
- */
-export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunnelCampaignId: string): Promise<FactoryShadowPlan | null> {
-  try {
-    const raw = await apiCall<unknown>(
-      `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/factory-shadow`,
-    );
-    return parseStaff("getFunnelCampaignFactoryShadow", FactoryShadowPlanSchema, raw);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404 && err.body?.error === "factory_shadow_not_computed") return null;
     throw err;
   }
 }
