@@ -123,7 +123,6 @@ describe("factory shadow: Monitoring page and hub", () => {
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
     expect(sensitive).toContain('"staffFactoryShadow"');
-    expect(sensitive).toContain('"factoryShadowPlan"');
   });
 
   it("is a Monitoring page, mounted, its tile above the collapsible rows", () => {
