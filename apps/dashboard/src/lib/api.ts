@@ -2664,6 +2664,19 @@ import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
 import { PeopleJourneysSchema, type PeopleJourneys } from "./factory-campaign";
 import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
+/** A campaign's Engines in scripts (features-service CAMPAIGN-SCRIPTS-1113): what competes, today's draws, its own runs. 503 = being built. */
+export async function getFunnelCampaignEngineScripts(brandId: string, salesFunnelCampaignId: string): Promise<CampaignEngineScriptsRead> {
+  try {
+    const raw = await apiCall<unknown>(
+      `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/engine-scripts`,
+    );
+    return { state: "ready", data: parseStaff("getFunnelCampaignEngineScripts", CampaignEngineScriptsSchema, raw) };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 503 && err.body?.reason === SCRIPT_RATING_NOT_BUILT_YET) return { state: "building" };
+    throw err;
+  }
+}
+
 /**
  * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
  * and the running line vs the best line to the Target, each priced. Null = no pass has covered it yet (the producer's
@@ -13596,6 +13609,7 @@ export async function getStaffSophieReplies(days: number): Promise<StaffSophieRe
 
 // ─── Monitoring > AI vendors > Credit (VENDOR-CREDIT-1030) ───
 import { VendorCreditSchema as StaffVendorCreditSchema, type VendorCredit as StaffVendorCredit } from "./monitoring/vendor-credit";
+import { CampaignEngineScriptsSchema, SCRIPT_RATING_NOT_BUILT_YET, type CampaignEngineScriptsRead } from "./campaign-engine-scripts";
 import { SCRIPT_ENGINES_NOT_BUILT_YET, ScriptEnginesSchema, type ScriptEnginesRead } from "./monitoring/script-engines";
 
 /** chat-service's stored "vendor out of credit" fact per AI provider it calls, through api-service's staff passthrough. */
