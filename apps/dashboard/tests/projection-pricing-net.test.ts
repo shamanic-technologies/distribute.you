@@ -57,10 +57,6 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(readerBody("getCampaignTargetRow")).toContain("?pricing=net");
   });
 
-  it("getFunnelCampaignPeopleJourneys requests net pricing (What its people went through)", () => {
-    expect(readerBody("getFunnelCampaignPeopleJourneys")).toContain("?pricing=net");
-  });
-
   it("Research reads no workflow ranking: a measure's live scripts are the Rating's script board (RESEARCH-NATIVE-ENGINE-1116-P3-DASH)", () => {
     expect(apiSrc).not.toContain("export async function getLegWorkflowRanking");
     const live = fs.readFileSync(path.join(__dirname, "../src/lib/research/live-file.ts"), "utf-8");

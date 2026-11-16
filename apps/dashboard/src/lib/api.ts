@@ -2744,7 +2744,6 @@ export async function getBrandPublishedUnits(brandId: string, outcomeKey: Publis
 import { FactoryShadowMonitoringSchema, type FactoryShadowMonitoring } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
-import { PeopleJourneysSchema, type PeopleJourneys } from "./factory-campaign";
 import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
 /** A campaign's Engines in scripts (features-service CAMPAIGN-SCRIPTS-1113): what competes, today's draws, its own runs. 503 = being built. */
@@ -2779,14 +2778,6 @@ export async function getCampaignTargetRow(brandId: string, salesFunnelCampaignI
   return parseStaff("getCampaignTargetRow", CampaignTargetsSchema, raw);
 }
 import { CampaignTargetsSchema, type CampaignTargets } from "./campaign-targets";
-
-/** What a funnel campaign's people went through: per step to step, how many, and the share each script made (FACTORY-USER-DASHBOARD-1102). */
-export async function getFunnelCampaignPeopleJourneys(brandId: string, salesFunnelCampaignId: string): Promise<PeopleJourneys> {
-  const raw = await apiCall<unknown>(
-    `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/people-journeys?pricing=net`,
-  );
-  return parseStaff("getFunnelCampaignPeopleJourneys", PeopleJourneysSchema, raw);
-}
 
 /** Monitoring > Factory plan > Following its plan: status, the red campaigns with their served state, one row per UTC day. */
 export async function getStaffPlanFollowing(days: number): Promise<PlanFollowing> {

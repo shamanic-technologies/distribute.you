@@ -8,7 +8,7 @@ import { drawRuleWords, scriptLabel, strategyStateWords, type CampaignEngine, ty
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { reasonWords } from "@/lib/campaign-targets";
-import { getFunnelCampaignEngineScripts, getFunnelCampaignPeopleJourneys } from "@/lib/api";
+import { getFunnelCampaignEngineScripts } from "@/lib/api";
 import { StepMark } from "@/components/marks/step-mark";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
@@ -21,7 +21,6 @@ import { CampaignMilestoneCards } from "@/components/v2/today-targets";
  * l'ancienne façon de faire vers la nouvelle »). The anatomy of the GTM Factory dashboard's campaign page
  * (repo gtm-factory, docs/screenshots/campaign.png), drawn with v2 primitives over what features-service serves for
  * the campaign (its factory body, recomputed every 3 hours):
- * - What its people went through: per step to step, how many people, the share each script made (`people-journeys`);
  * - Milestones: each milestone, Start to its Target: # outcomes, $ per outcome, $ from Start, % conversion, needed per
  *   Target, each MEASURED on the campaign else EXPECTED from its plan, greyed (`milestones`);
  * - Plan / Strategy per Engine / Scripts per Engine: features-service's campaign read in SCRIPTS (CAMPAIGN-SCRIPTS-1113,
@@ -44,7 +43,6 @@ export function FactoryCampaignSections({ campaign }: { campaign: SalesFunnelCam
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   return (
     <>
-      <FactoryJourneys brandId={campaign.brandId} campaignId={campaign.id} />
       <CampaignMilestoneCards brandId={campaign.brandId} campaignId={campaign.id} />
       <FactoryPlan read={q.data ?? null} settled={settled} failed={q.isError && !q.data} />
       <FactoryStrategies read={q.data ?? null} />
@@ -59,71 +57,6 @@ export function useCampaignEngineScripts(brandId: string, campaignId: string) {
 }
 
 const enginesOf = (read: CampaignEngineScriptsRead | null): CampaignEngine[] => (read?.state === "ready" ? read.data.engines : []);
-
-// ─── What its people went through ──────────────────────────────────────────────────────────────
-
-export function FactoryJourneys({ brandId, campaignId }: { brandId: string; campaignId: string }) {
-  const q = useAuthQuery(["funnelCampaignPeopleJourneys", brandId, campaignId], () => getFunnelCampaignPeopleJourneys(brandId, campaignId), pollOptions);
-  const settled = q.data !== undefined || q.isFetchedAfterMount;
-  const rows = q.data?.transitions ?? [];
-  // The busiest step scales each row's people bar (display only, served counts).
-  // A step the ledger holds no Unit of is null (LEDGER-ONLY-1107-P2): no bar, never a 0.
-  const peopleMax = Math.max(0, ...rows.map((t) => t.people ?? 0));
-  return (
-    <section>
-      <SectionTitle right={<span>Since it started, share by what each script spent</span>}>What its people went through</SectionTitle>
-      <div className="k-card divide-y divide-[var(--line-subtle)]">
-        {!settled ? (
-          <div className="space-y-2 p-4">
-            <Shimmer className="h-6 w-full" />
-            <Shimmer className="h-6 w-full" />
-          </div>
-        ) : q.isError && !q.data ? (
-          <EmptyNote>Could not read what your people went through. Retrying.</EmptyNote>
-        ) : rows.length === 0 ? (
-          <EmptyNote>Nobody has moved through this campaign yet.</EmptyNote>
-        ) : (
-          rows.map((t) => (
-            <div key={t.pipeId} className="grid items-center gap-x-4 gap-y-1.5 px-4 py-3 text-[13px] md:grid-cols-[minmax(0,280px)_96px_120px_minmax(0,1fr)]">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span className="k-fg2 truncate">{t.fromLabel}</span>
-                <span className="k-fg3">→</span>
-                <span className="truncate font-medium">{t.toLabel}</span>
-              </span>
-              <span className="tabular-nums md:text-right">
-                {t.people == null ? <span className="k-fg3">{reasonWords("outcome_not_declared_in_ledger")}</span> : <>{formatCount(t.people)} {t.people === 1 ? "person" : "people"}</>}
-              </span>
-              {t.people == null ? <span className="hidden md:block" /> : <ShareBar value={t.people} max={peopleMax} className="hidden w-full md:block" />}
-              <span className="k-fg2 min-w-0 space-y-1.5 text-[12px]">
-                {t.scripts.length > 1 && <ScriptSplit shares={t.scripts.map((sc) => sc.sharePct)} />}
-                {t.scripts.length > 0
-                  ? t.scripts.map((sc, i) => (
-                      <span key={sc.workflowDynastySlug}>
-                        {i > 0 && ", "}
-                        <span className="k-fg tabular-nums">{formatShare(sc.sharePct)}%</span> by{" "}
-                        <CatalogueName kind="workflow" name={sc.workflowName} icon={sc.icon} color={sc.color} className="align-middle" />
-                      </span>
-                    ))
-                  : (milestoneReasonWords(t.scriptsUnavailableReason) ?? DASH)}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** A step's scripts as one stacked bar of their served shares, the biggest first and full colour. */
-function ScriptSplit({ shares }: { shares: Array<number | null> }) {
-  return (
-    <span className="flex h-1.5 w-full max-w-[280px] overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
-      {shares.map((v, i) => (
-        <span key={i} className="h-full border-r border-[var(--bg)] last:border-0" style={{ width: `${Math.max(0, v ?? 0)}%`, background: "var(--accent)", opacity: Math.max(0.25, 1 - i * 0.25) }} />
-      ))}
-    </span>
-  );
-}
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────────────────────
 
