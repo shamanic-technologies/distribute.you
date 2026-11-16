@@ -11,7 +11,10 @@ import {
   setXAccountType,
   startXConnect,
   type XAccount,
+  type XAccountsState,
+  type XOwnApp,
 } from "@/lib/api";
+import { timeAgo } from "@/lib/friendly-datetime";
 import { pollOptions } from "@/lib/query-options";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
@@ -40,9 +43,9 @@ export function XAccountsCard({ bare = false }: { bare?: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const queryKey = ["xAccounts", brandId];
+  const queryKey = ["xAccountsState", brandId];
 
-  const accountsQ = useAuthQuery<XAccount[]>(queryKey, () => listXAccounts(brandId), {
+  const accountsQ = useAuthQuery<XAccountsState>(queryKey, () => listXAccounts(brandId), {
     enabled: !!brandId,
     ...pollOptions,
   });
@@ -103,7 +106,9 @@ export function XAccountsCard({ bare = false }: { bare?: boolean }) {
     }
   }, [returnCode, returnState, returnError, finish, pathname, router]);
 
-  const accounts = accountsQ.data;
+  const accounts = accountsQ.data?.accounts;
+  const ownApp = accountsQ.data?.ownApp ?? null;
+  const ownAppError = accountsQ.data?.ownAppError ?? null;
   const busy = start.isPending || finish.isPending;
 
   return (
@@ -169,6 +174,11 @@ export function XAccountsCard({ bare = false }: { bare?: boolean }) {
             </button>
           </div>
         </div>
+      ) : null}
+
+      {ownApp ? <OwnAppLine app={ownApp} /> : null}
+      {ownAppError ? (
+        <p className="mt-3 text-[13px] text-[var(--data-rose)]">We could not read your own X app: {ownAppError}</p>
       ) : null}
 
       {notice ? <p className="mt-3 text-[13px] text-[var(--run)]">{notice}</p> : null}
@@ -276,6 +286,7 @@ function XAccountRow({
       <div className="min-w-[180px] flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate text-[13px] font-medium leading-5">{shownName}</span>
+          <span className="k-chip">{account.xApp === "own" ? "Your X app" : "Our X app"}</span>
           {needsReconnect ? (
             <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--data-rose)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-rose)]" />
@@ -328,5 +339,24 @@ function XAccountRow({
         )}
       </div>
     </li>
+  );
+}
+
+/**
+ * The org's own X developer app (ORG-X-APP-1116), as social-service serves it: which grain holds
+ * it and the X calls we made through it. X bills those calls to the app's owner; we charge $0.
+ */
+function OwnAppLine({ app }: { app: XOwnApp }) {
+  return (
+    <div className="k-inset mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[8px] px-3 py-2 text-[12px]">
+      <span className="inline-flex items-center gap-1.5 text-[var(--fg-2)]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--run)]" />
+        Your own X app, {app.scope === "brand" ? "for this brand" : "for every brand"}
+      </span>
+      <span className="k-fg2 tabular-nums">
+        {app.calls.total.toLocaleString("en-US")} {app.calls.total === 1 ? "call" : "calls"} through it, billed by X to you
+      </span>
+      {app.calls.lastCallAt ? <span className="k-fg3">Last call {timeAgo(app.calls.lastCallAt).toLowerCase()}</span> : null}
+    </div>
   );
 }

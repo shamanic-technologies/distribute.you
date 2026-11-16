@@ -279,8 +279,11 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "ownerTelegram",
   // The brand's connected Threads accounts (Profile page): username, type, health.
   "threadsAccounts",
-  // X accounts of a brand, the same card beside Threads (X-ACCOUNTS-1030).
-  "xAccounts",
+  // X accounts of a brand + the org's own X app beside them (X-ACCOUNTS-1030, ORG-X-APP-1116).
+  // A new root since the read became an object: an old `xAccounts` snapshot was an array.
+  "xAccountsState",
+  // Whether the org's AI runs on the user's own Claude Code (LOCAL-CLAUDE-1116): one small object.
+  "localLlm",
   // LinkedIn accounts of a brand, the same card beside X (LINKEDIN-ACCOUNTS-1106).
   "linkedinAccounts",
   // Free credits committed but not yet granted, on the Billing page.

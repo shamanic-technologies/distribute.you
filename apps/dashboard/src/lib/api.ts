@@ -1482,9 +1482,32 @@ const XAccountSchema = z.object({
   accountTypeLabel: z.string(),
   health: z.enum(["connected", "needs_reconnect"]),
   healthReason: z.string().nullable(),
+  // Whose X developer app the login goes through (ORG-X-APP-1116): `own` = the org's own app
+  // (X bills its owner, we charge $0 and count the calls), `platform` = ours.
+  xApp: z.enum(["own", "platform"]),
   createdAt: z.string(),
 });
 export type XAccount = z.infer<typeof XAccountSchema>;
+
+/** The org's own X developer app as social-service serves it beside the accounts. Never a credential. */
+const XOwnAppSchema = z.object({
+  scope: z.enum(["brand", "org"]),
+  provider: z.string(),
+  status: z.string(),
+  calls: z.object({
+    total: z.number().int(),
+    byOperation: z.record(z.string(), z.number().int()),
+    lastCallAt: z.string().nullable(),
+  }),
+});
+export type XOwnApp = z.infer<typeof XOwnAppSchema>;
+
+const XAccountsStateSchema = z.object({
+  accounts: z.array(XAccountSchema),
+  ownApp: XOwnAppSchema.nullable(),
+  ownAppError: z.string().nullable(),
+});
+export type XAccountsState = z.infer<typeof XAccountsStateSchema>;
 
 const XConnectStartResponseSchema = z.object({
   authorizationUrl: z.string().url(),
@@ -1493,14 +1516,15 @@ const XConnectStartResponseSchema = z.object({
 });
 export type XConnectStart = z.infer<typeof XConnectStartResponseSchema>;
 
-export async function listXAccounts(brandId: string, token?: string): Promise<XAccount[]> {
+/** The brand's X accounts AND the org's own X app beside them (ORG-X-APP-1116), one read. */
+export async function listXAccounts(brandId: string, token?: string): Promise<XAccountsState> {
   const raw = await apiCall<unknown>(`/orgs/x/accounts?brandId=${encodeURIComponent(brandId)}`, { token });
-  const parsed = z.object({ accounts: z.array(XAccountSchema) }).safeParse(raw);
+  const parsed = XAccountsStateSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[api] listXAccounts response shape mismatch", parsed.error.flatten(), raw);
     throw new Error("listXAccounts returned an unexpected shape");
   }
-  return parsed.data.accounts;
+  return parsed.data;
 }
 
 export async function startXConnect(
@@ -1554,6 +1578,53 @@ export async function setXAccountType(
 
 export async function disconnectXAccount(accountId: string, token?: string): Promise<unknown> {
   return apiCall<unknown>(`/orgs/x/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
+}
+
+// ==================== AI ON THE USER'S OWN CLAUDE CODE (chat-service, LOCAL-CLAUDE-1116) ====================
+//
+// An org declares that every LLM call chat-service makes for it runs on the user's own Claude Code
+// subscription, through the Mac app (the runner). Charged $0, usage still measured. Every figure here
+// is served by chat-service through the gateway's byte passthrough; nothing is computed in the browser.
+
+const LocalLlmStateSchema = z.object({
+  declared: z.boolean(),
+  declaredAt: z.string().nullable(),
+  declaredByUserId: z.string().nullable(),
+  runner: z.object({
+    connected: z.boolean(),
+    lastSeenAt: z.string().nullable(),
+    name: z.string().nullable(),
+    version: z.string().nullable(),
+  }),
+  pendingCalls: z.number().int(),
+  usageLast30Days: z.object({
+    calls: z.number().int(),
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    notionalCostUsd: z.number(),
+    chargedUsd: z.number(),
+  }),
+  runsLocally: z.array(z.string()),
+  stillOnPlatform: z.array(z.object({ family: z.string(), reason: z.string() })),
+});
+export type LocalLlmState = z.infer<typeof LocalLlmStateSchema>;
+
+function parseLocalLlmState(raw: unknown, where: string): LocalLlmState {
+  const parsed = LocalLlmStateSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[api] ${where} response shape mismatch`, parsed.error.flatten(), raw);
+    throw new Error(`${where} returned an unexpected shape`);
+  }
+  return parsed.data;
+}
+
+export async function getLocalLlm(token?: string): Promise<LocalLlmState> {
+  return parseLocalLlmState(await apiCall<unknown>(`/local-llm`, { token }), "getLocalLlm");
+}
+
+/** `enabled: true` runs the org's AI on the user's Claude Code, `false` sends it back to our platform. Answers the new state. */
+export async function setLocalLlm(enabled: boolean, token?: string): Promise<LocalLlmState> {
+  return parseLocalLlmState(await apiCall<unknown>(`/local-llm`, { token, method: "PUT", body: { enabled } }), "setLocalLlm");
 }
 
 // ==================== LINKEDIN ACCOUNTS (social-service, LINKEDIN-ACCOUNTS-1106) ====================

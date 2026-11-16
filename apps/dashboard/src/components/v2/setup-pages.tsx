@@ -23,6 +23,7 @@ import { OfferQualification } from "@/components/v2/offer-qualification";
 import { OfferSourcesTab } from "@/components/v2/offer-sources-tab";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
+import { LocalClaudeCard } from "@/components/v2/local-claude-card";
 import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
 import { BrandMcpServersView } from "@/components/v2/integrations-brand-mcp";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
@@ -440,6 +441,13 @@ export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
                 <BrandIntegrationsCard brandId={brandId} bare />
               </div>
             </div>
+          </section>
+          <section>
+            <h2 className="text-[14px] font-medium leading-5">AI on my Claude Code</h2>
+            <p className="k-fg3 mb-3 mt-1 text-[12px] leading-[18px]">
+              Our AI writes and decides on the Claude Code plan you already have. We charge $0 for those calls.
+            </p>
+            <LocalClaudeCard />
           </section>
           <section>
             <h2 className="text-[14px] font-medium leading-5">Your AI</h2>

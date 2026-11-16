@@ -50,6 +50,15 @@ describe("the private-beta desktop page", () => {
     }
   });
 
+  it("describes the app as it is now: the web dashboard, its AI on the user's own Claude Code (LOCAL-CLAUDE-1116)", () => {
+    const copy = text(page);
+    expect(copy).toMatch(/same distribute\.you dashboard/i);
+    expect(copy).toMatch(/Claude Code plan you already have/);
+    expect(copy).toMatch(/We charge \$0 for those calls/);
+    // The native chat and its side panels are deleted: neither the page nor the drawn window shows them.
+    for (const html of [page, toppedUp]) expect(text(html)).not.toMatch(/channel|chat\b|panel/i);
+  });
+
   it("draws the app with no invented figures", () => {
     const mock = page.slice(page.indexOf('<figure class="window"'), page.indexOf("</figure>"));
     expect(text(mock)).not.toMatch(/\d/);
