@@ -84,9 +84,9 @@ describe("campaign other parts (1109)", () => {
     expect(body).toContain("{part.shortDescription}");
   });
 
-  it("the campaign page every customer opens (Goal card) states the served description, every part included", () => {
+  it("the Goal card lets the brief say what the campaign does: no pasted sentence beside it (owner 2026-11-16)", () => {
     const aim = src("components/v2/campaign-aim.tsx");
-    expect(aim).toContain(">What we do</p>");
-    expect(aim).toContain("copy?.shortDescription");
+    expect(aim).not.toContain(">What we do</p>");
+    expect(aim).not.toContain("copy?.shortDescription");
   });
 });

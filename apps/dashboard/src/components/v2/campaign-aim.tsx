@@ -14,7 +14,9 @@ import { SectionTitle, Shimmer } from "@/components/v2/ui";
  * WHAT A CAMPAIGN AIMS AT, for EVERY customer (P5.1, owner 2026-10-31; the GTM Factory "Goal" header since
  * FACTORY-USER-DASHBOARD-1102): the campaign page opens on it.
  * - its Target (campaign-service `target`, named by the served step label beside its `StepMark`) and its Type (📅 Daily / ⚡ trigger);
- * - its brief, the client's own words on how to run it, edited in place (blur saves, no Save button);
+ * - its brief, the client's own words on how to run it, edited in place (blur saves, no Save button). The brief IS
+ *   what the campaign does: no generated sentence beside it (owner 2026-11-16: the old one was pasted together from
+ *   pipe settings and never moved when the brief changed);
  * What runs is the Plan below (each outcome's Engine and its scripts, `factory-campaign.tsx`): no pipe line here
  * (owner 2026-11-02: the backend runs Engines per outcome, the pipes are gone from every page).
  */
@@ -67,22 +69,7 @@ export function CampaignAimSection({
             </div>
           </div>
         </div>
-        {/* What we do, every part it runs said once (features-service shortDescription, CAMPAIGN-PATH-SHOWS-AI-ANSWER-1109):
-            a campaign whose AI answers leads beside its client's own closing never reads as only "Your Team". */}
-        <div className="k-line-subtle border-t px-4 py-3">
-          <p className="k-label">What we do</p>
-          <p className="mt-1 text-[13px]">
-            {copy?.shortDescription ?? (copy ? <span className="k-fg3">{whatWeDoUnavailable(copy.shortDescriptionUnavailableReason ?? null)}</span> : copySettled ? dash : <Shimmer className="h-5 w-64" />)}
-          </p>
-        </div>
       </div>
     </section>
   );
-}
-
-/** Why the served description is empty, in plain words. A reason we have no words for is logged. */
-function whatWeDoUnavailable(reason: string | null): string {
-  if (reason === "no_step_run_by_us") return "Your team runs every step of this campaign.";
-  console.error("[campaign-aim] shortDescription not served", { reason });
-  return "—";
 }
