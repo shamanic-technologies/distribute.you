@@ -148,7 +148,6 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffConnectorIntake",
   // GTM Factory shadow (FACTORY-P1-DASH): staff-only reads, never persisted to disk.
   "staffFactoryShadow",
-  "factoryShadowPlan",
   "staffPlanFollowing",
   "salesFunnelPlanChanges",
   // Monitoring > Scripts (FACTORY-P3): staff-only read, never persisted to disk.

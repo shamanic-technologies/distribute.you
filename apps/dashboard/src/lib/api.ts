@@ -2653,12 +2653,7 @@ export async function getBrandPublishedUnits(brandId: string, outcomeKey: Publis
 }
 
 // ─── GTM Factory shadow (features-service #2123, api-service #1406; FACTORY-P1-DASH), staff surfaces only ───
-import {
-  FactoryShadowPlanSchema,
-  FactoryShadowMonitoringSchema,
-  type FactoryShadowPlan,
-  type FactoryShadowMonitoring,
-} from "./factory-shadow";
+import { FactoryShadowMonitoringSchema, type FactoryShadowMonitoring } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
 import { PeopleJourneysSchema, type PeopleJourneys } from "./factory-campaign";
@@ -2673,23 +2668,6 @@ export async function getFunnelCampaignEngineScripts(brandId: string, salesFunne
     return { state: "ready", data: parseStaff("getFunnelCampaignEngineScripts", CampaignEngineScriptsSchema, raw) };
   } catch (err) {
     if (err instanceof ApiError && err.status === 503 && err.body?.reason === SCRIPT_RATING_NOT_BUILT_YET) return { state: "building" };
-    throw err;
-  }
-}
-
-/**
- * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
- * and the running line vs the best line to the Target, each priced. Null = no pass has covered it yet (the producer's
- * 404 `factory_shadow_not_computed`).
- */
-export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunnelCampaignId: string): Promise<FactoryShadowPlan | null> {
-  try {
-    const raw = await apiCall<unknown>(
-      `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/factory-shadow`,
-    );
-    return parseStaff("getFunnelCampaignFactoryShadow", FactoryShadowPlanSchema, raw);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404 && err.body?.error === "factory_shadow_not_computed") return null;
     throw err;
   }
 }
