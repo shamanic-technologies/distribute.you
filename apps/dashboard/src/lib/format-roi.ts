@@ -29,7 +29,16 @@ export function roiDigits(multiple: number): number {
  */
 export function formatRoi(multiple: number | null | undefined, absent = "—"): string {
   if (multiple == null || !Number.isFinite(multiple)) return absent;
+  if (isTinyPositiveRoi(multiple)) return "<0.1×";
   return `${multiple.toFixed(roiDigits(multiple))}×`;
+}
+
+/**
+ * A positive return too small for one decimal (0.004x) is not a zero: printed as
+ * `0.0×` it reads "nothing comes back" (ROI-ROUNDING-1116). Such a return reads `<0.1×`.
+ */
+export function isTinyPositiveRoi(multiple: number): boolean {
+  return multiple > 0 && multiple < 0.05;
 }
 
 /**

@@ -21,7 +21,7 @@ export interface StartCatalogueState {
 
 /** One decimal under 10x, a whole number above it — the product's one spelling of a
  *  return. */
-export const formatReturn = (x: number): string => (x < 10 ? `${x.toFixed(1)}x` : `${Math.round(x)}x`);
+export const formatReturn = (x: number): string => (x > 0 && x < 0.05 ? "<0.1x" : x < 10 ? `${x.toFixed(1)}x` : `${Math.round(x)}x`);
 
 /**
  * The catalogue the screens draw from, read once by the surface that shows it.
