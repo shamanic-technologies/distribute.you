@@ -272,6 +272,8 @@ export function rateSourceLabel(source: string | null): string {
       return "Stated by you";
     case "fleet_median":
       return "Median of our clients";
+    case "fleet_measured":
+      return "Measured across our clients";
     case "industry_default":
     case "default":
       return "Industry benchmark";
