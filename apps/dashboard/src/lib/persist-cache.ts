@@ -139,6 +139,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffVendorCredit",
   // Monitoring > AI vendors > Scripts per Engine: each Engine's scripts ranked by the Rating's draws (SCRIPT-VALUE-RATING-1113-MON-DASH).
   "staffScriptEngines",
+  // Monitoring > AI vendors > Schema: AI answers that do not follow the script's response schema (SCHEMA-HONOURED-1115).
+  "staffSchemaConformance",
   "staffUnsentAnswers",
   // Monitoring > Alerts: every staff alert recorded instead of emailed (SIGNUP-EMAILS-1111-MONITORING).
   "staffMonitoringAlerts",

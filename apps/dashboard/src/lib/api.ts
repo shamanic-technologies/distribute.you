@@ -13633,6 +13633,17 @@ export async function getStaffVendorCredit(days: number): Promise<StaffVendorCre
   return parseStaff("getStaffVendorCredit", StaffVendorCreditSchema, await apiCall<unknown>(`${STAFF_VENDOR_CREDIT_PATH}?days=${days}`));
 }
 
+// ─── Monitoring > AI vendors > Schema (SCHEMA-HONOURED-1115) ───
+import { SchemaConformanceSchema as StaffSchemaConformanceSchema, type SchemaConformance as StaffSchemaConformance } from "./monitoring/schema-conformance";
+
+/** chat-service's measure of answers that do not follow the calling script's response schema, through api-service's staff passthrough. */
+export const STAFF_SCHEMA_CONFORMANCE_PATH = "/chat/ops/schema-conformance";
+
+/** Per model its served verdict and counts, plus one row per UTC day x provider x model x route over the last `days` (1..90). */
+export async function getStaffSchemaConformance(days: number): Promise<StaffSchemaConformance> {
+  return parseStaff("getStaffSchemaConformance", StaffSchemaConformanceSchema, await apiCall<unknown>(`${STAFF_SCHEMA_CONFORMANCE_PATH}?days=${days}`));
+}
+
 // ─── Monitoring > Security (SEC-ADVISORIES-MONITORING-1025) ───
 import { SecurityAdvisoriesSchema as StaffSecurityAdvisoriesSchema, type SecurityAdvisories as StaffSecurityAdvisories } from "./monitoring/security-advisories";
 

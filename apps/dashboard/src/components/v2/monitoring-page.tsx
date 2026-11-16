@@ -57,6 +57,8 @@ import { redTriggers, watchedTriggers } from "@/lib/monitoring/trigger-health";
 import { RobotIcon } from "@phosphor-icons/react/dist/csr/Robot";
 import { VendorCreditPage, VendorCreditTile, useVendorCredit } from "@/components/v2/monitoring-vendor-credit";
 import { outOfCreditVendors } from "@/lib/monitoring/vendor-credit";
+import { SchemaConformancePage, SchemaConformanceTile, useSchemaConformance } from "@/components/v2/monitoring-schema-conformance";
+import { brokenModels } from "@/lib/monitoring/schema-conformance";
 import { UnsentAnswersPage, UnsentAnswersTile, useUnsentAnswers } from "@/components/v2/monitoring-unsent-answers";
 import { PlugsConnectedIcon } from "@phosphor-icons/react/dist/csr/PlugsConnected";
 import { ConnectorIntakePage, ConnectorIntakeTile, useConnectorIntake } from "@/components/v2/monitoring-connectors";
@@ -204,6 +206,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "scripts/engines": { section: "scripts", title: "Engines", question: "Does each script work as well as the code it replaced?" },
   "scripts/campaigns": { section: "scripts", title: "Campaigns", question: "Which outcomes do our campaigns still make with a workflow?" },
   "ai/credit": { section: "ai", title: "Credit", question: "Does every AI vendor we call still have credit?" },
+  "ai/schema": { section: "ai", title: "Answer shape", question: "Does every AI model answer our scripts in the shape they ask for?" },
   "ai/scripts": { section: "ai", title: "Scripts per Engine", question: "Which scripts compete in each Engine, and which one does the Rating favour today?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
   "alerts/raised": { section: "alerts", title: "Raised", question: "Did any of our services raise an alert in the last 24 hours?" },
@@ -374,6 +377,7 @@ export function V2Monitoring() {
         {view.page === "scripts/engines" && <ScriptsPage />}
         {view.page === "scripts/campaigns" && <CampaignEnginesPage />}
         {view.page === "ai/credit" && <VendorCreditPage />}
+        {view.page === "ai/schema" && <SchemaConformancePage />}
         {view.page === "ai/scripts" && <ScriptEnginesPage />}
         {view.page === "chat/skills" && <SkillsView />}
         {view.page === "alerts/raised" && <MonitoringAlertsPage />}
@@ -481,6 +485,8 @@ function Hub({ base }: { base: string }) {
   const following = usePlanFollowing();
   const scripts = useScriptsMonitoring();
   const vendors = useVendorCredit();
+  const schemaConf = useSchemaConformance();
+  const schemaBroken = schemaConf.data ? brokenModels(schemaConf.data) : undefined;
   const alerts = useMonitoringAlerts();
   const alertsBroken = alerts.data ? brokenAlerts(alerts.data) : undefined;
   const opsInfra = useOpsInfra();
@@ -554,6 +560,8 @@ function Hub({ base }: { base: string }) {
         <CampaignEnginesTile href={href("scripts/campaigns")} />
         {/* An AI vendor that refused a call for lack of credit and has not served one since (VENDOR-CREDIT-1030, DeepSeek 2026-10-29): red here IS the alert, never an email. */}
         <VendorCreditTile href={href("ai/credit")} />
+        {/* A model whose answers miss the calling script's response schema, served broken by chat-service (SCHEMA-HONOURED-1115, GLM-5.3 Flash wrote "M3" as email bodies 2026-11-15): red here IS the alert, never an email. */}
+        <SchemaConformanceTile href={href("ai/schema")} />
         {/* The Rating's script board not rebuilt for over an hour (SCRIPT-VALUE-RATING-1113-MON-DASH): red here IS the alert, never an email; « being built » is normal. */}
         <ScriptEnginesTile href={href("ai/scripts")} />
         {/* A mailbox vendor refusing our API, its mailboxes out of the send pool (SEND-PRIMEFORGE-402-1030, Primeforge 402 on 2026-10-29): shown only while one refuses, red here IS the alert, never an email. */}
@@ -1172,10 +1180,11 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={2}>AI vendors</SectionTitle>
-      <Section section="ai" count={2} grid={false}>
+      <SectionTitle count={3}>AI vendors</SectionTitle>
+      <Section section="ai" count={3} grid={false}>
         <HubChips>
           <HubChip href={href("ai/credit")} color={vendorsOut?.length ? "var(--data-rose)" : "var(--data-violet)"} label="Credit" />
+          <HubChip href={href("ai/schema")} color={schemaConf.data?.verdict === "broken" ? "var(--data-rose)" : "var(--data-violet)"} label="Answer shape" />
           <HubChip href={href("ai/scripts")} color={scriptBoardRed ? "var(--data-rose)" : "var(--data-violet)"} label="Scripts per Engine" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -1190,6 +1199,19 @@ function Hub({ base }: { base: string }) {
               note: "calls refused for lack of credit",
             },
             { label: "Vendors watched", value: vendors.data?.vendors.length, note: "every AI vendor we call" },
+          ]}
+        />
+        <Card
+          href={href("ai/schema")}
+          page="ai/schema"
+          error={schemaConf.isError && !schemaConf.data}
+          cells={[
+            {
+              label: "Broken models",
+              value: schemaBroken && <span style={{ color: schemaConf.data?.verdict === "broken" ? "var(--data-rose)" : undefined }}>{schemaBroken.map((m) => m.model).join(", ") || "None"}</span>,
+              note: "over 5% of 20+ answers off the schema",
+            },
+            { label: "Models watched", value: schemaConf.data?.models.length, note: "answered a script with a schema" },
           ]}
         />
         <Card
