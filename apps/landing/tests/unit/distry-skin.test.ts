@@ -165,3 +165,11 @@ describe("a page React hydrates", () => {
     expect(handover).not.toContain("<");
   });
 });
+
+describe("Distry beside the WhatsApp button", () => {
+  it("stands above the floating WhatsApp button, never under it", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(path.join(__dirname, "../../public/landing/distry/skin.css"), "utf8");
+    expect(css).toMatch(/html\.distry body:has\(a\[href\^="https:\/\/wa\.me\/"\]\) \.buddy \{ bottom: calc\(88px/);
+  });
+});

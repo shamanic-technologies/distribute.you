@@ -88,9 +88,13 @@ describe("a prototype is gated like every lab host", () => {
     expect(read("Dockerfile")).toContain("/repo/apps/landing/prototypes ./apps/landing/prototypes");
   });
 
-  it("never reaches the live page pipeline", () => {
+  it("wears the live menu, footer and figures, never the analytics head", () => {
     const route = read("src/app/internal-prototype/[slug]/[[...path]]/route.ts");
-    expect(route).not.toContain("static-html");
+    expect(route).toContain("withSiteChrome(");
+    expect(route).toContain("withLiveFigures(");
+    for (const banned of ["staticResponse", "renderedResponse", "decorateHtml", "analyticsHead"]) {
+      expect(route, banned).not.toContain(banned);
+    }
     expect(route).toContain('"x-robots-tag": "noindex, nofollow"');
     expect(route).toContain('"cache-control": "no-store"');
   });
@@ -142,5 +146,46 @@ describe("byteRangeFor", () => {
     for (const header of [null, "", "bytes=-", "bytes=abc-", "bytes=1000-", "bytes=5-2", "items=0-5", "bytes=0-1,5-6", "bytes=-0"]) {
       expect(byteRangeFor(header, 1000)).toBeNull();
     }
+  });
+});
+
+describe("the Distry home wears the live site's chrome and figures", () => {
+  const html = read("prototypes/distry/index.html");
+
+  it("draws the real menu and footer from the page catalogue", async () => {
+    const { withSiteChrome, navHtml } = await import("@/lib/site-chrome");
+    expect(html).toContain("<!--site-nav-->");
+    expect(html).toContain("<!--site-footer-->");
+    const out = withSiteChrome(html, "/");
+    expect(out).not.toContain("<!--site-nav-->");
+    expect(out).toContain(navHtml("/"));
+    expect(out).toContain('data-footer="home"');
+  });
+
+  it("states the homepage's client figures under the keys the live pass reseeds", async () => {
+    const { reseedProofCards, reseedShowcaseCards } = await import("@/lib/showcase-outcomes");
+    const { reseedFounderCount } = await import("@/lib/founder-count");
+    const payload = {
+      brands: [
+        {
+          brand: { id: "b-1", name: "Doc Dinners", domain: "docdinners.com" },
+          outcomes: [
+            { key: "contacted", label: "contacted", peopleReached: 20001, costPerReachUsd: null },
+            { key: "conversation", label: "conversation", peopleReached: 41, costPerReachUsd: 71 },
+            { key: "meeting_booked", label: "meeting", peopleReached: 4, costPerReachUsd: null },
+          ],
+          measured: true,
+          unmeasuredReason: null,
+        },
+      ],
+    };
+    const proof = reseedProofCards(html, payload);
+    expect(proof).toContain("<b>20,001</b>contacted");
+    expect(proof).toContain("<b>$71</b>");
+    const hero = reseedShowcaseCards(html, payload);
+    expect(hero).toContain('data-brand="docdinners.com" data-steps="41,4"');
+    expect(html).toContain('<div class="showcase-grid" id="live-cards">');
+    expect(html).toContain('<a class="show-card yours"');
+    expect(reseedFounderCount(html, 237)).toContain("Loved by 230+ founders");
   });
 });
