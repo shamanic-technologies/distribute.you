@@ -19,17 +19,21 @@ describe("sales-funnel campaign page: the GTM Factory anatomy", () => {
     expect(body.indexOf("<FactoryCampaignSections")).toBeGreaterThan(body.indexOf(">This campaign</SectionTitle>"));
     expect(body).not.toContain("<PipeSections");
     expect(body).not.toContain("<FunnelResults");
-    expect(factory).not.toMatch(/useStaffMode|StaffOnly|useIsAdminUser/);
+    // Every client reads the Forecast; how the campaign is made is staff mode only (owner 2026-11-17).
+    const sections = factory.slice(factory.indexOf("export function FactoryCampaignSections("), factory.indexOf("export function useCampaignEngineScripts("));
+    expect(sections.indexOf("<CampaignForecast")).toBeGreaterThan(-1);
+    expect(sections.indexOf("<CampaignForecast")).toBeLessThan(sections.indexOf("{staffMode && ("));
+    expect(sections.indexOf("<CampaignMilestoneCards")).toBeGreaterThan(sections.indexOf("{staffMode && ("));
     expect(body).toContain("const units = orderPipesByFunnel(campaign.units,");
     expect(body).toContain("tabs={tabs}");
   });
 
-  it("draws Milestones, Plan, Strategy per Engine, Scripts per Engine in that order; no « What its people went through » (owner 2026-11-17: Milestones carries the same counts with their cost)", () => {
+  it("draws Forecast, then (staff) Milestones, Plan, Strategy per Engine, Scripts per Engine in that order; no « What its people went through » (owner 2026-11-17: Milestones carries the same counts with their cost)", () => {
     const at = factory.indexOf("export function FactoryCampaignSections(");
     const fn = factory.slice(at, factory.indexOf("// ─── Milestones"));
     expect(fn).toContain("useCampaignEngineScripts(campaign.brandId, campaign.id)");
     expect(fn).not.toContain("<FactoryJourneys");
-    const order = ["<CampaignMilestoneCards", "<FactoryPlan", "<FactoryStrategies", "<FactoryScripts"].map((m) => fn.indexOf(m));
+    const order = ["<CampaignForecast", "<CampaignMilestoneCards", "<FactoryPlan", "<FactoryStrategies", "<FactoryScripts"].map((m) => fn.indexOf(m));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((x, y) => x - y)).toEqual(order);
   });
