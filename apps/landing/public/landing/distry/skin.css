@@ -154,9 +154,16 @@ html.distry.js [data-lit]:not(.is-lit) { filter: brightness(0.5) saturate(0.6); 
 html.distry.js .d-day [data-lit]:not(.is-lit) { filter: none; opacity: 0; transform: translateY(26px); }
 
 /* the first screen: the night scene behind the page's own hero */
-html.distry .hero { position: relative; isolation: isolate; }
-html.distry .hero::before { content: ""; position: absolute; inset: -90px 0 0 0; z-index: -1; background: url(/landing/distry/assets/hero-night.webp) 72% 40% / cover no-repeat; opacity: 0.55; -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%); mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%); }
-html.distry .hero::after { content: ""; position: absolute; inset: -90px 0 0 0; z-index: -1; background: radial-gradient(80% 70% at 50% 45%, rgba(6, 10, 34, 0.78) 0%, rgba(6, 10, 34, 0.35) 70%, rgba(6, 10, 34, 0) 100%); }
+html.distry section:has(> .d-scene) { position: relative; isolation: isolate; }
+html.distry .d-scene { position: absolute; inset: -96px 0 auto 0; height: min(calc(100% + 96px), 820px); z-index: -1; background: 100% 50% / cover no-repeat; -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 66%, transparent 100%); mask-image: linear-gradient(180deg, #000 0%, #000 66%, transparent 100%); }
+html.distry .d-scene::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(6, 10, 34, 0.92) 0%, rgba(6, 10, 34, 0.78) 42%, rgba(6, 10, 34, 0.4) 72%, rgba(6, 10, 34, 0.22) 100%); }
+html.distry .d-scene-band { position: relative; height: clamp(220px, 32vw, 420px); margin-top: -96px; }
+html.distry section:has(> .d-scene):not(.dy-section) > :not(.d-scene) :is(h1, .lead, .hero-sub) { text-shadow: 0 2px 18px rgba(6, 10, 34, 0.7); }
+html.distry .dy-page section:has(> .d-scene) { padding-top: clamp(150px, 22vw, 300px); }
+@media (max-width: 760px) {
+  html.distry .d-scene { background-position: 80% 30%; }
+  html.distry .d-scene::after { background: linear-gradient(180deg, rgba(6, 10, 34, 0.5) 0%, rgba(6, 10, 34, 0.86) 100%); }
+}
 html.distry .launch-field { background: rgba(10, 18, 58, 0.66); border-color: rgba(246, 198, 103, 0.34); border-radius: 999px; backdrop-filter: blur(10px); }
 html.distry .launch-field input { color: var(--cream); }
 html.distry .launch-field input::placeholder { color: rgba(253, 248, 236, 0.55); }
@@ -189,3 +196,30 @@ html.distry .show-card {
   --text: #0b1230; --text-2: #17204a; --muted: #46507a; --muted-2: #6c76a0; --hair: #eadfc4; --accent: #2563eb; --accent-text: #1a4fc3; --accent-50: #eef3ff;
 }
 html.distry .foot h4, html.distry .foot h4 * { color: var(--ink) !important; opacity: 1 !important; }
+
+/* ---------- React pages (blog, docs, terms, privacy, investors) ----------
+   Their inks are literal Tailwind greys, so the content sits on sheets of paper under
+   the sky; a title-only opening section is written straight on the night. */
+html.distry main, html.distry .dy-page { background: transparent !important; }
+html.distry .dy-page section > div, html.distry main:not(.dy-page) > section > div {
+  background: var(--paper); border-radius: 26px; padding-block: clamp(28px, 4vw, 56px);
+  box-shadow: 0 0 0 1px var(--paper-line) inset, 0 30px 70px rgba(3, 6, 24, 0.28);
+}
+html.distry .dy-page section { padding-inline: 16px; }
+html.distry .dy-page article { background: var(--paper) !important; border-color: var(--paper-line) !important; border-radius: 22px; }
+html.distry .dy-page .prose :is(h2, h3) { font-family: var(--display); }
+html.distry .dy-page a.text-brand-600, html.distry .dy-page .text-brand-600 { color: var(--blue) !important; }
+/* the React menu stays a paper pill; its button turns gold */
+html.distry .sticky.top-3\.5 > div { background: rgba(255, 253, 246, 0.9) !important; border-color: var(--paper-line) !important; }
+html.distry .sticky.top-3\.5 a[class*="bg-[#0a0a0a]"] { color: #2a1a00 !important; background: linear-gradient(180deg, #ffe39a 0%, var(--gold) 45%, var(--gold-deep) 100%) !important; box-shadow: 0 6px 20px rgba(246, 198, 103, 0.45); }
+/* the React footer: morning, ink, Distry asleep */
+html.distry footer.bg-black { background: transparent !important; padding-bottom: 120px; }
+html.distry footer.bg-black, html.distry footer.bg-black :is(a, p, span, li, div) { color: var(--ink-soft) !important; }
+html.distry footer.bg-black :is(h4, h4 *) { color: var(--ink) !important; }
+html.distry footer.bg-black a:hover { color: var(--blue) !important; }
+html.distry footer.bg-black > div.pointer-events-none { display: none; }
+html.distry footer.bg-black > div:first-child::before { content: ""; display: block; height: clamp(220px, 34vw, 460px); margin-bottom: 40px; border-radius: 26px; background: url(/landing/distry/assets/distry-sleep.webp) center 62% / cover no-repeat; }
+/* a paper sheet always carries ink, whatever hour its section sits in */
+html.distry .dy-page section > div, html.distry main:not(.dy-page) > section > div { color: var(--ink-soft); }
+html.distry .dy-page section > div :is(h1, h2, h3, h4, strong, b), html.distry main:not(.dy-page) > section > div :is(h1, h2, h3, h4, strong, b) { color: var(--ink) !important; }
+html.distry .dy-page section > div a:not([class*="bg-"]) { color: var(--blue); }
