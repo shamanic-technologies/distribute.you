@@ -2744,6 +2744,7 @@ export async function getBrandPublishedUnits(brandId: string, outcomeKey: Publis
 import { FactoryShadowMonitoringSchema, type FactoryShadowMonitoring } from "./factory-shadow";
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
+import { CampaignOutcomeForecastSchema, type CampaignOutcomeForecast } from "./outcome-forecast";
 import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
 /** A campaign's Engines in scripts (features-service CAMPAIGN-SCRIPTS-1113): what competes, today's draws, its own runs. 503 = being built. */
@@ -2757,6 +2758,14 @@ export async function getFunnelCampaignEngineScripts(brandId: string, salesFunne
     if (err instanceof ApiError && err.status === 503 && err.body?.reason === SCRIPT_RATING_NOT_BUILT_YET) return { state: "building" };
     throw err;
   }
+}
+
+/** A campaign's forecast: each outcome projected ahead, expected revenue, the next Target's date, bigger budgets, its assumptions (features-service OUTCOME-FORECAST-1117). */
+export async function getFunnelCampaignOutcomeForecast(brandId: string, salesFunnelCampaignId: string): Promise<CampaignOutcomeForecast> {
+  const raw = await apiCall<unknown>(
+    `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/outcome-forecast?pricing=net`,
+  );
+  return parseStaff("getFunnelCampaignOutcomeForecast", CampaignOutcomeForecastSchema, raw);
 }
 
 /** Today's "Why each one was picked": the offer's latest Engine picks, newest first (features-service, FACTORY-USER-DASHBOARD-1102). */

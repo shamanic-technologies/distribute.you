@@ -15,6 +15,8 @@ import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, ShareBar, Shimmer } from "@/components/v2/ui";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { CampaignMilestoneCards } from "@/components/v2/today-targets";
+import { CampaignForecast } from "@/components/v2/campaign-forecast";
+import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
  * THE GTM FACTORY CAMPAIGN PAGE, for EVERY client (FACTORY-USER-DASHBOARD-1102, owner 2026-11-02: « migre depuis
@@ -41,12 +43,20 @@ export function FactoryCampaignSections({ campaign }: { campaign: SalesFunnelCam
   const q = useCampaignEngineScripts(campaign.brandId, campaign.id);
   // Settled once a read made since mount answered (or failed): never a skeleton that blinks on each poll.
   const settled = q.data !== undefined || q.isFetchedAfterMount;
+  // A client reads where the campaign is going (owner 2026-11-17); how it is made (milestone detail, the Plan's
+  // draws, the brief's filters, each script's runs) is staff mode only.
+  const { staffMode } = useStaffMode();
   return (
     <>
-      <CampaignMilestoneCards brandId={campaign.brandId} campaignId={campaign.id} />
-      <FactoryPlan read={q.data ?? null} settled={settled} failed={q.isError && !q.data} />
-      <FactoryStrategies read={q.data ?? null} />
-      <FactoryScripts read={q.data ?? null} />
+      <CampaignForecast brandId={campaign.brandId} campaignId={campaign.id} />
+      {staffMode && (
+        <>
+          <CampaignMilestoneCards brandId={campaign.brandId} campaignId={campaign.id} />
+          <FactoryPlan read={q.data ?? null} settled={settled} failed={q.isError && !q.data} />
+          <FactoryStrategies read={q.data ?? null} />
+          <FactoryScripts read={q.data ?? null} />
+        </>
+      )}
     </>
   );
 }
