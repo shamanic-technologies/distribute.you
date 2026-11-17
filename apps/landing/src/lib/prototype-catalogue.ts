@@ -38,6 +38,11 @@ export const PROTOTYPE_HOST_SUFFIX = ".distribute.you";
 export function prototypeSlugForHost(host: string | null | undefined): string | null {
   if (!host) return null;
   const hostname = host.split(":")[0].trim().toLowerCase();
+  // `lab-<slug>.localhost` resolves to this machine in a browser: the render check, never production.
+  if (process.env.NODE_ENV !== "production" && hostname.endsWith(".localhost")) {
+    const local = hostname.slice(PROTOTYPE_HOST_PREFIX.length, hostname.length - ".localhost".length);
+    return PROTOTYPES.some((prototype) => prototype.slug === local) ? local : null;
+  }
   if (!hostname.startsWith(PROTOTYPE_HOST_PREFIX) || !hostname.endsWith(PROTOTYPE_HOST_SUFFIX)) {
     return null;
   }

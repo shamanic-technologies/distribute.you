@@ -1,0 +1,191 @@
+/*
+ * The Distry skin over the LIVE pages (src/lib/distry-skin.ts). The live stylesheets are
+ * token-driven, so a section is re-themed by re-pointing their tokens: `d-night` and
+ * `d-dawn` sections write in cream on navy glass, `d-day` sections in ink on paper.
+ * The sky, the fireflies and Distry are the same as the hand-written home (home.css):
+ * the blocks marked SHARED are copied from it, keep them in step.
+ */
+html.distry {
+  --night: #060a22;
+  --navy: #0d1848;
+  --blue: #2563eb;
+  --blue-soft: #438af1;
+  --sky: #84bfff;
+  --gold: #f6c667;
+  --gold-deep: #e9a93a;
+  --cream: #fdf8ec;
+  --paper: #fffdf6;
+  --paper-line: #eadfc4;
+  --ink: #0b1230;
+  --ink-soft: #46507a;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t: 0; /* 0 = night, 0.5 = dawn, 1 = day. Set by main.js. */
+}
+
+
+/* SHARED with home.css */
+/* ---------- the sky ---------- */
+.d-sky { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.d-sky-layer { position: absolute; inset: 0; will-change: opacity; }
+.d-sky-night { background: radial-gradient(120% 80% at 70% 0%, #17266b 0%, #0b1340 42%, var(--night) 100%); }
+.d-sky-dawn {
+  opacity: var(--dawn, 0);
+  background:
+    radial-gradient(90% 55% at 50% 108%, rgba(255, 206, 150, 0.85) 0%, rgba(255, 206, 150, 0) 70%),
+    linear-gradient(180deg, #1c2f80 0%, #3a62c4 48%, #7fa9ec 100%);
+}
+.d-sky-day {
+  opacity: var(--day, 0);
+  background:
+    radial-gradient(70% 40% at 82% 6%, rgba(255, 244, 205, 0.9) 0%, rgba(255, 244, 205, 0) 70%),
+    linear-gradient(180deg, #7dbcfb 0%, #c4e2ff 46%, #f3f9ff 100%);
+}
+.d-stars { position: absolute; inset: 0; width: 100%; height: 100%; opacity: var(--stars, 1); }
+.d-orb { position: absolute; border-radius: 50%; will-change: transform, opacity; }
+.d-moon {
+  width: 74px; height: 74px; left: 6vw; top: 16vh;
+  background: radial-gradient(circle at 36% 34%, #fffdf2 0%, #f3e9c8 60%, #d9cda4 100%);
+  box-shadow: 0 0 60px 18px rgba(255, 244, 205, 0.22);
+  opacity: var(--moon, 1);
+  transform: translate3d(0, calc(var(--t) * 90vh), 0);
+}
+.d-sun {
+  width: 120px; height: 120px; right: 8vw; top: 10vh;
+  background: radial-gradient(circle at 50% 50%, #fff8dc 0%, #ffd97a 55%, #f6b948 100%);
+  box-shadow: 0 0 120px 50px rgba(255, 214, 120, 0.45);
+  opacity: var(--day, 0);
+  transform: translate3d(0, calc((1 - var(--t)) * 110vh), 0);
+}
+.d-fireflies { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 6; pointer-events: none; }
+
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
+/* ---------- Distry, walking beside you ---------- */
+.buddy { position: fixed; z-index: 40; right: 18px; bottom: 18px; display: flex; align-items: flex-end; gap: 10px; pointer-events: none; }
+.buddy-face { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex: none; box-shadow: 0 0 0 3px var(--gold), 0 0 40px rgba(246, 198, 103, 0.55), 0 14px 30px rgba(3, 6, 24, 0.45); animation: bob 4.6s ease-in-out infinite; }
+.buddy-face img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.18); }
+.buddy.is-excited .buddy-face { animation: hop 0.6s var(--ease) infinite; }
+@keyframes hop { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-16px) scale(1.06); } 70% { transform: translateY(0) scale(0.97, 1.03); } }
+.buddy-say { max-width: 240px; padding: 10px 14px; margin-bottom: 18px; border-radius: 18px 18px 4px 18px; background: var(--paper); color: var(--ink); font-size: 0.92rem; font-weight: 500; line-height: 1.35; box-shadow: 0 12px 30px rgba(3, 6, 24, 0.35); opacity: 0; transform: translateY(8px) scale(0.94); transform-origin: bottom right; transition: opacity 0.4s ease, transform 0.5s var(--ease); }
+.buddy-say.is-on { opacity: 1; transform: none; }
+.spark { position: fixed; z-index: 41; width: 10px; height: 8px; border-radius: 2px; background: var(--gold); box-shadow: 0 0 12px 3px rgba(246, 198, 103, 0.8); pointer-events: none; animation: spark 1.1s ease-out forwards; }
+@keyframes spark { to { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)); opacity: 0; } }
+
+
+/* ---------- the page ---------- */
+html.distry body { background: var(--night); color: var(--cream); font-family: var(--body); }
+html.distry body > *:not(.d-sky):not(.d-fireflies):not(.buddy):not(.spark) { position: relative; z-index: 2; }
+html.distry .nav { position: sticky; z-index: 50; }
+html.distry h1, html.distry h2, html.distry h3, html.distry h4 { font-family: var(--display); font-weight: 600; letter-spacing: -0.02em; font-variation-settings: "SOFT" 100; }
+html.distry { --font-display: var(--display); --font-body: var(--body); }
+
+/* every band of the live page lets the sky through */
+html.distry section, html.distry section.tint, html.distry section.dark, html.distry main, html.distry footer { background: transparent !important; }
+html.distry section.framed::before, html.distry section.framed::after, html.distry .hero-lines, html.distry .hero-glow, html.distry .cta-lines, html.distry .corners { display: none !important; }
+
+/* night and dawn: cream ink, navy glass cards, gold light */
+html.distry, html.distry .d-night, html.distry .d-dawn {
+  --bg: #fffdf6; --surface: #fff8e6; --d-card: #fffdf6;
+  --text: #fdf8ec; --text-2: #f4ecd6; --muted: #bcc5ea; --muted-2: #93a0d0;
+  --hair: rgba(246, 198, 103, 0.22); --hair-2: rgba(132, 191, 255, 0.28);
+  --accent: #6ea0ff; --accent-600: #84bfff; --accent-text: #f6c667;
+  --accent-50: rgba(132, 191, 255, 0.1); --accent-100: rgba(132, 191, 255, 0.2);
+  --secondary-50: rgba(132, 191, 255, 0.1); --secondary-100: rgba(132, 191, 255, 0.2);
+  --tertiary-50: rgba(246, 198, 103, 0.1); --tertiary-100: rgba(246, 198, 103, 0.22);
+  --dark: #0a123c;
+  --shadow-ring: 0 0 0 1px rgba(246, 198, 103, 0.28), 0 24px 60px rgba(3, 6, 24, 0.45);
+  --shadow-card: 0 0 0 1px rgba(246, 198, 103, 0.16), 0 24px 60px rgba(3, 6, 24, 0.45);
+  color: var(--text);
+}
+/* day: ink on paper, the brand blue */
+html.distry .d-day, html.distry footer, html.distry .foot {
+  --bg: #fffdf6; --surface: #fff8e6; --d-card: #fffdf6;
+  --text: #0b1230; --text-2: #17204a; --muted: #46507a; --muted-2: #6c76a0;
+  --hair: #eadfc4; --hair-2: #dccfae;
+  --accent: #2563eb; --accent-600: #1d4ed8; --accent-text: #1a4fc3;
+  --accent-50: #eef3ff; --accent-100: #dbe6ff;
+  --secondary-50: #eef3ff; --secondary-100: #dbe6ff; --tertiary-50: #fff4dc; --tertiary-100: #ffe6b0;
+  --dark: #0d1848;
+  --shadow-ring: 0 0 0 1px #eadfc4, 0 20px 50px rgba(37, 99, 235, 0.14);
+  --shadow-card: 0 0 0 1px #eadfc4, 0 20px 50px rgba(37, 99, 235, 0.12);
+  color: var(--text);
+}
+html.distry .d-night h1, html.distry .d-night h2, html.distry .d-night h3, html.distry .d-dawn h1, html.distry .d-dawn h2, html.distry .d-dawn h3 { color: var(--cream); }
+html.distry .d-day h1, html.distry .d-day h2, html.distry .d-day h3, html.distry .d-day h4 { color: var(--ink); }
+html.distry .d-night .accent, html.distry .d-dawn .accent, html.distry .d-night h1 .sub, html.distry .d-dawn h1 .sub { color: var(--gold); background: none; -webkit-text-fill-color: currentColor; }
+html.distry .d-day .accent { color: var(--blue); background: none; -webkit-text-fill-color: currentColor; }
+html.distry section.dark p { color: var(--muted); }
+html.distry .why, html.distry .eyebrow { font-family: var(--display); font-style: italic; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--gold); background: none; border: 0; }
+html.distry .d-day .why, html.distry .d-day .eyebrow { color: var(--blue); }
+
+/* the gold button, everywhere */
+html.distry .btn-accent, html.distry .btn-primary {
+  color: #2a1a00 !important; border: 0; border-radius: 999px;
+  background: linear-gradient(180deg, #ffe39a 0%, var(--gold) 45%, var(--gold-deep) 100%) !important;
+  box-shadow: 0 0 0 1px rgba(255, 240, 200, 0.5) inset, 0 8px 26px rgba(246, 198, 103, 0.38);
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+html.distry .btn-accent:hover, html.distry .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255, 240, 200, 0.7) inset, 0 14px 44px rgba(246, 198, 103, 0.62); }
+html.distry .btn { border-radius: 999px; }
+
+/* the floating menu: night glass, then day glass */
+html.distry .nav-pill { background: rgba(8, 14, 46, 0.6) !important; backdrop-filter: blur(14px); border-color: rgba(255, 255, 255, 0.1) !important; color: var(--cream); box-shadow: none; transition: background-color 0.5s, color 0.5s; }
+html.distry .nav.is-day .nav-pill { background: rgba(255, 255, 255, 0.78) !important; color: var(--ink); border-color: rgba(11, 18, 48, 0.08) !important; box-shadow: 0 10px 30px rgba(37, 99, 235, 0.12); }
+html.distry .nav { --text: #fdf8ec; --text-2: #fdf8ec; --muted: #cfd6f3; --hair: rgba(255,255,255,.14); }
+html.distry .nav-pill > a, html.distry .nav-pill summary, html.distry .nav-links > *, html.distry .nav-right > a:not(.btn-accent):not(.btn-primary) { color: var(--text); }
+html.distry .nav.is-day { --text: #0b1230; --muted: #46507a; }
+html.distry .d-moon { left: auto; right: 3vw; top: 13vh; width: 54px; height: 54px; }
+html.distry .nav-menu-panel, html.distry .nav-drop-in { --bg: #fffdf6; --d-card: #fffdf6; --surface: #fff8e6; --text: #0b1230; --text-2: #17204a; --muted: #46507a; --hair: #eadfc4; --accent-50: #eef3ff; --accent: #2563eb; --accent-text: #1a4fc3; color: #0b1230; }
+
+/* the closing box and the footer live in the morning */
+html.distry .cta-box { background: var(--paper) !important; color: var(--ink); border: 0; box-shadow: 0 0 0 1px var(--paper-line) inset, 0 30px 70px rgba(37, 99, 235, 0.16); border-radius: 26px; }
+html.distry .cta-box h2 { color: var(--ink); }
+html.distry .cta-box .lead, html.distry .cta-box .fine { color: var(--ink-soft); }
+html.distry .cta-box .accent { color: var(--blue); }
+html.distry .cta-box .launch-field { background: #fff; border-color: var(--paper-line); }
+html.distry .cta-box .launch-field input { color: var(--ink); }
+html.distry footer { color: var(--ink); padding-bottom: 110px; }
+html.distry .foot::before { content: ""; grid-column: 1 / -1; height: clamp(220px, 34vw, 460px); border-radius: 26px; background: url(/landing/distry/assets/distry-sleep.webp) center 62% / cover no-repeat; }
+
+/* lamps: each card of the live page comes on as you arrive */
+html.distry.js [data-lit] { transition: filter 1.1s ease, transform 1.1s var(--ease), opacity 1.1s ease; }
+html.distry.js [data-lit]:not(.is-lit) { filter: brightness(0.5) saturate(0.6); transform: translateY(18px); opacity: 0.6; }
+html.distry.js .d-day [data-lit]:not(.is-lit) { filter: none; opacity: 0; transform: translateY(26px); }
+
+/* the first screen: the night scene behind the page's own hero */
+html.distry .hero { position: relative; isolation: isolate; }
+html.distry .hero::before { content: ""; position: absolute; inset: -90px 0 0 0; z-index: -1; background: url(/landing/distry/assets/hero-night.webp) 72% 40% / cover no-repeat; opacity: 0.55; -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%); mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%); }
+html.distry .hero::after { content: ""; position: absolute; inset: -90px 0 0 0; z-index: -1; background: radial-gradient(80% 70% at 50% 45%, rgba(6, 10, 34, 0.78) 0%, rgba(6, 10, 34, 0.35) 70%, rgba(6, 10, 34, 0) 100%); }
+html.distry .launch-field { background: rgba(10, 18, 58, 0.66); border-color: rgba(246, 198, 103, 0.34); border-radius: 999px; backdrop-filter: blur(10px); }
+html.distry .launch-field input { color: var(--cream); }
+html.distry .launch-field input::placeholder { color: rgba(253, 248, 236, 0.55); }
+html.distry .d-day .launch-field { background: #fff; border-color: var(--paper-line); }
+html.distry .d-day .launch-field input { color: var(--ink); }
+html.distry .d-day .launch-field input::placeholder { color: rgba(11, 18, 48, 0.45); }
+
+/* tables and prose on document pages */
+html.distry table { color: inherit; }
+html.distry a:not(.btn):not([class]) { text-decoration-color: var(--gold); }
+
+@media (prefers-reduced-motion: reduce) {
+  html.distry *, html.distry *::before, html.distry *::after { animation: none !important; transition: none !important; }
+  html.distry .d-fireflies { display: none; }
+}
+
+/* hard-coded inks of the live chrome */
+html.distry .nav-links .nav-top, html.distry .nav-links > a, html.distry .nav-pill .brand { color: var(--cream) !important; }
+html.distry .nav.is-day .nav-links .nav-top, html.distry .nav.is-day .nav-links > a, html.distry .nav.is-day .nav-pill .brand, html.distry .nav.is-day .nav-right > a:not(.btn-accent):not(.btn-primary) { color: var(--ink) !important; }
+html.distry .nav-drop-in a, html.distry .nav-menu-panel a { color: var(--ink) !important; }
+html.distry .nav-drop-in span, html.distry .nav-menu-panel span { color: var(--ink-soft); }
+html.distry .foot a, html.distry .foot .tag, html.distry .foot-bottom, html.distry .foot li { color: var(--ink-soft) !important; }
+html.distry .foot a:hover { color: var(--blue) !important; }
+html.distry .foot h4, html.distry .foot .brand { color: var(--ink) !important; }
+html.distry .foot-mark, html.distry .foot-field { display: none !important; }
+
+/* surfaces the live CSS paints with a translucent white: paper, with paper inks */
+html.distry .show-card {
+  background: var(--paper) !important; color: #0b1230;
+  --text: #0b1230; --text-2: #17204a; --muted: #46507a; --muted-2: #6c76a0; --hair: #eadfc4; --accent: #2563eb; --accent-text: #1a4fc3; --accent-50: #eef3ff;
+}
+html.distry .foot h4, html.distry .foot h4 * { color: var(--ink) !important; opacity: 1 !important; }

@@ -6,6 +6,7 @@ import { previewArticleSlugFor } from "@/lib/blog/preview";
 import { CLONE_ROUTE_PREFIX, cloneSlugForHost } from "@/lib/clone-catalogue";
 import { negotiateContentType } from "@/lib/content-negotiation";
 import { DOCS_MARKDOWN_PREFIX, docsMarkdownPath, isDocsPagePath } from "@/lib/docs/docs-markdown";
+import { SKIN_ROUTE_PREFIX, isSkinPassThrough } from "@/lib/distry-skin";
 import { PROTOTYPE_ROUTE_PREFIX, prototypeSlugForHost } from "@/lib/prototype-catalogue";
 
 /**
@@ -42,9 +43,7 @@ export default function proxy(request: NextRequest) {
 
   // A landing of ours under design (src/lib/prototype-catalogue.ts): same gate, same bail.
   const prototype = prototypeSlugForHost(host);
-  if (prototype !== null) {
-    return serveLab(request, `${PROTOTYPE_ROUTE_PREFIX}/${prototype}`, "distribute prototypes");
-  }
+  if (prototype !== null) return servePrototype(request, prototype);
 
   return offLabHost(request);
 }
@@ -57,6 +56,38 @@ export default function proxy(request: NextRequest) {
  * one of them to be forgotten — and the one that would be forgotten is the password.
  */
 function serveLab(request: NextRequest, internalPrefix: string, realm: string) {
+  const refused = labGate(request, realm);
+  if (refused !== null) return refused;
+
+  const url = request.nextUrl.clone();
+  // The trailing slash is dropped because the app router redirects `/a/b/` to `/a/b`, and
+  // a 308 in the middle of a rewrite loses the page. Nothing is lost by it: the reader
+  // maps `/pricing` and `/pricing/` onto the same file.
+  url.pathname = `${internalPrefix}${request.nextUrl.pathname}`.replace(/\/+$/, "") || internalPrefix;
+  return NextResponse.rewrite(url);
+}
+
+/**
+ * A prototype host is the WHOLE site in the prototype's skin: `/` is the prototype's own
+ * hand-written page, every other document is the live page fetched and skinned
+ * (`src/lib/distry-skin.ts`), and files pass through as they are.
+ */
+function servePrototype(request: NextRequest, slug: string) {
+  const refused = labGate(request, "distribute prototypes");
+  if (refused !== null) return refused;
+
+  const pathname = request.nextUrl.pathname.replace(/\/+$/, "") || "/";
+  if (request.method !== "GET" && request.method !== "HEAD") return NextResponse.next();
+  if (isSkinPassThrough(pathname)) {
+    return NextResponse.next({ headers: { "x-robots-tag": "noindex, nofollow" } });
+  }
+  const url = request.nextUrl.clone();
+  url.pathname = pathname === "/" ? `${PROTOTYPE_ROUTE_PREFIX}/${slug}` : `${SKIN_ROUTE_PREFIX}/${slug}${pathname}`;
+  return NextResponse.rewrite(url);
+}
+
+/** The refusal a lab host answers (robots, missing password), or null when the request may go on. */
+function labGate(request: NextRequest, realm: string): NextResponse | null {
   // Before the password, because a crawler that reaches the host without credentials
   // must still be told to stay away — a 401 says nothing about indexing, and the whole
   // point is that neither a competitor's copy nor a claim we have retired ever enters an
@@ -82,12 +113,7 @@ function serveLab(request: NextRequest, internalPrefix: string, realm: string) {
     });
   }
 
-  const url = request.nextUrl.clone();
-  // The trailing slash is dropped because the app router redirects `/a/b/` to `/a/b`, and
-  // a 308 in the middle of a rewrite loses the page. Nothing is lost by it: the reader
-  // maps `/pricing` and `/pricing/` onto the same file.
-  url.pathname = `${internalPrefix}${request.nextUrl.pathname}`.replace(/\/+$/, "") || internalPrefix;
-  return NextResponse.rewrite(url);
+  return null;
 }
 
 /**
@@ -103,6 +129,7 @@ function offLabHost(request: NextRequest) {
     pathname.startsWith(CLONE_ROUTE_PREFIX) ||
     pathname.startsWith(ARCHIVE_ROUTE_PREFIX) ||
     pathname.startsWith(PROTOTYPE_ROUTE_PREFIX) ||
+    pathname.startsWith(SKIN_ROUTE_PREFIX) ||
     pathname.startsWith(DOCS_MARKDOWN_PREFIX)
   ) {
     return new NextResponse("Not found.", {
