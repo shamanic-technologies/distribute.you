@@ -148,7 +148,7 @@ import {
   type GetStartedStepKey,
   type StepPhase,
   TOPUP_CHOICES_USD,
-  AT_COST_TOPUP_CHOICES_USD,
+  AT_COST_MIN_TOPUP_USD,
   isAtCostOffer,
   wallCopy,
 } from "@/lib/v2/get-started";
@@ -242,7 +242,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // The wall sells the prepaid checkout only (OFFER-RESET-1029; the homepage arms were deleted 2026-11-11).
   const wall = wallCopy(walkAtCost);
   // The monthly limit's first charge to let through (owner 2026-10-12): the smallest top-up.
-  const limitArm: LimitArm = { kind: "prepaid", topupUsd: walkAtCost ? AT_COST_TOPUP_CHOICES_USD[0] : TOPUP_CHOICES_USD[0] };
+  const limitArm: LimitArm = { kind: "prepaid", topupUsd: walkAtCost ? AT_COST_MIN_TOPUP_USD : TOPUP_CHOICES_USD[0] };
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   // A prepared link (`?firstName=&lastName=&phone=+…`, owner 2026-10-21): what we already know

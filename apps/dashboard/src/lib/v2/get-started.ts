@@ -938,7 +938,9 @@ export function offersNoFreeMoney(account: { free_credit_offer?: string } | null
  * 2026-11-11: « +10 dès qu'on arrive sous $5 … c'était exactement ma règle »; the old
  * reading "threshold + $10" forced a $15 reload). Our validation only: billing refuses none.
  */
-export const AT_COST_TOPUP_CHOICES_USD = [10, 25, 50, 100] as const;
+// The buttons stay $100 / $250 / $500 / $1,000; "Other" takes any amount from $10 (owner
+// 2026-11-17: « Laisse le choix $100 / $250 / $500 / $1,000, mais permet as low as $10 dans le custom »).
+export const AT_COST_TOPUP_CHOICES_USD = [100, 250, 500, 1000] as const;
 export const AT_COST_MIN_TOPUP_USD = 10;
 export const AT_COST_MIN_THRESHOLD_USD = 5;
 /** A reload adds at least this much, whatever the threshold it fires under. */
