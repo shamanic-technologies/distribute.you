@@ -70,7 +70,6 @@ html.distry {
 .buddy-say { max-width: 240px; padding: 10px 14px; margin-bottom: 18px; border-radius: 18px 18px 4px 18px; background: var(--paper); color: var(--ink); font-size: 0.92rem; font-weight: 500; line-height: 1.35; box-shadow: 0 12px 30px rgba(3, 6, 24, 0.35); opacity: 0; transform: translateY(8px) scale(0.94); transform-origin: bottom right; transition: opacity 0.4s ease, transform 0.5s var(--ease); }
 .buddy-say.is-on { opacity: 1; transform: none; }
 /* The floating WhatsApp button (React pages) holds the corner: Distry stands just above it, never under it. */
-html.distry body:has(a[href^="https://wa.me/"]) .buddy { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 .spark { position: fixed; z-index: 41; width: 10px; height: 8px; border-radius: 2px; background: var(--gold); box-shadow: 0 0 12px 3px rgba(246, 198, 103, 0.8); pointer-events: none; animation: spark 1.1s ease-out forwards; }
 @keyframes spark { to { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)); opacity: 0; } }
 
@@ -240,3 +239,25 @@ html.distry section.d-day, html.distry section.d-day.tint, html.distry section.d
 html.distry section.d-night, html.distry section.d-night.tint, html.distry section.d-night.dark { background: radial-gradient(120% 90% at 70% 0%, #17266b 0%, #0b1340 46%, #060a22 100%) !important; }
 html.distry section.d-day.dark, html.distry section.d-day.dark :is(h2, h3) { color: var(--ink); }
 html.distry section.d-day.dark p { color: var(--ink-soft); }
+
+/* Distry IS the way to talk to us: the floating WhatsApp button goes, the avatar is the button. */
+html.distry a[aria-label="Chat with us on WhatsApp"] { display: none !important; }
+html.distry .buddy-face { display: block; pointer-events: auto; cursor: pointer; }
+html.distry .buddy-face:hover { box-shadow: 0 0 0 3px var(--gold), 0 0 56px rgba(246, 198, 103, 0.8), 0 14px 30px rgba(3, 6, 24, 0.45); }
+html.distry .buddy-face:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+/* The chat preview on the product pages: a clean, channel-neutral conversation in Distry's
+   colours (owner: the green WhatsApp phone "ne fait pas propre ni moderne"). */
+html.distry .wa { background: #ffffff; border: 1px solid #e3e8f2; border-radius: 22px; box-shadow: 0 30px 60px -24px rgba(11, 18, 48, 0.45); }
+html.distry .wa-top { background: #ffffff; color: #0b1230; border-bottom: 1px solid #e3e8f2; }
+html.distry .wa-top img { background: #eef3ff; }
+html.distry .wa-top b { font-weight: 600; }
+html.distry .wa-top small { color: #16a34a; opacity: 1; }
+html.distry .wa-top::after { content: "WhatsApp + Email"; margin-left: auto; padding: 3px 8px; border-radius: 999px; background: #eef3ff; color: #1a4fc3; font-size: 9.5px; font-weight: 600; white-space: nowrap; }
+html.distry .wa-body { background: #f6f8fc; }
+html.distry .wa-msg { box-shadow: none; }
+html.distry .wa-row.in .wa-msg { background: #ffffff; color: #0b1230; border: 1px solid #e3e8f2; border-radius: 14px 14px 14px 4px; }
+html.distry .wa-row.out .wa-msg { background: #2563eb; color: #ffffff; border-radius: 14px 14px 4px 14px; }
+html.distry .wa-msg.booked { background: #eef3ff; color: #1a4fc3; border-color: #dbe6ff; }
+html.distry .wa-day { background: #ffffff; color: #6c76a0; box-shadow: none; border: 1px solid #e3e8f2; }
+html.distry .wa-dots { background: #ffffff; border: 1px solid #e3e8f2; }
