@@ -13,15 +13,18 @@
 
   /* ---- the load-in ---- */
   const hero = document.querySelector(".hero");
-  $$("[data-rise]", hero).forEach((el, i) => el.style.setProperty("--i", i));
-  requestAnimationFrame(() => hero.classList.add("is-ready"));
+  if (hero) {
+    $$("[data-rise]", hero).forEach((el, i) => el.style.setProperty("--i", i));
+    requestAnimationFrame(() => hero.classList.add("is-ready"));
+  }
 
   /* ---- the sky follows the scroll: night (0) to dawn (0.5) to day (1) ---- */
   const skySections = $$("[data-sky]").map((el) => ({ el, sky: Number(el.dataset.sky) }));
-  const nav = document.getElementById("nav");
+  const nav = document.getElementById("nav") || document.querySelector(".nav") || document.querySelector("header");
   let skyT = 0;
 
   function readSky() {
+    if (skySections.length === 0) return 0;
     const mid = window.innerHeight / 2;
     let before = skySections[0];
     let after = skySections[skySections.length - 1];
@@ -46,7 +49,8 @@
     s.setProperty("--day", clamp((skyT - 0.55) * 2.6).toFixed(3));
     s.setProperty("--stars", clamp(1 - skyT * 2.2).toFixed(3));
     s.setProperty("--moon", clamp(1 - skyT * 1.8).toFixed(3));
-    nav.classList.toggle("is-day", skyT > 0.74);
+    if (nav) nav.classList.toggle("is-day", skyT > 0.74);
+    document.body.classList.toggle("d-is-day", skyT > 0.74);
   }
 
   /* ---- parallax: each scene drifts slower than the page ---- */
@@ -65,6 +69,7 @@
   /* ---- the dotted trail between the three steps draws itself ---- */
   const steps = document.getElementById("steps");
   function paintTrail() {
+    if (!steps) return;
     const r = steps.getBoundingClientRect();
     steps.style.setProperty("--trail", clamp((window.innerHeight * 0.85 - r.top) / (r.height * 0.9)).toFixed(3));
   }
@@ -253,7 +258,7 @@
       if (!entry.isIntersecting) continue;
       const el = entry.target;
       lit.unobserve(el);
-      const order = Array.from(el.parentElement.children).indexOf(el);
+      const order = Math.min(Array.from(el.parentElement.children).indexOf(el), 5);
       setTimeout(() => {
         el.classList.add("is-lit");
         const thread = el.querySelector("[data-thread]");
@@ -267,18 +272,22 @@
       }, order * 160);
     }
   }, { threshold: 0.22, rootMargin: "0px 0px -6% 0px" });
+  // On a skinned live page the cards are the live site's own: they join the lamps here.
+  if (root.classList.contains("distry")) {
+    $$(".feature, .step, .plan, .proof-card, .show-card, .cmp-card, .fit-card, .stack-card, .panel, .stat, .best-item").forEach((el) => el.setAttribute("data-lit", ""));
+  }
   $$("[data-lit]").forEach((el) => lit.observe(el));
 
   const chat = document.querySelector("[data-chat]");
-  new IntersectionObserver((entries, self) => {
+  if (chat) new IntersectionObserver((entries, self) => {
     if (!entries[0].isIntersecting) return;
     self.disconnect();
     playMessages(chat, 1100);
   }, { threshold: 0.45 }).observe(chat);
 
   /* ---- quotes: the track is doubled so the loop has no seam ---- */
-  const track = document.querySelector(".marquee-track");
-  track.append(...Array.from(track.children).map((node) => {
+  const track = document.querySelector(".marquee-track[data-double]");
+  if (track) track.append(...Array.from(track.children).map((node) => {
     const copy = node.cloneNode(true);
     copy.setAttribute("aria-hidden", "true");
     return copy;
@@ -301,7 +310,8 @@
     for (const entry of entries) if (entry.isIntersecting) speak(entry.target.dataset.say);
   }, { rootMargin: "-45% 0px -45% 0px" });
   $$("[data-say]").forEach((el) => talk.observe(el));
-  setTimeout(() => speak(hero.dataset.say), 1800);
+  const firstLine = document.querySelector("[data-say]");
+  if (firstLine) setTimeout(() => speak(firstLine.dataset.say), 1800);
 
   function sparks(x, y, count) {
     for (let i = 0; i < count; i++) {
@@ -340,7 +350,7 @@
   /* ---- the hero comes alive: a short film over the still, on screens that can carry it ---- */
   const video = document.getElementById("hero-video");
   const saveData = navigator.connection && navigator.connection.saveData;
-  if (innerWidth >= 760 && !saveData) {
+  if (video && innerWidth >= 760 && !saveData) {
     addEventListener("load", () => {
       video.src = video.dataset.src;
       video.addEventListener("canplaythrough", () => {

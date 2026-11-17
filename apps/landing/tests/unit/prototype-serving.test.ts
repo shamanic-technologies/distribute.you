@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { archiveSlugForHost } from "@/lib/archive-catalogue";
 import { cloneSlugForHost } from "@/lib/clone-catalogue";
-import { clonePathFor } from "@/lib/clone-files";
 import {
   PROTOTYPES,
   PROTOTYPE_ROUTE_PREFIX,
@@ -62,9 +61,18 @@ describe("prototypeSlugForHost", () => {
 describe("a prototype is gated like every lab host", () => {
   const proxy = read("src/proxy.ts");
 
-  it("goes through the one lab gate (password, robots, rewrite)", () => {
+  it("goes through the one lab gate (password, robots) before anything is served", () => {
     expect(proxy).toContain("prototypeSlugForHost(host)");
-    expect(proxy).toContain("serveLab(request, `${PROTOTYPE_ROUTE_PREFIX}/${prototype}`");
+    const serve = proxy.slice(proxy.indexOf("function servePrototype("), proxy.indexOf("function labGate("));
+    // Index compare: the gate must come before every way out of the function.
+    expect(serve.indexOf("labGate(request")).toBeGreaterThan(-1);
+    expect(serve.indexOf("labGate(request")).toBeLessThan(serve.indexOf("NextResponse.next("));
+    expect(serve.indexOf("labGate(request")).toBeLessThan(serve.indexOf("NextResponse.rewrite("));
+  });
+
+  it("closes the skin route on every other host", () => {
+    const offLab = proxy.slice(proxy.indexOf("function offLabHost("));
+    expect(offLab).toContain("pathname.startsWith(SKIN_ROUTE_PREFIX)");
   });
 
   it("closes the internal route on every other host", () => {
@@ -88,37 +96,35 @@ describe("a prototype is gated like every lab host", () => {
   });
 });
 
-describe("every prototype is on disk and self-contained", () => {
+describe("every prototype is on disk, with every file it references", () => {
+  // The prototype's page lives outside `public/` (behind the password); its stylesheet,
+  // script and pictures are the shared skin's, under `public/landing/distry/`.
+  const SKIN_DIR = path.join(REPO_APP, "public/landing/distry");
+
   it("has an index and every local file it references", () => {
     for (const prototype of PROTOTYPES) {
-      const root = path.join(PROTOTYPES_DIR, prototype.slug);
-      const index = path.join(root, "index.html");
+      const index = path.join(PROTOTYPES_DIR, prototype.slug, "index.html");
       expect(existsSync(index), `${prototype.slug}/index.html is missing`).toBe(true);
       const html = readFileSync(index, "utf8");
       expect(html.length).toBeGreaterThan(1000);
       expect(html).toContain('name="robots" content="noindex, nofollow"');
 
-      const sources = [html, ...filesUnder(root).filter((f) => /\.(css|js)$/.test(f)).map((f) => readFileSync(path.join(root, f), "utf8"))];
+      const sources = [html, ...filesUnder(SKIN_DIR).filter((f) => /\.(css|js)$/.test(f)).map((f) => readFileSync(path.join(SKIN_DIR, f), "utf8"))];
       const refs = new Set<string>();
       for (const source of sources) {
-        for (const match of source.matchAll(/["'(]\/(assets\/[A-Za-z0-9._/-]+|[a-z-]+\.(?:css|js))[?"')]/g)) refs.add(match[1]);
+        for (const match of source.matchAll(/["'( ]\/landing\/distry\/([A-Za-z0-9._/-]+\.[a-z0-9]+)/g)) refs.add(match[1]);
       }
       expect(refs.size).toBeGreaterThan(5);
       for (const ref of refs) {
-        const relative = clonePathFor(`/${ref}`);
-        expect(relative, ref).not.toBeNull();
-        expect(existsSync(path.join(root, relative!)), `${prototype.slug} references /${ref}, which is not on disk`).toBe(true);
+        expect(existsSync(path.join(SKIN_DIR, ref)), `/landing/distry/${ref} is referenced but not on disk`).toBe(true);
       }
     }
   });
 
   it("keeps the image weight a visitor can wait for", () => {
-    for (const prototype of PROTOTYPES) {
-      const root = path.join(PROTOTYPES_DIR, prototype.slug);
-      for (const file of filesUnder(root)) {
-        const limit = /\.(mp4|webm)$/.test(file) ? 6_000_000 : 900_000;
-        expect(statSync(path.join(root, file)).size, file).toBeLessThan(limit);
-      }
+    for (const file of filesUnder(SKIN_DIR)) {
+      const limit = /\.(mp4|webm)$/.test(file) ? 6_000_000 : 900_000;
+      expect(statSync(path.join(SKIN_DIR, file)).size, file).toBeLessThan(limit);
     }
   });
 });
