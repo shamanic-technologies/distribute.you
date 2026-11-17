@@ -255,27 +255,71 @@ export const STATUS_LABEL: Record<IndexStatus, string> = {
   noise: "Early read",
 };
 
-export function statusLine(status: IndexStatus, rule: StatusRule): string {
+/**
+ * The status in words. `published: false` = the day carries no value: an early read under
+ * the bar is then withheld by features-service (INDEX-VISITS-1117), so the line never says
+ * "published anyway" over an empty figure.
+ */
+export function statusLine(status: IndexStatus, rule: StatusRule, published = true): string {
   if (status === "robust") return `Robust: built on ${rule.robustMinOutcomes}+ outcomes.`;
   if (status === "signal") return `Signal: built on ${rule.signalMinOutcomes} to ${rule.robustMinOutcomes - 1} outcomes.`;
-  return `Early read: under ${rule.signalMinOutcomes} outcomes so far, published anyway.`;
+  return published
+    ? `Early read: under ${rule.signalMinOutcomes} outcomes so far.`
+    : `Early read: under ${rule.signalMinOutcomes} outcomes so far, not published yet.`;
 }
 
-/** Every range once, for a page listing several statuses: no word said twice. */
+/** Every range once, for a page listing several statuses: no word said twice, no promise of a figure under the bar. */
 export function statusLegend(rule: StatusRule): string {
-  return `Robust: ${rule.robustMinOutcomes}+ outcomes. Signal: ${rule.signalMinOutcomes} to ${rule.robustMinOutcomes - 1}. Early read: under ${rule.signalMinOutcomes}, published anyway.`;
+  return `Robust: ${rule.robustMinOutcomes}+ outcomes. Signal: ${rule.signalMinOutcomes} to ${rule.robustMinOutcomes - 1}. Early read: under ${rule.signalMinOutcomes}.`;
 }
 
-const UNAVAILABLE: Record<string, string> = {
-  not_recorded_yet: "Today's value is on its way. It is recorded every hour.",
-  no_mature_workflow: "No workflow has enough results yet to state this number today.",
-  not_measured: "Today's results are not enough to measure this number yet.",
+/**
+ * One sentence per reason features-service serves (the `unavailableReason` description of
+ * `GET /v1/public/indexes/{slug}`). A new served reason gets its sentence here; until then
+ * it reads as the generic line below and logs.
+ */
+export const UNAVAILABLE: Readonly<Record<string, string>> = {
+  not_recorded_yet: "Today's value is on its way. A new value is recorded every hour.",
+  no_mature_workflow: "No campaign had enough results that day to state this number.",
+  no_script_ran_yet: "No cold email has gone out yet to measure this number.",
+  nothing_runnable_on_pipe: "No cold email campaign is running right now to measure this number.",
   no_meeting_measured: "No meeting booked from a positive reply has been measured yet.",
+  not_measured: "Too few results are in yet to measure this number.",
+  not_enough_clients: "This number needs results from at least 2 clients. Today fewer clients have them.",
   ledger_being_recomputed: "Our cost records are being rebuilt. The number comes back once they are done.",
+  ledger_coverage_short: "Some days are missing from our cost records. The number comes back once they are filled.",
+  no_meeting_priced_on_ledger: "No booked meeting has a recorded cost yet.",
+  vendor_cost_unknown: "Part of the spend behind this number has no known vendor price yet. The number comes back once every cost is priced.",
 };
 
-/** Why there is no number today, in plain words. An unknown reason still reads as a sentence. */
-export function unavailableLine(reason: string | null): string {
+/** The served outcome as words, singular and plural. An outcome we do not know yet names no count. */
+const OUTCOME_WORDS: Readonly<Record<string, [string, string]>> = {
+  website_visit: ["click", "clicks"],
+  positive_reply: ["positive reply", "positive replies"],
+  meeting_booked: ["meeting booked", "meetings booked"],
+  engaged_lead: ["engaged lead", "engaged leads"],
+};
+
+/** What the number rests on so far, for a `not_measured` day: the served count and the served bar. */
+export type UnavailableContext = { outcome: string; outcomes: number; minOutcomes: number };
+
+/**
+ * Why there is no number today, in plain words. An unknown reason still reads as a sentence.
+ * With `ctx`, `not_measured` says what the number rests on so far ("5 positive replies so
+ * far. The number is published from 10."): both figures are served, nothing is derived here.
+ */
+export function unavailableLine(reason: string | null, ctx?: UnavailableContext): string {
+  if (reason === "not_measured" && ctx) {
+    const words = OUTCOME_WORDS[ctx.outcome];
+    if (!words) {
+      console.error(`[landing] fleet index: no words for outcome ${JSON.stringify(ctx.outcome)}`);
+    } else if (ctx.outcomes > 0) {
+      const n = ctx.outcomes.toLocaleString("en-US");
+      return `${n} ${ctx.outcomes === 1 ? words[0] : words[1]} so far. The number is published from ${ctx.minOutcomes}.`;
+    } else {
+      return `No ${words[0]} yet. The number is published from ${ctx.minOutcomes} ${words[1]}.`;
+    }
+  }
   if (reason && UNAVAILABLE[reason]) return UNAVAILABLE[reason];
   console.error(`[landing] fleet index: unknown unavailableReason ${JSON.stringify(reason)}`);
   return "This number is not available today. It is recorded every hour.";

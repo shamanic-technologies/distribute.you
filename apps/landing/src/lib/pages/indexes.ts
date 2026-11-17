@@ -19,6 +19,7 @@ import {
   type IndexPoint,
   type IndexStatus,
   type IndexSummary,
+  type StatusRule,
   type ValueKind,
 } from "../fleet-indexes";
 
@@ -293,6 +294,7 @@ const STYLE = `<style>
 .ix-row:hover { background: var(--surface); }
 .ix-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 .ix-row-name { font-family: var(--font-display); font-size: 20px; letter-spacing: -0.02em; }
+.ix-row-why { margin-top: 6px; font-size: 14px; color: var(--muted); max-width: 52ch; }
 .ix-row-meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 14px; color: var(--muted); }
 .ix-row .ix-badge { font-size: 13px; padding: 3px 10px 3px 8px; }
 .ix-row-value { text-align: right; font-family: var(--font-display); font-weight: 300; font-size: clamp(30px, 3.6vw, 44px); letter-spacing: -0.04em; white-space: nowrap; }
@@ -373,7 +375,7 @@ function otherIndexes(list: IndexList | null, slug: string): string {
   return `<section class="framed" id="more">
   <div class="wrap">
     <div class="section-head"><h2>Every index we publish</h2></div>
-    ${listHtml(rows, new Map())}
+    ${listHtml(rows, new Map(), list.statusRule)}
   </div>
 </section>`;
 }
@@ -414,7 +416,7 @@ ${otherIndexes(list, slug)}`,
   </div>
 </div>`
       : `<div class="ix-figure">
-  <p class="ix-value-none">${esc(unavailableLine(i.unavailableReason))}</p>
+  <p class="ix-value-none">${esc(unavailableLine(i.unavailableReason, { outcome: i.outcome, outcomes: i.outcomes, minOutcomes: statusRule.signalMinOutcomes }))}</p>
 </div>`;
 
   const body = `<section class="ix-hero">
@@ -433,7 +435,7 @@ ${otherIndexes(list, slug)}`,
     <div class="section-head"><h2>What it measures</h2></div>
     <p class="ix-method">${esc(i.method)}</p>
     <dl class="ix-facts">
-      <div><dt>Status</dt><dd>${esc(statusLine(i.status, statusRule))}</dd></div>
+      <div><dt>Status</dt><dd>${esc(statusLine(i.status, statusRule, i.value !== null))}</dd></div>
       <div><dt>Last recorded</dt><dd>${i.day ? esc(formatDay(i.day, true)) : "Not recorded yet."}</dd></div>
     </dl>
   </div>
@@ -503,17 +505,18 @@ ${otherIndexes(list, i.slug)}`;
 // The list
 // ---------------------------------------------------------------------------
 
-function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>): string {
+function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>, rule: StatusRule): string {
   const rows = indexes
     .map((i) => {
       const value =
         i.value !== null
           ? `<div class="ix-row-value">${esc(formatIndexValue(i.value, i.unit))}</div>`
-          : `<div class="ix-row-value ix-none">Not available today</div>`;
+          : `<div class="ix-row-value ix-none">Not published yet</div>`;
       return `<a class="ix-row" href="/indexes/${i.slug}">
   <div>
     <div class="ix-row-name">${esc(i.name)}</div>
     <div class="ix-row-meta"><span>${esc(i.valuePer)}</span>${expectedTag(i)}${badge(i.status)}</div>
+    ${i.value === null ? `<div class="ix-row-why">${esc(unavailableLine(i.unavailableReason, { outcome: i.outcome, outcomes: i.outcomes, minOutcomes: rule.signalMinOutcomes }))}</div>` : ""}
   </div>
   <div class="ix-row-spark">${sparklineHtml(series.get(i.slug) ?? [])}</div>
   ${value}
@@ -526,7 +529,7 @@ function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>): s
 /** `list` null = the read failed. `series` carries each index's days for its sparkline. */
 export function renderIndexListPage(list: IndexList | null, series: Map<string, IndexPoint[]>): string {
   const content = list
-    ? `${listHtml(list.indexes, series)}
+    ? `${listHtml(list.indexes, series, list.statusRule)}
 <p class="ix-rule" style="margin-top:20px">${esc(statusLegend(list.statusRule))}</p>`
     : `<div class="ix-error" role="alert">The indexes could not be read just now. Reload the page in a minute, or read them as JSON at <a href="https://api.distribute.you/v1/public/indexes">api.distribute.you/v1/public/indexes</a>.</div>`;
   const body = `<section class="ix-hero">
