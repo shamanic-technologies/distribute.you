@@ -486,3 +486,18 @@ h3 { font-size: 1.42rem; line-height: 1.18; }
   .fireflies, .hero-video { display: none; }
   .scene img { transform: none; }
 }
+
+/* ---------- SOBER (owner 2026-11-17): the big night scene opens the page, the rest is a
+   clean light page; a painting below the hero is a framed moment, never a band. ---------- */
+.orb, .sky-dawn, .sky-day { display: none; }
+body { background: #f6f8fc; }
+.day, .foot, .d-foot { background: #f6f8fc; }
+.scene, .scene-tall { height: auto; margin: 0 auto clamp(28px, 4vw, 48px); width: min(720px, 100% - 40px); border-radius: 22px; -webkit-mask-image: none; mask-image: none; box-shadow: 0 0 0 1px #e3e8f2, 0 18px 44px rgba(11, 18, 48, 0.14); }
+.scene img { position: static; width: 100%; height: auto; transform: none; }
+.why-card, .plan, .quote, .faq details, .cta-box { background: #ffffff; box-shadow: 0 0 0 1px #e3e8f2 inset, 0 12px 32px rgba(11, 18, 48, 0.06); }
+.cta-box { margin-top: 0; }
+.js .day [data-lit]:not(.is-lit), .js [data-lit]:not(.is-lit) { filter: none; opacity: 0; transform: translateY(14px); }
+.js [data-lit] { transition: opacity 0.6s ease, transform 0.6s var(--ease); }
+.day :is(.step, .card, .bet, .receipt, .phone) { background: linear-gradient(180deg, #17266b, #0d1848); backdrop-filter: none; color: var(--cream); box-shadow: 0 18px 44px rgba(11, 18, 48, 0.18); }
+.day :is(.step, .card, .bet, .receipt, .phone) .kicker, .day .show-label, .day p.kicker { color: var(--blue); }
+.day :is(.step, .card, .bet, .receipt, .phone) :is(h3, b) { color: var(--cream); }

@@ -148,7 +148,6 @@ html.distry .cta-box .accent { color: var(--blue); }
 html.distry .cta-box .launch-field { background: #fff; border-color: var(--paper-line); }
 html.distry .cta-box .launch-field input { color: var(--ink); }
 html.distry footer { color: var(--ink); padding-bottom: 110px; }
-html.distry .foot::before { content: ""; grid-column: 1 / -1; height: clamp(220px, 34vw, 460px); border-radius: 26px; background: url(/landing/distry/assets/distry-sleep.webp) center 62% / cover no-repeat; }
 
 /* lamps: each card of the live page comes on as you arrive */
 html.distry.js [data-lit] { transition: filter 1.1s ease, transform 1.1s var(--ease), opacity 1.1s ease; }
@@ -156,16 +155,6 @@ html.distry.js [data-lit]:not(.is-lit) { filter: brightness(0.5) saturate(0.6); 
 html.distry.js .d-day [data-lit]:not(.is-lit) { filter: none; opacity: 0; transform: translateY(26px); }
 
 /* the first screen: the night scene behind the page's own hero */
-html.distry section:has(> .d-scene) { position: relative; isolation: isolate; }
-html.distry .d-scene { position: absolute; inset: -96px 0 auto 0; height: min(calc(100% + 96px), 820px); z-index: -1; background: 100% 50% / cover no-repeat; -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 66%, transparent 100%); mask-image: linear-gradient(180deg, #000 0%, #000 66%, transparent 100%); }
-html.distry .d-scene::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(6, 10, 34, 0.92) 0%, rgba(6, 10, 34, 0.78) 42%, rgba(6, 10, 34, 0.4) 72%, rgba(6, 10, 34, 0.22) 100%); }
-html.distry .d-scene-band { position: relative; height: clamp(220px, 32vw, 420px); margin-top: -96px; }
-html.distry section:has(> .d-scene):not(.dy-section) > :not(.d-scene) :is(h1, .lead, .hero-sub) { text-shadow: 0 2px 18px rgba(6, 10, 34, 0.7); }
-html.distry .dy-page section:has(> .d-scene) { padding-top: clamp(150px, 22vw, 300px); }
-@media (max-width: 760px) {
-  html.distry .d-scene { background-position: 80% 30%; }
-  html.distry .d-scene::after { background: linear-gradient(180deg, rgba(6, 10, 34, 0.5) 0%, rgba(6, 10, 34, 0.86) 100%); }
-}
 html.distry .launch-field { background: rgba(10, 18, 58, 0.66); border-color: rgba(246, 198, 103, 0.34); border-radius: 999px; backdrop-filter: blur(10px); }
 html.distry .launch-field input { color: var(--cream); }
 html.distry .launch-field input::placeholder { color: rgba(253, 248, 236, 0.55); }
@@ -220,8 +209,28 @@ html.distry footer.bg-black, html.distry footer.bg-black :is(a, p, span, li, div
 html.distry footer.bg-black :is(h4, h4 *) { color: var(--ink) !important; }
 html.distry footer.bg-black a:hover { color: var(--blue) !important; }
 html.distry footer.bg-black > div.pointer-events-none { display: none; }
-html.distry footer.bg-black > div:first-child::before { content: ""; display: block; height: clamp(220px, 34vw, 460px); margin-bottom: 40px; border-radius: 26px; background: url(/landing/distry/assets/distry-sleep.webp) center 62% / cover no-repeat; }
 /* a paper sheet always carries ink, whatever hour its section sits in */
 html.distry .dy-page section > div, html.distry main:not(.dy-page) > section > div { color: var(--ink-soft); }
 html.distry .dy-page section > div :is(h1, h2, h3, h4, strong, b), html.distry main:not(.dy-page) > section > div :is(h1, h2, h3, h4, strong, b) { color: var(--ink) !important; }
 html.distry .dy-page section > div a:not([class*="bg-"]) { color: var(--blue); }
+
+/* ---------- SOBER (owner 2026-11-17: "trop chargé... pas assez B2B SaaS") ----------
+   The world is an accent: the night is the opening section only, every other section is
+   a clean light page; the painting is one framed moment; no sun, no moon, no sky by day. */
+html.distry .d-orb, html.distry .d-sky-dawn, html.distry .d-sky-day { display: none; }
+html.distry body { background: #f6f8fc; }
+html.distry .d-night { background: radial-gradient(120% 90% at 70% 0%, #17266b 0%, #0b1340 46%, #060a22 100%) !important; }
+html.distry .d-day, html.distry footer { background: #f6f8fc !important; }
+html.distry .d-day, html.distry footer, html.distry .foot {
+  --bg: #ffffff; --surface: #f6f8fc; --d-card: #ffffff; --hair: #e3e8f2; --hair-2: #d3dbea;
+  --shadow-ring: 0 0 0 1px #e3e8f2, 0 12px 32px rgba(11, 18, 48, 0.06);
+  --shadow-card: 0 0 0 1px #e3e8f2, 0 12px 32px rgba(11, 18, 48, 0.06);
+}
+html.distry .cta-box { background: #ffffff !important; box-shadow: 0 0 0 1px #e3e8f2 inset, 0 24px 60px rgba(11, 18, 48, 0.08); }
+html.distry .d-frame { margin: 0 auto 28px; width: min(560px, 100%); border-radius: 20px; overflow: hidden; box-shadow: 0 0 0 1px #e3e8f2, 0 18px 44px rgba(11, 18, 48, 0.14); }
+html.distry .d-frame img { display: block; width: 100%; height: auto; }
+html.distry .d-frame-band { background: #f6f8fc; padding: 8px 20px 40px; }
+html.distry .dy-page section > div, html.distry main:not(.dy-page) > section > div { background: #ffffff; box-shadow: 0 0 0 1px #e3e8f2 inset, 0 12px 32px rgba(11, 18, 48, 0.06); }
+html.distry .dy-page article { background: #ffffff !important; border-color: #e3e8f2 !important; }
+html.distry.js [data-lit]:not(.is-lit), html.distry.js .d-day [data-lit]:not(.is-lit) { filter: none; opacity: 0; transform: translateY(14px); }
+html.distry.js [data-lit] { transition: opacity 0.6s ease, transform 0.6s var(--ease); }
