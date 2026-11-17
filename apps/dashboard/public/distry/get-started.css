@@ -107,3 +107,14 @@ html.distry .v2-root .k-input.k-cta-input { border-radius: 999px; padding-inline
 html.distry .d-backdrop { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: url(/distry/assets/onb-website.webp) 100% 50% / cover no-repeat; opacity: 0.6; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%, #000 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 55%, #000 100%); }
 @media (max-width: 760px) { html.distry .d-backdrop { opacity: 0.28; -webkit-mask-image: none; mask-image: none; } }
 @media (prefers-reduced-motion: reduce) { html.distry .d-fireflies { display: none; } html.distry .buddy-face { animation: none; } }
+
+/* The skin is rendered INSIDE .v2-root (the page's children), which is its own stacking
+   context: the sky and the painting go behind the walk, never over it. */
+html.distry .v2-root .d-sky { z-index: -2; }
+html.distry .v2-root .d-backdrop { z-index: -1; opacity: 0.7; -webkit-mask-image: linear-gradient(90deg, transparent 38%, #000 74%, #000 100%); mask-image: linear-gradient(90deg, transparent 38%, #000 74%, #000 100%); }
+html.distry .v2-root .d-moon { left: auto; right: 4vw; top: 6vh; width: 56px; height: 56px; }
+@media (max-width: 760px) {
+  html.distry .v2-root .d-backdrop { opacity: 0.16; -webkit-mask-image: none; mask-image: none; }
+  html.distry .v2-root .d-moon { display: none; }
+  html.distry .buddy-say { display: none; }
+}
