@@ -417,10 +417,93 @@ function start() {
   }
 }
 
+/*
+ * The chat: a click on Distry opens a conversation in the page with the same assistant
+ * as on WhatsApp and email (the site only carries the messages). The transcript is kept
+ * in this browser so a reload shows it again; the conversation itself lives server-side.
+ * When the chat cannot answer, the visitor is offered the WhatsApp conversation instead.
+ */
+function setupChat() {
+  const face = document.querySelector("a.buddy-face");
+  if (!face) return;
+  const STORE = "distry_chat_v1";
+  const whatsapp = face.href;
+  let panel = null;
+  let log = [];
+  try { log = JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { log = []; }
+  const save = () => { try { localStorage.setItem(STORE, JSON.stringify(log.slice(-60))); } catch (e) { /* private mode */ } };
+
+  function bubble(list, who, text) {
+    const p = document.createElement("p");
+    p.className = `dc-msg dc-${who}`;
+    // Plain text only; URLs become links.
+    String(text).split(/(https?:\/\/[^\s]+)/g).forEach((part, i) => {
+      if (i % 2 === 1) {
+        const link = document.createElement("a");
+        link.href = part; link.textContent = part; link.target = "_blank"; link.rel = "noopener noreferrer";
+        p.append(link);
+      } else if (part) p.append(document.createTextNode(part));
+    });
+    list.append(p);
+    list.scrollTop = list.scrollHeight;
+    return p;
+  }
+
+  function openChat() {
+    if (panel) { panel.hidden = false; panel.querySelector("input").focus(); return; }
+    // A div, not a section: the page's own section rules must not reach the panel.
+    panel = document.createElement("div");
+    panel.className = "dc";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "Chat with Distry");
+    panel.innerHTML = `<header class="dc-top"><img src="${face.querySelector("img").src}" alt="" width="36" height="36"><div><b>Distry</b><small>distribute.you assistant</small></div><button type="button" class="dc-close" aria-label="Close the chat">×</button></header><div class="dc-list" aria-live="polite"></div><form class="dc-form"><input type="text" name="text" autocomplete="off" maxlength="2000" placeholder="Ask Distry anything" aria-label="Your message"><button type="submit">Send</button></form><a class="dc-wa" href="${whatsapp}" target="_blank" rel="noopener noreferrer">Continue on WhatsApp</a>`;
+    document.body.append(panel);
+    const list = panel.querySelector(".dc-list");
+    const form = panel.querySelector("form");
+    const input = form.querySelector("input");
+    bubble(list, "them", "Hi, I'm Distry. Ask me anything about distribute.you.");
+    log.forEach((m) => bubble(list, m.who, m.text));
+    panel.querySelector(".dc-close").addEventListener("click", () => { panel.hidden = true; });
+    panel.addEventListener("keydown", (e) => { if (e.key === "Escape") panel.hidden = true; });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text || form.dataset.busy) return;
+      input.value = "";
+      form.dataset.busy = "1";
+      bubble(list, "me", text);
+      log.push({ who: "me", text }); save();
+      const typing = bubble(list, "them", "…");
+      typing.classList.add("dc-typing");
+      const messageId = `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+      let answer = null;
+      try {
+        const res = await fetch("/api/chat/distry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messageId, text }) });
+        if (res.ok) answer = await res.json();
+      } catch (e) { answer = null; }
+      typing.remove();
+      delete form.dataset.busy;
+      const reply = answer && answer.reply ? answer.reply : "I could not answer just now. Send it again, or continue on WhatsApp below.";
+      bubble(list, "them", reply);
+      if (answer && answer.reply) { log.push({ who: "them", text: reply }); save(); }
+      panel.classList.toggle("dc-ask", !answer || answer.askForContact === true || answer.status === "contact_needed");
+      input.focus();
+    });
+    input.focus();
+  }
+
+  face.addEventListener("click", (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    openChat();
+  });
+}
+
 if (window.__distry && window.__distry.late) {
-  const late = () => setTimeout(() => { dress(window.__distry); start(); }, 700);
+  const late = () => setTimeout(() => { dress(window.__distry); start(); setupChat(); }, 700);
   if (document.readyState === "complete") late();
   else addEventListener("load", late);
 } else {
   start();
+  setupChat();
 }
