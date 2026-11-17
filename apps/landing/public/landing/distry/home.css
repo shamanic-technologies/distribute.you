@@ -501,3 +501,6 @@ body { background: #f6f8fc; }
 .day :is(.step, .card, .bet, .receipt, .phone) { background: linear-gradient(180deg, #17266b, #0d1848); backdrop-filter: none; color: var(--cream); box-shadow: 0 18px 44px rgba(11, 18, 48, 0.18); }
 .day :is(.step, .card, .bet, .receipt, .phone) .kicker, .day .show-label, .day p.kicker { color: var(--blue); }
 .day :is(.step, .card, .bet, .receipt, .phone) :is(h3, b) { color: var(--cream); }
+.buddy-face { display: block; pointer-events: auto; cursor: pointer; }
+.buddy-face:hover { box-shadow: 0 0 0 3px var(--gold), 0 0 56px rgba(246, 198, 103, 0.8), 0 14px 30px rgba(3, 6, 24, 0.45); }
+.buddy-face:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }

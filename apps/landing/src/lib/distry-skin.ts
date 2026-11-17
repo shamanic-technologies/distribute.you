@@ -14,7 +14,7 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 9;
+export const SKIN_VERSION = 10;
 
 /** The site's mark, and Distry's, which replaces it wherever the skin is worn (owner 2026-11-17). */
 export const SITE_LOGO = "/landing/v2/assets/logo-mark.svg";
@@ -76,7 +76,14 @@ export function skinStylesheet(css: string): string {
 
 const SKY = `<div class="d-sky" aria-hidden="true"><div class="d-sky-layer d-sky-night"></div><div class="d-sky-layer d-sky-dawn"></div><div class="d-sky-layer d-sky-day"></div><canvas class="d-stars" id="stars"></canvas><div class="d-orb d-moon"></div><div class="d-orb d-sun"></div></div><canvas class="d-fireflies" id="fireflies" aria-hidden="true"></canvas>`;
 
-const BUDDY = `<aside class="buddy" id="buddy" aria-hidden="true"><p class="buddy-say" id="buddy-say"></p><div class="buddy-face"><img src="${SKIN_ASSETS}/assets/distry-avatar-160.webp" alt="" width="72" height="72"></div></aside>`;
+/**
+ * Where a click on Distry leads. Distry beside the visitor is a way to TALK to us, never a
+ * decoration (owner 2026-11-17), and it replaces the floating WhatsApp button. Until the
+ * AI answers in the page itself, the click opens the same WhatsApp conversation.
+ */
+export const DISTRY_CHAT_URL = `https://wa.me/33680478702?text=${encodeURIComponent("Hi Distry! I have a question about distribute.you:")}`;
+
+const BUDDY = `<aside class="buddy" id="buddy"><p class="buddy-say" id="buddy-say" aria-hidden="true"></p><a class="buddy-face" href="${DISTRY_CHAT_URL}" target="_blank" rel="noopener noreferrer" aria-label="Chat with Distry"><img src="${SKIN_ASSETS}/assets/distry-avatar-160.webp" alt="" width="72" height="72"></a></aside>`;
 
 const HEAD = `<meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/svg+xml" href="${SKIN_ASSETS}/assets/distry-logo.svg">

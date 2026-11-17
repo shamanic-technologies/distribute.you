@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { applyDistrySkin, hourFor, isHydratedPage, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet, withDistryLogo } from "../../src/lib/distry-skin";
+import { DISTRY_CHAT_URL, applyDistrySkin, hourFor, isHydratedPage, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet, withDistryLogo } from "../../src/lib/distry-skin";
 
 describe("which requests a skin host fetches and skins", () => {
   it("lets files and framework internals through", () => {
@@ -174,14 +174,6 @@ describe("a page React hydrates", () => {
   });
 });
 
-describe("Distry beside the WhatsApp button", () => {
-  it("stands above the floating WhatsApp button, never under it", async () => {
-    const { readFileSync } = await import("node:fs");
-    const css = readFileSync(path.join(__dirname, "../../public/landing/distry/skin.css"), "utf8");
-    expect(css).toMatch(/html\.distry body:has\(a\[href\^="https:\/\/wa\.me\/"\]\) \.buddy \{ bottom: calc\(88px/);
-  });
-});
-
 describe("Distry's mark replaces the site's", () => {
   it("swaps every use of the site logo on a static page", () => {
     const out = applyDistrySkin('<html><head></head><body><section><img src="/landing/v2/assets/logo-mark.svg"></section><footer><img src="/landing/v2/assets/logo-mark.svg"></footer></body></html>', "/ai-sdr");
@@ -199,5 +191,30 @@ describe("Distry's mark replaces the site's", () => {
     expect(existsSync(path.resolve(__dirname, "../../public/landing/distry/assets/distry-logo.svg"))).toBe(true);
     const route = readFileSync(path.resolve(__dirname, "../../src/app/internal-prototype/[slug]/[[...path]]/route.ts"), "utf8");
     expect(route).toContain("withDistryLogo(await withLiveFigures(");
+  });
+});
+
+describe("Distry beside the visitor is a way to talk to us", () => {
+  const skinCss = readFileSync(path.resolve(__dirname, "../../public/landing/distry/skin.css"), "utf8");
+
+  it("is a link a visitor can click, on static and on hydrated pages", () => {
+    const fixed = applyDistrySkin("<html><head></head><body><section></section></body></html>", "/ai-sdr");
+    expect(fixed).toContain(`<a class="buddy-face" href="${DISTRY_CHAT_URL}"`);
+    expect(fixed).toContain('aria-label="Chat with Distry"');
+    const hydrated = applyDistrySkin("<html><head></head><body><main></main><script>self.__next_f=[]</script></body></html>", "/blog");
+    expect(hydrated).toContain("buddy-face");
+    expect(hydrated).toContain("wa.me/33680478702");
+    expect(skinCss).toMatch(/\.buddy-face \{[^}]*pointer-events: auto/);
+  });
+
+  it("replaces the floating WhatsApp button instead of sitting beside it", () => {
+    expect(skinCss).toContain('a[aria-label="Chat with us on WhatsApp"] { display: none !important; }');
+    // The button the rule hides is spelled this way in the component.
+    expect(readFileSync(path.resolve(__dirname, "../../src/components/support-whatsapp-button.tsx"), "utf8")).toContain('aria-label="Chat with us on WhatsApp"');
+  });
+
+  it("shows the chat preview without the green WhatsApp phone", () => {
+    expect(skinCss).toMatch(/html\.distry \.wa-top \{[^}]*background: #ffffff/);
+    expect(skinCss).toMatch(/html\.distry \.wa-row\.out \.wa-msg \{[^}]*background: #2563eb/);
   });
 });
