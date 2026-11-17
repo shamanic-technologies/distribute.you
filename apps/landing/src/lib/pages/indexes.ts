@@ -19,7 +19,6 @@ import {
   type IndexPoint,
   type IndexStatus,
   type IndexSummary,
-  type StatusRule,
   type ValueKind,
 } from "../fleet-indexes";
 
@@ -375,7 +374,7 @@ function otherIndexes(list: IndexList | null, slug: string): string {
   return `<section class="framed" id="more">
   <div class="wrap">
     <div class="section-head"><h2>Every index we publish</h2></div>
-    ${listHtml(rows, new Map(), list.statusRule)}
+    ${listHtml(rows, new Map())}
   </div>
 </section>`;
 }
@@ -416,7 +415,7 @@ ${otherIndexes(list, slug)}`,
   </div>
 </div>`
       : `<div class="ix-figure">
-  <p class="ix-value-none">${esc(unavailableLine(i.unavailableReason, { outcome: i.outcome, outcomes: i.outcomes, minOutcomes: statusRule.signalMinOutcomes }))}</p>
+  <p class="ix-value-none">${esc(unavailableLine(i.unavailableReason))}</p>
 </div>`;
 
   const body = `<section class="ix-hero">
@@ -505,7 +504,7 @@ ${otherIndexes(list, i.slug)}`;
 // The list
 // ---------------------------------------------------------------------------
 
-function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>, rule: StatusRule): string {
+function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>): string {
   const rows = indexes
     .map((i) => {
       const value =
@@ -516,7 +515,7 @@ function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>, ru
   <div>
     <div class="ix-row-name">${esc(i.name)}</div>
     <div class="ix-row-meta"><span>${esc(i.valuePer)}</span>${expectedTag(i)}${badge(i.status)}</div>
-    ${i.value === null ? `<div class="ix-row-why">${esc(unavailableLine(i.unavailableReason, { outcome: i.outcome, outcomes: i.outcomes, minOutcomes: rule.signalMinOutcomes }))}</div>` : ""}
+    ${i.value === null ? `<div class="ix-row-why">${esc(unavailableLine(i.unavailableReason))}</div>` : ""}
   </div>
   <div class="ix-row-spark">${sparklineHtml(series.get(i.slug) ?? [])}</div>
   ${value}
@@ -529,7 +528,7 @@ function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>, ru
 /** `list` null = the read failed. `series` carries each index's days for its sparkline. */
 export function renderIndexListPage(list: IndexList | null, series: Map<string, IndexPoint[]>): string {
   const content = list
-    ? `${listHtml(list.indexes, series, list.statusRule)}
+    ? `${listHtml(list.indexes, series)}
 <p class="ix-rule" style="margin-top:20px">${esc(statusLegend(list.statusRule))}</p>`
     : `<div class="ix-error" role="alert">The indexes could not be read just now. Reload the page in a minute, or read them as JSON at <a href="https://api.distribute.you/v1/public/indexes">api.distribute.you/v1/public/indexes</a>.</div>`;
   const body = `<section class="ix-hero">
