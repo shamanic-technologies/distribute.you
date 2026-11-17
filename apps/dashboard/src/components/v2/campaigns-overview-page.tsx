@@ -18,6 +18,7 @@ import {
   capWindowWords,
   isOngoingFunnelCampaign,
   periodSpentUsd,
+  centsToUsd,
   splitFunnelCampaigns,
   type FunnelCampaignCopy,
   type FunnelCampaignRow,
@@ -279,8 +280,6 @@ function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base, search, type, sort, rowById, copyById, capsStamp]);
 
-  // The biggest $ Spent this period in view (billing's figure) scales each row's bar (display only).
-  const spentMax = Math.max(0, ...shown.map((c) => periodSpentUsd(capsById.get(c.id) ?? null) ?? 0));
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   if (settled && !q.data && q.isError) return <p className="text-[13px] text-[var(--data-rose)]">Could not read this brand&apos;s campaigns.</p>;
   return (
@@ -338,7 +337,6 @@ function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
               copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ, c.createdAt)}
               caps={capsById.get(c.id) ?? null}
               capsSettled={capsSettledById.get(c.id) ?? false}
-              spentMax={spentMax}
               offerName={offerNameOf(c.offerId)}
             />
           ))}
@@ -380,7 +378,6 @@ export function CampaignLine({
   copySettled,
   caps,
   capsSettled = true,
-  spentMax = null,
   offerName = null,
 }: {
   orgId: string;
@@ -393,7 +390,6 @@ export function CampaignLine({
   caps: SalesFunnelCaps | null;
   /** The caps read answered (billing); until then the $ Spent cell shimmers. */
   capsSettled?: boolean;
-  spentMax?: number | null;
   /** The offer it sells, named when the brand holds several. */
   offerName?: string | null;
 }) {
@@ -423,6 +419,7 @@ export function CampaignLine({
   // $ Spent = the max budget's current period, as billing serves it (owner 2026-11-16).
   const periodBudget = caps?.maxBudget ?? null;
   const periodSpent = periodSpentUsd(caps);
+  const periodCapUsd = centsToUsd(periodBudget?.amountCents);
   useEffect(() => {
     if (periodBudget && periodBudget.consumedCents === null)
       console.error("[funnel-campaigns] period spend not served", { id: campaign.id, reason: periodBudget.consumedUnavailableReason, detail: periodBudget.consumedUnavailableDetail });
@@ -499,7 +496,8 @@ export function CampaignLine({
             DASH
           )}
         </div>
-        {periodSpent !== null && spentMax ? <ShareBar value={periodSpent} max={spentMax} className="ml-auto mt-1.5 w-full" /> : null}
+        {/* Owner 2026-11-17: the bar is spent against the campaign's own cap this period ($4.59 of $10 = half), never against the biggest row. */}
+        {periodSpent !== null && periodCapUsd ? <ShareBar value={periodSpent} max={periodCapUsd} className="ml-auto mt-1.5 w-full" /> : null}
       </div>
       <div className="flex @md:justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="@md:text-right">
