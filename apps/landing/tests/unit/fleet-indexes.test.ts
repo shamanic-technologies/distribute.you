@@ -11,7 +11,10 @@ import {
   indexLinksHtml,
   isRetiredIndex,
   parseIndexDetail,
+  esc,
   parseIndexList,
+  UNAVAILABLE,
+  statusLine,
   unavailableLine,
   type IndexDetail,
   type IndexList,
@@ -167,7 +170,7 @@ describe("the pages", () => {
 
   it("the status legend states each range once", () => {
     const legend = renderIndexListPage(LIST, new Map()).match(/<p class="ix-rule"[^>]*>([^<]*)</)![1];
-    expect(legend).toBe("Robust: 30+ outcomes. Signal: 10 to 29. Early read: under 10, published anyway.");
+    expect(legend).toBe("Robust: 30+ outcomes. Signal: 10 to 29. Early read: under 10.");
   });
 
   it("the list links every served index with its value", () => {
@@ -367,5 +370,74 @@ describe("an expected value says so wherever it prints (MEETING-INDEX-EXPECTED-L
     const page = renderIndexPage(meeting.slug, { statusRule: RULE, index: { ...meeting, value: null, valueKind: undefined, unavailableReason: "ledger_being_recomputed" }, points: [] }, LIST);
     expect(page).toContain("Our cost records are being rebuilt.");
     expect(page).not.toContain('class="ix-value"');
+  });
+});
+
+describe("every served reason reads as its own plain sentence (INDEX-REASONS-LANDING-1117)", () => {
+  // The reasons documented on `unavailableReason` of GET /v1/public/indexes/{slug} (features-service).
+  const SERVED = [
+    "not_recorded_yet",
+    "no_mature_workflow",
+    "no_script_ran_yet",
+    "nothing_runnable_on_pipe",
+    "no_meeting_measured",
+    "not_measured",
+    "not_enough_clients",
+    "ledger_being_recomputed",
+    "ledger_coverage_short",
+    "no_meeting_priced_on_ledger",
+    "vendor_cost_unknown",
+  ];
+  const GENERIC = "This number is not available today. It is recorded every hour.";
+
+  it.each(SERVED)("%s has a sentence, never the generic line", (reason) => {
+    const line = unavailableLine(reason);
+    expect(UNAVAILABLE[reason]).toBe(line);
+    expect(line).not.toBe(GENERIC);
+    expect(line).not.toMatch(/[\u2014\u2013]/);
+    expect(line).not.toMatch(/(^|\. )(It|They|This|That) (?!number)/);
+    for (const sentence of line.split(/(?<=\.) /)) expect(sentence.split(" ").length).toBeLessThanOrEqual(16);
+  });
+
+  it("the map holds exactly the served reasons", () => {
+    expect(Object.keys(UNAVAILABLE).sort()).toEqual([...SERVED].sort());
+  });
+
+  it("not_measured says what the number rests on so far, from the served count and bar", () => {
+    const ctx = { outcome: "positive_reply", outcomes: 5, minOutcomes: 10 };
+    expect(unavailableLine("not_measured", ctx)).toBe("5 positive replies so far. The number is published from 10.");
+    expect(unavailableLine("not_measured", { ...ctx, outcome: "website_visit", outcomes: 1 })).toBe("1 click so far. The number is published from 10.");
+    expect(unavailableLine("not_measured", { ...ctx, outcome: "meeting_booked", outcomes: 0 })).toBe("No meeting booked yet. The number is published from 10 meetings booked.");
+    // An outcome without words names no count.
+    expect(unavailableLine("not_measured", { ...ctx, outcome: "something_new" })).toBe(UNAVAILABLE.not_measured);
+    // The count only speaks for not_measured.
+    expect(unavailableLine("vendor_cost_unknown", ctx)).toBe(UNAVAILABLE.vendor_cost_unknown);
+  });
+
+  it("the index page prints the reason, the count and an unpublished status, never the generic line", () => {
+    const i = summary({ slug: "cold-email-cost-per-positive-reply", outcome: "positive_reply", value: null, status: "noise", outcomes: 5, contacted: 7288, unavailableReason: "not_measured" });
+    const page = renderIndexPage(i.slug, { statusRule: RULE, index: i, points: [point("2026-11-17", null, { status: "noise", outcomes: 5, unavailableReason: "not_measured" })] }, LIST);
+    expect(page).toContain("5 positive replies so far. The number is published from 10.");
+    expect(page).toContain("Early read: under 10 outcomes so far, not published yet.");
+    expect(page).not.toContain("published anyway");
+    expect(page).not.toContain(GENERIC);
+
+    const meetingPage = renderIndexPage("cold-email-cost-per-meeting", { statusRule: RULE, index: summary({ outcome: "meeting_booked", value: null, status: "noise", outcomes: 0, unavailableReason: "vendor_cost_unknown" }), points: [] }, LIST);
+    expect(meetingPage).toContain(esc(UNAVAILABLE.vendor_cost_unknown));
+    expect(meetingPage).not.toContain(GENERIC);
+  });
+
+  it("the list page says why under every unpublished index", () => {
+    const list = renderIndexListPage(
+      { statusRule: RULE, indexes: [summary({ outcome: "positive_reply", value: null, status: "noise", outcomes: 5, unavailableReason: "not_measured" })] },
+      new Map(),
+    );
+    expect(list).toContain("5 positive replies so far. The number is published from 10.");
+    expect(list).toContain("Not published yet");
+  });
+
+  it("a published early read no longer claims it is published anyway", () => {
+    expect(statusLine("noise", RULE)).toBe("Early read: under 10 outcomes so far.");
+    expect(statusLine("noise", RULE, false)).toBe("Early read: under 10 outcomes so far, not published yet.");
   });
 });
