@@ -14,7 +14,7 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 6;
+export const SKIN_VERSION = 7;
 
 /**
  * Requests a skin host lets through untouched: files and framework internals. Everything
@@ -34,8 +34,8 @@ export function isSkinnedStylesheet(pathname: string): boolean {
 
 /** The paper tokens: what any surface of the live site carries under the skin, at any hour. */
 const PAPER =
-  "--bg:#fffdf6;--surface:#fff8e6;--d-card:#fffdf6;--text:#0b1230;--text-2:#17204a;--muted:#46507a;--muted-2:#6c76a0;" +
-  "--hair:#eadfc4;--hair-2:#dccfae;--accent:#2563eb;--accent-600:#1d4ed8;--accent-text:#1a4fc3;--accent-50:#eef3ff;--accent-100:#dbe6ff;" +
+  "--bg:#ffffff;--surface:#f6f8fc;--d-card:#ffffff;--text:#0b1230;--text-2:#17204a;--muted:#46507a;--muted-2:#6c76a0;" +
+  "--hair:#e3e8f2;--hair-2:#d3dbea;--accent:#2563eb;--accent-600:#1d4ed8;--accent-text:#1a4fc3;--accent-50:#eef3ff;--accent-100:#dbe6ff;" +
   "--secondary-50:#eef3ff;--secondary-100:#dbe6ff;--tertiary-50:#fff4dc;--tertiary-100:#ffe6b0;";
 
 const WHITE = /#fff(?:fff)?\b|\bwhite\b/gi;
@@ -134,7 +134,8 @@ export function placeSections(html: string): string {
   let index = 0;
   const said: Record<string, number> = { night: 0, dawn: 0, day: 0 };
   return html.replace(/<section\b([^>]*)>/g, (_tag, attrs: string) => {
-    const sky = total === 1 ? 0 : index / (total - 1);
+    // Sober (owner 2026-11-17): the night is the opening section only, the rest is a clean day page.
+    const sky = index === 0 ? 0 : 1;
     index += 1;
     const hour = hourFor(sky);
     const line = LINES[hour][Math.min(said[hour], LINES[hour].length - 1)];
@@ -152,12 +153,17 @@ export function isHydratedPage(html: string): boolean {
   return /self\.__next_f\b|__NEXT_DATA__/.test(html);
 }
 
+/** The page's painting, framed like a product screenshot. */
+export function frameHtml(sceneUrl: string): string {
+  return `<figure class="d-frame" aria-hidden="true"><img src="${sceneUrl}" alt="" loading="lazy" width="1600" height="893"></figure>`;
+}
+
 export function applyDistrySkin(html: string, pathname = "/", status = 200): string {
   if (!/<\/head>/i.test(html) || !/<body\b/i.test(html)) return html;
   const sceneUrl = `${SKIN_ASSETS}/assets/${sceneFor(pathname, status)}.webp`;
   if (isHydratedPage(html)) {
     // Nothing is added to the body: the script dresses the page once it has settled.
-    const handover = JSON.stringify({ late: true, sky: SKY, buddy: BUDDY, lines: LINES, scene: sceneUrl }).replace(/</g, "\\u003c");
+    const handover = JSON.stringify({ late: true, sky: SKY, buddy: BUDDY, lines: LINES, frame: frameHtml(sceneUrl) }).replace(/</g, "\\u003c");
     return html.replace(
       /<\/head>/i,
       `${HEAD}\n<script>window.__distry=${handover}</script>\n<script src="${SKIN_ASSETS}/distry.js?v=${SKIN_VERSION}" defer></script>\n</head>`,
@@ -169,14 +175,15 @@ export function applyDistrySkin(html: string, pathname = "/", status = 200): str
   // Links to the production site stay on the host the visitor is reviewing.
   out = out.replace(/(href|action)="https:\/\/distribute\.you(\/[^"]*)?"/g, (_m, attr: string, path?: string) => `${attr}="${path ?? "/"}"`);
   out = placeSections(out);
-  // The page's painting sits behind its opening section.
-  const scene = `<div class="d-scene" aria-hidden="true" style="background-image:url(${sceneUrl})"></div>`;
-  let opened = false;
-  out = out.replace(/<section\b[^>]*>/, (tag) => {
-    opened = true;
-    return `${tag}${scene}`;
+  // The page's painting is ONE framed moment, never a background: in the closing box
+  // when the page has one, else just above the footer.
+  const frame = frameHtml(sceneUrl);
+  let framed = false;
+  out = out.replace(/<div class="cta-box[^"]*">/, (tag) => {
+    framed = true;
+    return `${tag}${frame}`;
   });
-  if (!opened) out = out.replace(/<main\b[^>]*>/, (tag) => `${tag}<div class="d-scene-band">${scene}</div>`);
+  if (!framed) out = out.replace(/<footer\b/, `<div class="d-frame-band">${frame}</div><footer`);
   // The footer is always the morning: the sky ends in daylight on every page, however few sections it has.
   out = out.replace(/<footer\b(?![^>]*data-sky)/g, `<footer data-sky="1" data-say="${LINES.day[2]}"`);
   out = out.replace(/<\/head>/i, `${HEAD}\n</head>`);

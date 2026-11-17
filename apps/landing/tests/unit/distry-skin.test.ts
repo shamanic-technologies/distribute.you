@@ -53,12 +53,12 @@ describe("skinStylesheet", () => {
 });
 
 describe("placeSections", () => {
-  it("walks the page from night to day", () => {
+  it("keeps the night for the opening section and a clean day for the rest", () => {
     const out = placeSections("<section>a</section><section class=\"framed\" id=\"x\">b</section><section>c</section>");
     expect(out).toContain('<section class="d-night" data-sky="0.00"');
-    expect(out).toContain('class="framed d-dawn" id="x" data-sky="0.50"');
-    expect(out).toContain('<section class="d-day" data-sky="1.00"');
-    expect(out.match(/data-say="/g)).toHaveLength(3);
+    expect(out).toContain('class="framed d-day" id="x" data-sky="1.00"');
+    expect(out.match(/d-day/g)).toHaveLength(2);
+    expect(out).not.toContain("d-dawn");
   });
 
   it("keeps a one-section page in the night", () => {
@@ -132,11 +132,19 @@ describe("sceneFor", () => {
     }
   });
 
-  it("puts the painting inside the page's opening section", () => {
-    const out = applyDistrySkin("<html><head></head><body><section><h1>a</h1></section><section>b</section></body></html>", "/catalog");
-    expect(out.match(/class="d-scene"/g)).toHaveLength(1);
+  it("frames the painting once, in the closing box, never as a background", () => {
+    const out = applyDistrySkin('<html><head></head><body><section><h1>a</h1></section><section><div class="cta-box rv"><h2>b</h2></div></section><footer></footer></body></html>', "/catalog");
+    expect(out.match(/class="d-frame"/g)).toHaveLength(1);
     expect(out).toContain("/landing/distry/assets/page-catalog.webp");
-    expect(out.indexOf('class="d-scene"')).toBeLessThan(out.indexOf("<h1>"));
+    expect(out.indexOf('class="d-frame"')).toBeGreaterThan(out.indexOf('class="cta-box rv"'));
+    expect(out.indexOf('class="d-frame"')).toBeLessThan(out.indexOf("<h2>b</h2>"));
+    expect(out).not.toContain("background-image");
+  });
+
+  it("frames it above the footer on a page with no closing box", () => {
+    const out = applyDistrySkin("<html><head></head><body><section><h1>a</h1></section><footer></footer></body></html>", "/catalog");
+    expect(out.indexOf('class="d-frame"')).toBeGreaterThan(out.indexOf("</section>"));
+    expect(out.indexOf('class="d-frame"')).toBeLessThan(out.indexOf("<footer"));
   });
 });
 

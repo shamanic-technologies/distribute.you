@@ -15,8 +15,8 @@ function dress(cfg) {
   const sections = Array.from(document.querySelectorAll("section"));
   const said = { night: 0, dawn: 0, day: 0 };
   sections.forEach((el, i) => {
-    const sky = sections.length === 1 ? 0 : i / (sections.length - 1);
-    const hour = sky < 0.4 ? "night" : sky < 0.72 ? "dawn" : "day";
+    const sky = i === 0 ? 0 : 1;
+    const hour = sky === 0 ? "night" : "day";
     const lines = cfg.lines[hour];
     el.classList.add(`d-${hour}`);
     el.dataset.sky = sky.toFixed(2);
@@ -28,9 +28,7 @@ function dress(cfg) {
     footer.dataset.sky = "1";
     footer.dataset.say = cfg.lines.day[cfg.lines.day.length - 1];
   }
-  const scene = `<div class="d-scene" aria-hidden="true" style="background-image:url(${cfg.scene})"></div>`;
-  const host = sections[0] || document.querySelector("main");
-  if (host) host.insertAdjacentHTML("afterbegin", sections[0] ? scene : `<div class="d-scene-band">${scene}</div>`);
+  if (footer) footer.insertAdjacentHTML("beforebegin", `<div class="d-frame-band">${cfg.frame}</div>`);
   // A client-side page change would swap the content and drop all of the above: every
   // link on a dressed page is a full page load.
   document.addEventListener("click", (event) => {
@@ -172,7 +170,7 @@ function start() {
     flyCanvas.width = innerWidth * dpr;
     flyCanvas.height = innerHeight * dpr;
     flyCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const count = clamp(Math.round(innerWidth / 34), 14, 46);
+    const count = clamp(Math.round(innerWidth / 100), 5, 15);
     flies = Array.from({ length: count }, () => newFly(true));
   }
   function newFly(anywhere) {
@@ -191,7 +189,8 @@ function start() {
     flyCtx.clearRect(0, 0, innerWidth, innerHeight);
     // Gold fireflies at night; by day they turn into soft white-blue motes and thin out.
     const day = clamp((skyT - 0.55) * 2.4);
-    const alphaBase = lerp(0.9, 0.42, day);
+    const alphaBase = lerp(0.9, 0, day);
+    if (alphaBase < 0.02) return;
     const rgb = day > 0.5 ? "255,255,255" : "246,198,103";
     for (let i = 0; i < flies.length; i++) {
       const f = flies[i];
@@ -351,7 +350,9 @@ function start() {
   const talk = new IntersectionObserver((entries) => {
     for (const entry of entries) if (entry.isIntersecting) speak(entry.target.dataset.say);
   }, { rootMargin: "-45% 0px -45% 0px" });
-  $$("[data-say]").forEach((el) => talk.observe(el));
+  // Sober: Distry greets once and then stays quiet beside the visitor.
+  void talk;
+  setTimeout(() => say.classList.remove("is-on"), 9000);
   const firstLine = document.querySelector("[data-say]");
   if (firstLine) setTimeout(() => speak(firstLine.dataset.say), 1800);
 
