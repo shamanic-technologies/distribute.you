@@ -42,7 +42,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
   const type = page.headers.get("content-type") ?? "application/octet-stream";
   if (type.includes("text/html")) {
-    return new Response(applyDistrySkin(await page.text()), { status: page.status, headers: { ...HEADERS, "content-type": type } });
+    return new Response(applyDistrySkin(await page.text(), pathname, page.status), { status: page.status, headers: { ...HEADERS, "content-type": type } });
   }
   if (isSkinnedStylesheet(pathname) && page.ok) {
     return new Response(skinStylesheet(await page.text()), { headers: { ...HEADERS, "content-type": type } });

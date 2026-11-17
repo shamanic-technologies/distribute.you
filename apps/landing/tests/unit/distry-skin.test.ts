@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { applyDistrySkin, hourFor, isSkinPassThrough, isSkinnedStylesheet, placeSections, skinStylesheet } from "../../src/lib/distry-skin";
+import { existsSync } from "node:fs";
+import path from "node:path";
+
+import { applyDistrySkin, hourFor, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet } from "../../src/lib/distry-skin";
 
 describe("which requests a skin host fetches and skins", () => {
   it("lets files and framework internals through", () => {
@@ -96,5 +99,43 @@ describe("applyDistrySkin", () => {
 
   it("returns anything that is not a document untouched", () => {
     expect(applyDistrySkin("{}")).toBe("{}");
+  });
+});
+
+describe("sceneFor", () => {
+  const ASSETS = path.resolve(__dirname, "../../public/landing/distry/assets");
+  const cases: [string, string][] = [
+    ["/ai-sdr", "page-meetings"],
+    ["/ai-sdr/vs/11x", "page-compare"],
+    ["/compare/explee", "page-compare"],
+    ["/cold-email-agency/best/cold-email-agency-for-saas-founders", "page-best"],
+    ["/blog/some-article", "page-blog"],
+    ["/gtm-agency", "page-gtm"],
+    ["/website-traffic-agency", "page-traffic"],
+    ["/database-reactivation-agency", "page-nurturing"],
+    ["/indexes/cold-email-cost-per-meeting", "page-indexes"],
+    ["/catalog", "page-catalog"],
+    ["/docs/mcp", "page-docs"],
+    ["/terms", "page-legal"],
+    ["/investors", "page-investors"],
+    ["/something-else", "hero-night"],
+  ];
+
+  it("gives each kind of page its own painting, comparisons first", () => {
+    for (const [pathname, scene] of cases) expect(sceneFor(pathname), pathname).toBe(scene);
+    expect(sceneFor("/ai-sdr", 404)).toBe("page-notfound");
+  });
+
+  it("names only paintings that are on disk", () => {
+    for (const scene of new Set([...cases.map(([, scene]) => scene), "page-notfound", "page-about", "page-contact", "page-ads", "page-leadgen", "page-signups", "page-cold-email", "page-customer-success"])) {
+      expect(existsSync(path.join(ASSETS, `${scene}.webp`)), scene).toBe(true);
+    }
+  });
+
+  it("puts the painting inside the page's opening section", () => {
+    const out = applyDistrySkin("<html><head></head><body><section><h1>a</h1></section><section>b</section></body></html>", "/catalog");
+    expect(out.match(/class="d-scene"/g)).toHaveLength(1);
+    expect(out).toContain("/landing/distry/assets/page-catalog.webp");
+    expect(out.indexOf('class="d-scene"')).toBeLessThan(out.indexOf("<h1>"));
   });
 });

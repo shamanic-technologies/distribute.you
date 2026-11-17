@@ -14,7 +14,7 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 2;
+export const SKIN_VERSION = 4;
 
 /**
  * Requests a skin host lets through untouched: files and framework internals. Everything
@@ -77,6 +77,38 @@ const HEAD = `<meta name="robots" content="noindex, nofollow">
 <link rel="stylesheet" href="${SKIN_ASSETS}/skin.css?v=${SKIN_VERSION}">
 <script>document.documentElement.classList.add("distry");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("js")</script>`;
 
+/**
+ * The painting behind a page's opening section: one moment of Distry's night per kind of
+ * page (`distry-brand` skill, `scenes/page-*`). First match wins, so the comparison
+ * shapes are tested before the outcome a comparison sits under (`/ai-sdr/vs/11x`).
+ */
+const SCENES: readonly (readonly [RegExp, string])[] = [
+  [/\/vs\/|^\/compare|\/alternatives/, "page-compare"],
+  [/^\/best|\/best\//, "page-best"],
+  [/\/blog/, "page-blog"],
+  [/^\/(gtm-automation|gtm-agency)/, "page-gtm"],
+  [/^\/(cold-email-automation|cold-email-agency)/, "page-cold-email"],
+  [/^\/(ai-sdr|appointment-setting-agency)/, "page-meetings"],
+  [/^\/(signup-automation|user-acquisition-agency)/, "page-signups"],
+  [/^\/website-traffic-/, "page-traffic"],
+  [/^\/(ai-lead-generation|lead-generation-agency)/, "page-leadgen"],
+  [/^\/(ai-ad-management|ppc-agency)/, "page-ads"],
+  [/^\/(lead-nurturing-automation|database-reactivation-agency)/, "page-nurturing"],
+  [/^\/(ai-customer-success|customer-success-agency)/, "page-customer-success"],
+  [/^\/indexes/, "page-indexes"],
+  [/^\/catalog/, "page-catalog"],
+  [/^\/docs/, "page-docs"],
+  [/^\/about/, "page-about"],
+  [/^\/contact/, "page-contact"],
+  [/^\/(terms|privacy)/, "page-legal"],
+  [/^\/investors/, "page-investors"],
+];
+
+export function sceneFor(pathname: string, status = 200): string {
+  if (status === 404) return "page-notfound";
+  return SCENES.find(([pattern]) => pattern.test(pathname))?.[1] ?? "hero-night";
+}
+
 /** What Distry says beside the visitor, by the hour the section sits in. */
 const LINES: Record<"night" | "dawn" | "day", readonly string[]> = {
   night: ["Hi, I'm Distry. I work the night shift.", "We write, we answer, we book. You sleep.", "Meet the team. Each of us has one job."],
@@ -115,7 +147,7 @@ export function placeSections(html: string): string {
   });
 }
 
-export function applyDistrySkin(html: string): string {
+export function applyDistrySkin(html: string, pathname = "/", status = 200): string {
   if (!/<\/head>/i.test(html) || !/<body\b/i.test(html)) return html;
   let out = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (tag) =>
     TRACKER.test(tag) && !/application\/ld\+json/i.test(tag) ? "" : tag,
@@ -123,6 +155,16 @@ export function applyDistrySkin(html: string): string {
   // Links to the production site stay on the host the visitor is reviewing.
   out = out.replace(/(href|action)="https:\/\/distribute\.you(\/[^"]*)?"/g, (_m, attr: string, path?: string) => `${attr}="${path ?? "/"}"`);
   out = placeSections(out);
+  // The page's painting sits behind its opening section.
+  const scene = `<div class="d-scene" aria-hidden="true" style="background-image:url(${SKIN_ASSETS}/assets/${sceneFor(pathname, status)}.webp)"></div>`;
+  let opened = false;
+  out = out.replace(/<section\b[^>]*>/, (tag) => {
+    opened = true;
+    return `${tag}${scene}`;
+  });
+  if (!opened) out = out.replace(/<main\b[^>]*>/, (tag) => `${tag}<div class="d-scene-band">${scene}</div>`);
+  // The footer is always the morning: the sky ends in daylight on every page, however few sections it has.
+  out = out.replace(/<footer\b(?![^>]*data-sky)/g, `<footer data-sky="1" data-say="${LINES.day[2]}"`);
   out = out.replace(/<\/head>/i, `${HEAD}\n</head>`);
   out = out.replace(/<body\b([^>]*)>/i, (_tag, attrs: string) => `<body${attrs}>${SKY}`);
   out = out.replace(/<\/body>/i, `${BUDDY}<script src="${SKIN_ASSETS}/distry.js?v=${SKIN_VERSION}" defer></script>\n</body>`);
