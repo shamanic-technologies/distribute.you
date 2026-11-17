@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>distribute.you: Revenue Automation, Industrial-Grade</title>
+<meta name="description" content="Meet your distribution teammate. We bring you meetings, signups and sales, every result measured and auditable.">
+<link rel="icon" href="/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,100&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="/assets/hero-night.webp" media="(min-width: 760px)">
+<link rel="stylesheet" href="/styles.css?v=1">
+<script>if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("js")</script>
+</head>
+<body>
+
+<!-- The sky: three stacked layers the script cross-fades as the page goes from night to day. -->
+<div class="sky" aria-hidden="true">
+  <div class="sky-layer sky-night"></div>
+  <div class="sky-layer sky-dawn"></div>
+  <div class="sky-layer sky-day"></div>
+  <canvas class="sky-stars" id="stars"></canvas>
+  <div class="orb orb-moon"></div>
+  <div class="orb orb-sun"></div>
+</div>
+<canvas class="fireflies" id="fireflies" aria-hidden="true"></canvas>
+
+<header class="nav" id="nav">
+  <a class="brand" href="https://distribute.you/"><img src="/assets/distry-avatar-160.webp" alt="" width="34" height="34"><span>distribute.you</span></a>
+  <nav class="nav-links" aria-label="Main">
+    <a href="#how">How it works</a>
+    <a href="#why">Why us</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+  <div class="nav-cta">
+    <a class="nav-login" href="https://dashboard.distribute.you/sign-in">Log in</a>
+    <a class="btn btn-gold btn-sm" href="https://dashboard.distribute.you/get-started">Get started</a>
+  </div>
+</header>
+
+<main>
+
+<!-- NIGHT · the night shift -->
+<section class="hero night" id="top" data-sky="0" data-say="Hi, I'm Distry. I work the night shift.">
+  <div class="hero-art" aria-hidden="true">
+    <img class="hero-img" src="/assets/hero-night.webp" srcset="/assets/hero-night-960.webp 960w, /assets/hero-night.webp 1920w" sizes="100vw" alt="" width="1920" height="1072">
+    <video class="hero-video" id="hero-video" muted playsinline preload="none" data-src="/assets/hero-night.mp4"></video>
+  </div>
+  <div class="wrap hero-copy">
+    <p class="kicker" data-rise>Revenue made easy.</p>
+    <h1 data-rise><span>Revenue Automation</span> <span>Industrial-Grade</span></h1>
+    <p class="lede" data-rise>Meet your distribution teammate. We bring you meetings, signups and sales, every result measured and auditable.</p>
+    <form class="launch" action="https://dashboard.distribute.you/get-started" method="get" data-rise>
+      <input name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com" aria-label="Your website">
+      <button class="btn btn-gold" type="submit">Get started</button>
+    </form>
+    <p class="hero-alt" data-rise><a href="https://dashboard.distribute.you/get-started">I don't have a website</a><a href="#why">Use it from Claude Code or Grok</a></p>
+    <ul class="traits" data-rise>
+      <li>Easy</li><li>Measurable</li><li>Auditable</li><li>Solid</li><li>Fast</li><li>State of the art</li>
+    </ul>
+    <p class="loved" data-rise><span class="stars" aria-hidden="true">★★★★★</span> Loved by 160+ founders</p>
+  </div>
+  <a class="scroll-cue" href="#how" aria-label="Follow the night"><span></span></a>
+</section>
+
+<!-- NIGHT · the valley: how it works -->
+<section class="night" id="how" data-sky="0.08" data-say="Meet the team. Each of us has one job.">
+  <figure class="scene" data-parallax>
+    <img src="/assets/valley-dusk.webp" srcset="/assets/valley-dusk-960.webp 960w, /assets/valley-dusk.webp 1920w" sizes="100vw" alt="A valley of small living factories at dusk, their windows glowing" width="1920" height="1072" loading="lazy">
+  </figure>
+  <div class="wrap">
+    <div class="head">
+      <p class="kicker">Start in 2 minutes</p>
+      <h2>Enter your website. We take it from there.</h2>
+      <p class="sub">Your first outreach leaves today.</p>
+    </div>
+    <ol class="steps" id="steps">
+      <li class="step" data-lit>
+        <div class="step-art"><img src="/assets/friend-reader.webp" alt="" width="720" height="720" loading="lazy"></div>
+        <div class="step-body">
+          <h3>Paste your website</h3>
+          <p>We read what you sell, who you sell it to, and how you talk about it.</p>
+          <form class="launch launch-mini" action="https://dashboard.distribute.you/get-started" method="get">
+            <input name="url" type="text" autocomplete="off" placeholder="https://acme.com" aria-label="Your website">
+            <button class="btn btn-gold btn-sm" type="submit">Get started</button>
+          </form>
+          <p class="note">Takes a minute.</p>
+        </div>
+      </li>
+      <li class="step" data-lit>
+        <div class="step-art"><img src="/assets/friend-checker.webp" alt="" width="720" height="720" loading="lazy"></div>
+        <div class="step-body">
+          <h3>Confirm what we found</h3>
+          <p>Your offer, your best audiences and the email angles worth testing come back pre-filled.</p>
+          <dl class="found">
+            <div><dt>Offer</dt><dd>Done-for-you compliance audits for Series A SaaS</dd></div>
+            <div><dt>Audiences</dt><dd>Heads of Security, CTOs 50 to 200 staff, Compliance leads</dd></div>
+            <div><dt>Emails</dt><dd>Peer case study, Compliance deadline, Short question</dd></div>
+            <div><dt>Outreach budget</dt><dd>Your choice</dd></div>
+          </dl>
+          <p class="note">Takes a minute</p>
+        </div>
+      </li>
+      <li class="step" data-lit>
+        <div class="step-art"><img src="/assets/friend-calendar.webp" alt="" width="720" height="720" loading="lazy"></div>
+        <div class="step-body">
+          <h3>Revenue lands, with its cost</h3>
+          <p>Replies, meetings and signups arrive in your inbox.</p>
+          <div class="tally"><span class="tally-label">Meetings booked</span><b data-count="8">8</b><span class="tally-up">↑ this week</span></div>
+          <p class="note">Happens when you sleep</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- NIGHT · the pipeline -->
+<section class="night" id="pipeline" data-sky="0.2" data-say="We write, we answer, we book. You sleep.">
+  <div class="wrap">
+    <div class="head">
+      <p class="kicker">Done for you, end to end</p>
+      <h2>We run the entire pipeline.</h2>
+      <p class="sub">You only show up to the call.</p>
+    </div>
+    <div class="pipe">
+      <article class="card" data-lit>
+        <img class="card-art" src="/assets/friend-writer.webp" alt="" width="720" height="720" loading="lazy">
+        <h3>Writes each lead a personal email</h3>
+        <p>Read off their website, their role and what you sell.</p>
+        <div class="letter">
+          <p class="letter-subject"><span>Subject</span> Opsfolio x Northwind Health</p>
+          <p data-typed>Hi Dana, Saw Northwind just opened its third clinic in Austin. Compliance audits usually get pushed back at that stage, and that is exactly when a missed control becomes a fine. We run SOC 2 and HIPAA readiness for clinics your size in under six weeks, fixed price. Worth 15 minutes next week?</p>
+        </div>
+      </article>
+      <article class="card" data-lit>
+        <img class="card-art" src="/assets/friend-answerer.webp" alt="" width="720" height="720" loading="lazy">
+        <h3>Answers interested leads ourselves, until the meeting is booked</h3>
+        <p>We handle the questions, the back and forth and the scheduling.</p>
+        <div class="thread" data-thread>
+          <p class="msg in">Interesting. Does this cover HIPAA as well as SOC 2?</p>
+          <p class="msg out">Both, in the same audit. Happy to walk you through it. Does Tuesday 2pm work?</p>
+          <p class="msg in">Tuesday 2pm works.</p>
+          <p class="msg out">Sending the invite now.</p>
+          <p class="msg done">✓ Meeting booked · Tue 14:00</p>
+        </div>
+      </article>
+      <article class="card" data-lit>
+        <img class="card-art" src="/assets/friend-calendar.webp" alt="" width="720" height="720" loading="lazy">
+        <h3>Your calendar fills up</h3>
+        <p>Every week, new meetings land on your calendar with people who asked for them.</p>
+        <div class="cal" data-cal>
+          <div class="cal-days"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+          <div class="cal-grid">
+            <i style="--c:1;--r:1" data-s="1">Demo<b>Northwind Health</b></i>
+            <i style="--c:2;--r:2" data-s="1">Intro call<b>Opsfolio</b></i>
+            <i style="--c:4;--r:1" data-s="2">Intro call<b>Riverbend Clinics</b></i>
+            <i style="--c:3;--r:3" data-s="2">Demo<b>Cedar Dental Group</b></i>
+            <i style="--c:5;--r:2" data-s="3">Intro call<b>Lakeside PT</b></i>
+            <i style="--c:1;--r:3" data-s="3">Follow-up<b>Northwind Health</b></i>
+            <i style="--c:2;--r:4" data-s="4">Demo<b>Summit Orthopedics</b></i>
+            <i style="--c:4;--r:3" data-s="4">Intro call<b>Harbor Family Care</b></i>
+            <i style="--c:3;--r:1" data-s="5">Demo<b>Riverbend Clinics</b></i>
+            <i style="--c:5;--r:4" data-s="5">Kickoff<b>Opsfolio</b></i>
+          </div>
+        </div>
+        <p class="lands">Replies land where you already work: Gmail, Outlook, Cal.com, Calendly</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- DAWN · the replies come back -->
+<section class="dawn" id="agent" data-sky="0.5" data-say="Look. The replies are coming back.">
+  <figure class="scene" data-parallax>
+    <img src="/assets/dawn-roof.webp" srcset="/assets/dawn-roof-960.webp 960w, /assets/dawn-roof.webp 1920w" sizes="100vw" alt="Distry on a rooftop at dawn, catching the messages that fly back from the town" width="1920" height="1072" loading="lazy">
+  </figure>
+  <div class="wrap split">
+    <div class="phone" data-chat>
+      <div class="phone-top"><img src="/assets/distry-avatar-160.webp" alt="" width="40" height="40"><div><b>Distry</b><small>distribute.you agent · online</small></div></div>
+      <div class="phone-body">
+        <p class="msg out">I read acme.com. Your best buyers: heads of sales at B2B software.</p>
+        <p class="msg out">40 emails ready. Go?</p>
+        <p class="msg in">Go!</p>
+        <p class="msg day">Thursday</p>
+        <p class="msg out">Northwind Health said yes to Thursday 10am.</p>
+        <p class="msg done">Meeting booked in your calendar.</p>
+      </div>
+    </div>
+    <div>
+      <div class="head left">
+        <p class="kicker">Receipts from real runs</p>
+        <h2>What our clients got back.</h2>
+        <p class="sub">Live figures, read off their own dashboards.</p>
+      </div>
+      <div class="receipts">
+        <article class="receipt" data-lit>
+          <header><img src="/assets/ryan-parenti.jpg" alt="" width="44" height="44" loading="lazy"><div><b>Ryan W.D. Parenti</b><small>Founder, Doc Dinners</small></div></header>
+          <p class="receipt-big"><span>Cost per positive reply</span><b>$78</b></p>
+          <p class="receipt-row">19,095 contacted · 38 positive replies · 3 meetings booked</p>
+          <p class="receipt-row muted">Channel: Cold email</p>
+        </article>
+        <article class="receipt" data-lit>
+          <header><img src="/assets/david-tucker.jpg" alt="" width="44" height="44" loading="lazy"><div><b>David Tucker</b><small>Cofounder, Shockwave Centers</small></div></header>
+          <p class="receipt-big"><span>Cost per positive reply</span><b>$243</b></p>
+          <p class="receipt-row">6,495 contacted · 10 positive replies</p>
+          <p class="receipt-row muted">Channel: Cold email</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DAWN · the whole engine -->
+<section class="dawn" id="features" data-sky="0.62" data-say="I keep the money on what books meetings.">
+  <div class="wrap">
+    <div class="head">
+      <p class="kicker">The whole engine</p>
+      <h2>Your offers, your emails, your audiences, ranked by return.</h2>
+      <p class="sub">We run several bets at once on every campaign and keep the money on the ones that book meetings. <a href="https://distribute.you/blog/cold-email-cost-per-positive-reply">See what a positive reply costs, measured on our campaigns.</a></p>
+    </div>
+    <div class="bets" data-drag>
+      <article class="bet" data-lit><h3>Sell more than one thing</h3><p>Each offer gets its own audiences, its own emails and its own budget.</p>
+        <table><tr><th>Offer</th><th>Meetings booked</th><th>ROI</th></tr><tr><td>Compliance audit</td><td>12</td><td>7.5x</td></tr><tr><td>Fractional CISO</td><td>4</td><td>10.3x</td></tr></table></article>
+      <article class="bet" data-lit><h3>One login for every brand you run</h3><p>Manage several brands and organizations at one place.</p>
+        <table><tr><th>Organization</th><th>ROI</th></tr><tr><td>My agency</td><td>6.0x</td></tr><tr><td>Brand #1</td><td>8.3x</td></tr><tr><td>Brand #2</td><td>3.2x</td></tr></table></article>
+      <article class="bet" data-lit><h3>Meetings, signups or website purchases</h3><p>Pick the path that fits how you sell.</p>
+        <table><tr><th>Funnel</th><th>Expected ROI</th></tr><tr><td>Sales from meetings</td><td>10.3x</td></tr><tr><td>Website signups</td><td>8.3x</td></tr></table></article>
+      <article class="bet" data-lit><h3>Test the emails themselves</h3><p>Several email templates, each written by different AI models, run side by side. The budget moves to the one booking meetings.</p>
+        <table><tr><th>Email</th><th>Model</th></tr><tr><td>Peer case study</td><td>Pro</td></tr><tr><td>Compliance deadline</td><td>Pro</td></tr><tr><td>Short question</td><td>Flash</td></tr></table></article>
+      <article class="bet" data-lit><h3>Find your ICP (Ideal Customer Profile)</h3><p>Several personas run side by side, we converge on the ones buying more.</p>
+        <table><tr><th>Persona</th><th>ROI</th></tr><tr><td>Heads of Security</td><td>8.7x</td></tr><tr><td>CTOs</td><td>7.2x</td></tr><tr><td>Compliance leads</td><td>4.1x</td></tr></table></article>
+    </div>
+  </div>
+</section>
+
+<!-- MORNING · the result on the kitchen table -->
+<section class="day" id="why" data-sky="0.82" data-say="Good morning. Your coffee, your meetings.">
+  <figure class="scene" data-parallax>
+    <img src="/assets/morning-kitchen.webp" srcset="/assets/morning-kitchen-960.webp 960w, /assets/morning-kitchen.webp 1920w" sizes="100vw" alt="In the morning, Distry stands on the kitchen table and hands the founder an envelope" width="1920" height="1072" loading="lazy">
+  </figure>
+  <div class="wrap">
+    <div class="why">
+      <article class="why-card" data-lit>
+        <h3>One agent, every tool.</h3>
+        <p><b>Every vendor, one account.</b> You never sign up to Apollo, Instantly or Clay. Our agent holds the keys and calls each tool for you.</p>
+        <ul class="ticks"><li>one signup</li><li>one balance</li><li>works in Claude Code</li></ul>
+        <div class="copybox"><code id="mcp-cmd">claude mcp add --transport http distribute https://mcp.distribute.you/mcp</code><button type="button" data-copy="#mcp-cmd">Copy</button></div>
+      </article>
+      <article class="why-card" data-lit>
+        <h3>The right model for every task.</h3>
+        <p><b>Your agent asks for the task, not the tool.</b> It sees what every model and vendor charges, live from our <a href="https://distribute.you/catalog">catalog</a>, before it spends a cent.</p>
+        <ul class="ticks"><li>priced before the call</li><li>Claude, Gemini, GPT, DeepSeek compared live</li></ul>
+      </article>
+      <article class="why-card" data-lit>
+        <h3>Pay per action, not per seat.</h3>
+        <p>Apollo, Clay and Instantly each sell a monthly seat. Our agent pays the vendor's API price, <b>only when an action runs.</b> Already pay for a tool? Bring your own key and those calls go through it.</p>
+        <ul class="ticks"><li>no seat to buy</li><li>price shown before the action</li><li>your own key always wins</li></ul>
+      </article>
+      <article class="why-card zero" data-lit>
+        <h3>0% additional fee.</h3>
+        <p class="sum"><span>$ vendor price</span> + <span>$0.000 markup</span> = <span>your price</span></p>
+        <p>every price is public on our <a href="https://distribute.you/catalog">catalog</a></p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- DAY · pricing -->
+<section class="day" id="pricing" data-sky="0.92" data-say="Same agent on every plan. That's me.">
+  <div class="wrap">
+    <div class="head">
+      <p class="kicker">Pricing</p>
+      <h2>Usage based. Pay the API price, 0% markup.</h2>
+      <p class="sub">The same agent and the same features on every plan. Pause or cancel anytime.</p>
+    </div>
+    <div class="plans">
+      <article class="plan" data-lit>
+        <p class="plan-name">Open source</p>
+        <p class="plan-price">Free on your server</p>
+        <p>Run it yourself and keep every byte.</p>
+        <a class="btn btn-line" href="https://github.com/distribute-you/gtm-factory">View the code</a>
+        <ul class="ticks"><li>MIT license, every line on GitHub</li><li>Your data stays in your own database</li><li>Your own API keys, billed by each vendor</li></ul>
+      </article>
+      <article class="plan plan-main" data-lit>
+        <p class="plan-name">Hosted</p>
+        <p class="plan-price">Usage based <span>0% markup</span></p>
+        <p>We host it. You pay each action at the API price.</p>
+        <a class="btn btn-gold" href="https://dashboard.distribute.you/get-started">Get started</a>
+        <ul class="ticks"><li>Our AI agent talks with you on WhatsApp</li><li>Cold email from our own warmed domains</li><li>Replies answered until the meeting is booked</li><li>You start with $10, auto reload keeps it going</li></ul>
+      </article>
+    </div>
+    <p class="plans-foot">Included with every account: your dashboard, every report and your data export. <a href="https://distribute.you/gtm-agency">Want our team to run it? See the GTM Agency</a></p>
+  </div>
+</section>
+
+<!-- DAY · what clients say -->
+<section class="day" id="quotes" data-sky="1" data-say="These people made my night worth it.">
+  <div class="head"><h2>What clients are saying</h2></div>
+  <div class="marquee"><div class="marquee-track">
+    <figure class="quote"><div class="stars" aria-hidden="true">★★★★★</div><blockquote>Kevin is a very intelligent person with insights on how to expand and grow a business. I am happy to work with an ethical and hard working individual who brings results.</blockquote><figcaption><img src="/assets/ryan-parenti.jpg" alt="" loading="lazy"><span><b>Ryan W.D. Parenti</b><small>Founder, Doc Dinners</small></span></figcaption></figure>
+    <figure class="quote"><div class="stars" aria-hidden="true">★★★★★</div><blockquote>Best thing I liked is the depth to which it personalizes outreach. Something I always wished I could do better at scale.</blockquote><figcaption><img src="/assets/andrew-becker.jpg" alt="" loading="lazy"><span><b>Andrew Becker</b><small>Founder, voozaa.app</small></span></figcaption></figure>
+    <figure class="quote"><div class="stars" aria-hidden="true">★★★★★</div><blockquote>You are doing great man, congrats. I am very impressed</blockquote><figcaption><img src="/assets/bohdan-petryshyn.jpg" alt="" loading="lazy"><span><b>Bohdan Petryshyn</b><small>Co-Founder &amp; CTO, Bosar Agency</small></span></figcaption></figure>
+    <figure class="quote"><div class="stars" aria-hidden="true">★★★★★</div><blockquote>It was incredibly fast to launch a campaign. I just entered my URL, the platform identified the right audience, handled the outreach, and even let me download the contacts, so I didn’t need to buy lists or set up a separate email marketing system.</blockquote><figcaption><img src="/assets/christian-lemke.jpg" alt="" loading="lazy"><span><b>Christian Lemke</b><small>Google Ads expert, Maggie M.</small></span></figcaption></figure>
+    <figure class="quote"><div class="stars" aria-hidden="true">★★★★★</div><blockquote>This platform is incredible. Excellent click-through rate. I can literally see everything at a glance. Seriously, amazing work here, this is next-level.</blockquote><figcaption><img src="/assets/katherine-fleishman.jpeg" alt="" loading="lazy"><span><b>Katherine Fleishman</b><small>Marketing expert, 20+ years</small></span></figcaption></figure>
+    <figure class="quote"><div class="stars" aria-hidden="true">★★★★★</div><blockquote>Everybody wants to get new leads. That's the solution everyone wants to buy.</blockquote><figcaption><img src="/assets/christopher-lafay.jpg" alt="" loading="lazy"><span><b>Christopher Lafay</b><small>Founder, taap.bio</small></span></figcaption></figure>
+  </div></div>
+</section>
+
+<!-- DAY · questions -->
+<section class="day" id="faq" data-sky="1" data-say="Ask me anything. I like questions.">
+  <div class="wrap narrow">
+    <div class="head"><h2>Common questions</h2></div>
+    <div class="faq">
+      <details><summary>What do I need to get started?</summary><p>Just your website. Drop the URL in, our agent works out what you sell and who buys it, and shows you the plan to confirm. Then you add your first $10, and your campaign starts right away.</p></details>
+      <details><summary>What is the price?</summary><p>Pricing is usage based. Each action is billed at the vendor's API price with 0% markup, from a prepaid balance. Every price is public on the <a href="https://distribute.you/catalog">catalog</a>, and your dashboard shows what each reply and meeting came to.</p></details>
+      <details><summary>Is it really 0% markup?</summary><p>Yes. Every account opened since October 29, 2026 pays the vendor's public API price for each action. The live list is on the <a href="https://distribute.you/catalog">catalog</a>, and the same list is public as JSON.</p></details>
+      <details><summary>Can I run it on my own server?</summary><p>Yes. The <a href="https://github.com/distribute-you/gtm-factory">GTM Factory</a> is open source under the MIT license. Run it with your own API keys, and your data stays in your own database.</p></details>
+      <details><summary>Whose mailboxes send the emails?</summary><p>Everything goes out from mailboxes and domains we own and warm. Your mailbox never touches cold outreach, and there is nothing to set up on your side. Replies land with us first, we qualify them, and the interested ones are forwarded to your inbox.</p></details>
+      <details><summary>What is the ROI you show?</summary><p>Revenue attributed to the campaign, divided by what you paid for it. It is measured, not projected: it starts at zero and climbs as meetings and signups turn into paying customers. You see it per offer, per channel and per audience.</p></details>
+      <details><summary>How much control do I have?</summary><p>You confirm the offer, the audiences and the emails before anything leaves, and you can pause everything in one click. Your balance is the cap, and auto reload tops it up at the level you choose. Most clients look once a week.</p></details>
+      <details><summary>Can I bring my own leads?</summary><p>Yes. Upload a CSV and we run it as its own audience, with its own price per outcome, next to the ones we find.</p></details>
+      <details><summary>Do you guarantee results?</summary><p>We guarantee the measurement: what every outcome came to is always visible, and the budget is always yours to stop. Want a team accountable for the result? The <a href="https://distribute.you/gtm-agency">GTM Agency</a> runs it for you.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- DAY · the last word -->
+<section class="day finale" id="start" data-sky="1" data-say="Paste your website. I start tonight.">
+  <figure class="scene scene-tall" data-parallax>
+    <img src="/assets/day-hill.webp" srcset="/assets/day-hill-960.webp 960w, /assets/day-hill.webp 1920w" sizes="100vw" alt="Distry waves from a green hill above the valley, awake under a blue sky" width="1920" height="1072" loading="lazy">
+  </figure>
+  <div class="wrap">
+    <div class="cta-box">
+      <p class="kicker">Revenue made easy.</p>
+      <h2>Your next customers are already out there.</h2>
+      <p class="sub">Paste your website and let our agent find them.</p>
+      <form class="launch" action="https://dashboard.distribute.you/get-started" method="get">
+        <input name="url" type="text" autocomplete="off" placeholder="https://yourwebsite.com" aria-label="Your website">
+        <button class="btn btn-gold" type="submit">Get started</button>
+      </form>
+      <p class="fine">Usage based · 0% markup · Cancel anytime</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <figure class="scene scene-foot">
+    <img src="/assets/distry-sleep.webp" srcset="/assets/distry-sleep-960.webp 960w, /assets/distry-sleep.webp 1920w" sizes="100vw" alt="Distry asleep against a haystack in the morning sun, its night of work done" width="1920" height="1072" loading="lazy">
+  </figure>
+  <div class="wrap foot-inner">
+    <p class="foot-brand"><b>distribute.you</b><span>Revenue made easy.</span></p>
+    <nav aria-label="Footer">
+      <a href="https://distribute.you/catalog">Price catalog</a>
+      <a href="https://distribute.you/docs">Docs</a>
+      <a href="https://distribute.you/indexes">Indexes</a>
+      <a href="https://distribute.you/blog">Blog</a>
+      <a href="https://distribute.you/gtm-agency">GTM Agency</a>
+      <a href="https://distribute.you/about">About</a>
+      <a href="https://distribute.you/terms">Terms</a>
+      <a href="https://distribute.you/privacy">Privacy</a>
+    </nav>
+    <p class="foot-legal">© 2026 distribute.you</p>
+  </div>
+</footer>
+
+<!-- Distry follows the visitor down the page and says one line per scene. -->
+<aside class="buddy" id="buddy" aria-hidden="true">
+  <p class="buddy-say" id="buddy-say"></p>
+  <div class="buddy-face"><img src="/assets/distry-avatar-160.webp" alt="" width="72" height="72"></div>
+</aside>
+
+<script src="/main.js?v=1" defer></script>
+</body>
+</html>

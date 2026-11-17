@@ -6,6 +6,7 @@ import { previewArticleSlugFor } from "@/lib/blog/preview";
 import { CLONE_ROUTE_PREFIX, cloneSlugForHost } from "@/lib/clone-catalogue";
 import { negotiateContentType } from "@/lib/content-negotiation";
 import { DOCS_MARKDOWN_PREFIX, docsMarkdownPath, isDocsPagePath } from "@/lib/docs/docs-markdown";
+import { PROTOTYPE_ROUTE_PREFIX, prototypeSlugForHost } from "@/lib/prototype-catalogue";
 
 /**
  * Host routing for the `lab-*` pages, and NOTHING else.
@@ -37,6 +38,12 @@ export default function proxy(request: NextRequest) {
   const archive = archiveSlugForHost(host);
   if (archive !== null) {
     return serveLab(request, `${ARCHIVE_ROUTE_PREFIX}/${archive}`, "distribute archives");
+  }
+
+  // A landing of ours under design (src/lib/prototype-catalogue.ts): same gate, same bail.
+  const prototype = prototypeSlugForHost(host);
+  if (prototype !== null) {
+    return serveLab(request, `${PROTOTYPE_ROUTE_PREFIX}/${prototype}`, "distribute prototypes");
   }
 
   return offLabHost(request);
@@ -95,6 +102,7 @@ function offLabHost(request: NextRequest) {
   if (
     pathname.startsWith(CLONE_ROUTE_PREFIX) ||
     pathname.startsWith(ARCHIVE_ROUTE_PREFIX) ||
+    pathname.startsWith(PROTOTYPE_ROUTE_PREFIX) ||
     pathname.startsWith(DOCS_MARKDOWN_PREFIX)
   ) {
     return new NextResponse("Not found.", {

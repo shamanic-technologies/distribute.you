@@ -1,0 +1,360 @@
+/*
+ * The motion of Distry's world. The HTML is the finished page; this only adds movement,
+ * and `html.js` (set in the head) is absent under reduced motion, so nothing here runs
+ * for a visitor who asked for stillness.
+ */
+(() => {
+  const root = document.documentElement;
+  if (!root.classList.contains("js")) return;
+
+  const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const $$ = (sel, scope = document) => Array.from(scope.querySelectorAll(sel));
+
+  /* ---- the load-in ---- */
+  const hero = document.querySelector(".hero");
+  $$("[data-rise]", hero).forEach((el, i) => el.style.setProperty("--i", i));
+  requestAnimationFrame(() => hero.classList.add("is-ready"));
+
+  /* ---- the sky follows the scroll: night (0) to dawn (0.5) to day (1) ---- */
+  const skySections = $$("[data-sky]").map((el) => ({ el, sky: Number(el.dataset.sky) }));
+  const nav = document.getElementById("nav");
+  let skyT = 0;
+
+  function readSky() {
+    const mid = window.innerHeight / 2;
+    let before = skySections[0];
+    let after = skySections[skySections.length - 1];
+    let beforeY = -Infinity;
+    let afterY = Infinity;
+    for (const s of skySections) {
+      const r = s.el.getBoundingClientRect();
+      const y = r.top + Math.min(r.height, window.innerHeight) / 2;
+      if (y <= mid && y > beforeY) { before = s; beforeY = y; }
+      if (y > mid && y < afterY) { after = s; afterY = y; }
+    }
+    if (beforeY === -Infinity) return after.sky;
+    if (afterY === Infinity) return before.sky;
+    return lerp(before.sky, after.sky, clamp((mid - beforeY) / (afterY - beforeY)));
+  }
+
+  function paintSky() {
+    skyT = readSky();
+    const s = root.style;
+    s.setProperty("--t", skyT.toFixed(3));
+    s.setProperty("--dawn", clamp(skyT * 2.4).toFixed(3));
+    s.setProperty("--day", clamp((skyT - 0.55) * 2.6).toFixed(3));
+    s.setProperty("--stars", clamp(1 - skyT * 2.2).toFixed(3));
+    s.setProperty("--moon", clamp(1 - skyT * 1.8).toFixed(3));
+    nav.classList.toggle("is-day", skyT > 0.74);
+  }
+
+  /* ---- parallax: each scene drifts slower than the page ---- */
+  const scenes = $$("[data-parallax]").map((el) => ({ el, img: el.querySelector("img") }));
+  function paintScenes() {
+    const vh = window.innerHeight;
+    for (const { el, img } of scenes) {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < -100 || r.top > vh + 100) continue;
+      const p = clamp((vh - r.top) / (vh + r.height)); // 0 entering, 1 leaving
+      img.style.setProperty("--py", `${((p - 0.5) * r.height * 0.16).toFixed(1)}px`);
+      img.style.setProperty("--ps", (1.04 + p * 0.05).toFixed(3));
+    }
+  }
+
+  /* ---- the dotted trail between the three steps draws itself ---- */
+  const steps = document.getElementById("steps");
+  function paintTrail() {
+    const r = steps.getBoundingClientRect();
+    steps.style.setProperty("--trail", clamp((window.innerHeight * 0.85 - r.top) / (r.height * 0.9)).toFixed(3));
+  }
+
+  let ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      paintSky();
+      paintScenes();
+      paintTrail();
+      ticking = false;
+    });
+  }
+  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("resize", onScroll);
+  onScroll();
+
+  /* ---- stars ---- */
+  const starCanvas = document.getElementById("stars");
+  const starCtx = starCanvas.getContext("2d");
+  let stars = [];
+  function sizeStars() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    starCanvas.width = innerWidth * dpr;
+    starCanvas.height = innerHeight * dpr;
+    starCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const count = Math.round((innerWidth * innerHeight) / 5200);
+    stars = Array.from({ length: count }, () => ({
+      x: Math.random() * innerWidth,
+      y: Math.random() * innerHeight * 0.92,
+      r: Math.random() * 1.2 + 0.25,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.4 + Math.random() * 1.4,
+    }));
+  }
+  function drawStars(time) {
+    starCtx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const st of stars) {
+      const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(st.phase + time * 0.001 * st.speed));
+      starCtx.globalAlpha = a;
+      starCtx.fillStyle = "#fdf8ec";
+      starCtx.beginPath();
+      starCtx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+      starCtx.fill();
+    }
+    starCtx.globalAlpha = 1;
+  }
+
+  /* ---- fireflies: the messages Distry sends, drifting toward the pointer ---- */
+  const flyCanvas = document.getElementById("fireflies");
+  const flyCtx = flyCanvas.getContext("2d");
+  const pointer = { x: -9999, y: -9999 };
+  let flies = [];
+  function sizeFlies() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    flyCanvas.width = innerWidth * dpr;
+    flyCanvas.height = innerHeight * dpr;
+    flyCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const count = clamp(Math.round(innerWidth / 34), 14, 46);
+    flies = Array.from({ length: count }, () => newFly(true));
+  }
+  function newFly(anywhere) {
+    return {
+      x: anywhere ? Math.random() * innerWidth : innerWidth + 20,
+      y: Math.random() * innerHeight,
+      vx: -(0.18 + Math.random() * 0.5),
+      vy: (Math.random() - 0.5) * 0.3,
+      size: 2 + Math.random() * 3.4,
+      letter: Math.random() < 0.38,
+      phase: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.6,
+    };
+  }
+  function drawFlies(time) {
+    flyCtx.clearRect(0, 0, innerWidth, innerHeight);
+    // Gold fireflies at night; by day they turn into soft white-blue motes and thin out.
+    const day = clamp((skyT - 0.55) * 2.4);
+    const alphaBase = lerp(0.9, 0.42, day);
+    const rgb = day > 0.5 ? "255,255,255" : "246,198,103";
+    for (let i = 0; i < flies.length; i++) {
+      const f = flies[i];
+      const dx = pointer.x - f.x;
+      const dy = pointer.y - f.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 220 && dist > 1) {
+        f.vx += (dx / dist) * 0.012;
+        f.vy += (dy / dist) * 0.012;
+      }
+      f.vx = lerp(f.vx, -(0.18 + (i % 5) * 0.09), 0.012);
+      f.vy = lerp(f.vy, Math.sin(time * 0.0006 + f.phase) * 0.22, 0.02);
+      f.x += f.vx;
+      f.y += f.vy;
+      if (f.x < -30 || f.y < -40 || f.y > innerHeight + 40) flies[i] = newFly(false);
+
+      const pulse = 0.6 + 0.4 * Math.sin(time * 0.002 + f.phase);
+      const alpha = alphaBase * pulse;
+      const glow = flyCtx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.size * 5);
+      glow.addColorStop(0, `rgba(${rgb},${(alpha * 0.55).toFixed(3)})`);
+      glow.addColorStop(1, `rgba(${rgb},0)`);
+      flyCtx.fillStyle = glow;
+      flyCtx.beginPath();
+      flyCtx.arc(f.x, f.y, f.size * 5, 0, Math.PI * 2);
+      flyCtx.fill();
+
+      flyCtx.save();
+      flyCtx.translate(f.x, f.y);
+      flyCtx.rotate(Math.sin(time * 0.001 + f.phase) * f.spin);
+      flyCtx.globalAlpha = alpha;
+      if (f.letter) {
+        const w = f.size * 3.2;
+        const h = f.size * 2.2;
+        flyCtx.fillStyle = day > 0.5 ? "#ffffff" : "#ffe9b0";
+        flyCtx.fillRect(-w / 2, -h / 2, w, h);
+        flyCtx.strokeStyle = day > 0.5 ? "#2563eb" : "#b9801f";
+        flyCtx.lineWidth = 0.8;
+        flyCtx.beginPath();
+        flyCtx.moveTo(-w / 2, -h / 2);
+        flyCtx.lineTo(0, h * 0.12);
+        flyCtx.lineTo(w / 2, -h / 2);
+        flyCtx.stroke();
+      } else {
+        flyCtx.fillStyle = day > 0.5 ? "#ffffff" : "#fff3cf";
+        flyCtx.beginPath();
+        flyCtx.arc(0, 0, f.size * 0.6, 0, Math.PI * 2);
+        flyCtx.fill();
+      }
+      flyCtx.restore();
+    }
+  }
+  addEventListener("pointermove", (e) => { pointer.x = e.clientX; pointer.y = e.clientY; }, { passive: true });
+  addEventListener("pointerleave", () => { pointer.x = pointer.y = -9999; });
+
+  sizeStars();
+  sizeFlies();
+  addEventListener("resize", () => { sizeStars(); sizeFlies(); });
+  let running = true;
+  document.addEventListener("visibilitychange", () => {
+    running = !document.hidden;
+    if (running) requestAnimationFrame(frame);
+  });
+  function frame(time) {
+    if (!running) return;
+    if (skyT < 0.46) drawStars(time);
+    drawFlies(time);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* ---- things light up as the visitor reaches them ---- */
+  function playMessages(box, gap) {
+    $$(".msg", box).forEach((msg, i) => setTimeout(() => msg.classList.add("is-on"), 350 + i * gap));
+  }
+  function playCalendar(box) {
+    $$("i", box).forEach((ev) => setTimeout(() => ev.classList.add("is-on"), Number(ev.dataset.s) * 520));
+  }
+  function playCount(el) {
+    const target = Number(el.dataset.count);
+    const start = performance.now();
+    (function tick(now) {
+      const p = clamp((now - start) / 1400);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+    })(start);
+  }
+  function playTyped(el) {
+    const text = el.textContent;
+    const shown = document.createElement("span");
+    const hidden = document.createElement("span");
+    hidden.style.opacity = "0";
+    hidden.textContent = text;
+    el.textContent = "";
+    el.append(shown, hidden);
+    let n = 0;
+    (function type() {
+      n = Math.min(text.length, n + 3);
+      shown.textContent = text.slice(0, n);
+      hidden.textContent = text.slice(n);
+      if (n < text.length) setTimeout(type, 16);
+    })();
+  }
+
+  const lit = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const el = entry.target;
+      lit.unobserve(el);
+      const order = Array.from(el.parentElement.children).indexOf(el);
+      setTimeout(() => {
+        el.classList.add("is-lit");
+        const thread = el.querySelector("[data-thread]");
+        if (thread) playMessages(thread, 900);
+        const cal = el.querySelector("[data-cal]");
+        if (cal) playCalendar(cal);
+        const count = el.querySelector("[data-count]");
+        if (count) playCount(count);
+        const typed = el.querySelector("[data-typed]");
+        if (typed) playTyped(typed);
+      }, order * 160);
+    }
+  }, { threshold: 0.22, rootMargin: "0px 0px -6% 0px" });
+  $$("[data-lit]").forEach((el) => lit.observe(el));
+
+  const chat = document.querySelector("[data-chat]");
+  new IntersectionObserver((entries, self) => {
+    if (!entries[0].isIntersecting) return;
+    self.disconnect();
+    playMessages(chat, 1100);
+  }, { threshold: 0.45 }).observe(chat);
+
+  /* ---- quotes: the track is doubled so the loop has no seam ---- */
+  const track = document.querySelector(".marquee-track");
+  track.append(...Array.from(track.children).map((node) => {
+    const copy = node.cloneNode(true);
+    copy.setAttribute("aria-hidden", "true");
+    return copy;
+  }));
+
+  /* ---- Distry walks beside the visitor and says one line per scene ---- */
+  const buddy = document.getElementById("buddy");
+  const say = document.getElementById("buddy-say");
+  let saying = "";
+  function speak(line) {
+    if (line === saying) return;
+    saying = line;
+    say.classList.remove("is-on");
+    setTimeout(() => {
+      say.textContent = line;
+      say.classList.add("is-on");
+    }, 260);
+  }
+  const talk = new IntersectionObserver((entries) => {
+    for (const entry of entries) if (entry.isIntersecting) speak(entry.target.dataset.say);
+  }, { rootMargin: "-45% 0px -45% 0px" });
+  $$("[data-say]").forEach((el) => talk.observe(el));
+  setTimeout(() => speak(hero.dataset.say), 1800);
+
+  function sparks(x, y, count) {
+    for (let i = 0; i < count; i++) {
+      const sp = document.createElement("i");
+      sp.className = "spark";
+      sp.style.left = `${x}px`;
+      sp.style.top = `${y}px`;
+      sp.style.setProperty("--dx", `${(Math.random() - 0.5) * 150}px`);
+      sp.style.setProperty("--dy", `${-50 - Math.random() * 120}px`);
+      sp.style.setProperty("--dr", `${(Math.random() - 0.5) * 240}deg`);
+      sp.style.animationDelay = `${i * 45}ms`;
+      document.body.append(sp);
+      setTimeout(() => sp.remove(), 1400 + i * 45);
+    }
+  }
+  $$(".btn").forEach((btn) => {
+    btn.addEventListener("pointerenter", () => {
+      buddy.classList.add("is-excited");
+      const face = buddy.querySelector(".buddy-face").getBoundingClientRect();
+      sparks(face.left + face.width / 2, face.top, 6);
+      const r = btn.getBoundingClientRect();
+      sparks(r.left + r.width / 2, r.top, 5);
+    });
+    btn.addEventListener("pointerleave", () => buddy.classList.remove("is-excited"));
+  });
+
+  /* ---- copy the one command ---- */
+  $$("[data-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(document.querySelector(button.dataset.copy).textContent);
+      button.textContent = "Copied";
+      setTimeout(() => { button.textContent = "Copy"; }, 1600);
+    });
+  });
+
+  /* ---- the hero comes alive: a short film over the still, on screens that can carry it ---- */
+  const video = document.getElementById("hero-video");
+  const saveData = navigator.connection && navigator.connection.saveData;
+  if (innerWidth >= 760 && !saveData) {
+    addEventListener("load", () => {
+      video.src = video.dataset.src;
+      video.addEventListener("canplaythrough", () => {
+        video.play().then(() => video.classList.add("is-on")).catch(() => {});
+      }, { once: true });
+      // The film does not loop cleanly, so it fades to the still, rewinds and fades back in.
+      video.addEventListener("timeupdate", () => {
+        if (video.duration && video.currentTime > video.duration - 0.9) video.classList.remove("is-on");
+      });
+      video.addEventListener("ended", () => {
+        video.currentTime = 0;
+        video.play().then(() => video.classList.add("is-on")).catch(() => {});
+      });
+      video.load();
+    });
+  }
+})();
