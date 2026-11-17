@@ -912,9 +912,14 @@ export function parseReloadThresholdUsd(input: string): { usd: number } | { prob
 /** billing's offer of every org created since 2026-10-29 (OFFER-RESET-1029). */
 export const AT_COST_OFFER = "prepaid_at_cost";
 
-/** True when billing serves this org the prepaid at cost offer: no free money, prepaid only. */
+/**
+ * True when this org gets the at-cost checkout ($10 first credit, reload from $5, adds $10):
+ * every offer that gives no free money, the at-cost offer AND an org opened through the
+ * API by the lead's own AI agent (`agent_api`, AGENT-API-CHECKOUT-10-1117: it read the
+ * $100 match checkout). Only `match_100` keeps the $100 path.
+ */
 export function isAtCostOffer(account: { free_credit_offer?: string } | null | undefined): boolean {
-  return account?.free_credit_offer === AT_COST_OFFER;
+  return offersNoFreeMoney(account);
 }
 
 /**

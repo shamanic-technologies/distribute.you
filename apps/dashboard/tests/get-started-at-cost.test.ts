@@ -67,6 +67,21 @@ describe("no free money for an at-cost org", () => {
     expect(isAtCostOffer(null)).toBe(false);
   });
 
+  it("an org opened through the API (agent_api) gets the $10 at-cost checkout, match_100 keeps $100", () => {
+    expect(isAtCostOffer({ free_credit_offer: "agent_api" })).toBe(true);
+    expect(isAtCostOffer({ free_credit_offer: "legacy" })).toBe(false);
+    for (const offer of ["agent_api", "prepaid_at_cost"]) {
+      const account = { free_credit_offer: offer };
+      expect(isAtCostOffer(account)).toBe(offersNoFreeMoney(account));
+      expect(wallCopy(isAtCostOffer(account)).creditUsd).toBeNull();
+      expect(matchNote(account)).toBe("");
+    }
+    expect(wallCopy(isAtCostOffer({ free_credit_offer: "match_100" })).creditUsd).toBe(100);
+    const under = atCostCheckout({ topup: "9", threshold: "5", reload: "10" });
+    expect(under.problems.topup).toBe("At least $10.");
+    expect(atCostCheckout({ topup: "10", threshold: "5", reload: "10" }).values).toEqual({ topupUsd: 10, thresholdUsd: 5, reloadUsd: 10 });
+  });
+
   it("the wall's words promise no match, no trial, nothing free", () => {
     const copy = wallCopy(true);
     expect(copy.creditUsd).toBeNull();
