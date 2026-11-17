@@ -605,6 +605,15 @@ export async function renderedResponse(
   return negotiatedResponse(decorateHtml(html), request, options);
 }
 
+/**
+ * Every live figure a served page carries (client counts, founder count, fleet stats, the
+ * footer's index links), resolved on any HTML. The one pass `staticResponse` runs, exported
+ * for a lab prototype that must state the same figures without the analytics head.
+ */
+export async function withLiveFigures(html: string): Promise<string> {
+  return withIndexLinks(await withFounderCount(await withShowcaseOutcomes(await withHotLeadStats(html))));
+}
+
 async function negotiatedResponse(
   decorated: string,
   request: Request | undefined,
@@ -624,9 +633,7 @@ async function negotiatedResponse(
     });
   }
 
-  const html = await withIndexLinks(
-    await withFounderCount(await withShowcaseOutcomes(await withHotLeadStats(decorated))),
-  );
+  const html = await withLiveFigures(decorated);
 
   if (negotiated === "markdown") {
     const markdown = htmlToMarkdown(html, {

@@ -4,14 +4,19 @@ import path from "node:path";
 
 import { clonePathFor, contentTypeFor, originPathFor, withinRoot } from "@/lib/clone-files";
 import { PROTOTYPE_ROUTE_PREFIX, byteRangeFor, prototypeFor } from "@/lib/prototype-catalogue";
+import { withSiteChrome } from "@/lib/site-chrome";
+import { withLiveFigures } from "@/lib/static-html";
 
 /**
  * Serves one file of a landing PROTOTYPE of ours (`apps/landing/prototypes/<slug>/`).
  *
  * Reached only through the host rewrite in `src/proxy.ts`, which has already resolved the
  * slug against the catalogue and checked the lab password; the proxy 404s this prefix on
- * every other host. The body is the file on disk and nothing else: a prototype is not a
- * live page, so it gets no analytics, no canonical and no live figures.
+ * every other host. A prototype is not a live page, so it gets no analytics and no
+ * canonical. Its PAGES do wear what a visitor of the live site sees: the real menu and
+ * footer (`withSiteChrome`, from its `<!--site-nav-->` / `<!--site-footer-->` tokens) and
+ * the live client figures (`withLiveFigures`, keyed like the homepage's). Other files
+ * are served as they are on disk.
  *
  * The path helpers are the clones' (`src/lib/clone-files.ts`): they answer a question
  * about paths, and a second copy is a second place to get traversal wrong.
@@ -78,6 +83,11 @@ export async function GET(
       status: 404,
       headers: { ...BASE_HEADERS, "content-type": "text/plain; charset=utf-8" },
     });
+  }
+
+  if (found.file.endsWith(".html")) {
+    const page = await withLiveFigures(withSiteChrome(found.body.toString("utf8"), "/"));
+    return new Response(page, { headers: { ...BASE_HEADERS, "content-type": "text/html; charset=utf-8" } });
   }
 
   const headers = { ...BASE_HEADERS, "content-type": contentTypeFor(found.file), "accept-ranges": "bytes" };

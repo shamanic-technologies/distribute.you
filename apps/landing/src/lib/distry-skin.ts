@@ -14,7 +14,7 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 5;
+export const SKIN_VERSION = 6;
 
 /**
  * Requests a skin host lets through untouched: files and framework internals. Everything
