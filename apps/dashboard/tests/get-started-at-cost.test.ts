@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { atCostCheckout, isAtCostOffer, matchNote, offersNoFreeMoney, topupCta, wallCopy } from "../src/lib/v2/get-started";
+import { AT_COST_MIN_TOPUP_USD, AT_COST_TOPUP_CHOICES_USD, atCostCheckout, isAtCostOffer, matchNote, offersNoFreeMoney, topupCta, wallCopy } from "../src/lib/v2/get-started";
 import { spendConsentLines } from "../src/lib/v2/spend-consent";
 
 // ONBOARDING-PREPAID-1029 (owner 2026-10-29): every org created since is billing's
@@ -77,6 +77,8 @@ describe("no free money for an at-cost org", () => {
       expect(matchNote(account)).toBe("");
     }
     expect(wallCopy(isAtCostOffer({ free_credit_offer: "match_100" })).creditUsd).toBe(100);
+    expect(AT_COST_TOPUP_CHOICES_USD).toEqual([100, 250, 500, 1000]);
+    expect(AT_COST_MIN_TOPUP_USD).toBe(10);
     const under = atCostCheckout({ topup: "9", threshold: "5", reload: "10" });
     expect(under.problems.topup).toBe("At least $10.");
     expect(atCostCheckout({ topup: "10", threshold: "5", reload: "10" }).values).toEqual({ topupUsd: 10, thresholdUsd: 5, reloadUsd: 10 });
