@@ -14,7 +14,16 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 7;
+export const SKIN_VERSION = 8;
+
+/** The site's mark, and Distry's, which replaces it wherever the skin is worn (owner 2026-11-17). */
+export const SITE_LOGO = "/landing/v2/assets/logo-mark.svg";
+export const DISTRY_LOGO = `${SKIN_ASSETS}/assets/distry-logo.svg`;
+
+/** Every use of the site's mark in a page, swapped for Distry's. */
+export function withDistryLogo(html: string): string {
+  return html.replaceAll(SITE_LOGO, DISTRY_LOGO);
+}
 
 /**
  * Requests a skin host lets through untouched: files and framework internals. Everything
@@ -70,7 +79,7 @@ const SKY = `<div class="d-sky" aria-hidden="true"><div class="d-sky-layer d-sky
 const BUDDY = `<aside class="buddy" id="buddy" aria-hidden="true"><p class="buddy-say" id="buddy-say"></p><div class="buddy-face"><img src="${SKIN_ASSETS}/assets/distry-avatar-160.webp" alt="" width="72" height="72"></div></aside>`;
 
 const HEAD = `<meta name="robots" content="noindex, nofollow">
-<link rel="icon" href="${SKIN_ASSETS}/assets/icon.png">
+<link rel="icon" type="image/svg+xml" href="${SKIN_ASSETS}/assets/distry-logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,100&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -163,7 +172,7 @@ export function applyDistrySkin(html: string, pathname = "/", status = 200): str
   const sceneUrl = `${SKIN_ASSETS}/assets/${sceneFor(pathname, status)}.webp`;
   if (isHydratedPage(html)) {
     // Nothing is added to the body: the script dresses the page once it has settled.
-    const handover = JSON.stringify({ late: true, sky: SKY, buddy: BUDDY, lines: LINES, frame: frameHtml(sceneUrl) }).replace(/</g, "\\u003c");
+    const handover = JSON.stringify({ late: true, sky: SKY, buddy: BUDDY, lines: LINES, frame: frameHtml(sceneUrl), logo: DISTRY_LOGO }).replace(/</g, "\\u003c");
     return html.replace(
       /<\/head>/i,
       `${HEAD}\n<script>window.__distry=${handover}</script>\n<script src="${SKIN_ASSETS}/distry.js?v=${SKIN_VERSION}" defer></script>\n</head>`,
@@ -174,7 +183,7 @@ export function applyDistrySkin(html: string, pathname = "/", status = 200): str
   );
   // Links to the production site stay on the host the visitor is reviewing.
   out = out.replace(/(href|action)="https:\/\/distribute\.you(\/[^"]*)?"/g, (_m, attr: string, path?: string) => `${attr}="${path ?? "/"}"`);
-  out = placeSections(out);
+  out = withDistryLogo(placeSections(out));
   // The page's painting is ONE framed moment, never a background: in the closing box
   // when the page has one, else just above the footer.
   const frame = frameHtml(sceneUrl);

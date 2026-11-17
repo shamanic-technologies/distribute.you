@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { applyDistrySkin, hourFor, isHydratedPage, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet } from "../../src/lib/distry-skin";
+import { applyDistrySkin, hourFor, isHydratedPage, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet, withDistryLogo } from "../../src/lib/distry-skin";
 
 describe("which requests a skin host fetches and skins", () => {
   it("lets files and framework internals through", () => {
@@ -179,5 +179,25 @@ describe("Distry beside the WhatsApp button", () => {
     const { readFileSync } = await import("node:fs");
     const css = readFileSync(path.join(__dirname, "../../public/landing/distry/skin.css"), "utf8");
     expect(css).toMatch(/html\.distry body:has\(a\[href\^="https:\/\/wa\.me\/"\]\) \.buddy \{ bottom: calc\(88px/);
+  });
+});
+
+describe("Distry's mark replaces the site's", () => {
+  it("swaps every use of the site logo on a static page", () => {
+    const out = applyDistrySkin('<html><head></head><body><section><img src="/landing/v2/assets/logo-mark.svg"></section><footer><img src="/landing/v2/assets/logo-mark.svg"></footer></body></html>', "/ai-sdr");
+    expect(out).not.toContain("/landing/v2/assets/logo-mark.svg");
+    expect(out.match(/\/landing\/distry\/assets\/distry-logo\.svg/g)!.length).toBeGreaterThanOrEqual(3);
+    expect(withDistryLogo("x")).toBe("x");
+  });
+
+  it("hands the logo to the script on a page React hydrates", () => {
+    const out = applyDistrySkin('<html><head></head><body><main></main><script>self.__next_f=[]</script></body></html>', "/blog");
+    expect(out).toContain('"logo":"/landing/distry/assets/distry-logo.svg"');
+  });
+
+  it("ships the logo, and the home wears it", () => {
+    expect(existsSync(path.resolve(__dirname, "../../public/landing/distry/assets/distry-logo.svg"))).toBe(true);
+    const route = readFileSync(path.resolve(__dirname, "../../src/app/internal-prototype/[slug]/[[...path]]/route.ts"), "utf8");
+    expect(route).toContain("withDistryLogo(await withLiveFigures(");
   });
 });
