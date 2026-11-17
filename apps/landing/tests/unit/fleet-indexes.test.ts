@@ -403,21 +403,18 @@ describe("every served reason reads as its own plain sentence (INDEX-REASONS-LAN
     expect(Object.keys(UNAVAILABLE).sort()).toEqual([...SERVED].sort());
   });
 
-  it("not_measured says what the number rests on so far, from the served count and bar", () => {
-    const ctx = { outcome: "positive_reply", outcomes: 5, minOutcomes: 10 };
-    expect(unavailableLine("not_measured", ctx)).toBe("5 positive replies so far. The number is published from 10.");
-    expect(unavailableLine("not_measured", { ...ctx, outcome: "website_visit", outcomes: 1 })).toBe("1 click so far. The number is published from 10.");
-    expect(unavailableLine("not_measured", { ...ctx, outcome: "meeting_booked", outcomes: 0 })).toBe("No meeting booked yet. The number is published from 10 meetings booked.");
-    // An outcome without words names no count.
-    expect(unavailableLine("not_measured", { ...ctx, outcome: "something_new" })).toBe(UNAVAILABLE.not_measured);
-    // The count only speaks for not_measured.
-    expect(unavailableLine("vendor_cost_unknown", ctx)).toBe(UNAVAILABLE.vendor_cost_unknown);
+  it("a reason never states a count of outcomes to the reader (owner 2026-11-17)", () => {
+    for (const line of Object.values(UNAVAILABLE)) {
+      expect(line).not.toMatch(/\b\d+ (positive repl|click|meeting|engaged lead|outcome)/i);
+      expect(line).not.toMatch(/so far/);
+    }
   });
 
-  it("the index page prints the reason, the count and an unpublished status, never the generic line", () => {
+  it("the index page prints the reason and an unpublished status, never a count, never the generic line", () => {
     const i = summary({ slug: "cold-email-cost-per-positive-reply", outcome: "positive_reply", value: null, status: "noise", outcomes: 5, contacted: 7288, unavailableReason: "not_measured" });
     const page = renderIndexPage(i.slug, { statusRule: RULE, index: i, points: [point("2026-11-17", null, { status: "noise", outcomes: 5, unavailableReason: "not_measured" })] }, LIST);
-    expect(page).toContain("5 positive replies so far. The number is published from 10.");
+    expect(page).toContain(esc(UNAVAILABLE.not_measured));
+    expect(page).not.toMatch(/\b5 positive repl/);
     expect(page).toContain("Early read: under 10 outcomes so far, not published yet.");
     expect(page).not.toContain("published anyway");
     expect(page).not.toContain(GENERIC);
@@ -432,7 +429,8 @@ describe("every served reason reads as its own plain sentence (INDEX-REASONS-LAN
       { statusRule: RULE, indexes: [summary({ outcome: "positive_reply", value: null, status: "noise", outcomes: 5, unavailableReason: "not_measured" })] },
       new Map(),
     );
-    expect(list).toContain("5 positive replies so far. The number is published from 10.");
+    expect(list).toContain(esc(UNAVAILABLE.not_measured));
+    expect(list).not.toMatch(/\b5 positive repl/);
     expect(list).toContain("Not published yet");
   });
 
