@@ -11,12 +11,12 @@ Served landing = STATIC HTML `public/landing/**.html` (routes `src/app/<page>/ro
 - **`request.url` in a route handler is the request as ARRIVED**, not the rewritten one: slicing an internal prefix off it collapses short paths to `/`. `originPathFor` holds the rule (unit-tested).
 - **The route serves raw bytes**: no token substitution, analytics or Organization JSON-LD rewrite; a guard asserts `staticResponse()` helpers are unreachable from it (explain history in the TEST, not the component).
 - **Unset `CLONE_BASIC_AUTH` LOCKS (401), never opens.** `/robots.txt` on a clone host answers `Disallow: /` BEFORE the password. Host resolved against the CATALOGUE; traversal stopped twice (`clonePathFor` segment rejection + resolved-path containment).
-- **Our `next.config.ts` redirects run BEFORE `proxy.ts` on every host**: every redirect there carries `missing: offLab` (a competitor's `/sign-in` was bounced to our dashboard). New ones must too (guarded).
-- **Dockerfile needs an explicit `COPY` for `clones/` and `archives/`** (untraced by Next; container healthy, host 404s).
+- **Our `next.config.ts` redirects run BEFORE `proxy.ts` on every host**: every redirect there carries `missing: offLab`. New ones must too (guarded).
+- **Dockerfile needs an explicit `COPY` for `clones/`, `archives/`, `prototypes/`** (untraced by Next; container healthy, host 404s).
 - **Capture is TWO passes**: `scripts/clone-site.mjs` (static, ASSET refs only, never document links) then `scripts/capture-live.mjs` (Chromium, 4 viewport/DPR combos, records real fetches; a cache-served response has no body: REFETCH). A whole APP clones by feeding every document route to both passes.
 - **Query string = identity when the server generates the response from it** (`/_next/image?w=96`): stored as sibling `<stem>.__q<hash><ext>`; the reader honours the caller's `Accept` as the origin did. Next client-nav `?_rsc=<hash>` never matches a captured hash: answer an exact miss with ANY stored `_rsc` variant (`isRscCacheBusterOnly` / `pickRscVariant`).
 - **`diskPathFor` (`clone-site.mjs`) DECODES** (`%5Bslug%5D` -> `[slug]`) because the reader does; encoded names were 404s on disk.
-- **A competitor named in a brief is usually ON DISK: read its markup before designing anything meant to resemble it** (grep the clone `index.html` for a figure/phrase, read the enclosing element). Cost 2026-09-07 (#3947 -> #3948): hero proof row built from the description instead of the clone's one 14px inline line.
+- **A competitor named in a brief is usually ON DISK: read its markup before designing anything meant to resemble it** (grep the clone `index.html` for a figure/phrase, read the enclosing element).
 - **Onboarding per clone** (`src/lib/clone-onboarding.json`; `scripts/capture-onboarding.mjs <slug>`, `scripts/verify-onboarding.mjs <slug> <port> [user:pass] [--prod]`): signup-CTA URLs loaded as they stand (nothing typed/submitted) + a `wall`. Another origin = a SITE (`clones/<slug>/__sites/<label>/`, host `lab-<slug>-<label>`; site-origin refs rewritten to the lab host and back, the second sanctioned rewrite). Replays, never executed: 3xx (`__redirects.json`), Next server actions (`__actions.json` by `next-action` id), `"mode": "snapshot"` (rendered DOM, scripts stripped) where an auth widget refuses off-domain.
 - **Walked PAST signup by hand** (`__flow/`, `scripts/har-to-flow.mjs <slug> <dir>`; never a card, never a script-ticked captcha; `clones/ONBOARDING-MAP.md`); clickable via `__responses.json`, actions keyed `<id> <page>`, router payloads `<page>/index.__q<hash>.rsc` (`text/x-component`); every `?dpl=` chunk also stored at its plain path.
 - Guards: `tests/unit/clone-serving.test.ts` (pins the reader against the capture script's path function), `tests/unit/clone-onboarding.test.ts`.
@@ -28,11 +28,12 @@ Served landing = STATIC HTML `public/landing/**.html` (routes `src/app/<page>/ro
 - **Store what the SERVER SENT, never raw `public/`**: that era's `/` handler rewrote files per request (pages reference `css/styles.css` relatively). The rewrite table and figures are PARSED OUT OF THE ARCHIVED COMMIT, not transcribed.
 - **Every departure from what shipped is listed on the catalogue entry** (no analytics; live-figure tokens take the handler's last-known-good constants; the asset rewrite; the pages' own unconfigured GTM is KEPT).
 - **Lives OUTSIDE `public/`** (two repo-wide CI guards sweep `public/**` for retired claims the June page correctly contains). Do NOT move under `public/`. React-era pages (`/blog`, `/investors`, `/privacy`...) are NOT in it (footer links 404 there).
-- Verify by RENDERING; assert the stat band AFTER the count-up settles. Guard: `tests/unit/archive-serving.test.ts`.
+- Verify by RENDERING (stat band after the count-up). Guard `archive-serving.test.ts`.
+- **A landing PROTOTYPE of ours (work in progress shown to the owner) = `prototypes/<slug>/` + `src/lib/prototype-catalogue.ts`, same lab gate** (`lab-distry`: the Distry universe; a clone or an archive never holds one). Guard `prototype-serving.test.ts`.
 
 ## Promoting a page out of a sandboxed/gated host onto a live route
 
-A lab page is password-gated and `noindex`, so its guards encode design, not obligations. Before promoting, list what the REPLACED page is guarded by (`git grep -l <old-file> tests/`) and walk each rule by hand: `Log in` reachable at EVERY width (shrink, never hide below 640px), raw-HTML inlinks to sibling pages (a JS-injected link is invisible to crawlers), analytics head, canonical, positioning bans, `?v=` cache-buster. Rename guards that now read an archived file (`archived-homepage-*.test.ts`) in the same commit. (#3924)
+A lab page is password-gated and `noindex`, so its guards encode design, not obligations. Before promoting, list what the REPLACED page is guarded by (`git grep -l <old-file> tests/`) and walk each rule by hand: `Log in` reachable at EVERY width (shrink, never hide below 640px), raw-HTML inlinks to sibling pages (a JS-injected link is invisible to crawlers), analytics head, canonical, positioning bans, `?v=` cache-buster. Rename guards that now read an archived file (`archived-homepage-*.test.ts`) in the same commit.
 
 ## The HOMEPAGE: `public/landing/index-v2.html` + `public/landing/v2/{styles.css,main.js,assets/}`, served at `/`
 
@@ -103,7 +104,7 @@ Authored in the lab, promoted; hand-written, no framework, no build step. Assets
 - **Any build-time fetch on a served page: `AbortSignal.timeout` (8s) + last-known-good fallback**, gated on token presence, or a cold endpoint blows the prerender budget.
 - **Never surface a cross-org + cross-WORKFLOW POOLED metric**; the wanted figure is the BEST single workflow (MIN of `costPerOutcomeUsd` from `workflow-cost-per-outcome` over workflows with observed outcome > 0, `fetchBestModelUsd`). Off-limits: `cost-per-outcome-trend`, `cost-projection`/`avgCostPerOutcomeByObjective`. A hardcoded literal matching a live value is still a bug.
 - **A `replaceAll(TOKEN, injectedScript)` slot token must not be a substring of the client global it injects** (`__CAC_BOOT__` matched its own `window.__CAC_BOOT__` reader, #2832).
-- **Re-render cadence = TWO values**: route `revalidate` AND the `s-maxage` header `staticResponse()` sets (the CDN obeys the header); both `86400`. Raising only `revalidate` changed nothing (#3287). Verify the live header.
+- **Re-render cadence = TWO values**: route `revalidate` AND the `s-maxage` header `staticResponse()` sets (the CDN obeys the header); both `86400`. Raising only `revalidate` changed nothing (#3287).
 
 ## Copy and positioning invariants (public surfaces)
 

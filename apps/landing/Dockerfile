@@ -74,6 +74,8 @@ COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/public ./apps/landi
 # while the container is otherwise healthy.
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/clones ./apps/landing/clones
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/archives ./apps/landing/archives
+# Landing prototypes of ours (apps/landing/prototypes/), read by internal-prototype: same reason.
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/prototypes ./apps/landing/prototypes
 
 # Every SEO page is ISR, so the server rewrites its own cache as pages revalidate. The
 # standalone output ships no cache directory and the process does not run as root, so
