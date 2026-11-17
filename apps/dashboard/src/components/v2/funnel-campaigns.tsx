@@ -868,7 +868,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
         </section>
 
         <section>
-          <SectionTitle right={<span>Since it started</span>}>Spend, day by day</SectionTitle>
+          <SectionTitle right={<span>Since it started</span>}>Spend and results, day by day</SectionTitle>
           <SpendChartsBlock {...spendChartState(spendQ, (d) => d.campaign)} billed={funnelBilledSpend(row, rowsSettled)} />
         </section>
 
