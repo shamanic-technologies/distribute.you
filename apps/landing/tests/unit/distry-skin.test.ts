@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { applyDistrySkin, hourFor, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet } from "../../src/lib/distry-skin";
+import { applyDistrySkin, hourFor, isHydratedPage, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet } from "../../src/lib/distry-skin";
 
 describe("which requests a skin host fetches and skins", () => {
   it("lets files and framework internals through", () => {
@@ -137,5 +137,31 @@ describe("sceneFor", () => {
     expect(out.match(/class="d-scene"/g)).toHaveLength(1);
     expect(out).toContain("/landing/distry/assets/page-catalog.webp");
     expect(out.indexOf('class="d-scene"')).toBeLessThan(out.indexOf("<h1>"));
+  });
+});
+
+describe("a page React hydrates", () => {
+  const page = `<!doctype html><html><head><title>t</title></head><body><main><section><h1>a</h1></section></main><script>self.__next_f=self.__next_f||[]</script></body></html>`;
+  const out = applyDistrySkin(page, "/terms");
+
+  it("is recognised", () => {
+    expect(isHydratedPage(page)).toBe(true);
+    expect(isHydratedPage("<html><head></head><body><section></section></body></html>")).toBe(false);
+  });
+
+  it("gets nothing added to its body: React would throw it away", () => {
+    const body = (html: string) => html.slice(html.indexOf("<body"));
+    expect(body(out)).toBe(body(page));
+  });
+
+  it("hands the sky, Distry, the lines and the painting to the script instead", () => {
+    const head = out.slice(0, out.indexOf("</head>"));
+    expect(head).toContain("window.__distry=");
+    expect(head).toContain('"late":true');
+    expect(head).toContain("/landing/distry/assets/page-legal.webp");
+    expect(head).toContain("/landing/distry/distry.js?v=");
+    // The handover sits in a script: no raw tag may close it early.
+    const handover = head.slice(head.indexOf("window.__distry="), head.indexOf("</script>", head.indexOf("window.__distry=")));
+    expect(handover).not.toContain("<");
   });
 });

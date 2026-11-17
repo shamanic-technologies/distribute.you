@@ -3,7 +3,49 @@
  * and `html.js` (set in the head) is absent under reduced motion, so nothing here runs
  * for a visitor who asked for stillness.
  */
-(() => {
+/*
+ * A page hydrated by React (blog, docs, legal) throws away any markup added to its HTML,
+ * so the server adds nothing to its body: it hands the pieces over in `window.__distry`
+ * and `dress()` puts them in once the page has settled.
+ */
+function dress(cfg) {
+  const body = document.body;
+  body.insertAdjacentHTML("afterbegin", cfg.sky);
+  body.insertAdjacentHTML("beforeend", cfg.buddy);
+  const sections = Array.from(document.querySelectorAll("section"));
+  const said = { night: 0, dawn: 0, day: 0 };
+  sections.forEach((el, i) => {
+    const sky = sections.length === 1 ? 0 : i / (sections.length - 1);
+    const hour = sky < 0.4 ? "night" : sky < 0.72 ? "dawn" : "day";
+    const lines = cfg.lines[hour];
+    el.classList.add(`d-${hour}`);
+    el.dataset.sky = sky.toFixed(2);
+    el.dataset.say = lines[Math.min(said[hour], lines.length - 1)];
+    said[hour] += 1;
+  });
+  const footer = document.querySelector("footer");
+  if (footer && !footer.dataset.sky) {
+    footer.dataset.sky = "1";
+    footer.dataset.say = cfg.lines.day[cfg.lines.day.length - 1];
+  }
+  const scene = `<div class="d-scene" aria-hidden="true" style="background-image:url(${cfg.scene})"></div>`;
+  const host = sections[0] || document.querySelector("main");
+  if (host) host.insertAdjacentHTML("afterbegin", sections[0] ? scene : `<div class="d-scene-band">${scene}</div>`);
+  // A client-side page change would swap the content and drop all of the above: every
+  // link on a dressed page is a full page load.
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest && event.target.closest("a[href]");
+    if (!link || link.target === "_blank" || event.metaKey || event.ctrlKey || event.shiftKey) return;
+    const url = new URL(link.href, location.href);
+    if (url.hostname === "distribute.you") url.host = location.host;
+    if (url.origin !== location.origin || (url.pathname === location.pathname && url.hash)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    location.href = url.href;
+  }, true);
+}
+
+function start() {
   const root = document.documentElement;
   if (!root.classList.contains("js")) return;
 
@@ -367,4 +409,12 @@
       video.load();
     });
   }
-})();
+}
+
+if (window.__distry && window.__distry.late) {
+  const late = () => setTimeout(() => { dress(window.__distry); start(); }, 700);
+  if (document.readyState === "complete") late();
+  else addEventListener("load", late);
+} else {
+  start();
+}

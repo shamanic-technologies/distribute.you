@@ -14,7 +14,7 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 4;
+export const SKIN_VERSION = 5;
 
 /**
  * Requests a skin host lets through untouched: files and framework internals. Everything
@@ -147,8 +147,22 @@ export function placeSections(html: string): string {
   });
 }
 
+/** A page React hydrates in the browser: any markup added to its body is thrown away at hydration. */
+export function isHydratedPage(html: string): boolean {
+  return /self\.__next_f\b|__NEXT_DATA__/.test(html);
+}
+
 export function applyDistrySkin(html: string, pathname = "/", status = 200): string {
   if (!/<\/head>/i.test(html) || !/<body\b/i.test(html)) return html;
+  const sceneUrl = `${SKIN_ASSETS}/assets/${sceneFor(pathname, status)}.webp`;
+  if (isHydratedPage(html)) {
+    // Nothing is added to the body: the script dresses the page once it has settled.
+    const handover = JSON.stringify({ late: true, sky: SKY, buddy: BUDDY, lines: LINES, scene: sceneUrl }).replace(/</g, "\\u003c");
+    return html.replace(
+      /<\/head>/i,
+      `${HEAD}\n<script>window.__distry=${handover}</script>\n<script src="${SKIN_ASSETS}/distry.js?v=${SKIN_VERSION}" defer></script>\n</head>`,
+    );
+  }
   let out = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (tag) =>
     TRACKER.test(tag) && !/application\/ld\+json/i.test(tag) ? "" : tag,
   );
@@ -156,7 +170,7 @@ export function applyDistrySkin(html: string, pathname = "/", status = 200): str
   out = out.replace(/(href|action)="https:\/\/distribute\.you(\/[^"]*)?"/g, (_m, attr: string, path?: string) => `${attr}="${path ?? "/"}"`);
   out = placeSections(out);
   // The page's painting sits behind its opening section.
-  const scene = `<div class="d-scene" aria-hidden="true" style="background-image:url(${SKIN_ASSETS}/assets/${sceneFor(pathname, status)}.webp)"></div>`;
+  const scene = `<div class="d-scene" aria-hidden="true" style="background-image:url(${sceneUrl})"></div>`;
   let opened = false;
   out = out.replace(/<section\b[^>]*>/, (tag) => {
     opened = true;
