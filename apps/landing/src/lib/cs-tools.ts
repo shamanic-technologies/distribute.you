@@ -52,11 +52,11 @@ export type CsTool = {
 
 /** How WE answer each row, stated once. */
 export const OUR_AI_CS_ROW = {
-  entryPrice: "Free, every action at the API price",
+  entryPrice: "Usage based, every action at the API price",
   aiAgent: "Every message at the vendor's API price, 0% markup",
   pricing:
-    "Free. Every message written and sent is billed at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
-  freeTier: "Free, hosted. Open source under MIT to run yourself.",
+    "Usage based. Every message written and sent is billed at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
+  freeTier: "Start with $10, hosted. Open source under MIT, free to run yourself.",
   whatsapp: "Included. The agent writes to your paying customers on WhatsApp.",
   whoStarts: "Our agent writes first, when a customer pays, comes back, stops paying or goes quiet.",
   counts: "Happy customers: each positive message from a paying customer counts once.",

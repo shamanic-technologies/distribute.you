@@ -51,10 +51,10 @@ export type AgentTool = {
 
 /** How WE answer each row, stated once. */
 export const OUR_TRAFFIC_ROW = {
-  entryPrice: "Free, every action at the API price",
+  entryPrice: "Usage based, every action at the API price",
   pricing:
-    "Free. Every buyer found, every message written and sent is billed at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
-  freeTier: "Free, hosted. Open source under MIT to run yourself.",
+    "Usage based. Every buyer found, every message written and sent is billed at the vendor's API price, 0% markup, from a prepaid balance you start with $10.",
+  freeTier: "Start with $10, hosted. Open source under MIT, free to run yourself.",
   channel: "Cold email from our own domains and WhatsApp, to buyers chosen by name.",
   whoVisits: "Buyers our agent picked for you: the role, the company size and the market you sell to.",
   whatCounts: "Human clicks only. Our AI judge leaves link scanners out.",

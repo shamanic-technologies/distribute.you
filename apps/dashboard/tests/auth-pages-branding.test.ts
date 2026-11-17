@@ -51,11 +51,12 @@ describe("Auth pages branding", () => {
   });
 
   it("states the served landing's headline, offer and proof line", () => {
-    // Verbatim from the served landing hero: prepaid (owner 2026-10-06, the platform
-    // is free). The $99/month homepage arm was deleted 2026-11-11 (OFFER-RESET-1029).
+    // Verbatim from the served landing: usage based, 0% markup (owner 2026-11-17: never
+    // called free). The $99/month homepage arm was deleted 2026-11-11 (OFFER-RESET-1029).
     expect(panel).toContain("revenue in 24h");
     expect(panel).toContain("Revenue made easy.");
-    expect(panel).toContain("The platform is free");
+    expect(panel).toContain("Usage based, 0% markup");
+    expect(panel).not.toMatch(/platform is free/i);
     expect(panel).not.toContain("From $99/month");
     expect(panel).not.toContain("3-day trial");
     expect(panel).not.toContain("$1/day");
@@ -115,7 +116,8 @@ describe("Auth pages branding", () => {
   });
 
   it("finishes signup with the landing's own CTA word", () => {
-    expect(signUpContent).toContain('"Start free"');
+    expect(signUpContent).toContain('"Get started"');
+    expect(signUpContent).not.toContain("Start free");
   });
 
   it("sign-in page should link to distribute.you", () => {

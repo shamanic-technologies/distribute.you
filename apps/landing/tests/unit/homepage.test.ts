@@ -153,12 +153,12 @@ describe("homepage copy discipline", () => {
 });
 
 describe("the offer the page states", () => {
-  it("sells the AI Agent offer: free, the API price, a $10 start, no Team tier", () => {
-    // Owner 2026-10-29 (OFFER-RESET-1029): free open source, free hosted at the API price
-    // x1, a prepaid first top-up of $10. Owner 2026-10-31: the $9/user Team tier is gone and
+  it("sells the AI Agent offer: usage based, the API price, a $10 start, no Team tier", () => {
+    // Owner 2026-10-29 (OFFER-RESET-1029): free open source, hosted at the API price x1,
+    // a prepaid first top-up of $10. Owner 2026-11-17: hosted is "Usage based, 0% markup", never called free. Owner 2026-10-31: the $9/user Team tier is gone and
     // the page never states a member count (the 5-member cap lives in the Terms only). The first-$100 match,
     // the referral program, post-paid and the $99/month plan ended for new signups.
-    for (const line of ["Revenue Automation", "Industrial-Grade", "0% markup", "start with $10", 'href="/catalog"']) {
+    for (const line of ["Revenue Automation", "Industrial-Grade", "Usage based", "0% markup", "start with $10", 'href="/catalog"']) {
       expect(html, line).toContain(line);
     }
     expect(html).not.toContain("promo-bar");

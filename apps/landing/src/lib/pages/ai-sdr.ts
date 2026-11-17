@@ -134,7 +134,7 @@ function showcaseHtml(): string {
           </div>
         </a>
         <a class="show-card yours" href="${SIGN_UP}">
-          <div class="show-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><div class="show-name">Your company</div><div class="show-domain">yourcompany.com</div></div><span class="show-live"><i></i>Start free</span></div>
+          <div class="show-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><div class="show-name">Your company</div><div class="show-domain">yourcompany.com</div></div><span class="show-live"><i></i>Get started</span></div>
           <div class="show-funnel">
             <span class="sf" data-zero><b>0</b><small>Interested leads</small></span>
             <span class="sf" data-zero><b>0</b><small>Meetings booked</small></span>
@@ -169,12 +169,12 @@ function heroHtml(): string {
           <span class="sub">distribute.you is the AI SDR that finds your buyers, writes to them, answers every reply and books the meeting in your calendar.</span>
         </h1>
 
-        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every action at the API price, 0% markup.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Usage based. Every action at the API price, 0% markup.</div>
 
         <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
           <div class="launch-field">
             <input id="hero-website" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
-            <button class="btn btn-accent" type="submit"><span>Start free</span>${ARROW}</button>
+            <button class="btn btn-accent" type="submit"><span>Get started</span>${ARROW}</button>
           </div>
         </form>
         <div class="hero-links">
@@ -387,7 +387,7 @@ export function compareHtml(): string {
       <table class="sdr-table">
         <thead><tr><th scope="col">AI SDR</th><th scope="col">Price on their site</th><th scope="col">How you start</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${AI_SDR_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>Paste your website, start free. Open source too.</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${AI_SDR_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Usage based. Every action at the API price, 0% markup</td><td>Paste your website, start with $10. Open source too.</td><td><a class="sdr-vs" href="${SIGN_UP}">Get started</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -449,9 +449,9 @@ function plansHtml(): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">We host it. You pay each action at the API price.</p>
-        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">What's included</div>
         <ul>
           <li><i></i>Every action at the vendor's API price, 0% markup</li>
@@ -513,7 +513,7 @@ export const AI_SDR_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How much does the AI SDR cost?",
-    a: 'The agent is free. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+    a: 'Pricing is usage based. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
   },
   {
     q: "How many meetings will I get?",
@@ -567,7 +567,7 @@ function faqHtml(): string {
 
 export const AI_SDR_TITLE = "AI SDR: Meetings Booked Automation Done For You | distribute.you";
 export const AI_SDR_DESCRIPTION =
-  "Revenue made easy. The AI SDR that finds your buyers, writes to them, answers every reply and books your meetings. Free, API price, 0% markup.";
+  "Revenue made easy. The AI SDR that finds your buyers, writes to them, answers every reply and books your meetings. Usage based, 0% markup.";
 
 export function renderAiSdrPage(): string {
   const url = `${SITE}${AI_SDR_PATH}`;
@@ -600,7 +600,7 @@ export function renderAiSdrPage(): string {
         operatingSystem: "Web",
         url,
         description: AI_SDR_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 10, priceCurrency: "USD", description: "Usage based, 0% markup. Every action at the API price. Start with $10." },
       },
       {
         "@context": "https://schema.org",

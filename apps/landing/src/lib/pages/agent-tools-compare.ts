@@ -51,7 +51,7 @@ function faqFor(c: ToolCluster, t: AgentTool): { q: string; a: string }[] {
   return [
     {
       q: `How much does ${t.name} cost?`,
-      a: `${t.name}: ${t.prices.map((p) => `${p.plan}, ${p.price}`).join(". ")}. distribute.you is free, and every action is billed at the vendor's API price with 0% markup.`,
+      a: `${t.name}: ${t.prices.map((p) => `${p.plan}, ${p.price}`).join(". ")}. distribute.you is usage based: every action is billed at the vendor's API price with 0% markup.`,
     },
     { q: `What does ${t.name} do best?`, a: t.whereTheyWin.join(" ") },
     { q: `Can I keep ${t.name} and add distribute.you?`, a: c.keep(t.name) },
@@ -95,7 +95,7 @@ export function renderToolVsPage(c: ToolCluster, t: AgentTool): string {
     <h1>distribute.you <span class="accent">vs</span> ${esc(t.name)}</h1>
     <p class="hero-sub">${esc(t.name)}: ${esc(t.oneLiner)} ${esc(c.usLine)}</p>
     ${whyLine()}
-    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
+    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
   </div>
 </section>
 
@@ -107,7 +107,7 @@ export function renderToolVsPage(c: ToolCluster, t: AgentTool): string {
         <thead><tr><th scope="col">What you are comparing</th><th scope="col" class="us">distribute.you</th><th scope="col">${esc(t.name)}</th></tr></thead>
         <tbody data-motion="reveal" data-motion-stagger>
           ${row("Entry price", c.our.entryPrice, t.entryPrice)}
-          ${row("Free to start", c.our.freeTier, t.freeTier)}
+          ${row("Free trial or plan", c.our.freeTier, t.freeTier)}
           ${row(c.channelLabel, c.our.channel, t.channel)}
           ${c.rows.map((r) => row(r.label, r.ours, r.theirs)).join("\n          ")}
         </tbody>
@@ -123,9 +123,9 @@ export function renderToolVsPage(c: ToolCluster, t: AgentTool): string {
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
         <span class="plan-tag">distribute.you</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">Every action at the API price, 0% markup. Start with $10. Pause or cancel anytime.</p>
-        <a class="btn btn-accent" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">Included in the plan</div>
         <ul>${c.planItems.map((l) => `<li><i></i>${esc(l)}</li>`).join("")}<li><i></i>Open source under MIT</li></ul>
       </div>
@@ -159,7 +159,7 @@ __HOT_LEAD_BAND__
 
   return shell({
     title: `${t.name} alternative: distribute.you vs ${t.name} for ${c.topic}`,
-    description: `Looking at ${t.name} alternatives? distribute.you's AI agent brings the right buyers to your website, free. Compare prices, read on ${verified}.`,
+    description: `Looking at ${t.name} alternatives? distribute.you's AI agent brings the right buyers to your website, usage based. Compare prices, read on ${verified}.`,
     path,
     head: c.head,
     bodyClass: c.bodyClass,

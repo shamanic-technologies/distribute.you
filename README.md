@@ -2,7 +2,7 @@
 
 **Revenue made easy.**
 
-> Our AI agent finds your buyers, writes to them and books your meetings. Free, at the API price with 0% markup.
+> Our AI agent finds your buyers, writes to them and books your meetings. Usage based, 0% markup.
 
 [distribute.you](https://distribute.you) | [Dashboard](https://dashboard.distribute.you)
 

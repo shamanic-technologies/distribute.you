@@ -111,9 +111,9 @@ export type PricingAnswer = {
  * homepage hero, so a compare page and the homepage cannot state two different fleets.
  */
 export const DISTRIBUTE_ROW = {
-  entryPrice: "Free. Every action at the API price, 0% markup",
+  entryPrice: "Usage based. Every action at the API price, 0% markup",
   pricingModel:
-    "Free. Every action at the vendor's API price, 0% markup, from a prepaid balance. Start with $10, cancel anytime.",
+    "Usage based. Every action at the vendor's API price, 0% markup, from a prepaid balance. Start with $10, cancel anytime.",
   operatedBy: "We run it end to end",
   sendingDomains: "Domains and mailboxes we own and warm. Your domain never sends cold email.",
   leads: "We find and qualify the buyers from your website. Bring your own list as an extra audience if you like.",
@@ -203,7 +203,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "A person answers the interested replies and books the meeting; you are handed a conversation, not a lead to chase.",
-      "No monthly fee: what you spend covers the list, the emails and the sending, at the API price.",
+      "Usage based, 0% markup: what you spend covers the list, the emails and the sending, at the API price.",
       "The cost of a positive reply is measured on your account and published across ours.",
     ],
     chooseThemIf: [
@@ -217,7 +217,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "Both are AI sales reps for founders. What is the difference?", a: "Gojiberry sells you an AI agent you configure and watch. distribute.you runs it for you: we run the campaign, read the replies and book the meeting, and you see what each one cost." },
       { q: "Does distribute.you do LinkedIn?", a: "Not today. Cold email is the channel we run; new channels are added once we can measure them the same way." },
-      { q: "Which is cheaper?", a: "Gojiberry sells the agent for $99 a month. At distribute.you the AI agent is free, you choose how much goes to the campaign, and a bigger budget reaches more leads." },
+      { q: "Which is cheaper?", a: "Gojiberry sells the agent for $99 a month. At distribute.you the AI agent is usage based, you choose how much goes to the campaign, and a bigger budget reaches more leads." },
     ],
   },
   {
@@ -264,7 +264,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "How much does Explee cost?", a: "Explee has no subscription. Its outreach agent costs $30 for 750 emails, and Explee estimates that buys about 2 to 6 warm leads and 1 meeting. Its database costs from $5 per 1,000 records for company research and from $10 per 1,000 for emails. New accounts get $30 to try it." },
       { q: "Explee sends from pre-warmed domains too. What differs?", a: "Who runs it. Explee hands the agent to you. distribute.you runs the campaign for you and answers the interested replies until a meeting is booked." },
-      { q: "Is $30 for 750 emails cheaper than distribute.you?", a: "Per email, yes. distribute.you is free: you choose your outreach budget. Per meeting, the honest answer is on your dashboard after the first weeks. We publish our clients' cost per positive reply so you can judge before you start." },
+      { q: "Is $30 for 750 emails cheaper than distribute.you?", a: "Per email, yes. distribute.you is usage based: you choose your outreach budget. Per meeting, the honest answer is on your dashboard after the first weeks. We publish our clients' cost per positive reply so you can judge before you start." },
     ],
     pricingAnswer: {
       answer: "Explee costs $30 for 750 emails on its Outreach Agent, pay as you go. There is no subscription and no minimum commitment. Its B2B database is sold apart, from $5 per 1,000 records for deep research and from $10 per 1,000 for emails.",
@@ -330,7 +330,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "Our AI agent picks the leads for you from your website. Nobody builds a search.",
       "Every lead is judged for fit and its email checked before anyone writes.",
-      "Free, every action at the API price with 0% markup, no seat to buy.",
+      "Usage based, every action at the API price with 0% markup, no seat to buy.",
     ],
     chooseThemIf: [
       "Your sales team needs a shared database and a dialer every day.",
@@ -341,7 +341,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to pay the vendor's price for each lead, nothing added.",
     ],
     faq: [
-      { q: "How much does Apollo cost?", a: "Apollo has a free plan, then Basic at $49 and Professional at $99 per seat per month, with credits for contact data. distribute.you is free, and every action, each lead found included, is billed at the vendor's API price with 0% markup." },
+      { q: "How much does Apollo cost?", a: "Apollo has a free plan, then Basic at $49 and Professional at $99 per seat per month, with credits for contact data. distribute.you is usage based: every action, each lead found included, is billed at the vendor's API price with 0% markup." },
       { q: "Does distribute.you use Apollo data?", a: "Yes, among other sources. Our agent calls Apollo's API to find people, and you pay Apollo's own price per credit, shown live on our catalog." },
       { q: "Can I keep Apollo for my sales team?", a: "Yes. Keep Apollo for your reps, and let our AI agent find, judge and write to new leads from domains we own." },
     ],
@@ -389,9 +389,9 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want one number: what a meeting costs you.",
     ],
     faq: [
-      { q: "Agent Frank is an AI agent too. How is distribute.you different?", a: "Frank is software you configure at $499 a month. distribute.you is a free AI agent that runs the campaign for you on domains we own, and answers the interested replies." },
+      { q: "Agent Frank is an AI agent too. How is distribute.you different?", a: "Frank is software you configure at $499 a month. distribute.you is a usage based AI agent that runs the campaign for you on domains we own, and answers the interested replies." },
       { q: "Do I still need mailboxes with distribute.you?", a: "No. We send from mailboxes and domains we own and warm. Your domain never touches cold outreach." },
-      { q: "Which costs less?", a: "For a team running its own outbound at volume, Salesforge's $40 or $80 plan is cheap software. For a founder who wants meetings without running anything, distribute.you is free, every dollar you choose spent on the campaign, and shows what each positive reply cost." },
+      { q: "Which costs less?", a: "For a team running its own outbound at volume, Salesforge's $40 or $80 plan is cheap software. For a founder who wants meetings without running anything, distribute.you is usage based, every dollar you choose spent on the campaign, and shows what each positive reply cost." },
     ],
   },
   {
@@ -440,7 +440,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     faq: [
       { q: "How much does Smartlead cost?", a: "Smartlead has four plans: Base at $39 a month, Pro at $94, Unlimited Smart at $174 and Unlimited Prime at $379. Yearly billing takes 17% off. Mailboxes cost extra, from $3.99 each a month plus $13 to $19 per domain a year, and each agency client workspace is $29 a month." },
-      { q: "Smartlead is $39 a month. How can distribute.you compete on price?", a: "Different things are being priced. $39 buys the sending software; you still buy mailboxes, a list and someone's time. distribute.you is free, and each action, from finding a buyer to sending the email, is billed at the API price with 0% markup." },
+      { q: "Smartlead is $39 a month. How can distribute.you compete on price?", a: "Different things are being priced. $39 buys the sending software; you still buy mailboxes, a list and someone's time. distribute.you is usage based: each action, from finding a buyer to sending the email, is billed at the API price with 0% markup." },
       { q: "I run an agency. Which should I use?", a: "If your team runs client outbound by hand, Smartlead's workspaces are made for you. If you want to resell outbound without staffing it, distribute.you runs each client brand as its own campaign." },
     ],
   },
@@ -487,7 +487,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     faq: [
       { q: "Lemlist does LinkedIn and calls. Does distribute.you?", a: "Not yet. We run cold email and measure every outcome; other channels are added once we can measure them the same way." },
-      { q: "Is distribute.you cheaper than Lemlist?", a: "For one person, Lemlist is $69 a month plus your time. distribute.you is free, and each action is billed at the API price with 0% markup, with the work included." },
+      { q: "Is distribute.you cheaper than Lemlist?", a: "For one person, Lemlist is $69 a month plus your time. distribute.you is usage based: each action is billed at the API price with 0% markup, with the work included." },
       { q: "Can I keep Lemlist for my house list?", a: "Yes. Many clients keep a tool for warm contacts and let us run cold outreach from our own domains." },
     ],
   },
@@ -523,7 +523,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "No table to build. Our AI agent reads your website and finds the leads itself.",
       "It also writes to each lead and answers the replies, from domains we own.",
-      "Free, every action at the API price with 0% markup.",
+      "Usage based, every action at the API price with 0% markup.",
     ],
     chooseThemIf: [
       "You have a GTM engineer who wants full control of the data.",
@@ -534,7 +534,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want each lead's price shown before it runs.",
     ],
     faq: [
-      { q: "How much does Clay cost?", a: "Clay has a free plan, then Launch from $167 and Growth from $446 a month on annual billing, for actions and data credits together. distribute.you is free, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "How much does Clay cost?", a: "Clay has a free plan, then Launch from $167 and Growth from $446 a month on annual billing, for actions and data credits together. distribute.you is usage based: every action is billed at the vendor's API price with 0% markup." },
       { q: "Clay finds leads too. What differs?", a: "Clay gives you the parts to build lead generation yourself. distribute.you is an AI agent that does it: it finds the leads, judges each one, checks the email and writes to them." },
       { q: "Can I feed a Clay table into distribute.you?", a: "Yes. Upload the list as its own audience. Our agent writes to it beside the leads it finds, and you see what each one brought." },
     ],
@@ -570,7 +570,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "Start today from your website, without a demo.",
-      "Free, every action at the API price with 0% markup.",
+      "Usage based, every action at the API price with 0% markup.",
       "Open source under the MIT license: run it on your own server.",
     ],
     chooseThemIf: [
@@ -582,9 +582,9 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to see every price before you start.",
     ],
     faq: [
-      { q: "How much does 11x cost?", a: "11x does not publish a price on its site; every path leads to a demo. distribute.you is free, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "How much does 11x cost?", a: "11x does not publish a price on its site; every path leads to a demo. distribute.you is usage based: every action is billed at the vendor's API price with 0% markup." },
       { q: "Is 11x an AI SDR?", a: "Yes. Alice is their outbound agent and Julian their inbound one. distribute.you is an AI SDR too: it finds your buyers, writes to them, answers the replies and books the meetings." },
-      { q: "Which one fits a small team?", a: "11x writes for large revenue teams. distribute.you is built for founders and small teams, and it is free." },
+      { q: "Which one fits a small team?", a: "11x writes for large revenue teams. distribute.you is built for founders and small teams, usage based with 0% markup." },
     ],
   },
   {
@@ -613,7 +613,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "Ava runs outbound end to end, replies and meetings included.",
     ],
     whereWeWin: [
-      "Published prices: free, every action at the API price with 0% markup.",
+      "Published prices: usage based, every action at the API price with 0% markup.",
       "Start from your website in minutes, without a demo.",
       "Open source: your leads and replies can live in your own database.",
     ],
@@ -626,7 +626,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to own the code and the data.",
     ],
     faq: [
-      { q: "How much does Artisan cost?", a: "Their pricing page describes credit-based tiers without figures; a demo comes first. distribute.you is free, with every action at the API price and 0% markup." },
+      { q: "How much does Artisan cost?", a: "Their pricing page describes credit-based tiers without figures; a demo comes first. distribute.you is usage based, with every action at the API price and 0% markup." },
       { q: "Ava books meetings. So does distribute.you. What differs?", a: "Both find leads, write, answer replies and book meetings. distribute.you sends from domains we own and warm, shows the price of every action before it runs, and is open source." },
       { q: "Which is faster to start?", a: "distribute.you starts from your website in minutes, and your first emails can leave the same day. Artisan starts with a demo." },
     ],
@@ -661,7 +661,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "A managed service if you want their team to run it.",
     ],
     whereWeWin: [
-      "Free, every action at the API price with 0% markup.",
+      "Usage based, every action at the API price with 0% markup.",
       "Open source: run it on your own server with your own keys.",
       "What each meeting cost you, measured on your dashboard.",
     ],
@@ -674,7 +674,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want the code and the data in your hands.",
     ],
     faq: [
-      { q: "How much does AiSDR cost?", a: "AiSDR's pay as you go plan is $1.50 per person prospected, charged daily. Team plans are priced on volume, on quarterly contracts. distribute.you is free, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "How much does AiSDR cost?", a: "AiSDR's pay as you go plan is $1.50 per person prospected, charged daily. Team plans are priced on volume, on quarterly contracts. distribute.you is usage based: every action is billed at the vendor's API price with 0% markup." },
       { q: "Do both send from warmed domains?", a: "Yes. AiSDR sets up lookalike domains with warmup. distribute.you sends from domains we own and warm, so nothing is set up in your name." },
       { q: "Is there a commitment with distribute.you?", a: "No. You start with a $10 balance and can pause or cancel anytime." },
     ],
@@ -737,7 +737,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "We find new buyers who have never visited your site.",
-      "Free, every action at the API price with 0% markup.",
+      "Usage based, every action at the API price with 0% markup.",
       "Start from your website today, without a demo.",
     ],
     chooseThemIf: [
@@ -749,7 +749,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to see the price before you start.",
     ],
     faq: [
-      { q: "How much does Qualified cost?", a: "Qualified publishes three plans, Premier, Enterprise and Ultimate, without a price; each says Contact us. distribute.you is free, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "How much does Qualified cost?", a: "Qualified publishes three plans, Premier, Enterprise and Ultimate, without a price; each says Contact us. distribute.you is usage based: every action is billed at the vendor's API price with 0% markup." },
       { q: "Is Qualified an outbound AI SDR?", a: "Piper works inbound: your website visitors and inbound leads. distribute.you works outbound: it finds new buyers, writes to them and books the meetings. The two can run side by side." },
       { q: "Which is faster to start?", a: "distribute.you starts from your website in minutes. Qualified starts with a demo." },
     ],
@@ -782,7 +782,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "We bring you buyers you do not have yet. parcelLab talks to people who already bought from you.",
-      "Free, with nothing to set up on your side.",
+      "Usage based with 0% markup, and nothing to set up on your side.",
       "The cost of a positive reply is measured and shown on your dashboard.",
     ],
     chooseThemIf: [
@@ -829,7 +829,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "We contact buyers who do not follow you or your staff yet. PostBeyond reaches the networks your team already has.",
-      "Free, with no employee minimum. PostBeyond's paid plan starts at $1,125 a month for 100 employees.",
+      "Usage based with no employee minimum. PostBeyond's paid plan starts at $1,125 a month for 100 employees.",
       "Nothing for your team to do. Nobody has to post, share or answer comments.",
     ],
     chooseThemIf: [
@@ -843,7 +843,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "Is distribute.you a PostBeyond alternative?", a: "Only if what you want is new sales conversations. PostBeyond helps your employees share company posts on social media. distribute.you runs cold email for you: we find companies that match your offer, write to them from our own domains and hand you the interested replies. Some teams use both." },
       { q: "Does distribute.you post on LinkedIn for my employees?", a: "No. We send cold email only, from domains and mailboxes we own. Your team's social accounts stay untouched." },
-      { q: "Which one is cheaper for a small team?", a: "PostBeyond is free for up to 30 enrolled employees and its paid plan starts at $1,125 a month for 100 employees. distribute.you is free, and every dollar you choose goes to your campaign." },
+      { q: "Which one is cheaper for a small team?", a: "PostBeyond is free for up to 30 enrolled employees and its paid plan starts at $1,125 a month for 100 employees. distribute.you is usage based: every dollar you choose goes to your campaign." },
     ],
   },
   {
@@ -1160,7 +1160,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "Easy to try: the first 50 credits are free.",
     ],
     whereWeWin: [
-      "A price on the page: free, every action at the API price with 0% markup.",
+      "A price on the page: usage based, every action at the API price with 0% markup.",
       "Our AI agent picks and judges the leads from your website, then writes to them.",
       "Emails leave from domains we own, so your own domain stays clean.",
     ],
@@ -1173,7 +1173,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to see the price before you talk to anyone.",
     ],
     faq: [
-      { q: "How much does Seamless.AI cost?", a: "Seamless.AI is free for up to 50 credits. Paid plans are not published; their sales team quotes one for your team. distribute.you is free, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "How much does Seamless.AI cost?", a: "Seamless.AI is free for up to 50 credits. Paid plans are not published; their sales team quotes one for your team. distribute.you is usage based: every action is billed at the vendor's API price with 0% markup." },
       { q: "Is distribute.you a Seamless.AI alternative?", a: "Yes, if what you want is new leads who answer. Seamless.AI gives your team contacts to reach. distribute.you finds the leads, judges each one, checks the email and writes to them for you." },
       { q: "Do I have to build a lead list for distribute.you?", a: "No. Paste your website and our agent finds the leads. If you already own a list, add it as an extra audience." },
     ],
@@ -1210,7 +1210,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "Our AI agent decides who to reveal: only leads it judged a fit.",
       "Each email is checked, then written to from domains we own.",
-      "Free, every action at the API price with 0% markup.",
+      "Usage based, every action at the API price with 0% markup.",
     ],
     chooseThemIf: [
       "Your reps look people up one by one and need their phone numbers.",
@@ -1221,7 +1221,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You would rather pay per lead found than for a credit allowance.",
     ],
     faq: [
-      { q: "How much does Lusha cost?", a: "Lusha has a free plan with 40 credits a month, then Starter at $49.90, Professional at $69.90 and Premium at $399.90 a month. A verified email is 1 credit, a phone number 5. distribute.you is free, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "How much does Lusha cost?", a: "Lusha has a free plan with 40 credits a month, then Starter at $49.90, Professional at $69.90 and Premium at $399.90 a month. A verified email is 1 credit, a phone number 5. distribute.you is usage based: every action is billed at the vendor's API price with 0% markup." },
       { q: "Is distribute.you a Lusha alternative?", a: "Yes, if what you want is leads who answer. Lusha reveals contacts for your team to reach. distribute.you finds the leads, judges each one, checks the email and writes to them." },
       { q: "Can I use both?", a: "Yes. Keep Lusha for your reps' lookups, and let our agent find and contact new leads from domains we own." },
     ],
@@ -1452,7 +1452,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "Your team does not have to run anything. We find the buyers, write, send and answer the interested replies.",
       "Your domain stays out of it. We send from domains and mailboxes we own and warm.",
-      "You can see our prices today. The AI agent is free, and every action is at the API price with 0% markup.",
+      "You can see our prices today. The AI agent is usage based: every action is at the API price with 0% markup.",
     ],
     chooseThemIf: [
       "You have a team of SDRs and AEs and want one platform to run their daily work.",
@@ -1463,7 +1463,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to know the price before any sales call.",
     ],
     faq: [
-      { q: "How much does Salesloft cost?", a: "Salesloft does not publish its prices. The pricing page forwards to a Talk to Sales form, and a quote follows a call. distribute.you publishes its prices: the AI agent is free, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "How much does Salesloft cost?", a: "Salesloft does not publish its prices. The pricing page forwards to a Talk to Sales form, and a quote follows a call. distribute.you publishes its prices. The AI agent is usage based: every action is billed at the vendor's API price with 0% markup." },
       { q: "Is distribute.you a Salesloft alternative?", a: "For outbound, yes, from a different angle. Salesloft gives your reps the software to run cadences. distribute.you runs the cold email for you, from our own domains, and passes you the interested replies." },
       { q: "Do I need an SDR team to use distribute.you?", a: "No. You paste your website and we run the campaign. If you already have reps on Salesloft, we can add new conversations for them to take over." },
     ],
@@ -1497,7 +1497,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "We run the outbound for you. Outreach equips your reps; distribute.you finds the buyers, writes, sends and answers the interested replies.",
       "Your domain stays out of it. We send from domains and mailboxes we own and warm.",
-      "You can see our prices today. The AI agent is free, and every action is at the API price with 0% markup.",
+      "You can see our prices today. The AI agent is usage based: every action is at the API price with 0% markup.",
     ],
     chooseThemIf: [
       "You run a sales team of SDRs and AEs and want one platform for sequences, deals and forecasts.",
@@ -1508,7 +1508,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to start with a website, without a demo or a seat count.",
     ],
     faq: [
-      { q: "How much does Outreach cost?", a: "Outreach does not publish its prices. Every package says Request pricing. Pricing combines a fee per seat with AI credits: Amplify Essentials includes 10,000 credits, Core 25,000, Plus 50,000 and Pro 100,000. distribute.you publishes its prices: the AI agent is free, and every action is billed at the vendor's API price with 0% markup." },
+      { q: "How much does Outreach cost?", a: "Outreach does not publish its prices. Every package says Request pricing. Pricing combines a fee per seat with AI credits: Amplify Essentials includes 10,000 credits, Core 25,000, Plus 50,000 and Pro 100,000. distribute.you publishes its prices. The AI agent is usage based: every action is billed at the vendor's API price with 0% markup." },
       { q: "Is distribute.you an Outreach alternative?", a: "For outbound, yes, from a different angle. Outreach gives your reps the software to run sequences. distribute.you runs the cold email for you, from our own domains, and passes you the interested replies." },
       { q: "Can I keep Outreach and add distribute.you?", a: "Yes. Your reps keep working their accounts in Outreach. distribute.you starts new conversations with buyers who have not heard of you yet, and hands the interested ones to your team." },
     ],
@@ -1735,7 +1735,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "We run the whole campaign. You paste a website; we find the buyers, write, send and answer the interested replies until the meeting is booked.",
       "We bring the sending setup. Cold email goes out from domains and mailboxes we own and warm, so your domain never sends it.",
-      "Clear pricing. The AI agent is free, every action is at the API price with 0% markup, and your dashboard shows what each positive reply cost you.",
+      "Clear pricing. The AI agent is usage based, every action is at the API price with 0% markup, and your dashboard shows what each positive reply cost you.",
     ],
     chooseThemIf: [
       "You have a GTM team and a full stack, and you want agents working across all of it.",
@@ -1746,7 +1746,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to start today on a budget you choose, with nothing to set up.",
     ],
     faq: [
-      { q: "How much does Frontrunner cost?", a: "Frontrunner does not publish its prices. The site sends every visitor to a demo, so a quote comes from that call. distribute.you publishes its prices, and the AI agent is free." },
+      { q: "How much does Frontrunner cost?", a: "Frontrunner does not publish its prices. The site sends every visitor to a demo, so a quote comes from that call. distribute.you publishes its prices: usage based, 0% markup." },
       { q: "Is distribute.you a Frontrunner alternative?", a: "For cold email, yes. Frontrunner gives your team AI agents that act across your GTM stack. distribute.you runs your cold email for you: we find the buyers, write and send from our own domains, and answer the interested replies until the meeting is booked." },
       { q: "Do I need my own sales tools to get started?", a: "Not with distribute.you. We bring the lists, the mailboxes and the sending, and the software is optional. Frontrunner works on top of the CRM, sequencers and inboxes you already have, so the agents are only as wide as your stack." },
     ],
@@ -1783,7 +1783,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "We run the whole go-to-market: we find the buyers, write, send from our own domains, answer and book the meeting, so no rep has to work a queue.",
       "Sending comes with every plan, from domains we own and warm, with nothing to set up.",
-      "The AI agent is free, every action is at the API price with 0% markup, and the code is open source.",
+      "The AI agent is usage based, every action is at the API price with 0% markup, and the code is open source.",
     ],
     chooseThemIf: [
       "You have reps who will work sequences, calls and social tasks every day.",
@@ -1829,7 +1829,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "We act on the buyer, not only spot them: we write, send from our own domains, answer and book the meeting.",
-      "The AI agent is free and every action is at the API price with 0% markup, with no annual plan.",
+      "The AI agent is usage based: every action is at the API price with 0% markup, with no annual plan.",
       "Nothing to connect: sending, replies and follow up come with the agent.",
     ],
     chooseThemIf: [
@@ -1838,7 +1838,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     chooseUsIf: [
       "You want new buyers contacted and answered this week, without a sales team.",
-      "You want to start free and pay as you go.",
+      "You want to start with $10 and pay as you go.",
     ],
     faq: [
       { q: "How much does Common Room cost?", a: "Essential is $2,500 a month, billed annually, with 5 seats, up to 100k contacts and 5k research credits. Advanced and Enterprise are priced on request." },
@@ -1876,7 +1876,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "Workshops and a Slack channel with their team.",
     ],
     whereWeWin: [
-      "No seat to pay: the AI agent is free and every action is at the API price with 0% markup.",
+      "No seat to pay. The AI agent is usage based: every action is at the API price with 0% markup.",
       "We answer the interested replies until the meeting is booked.",
       "What each meeting cost you is measured on your dashboard.",
     ],
@@ -1891,7 +1891,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "How much does Topo cost?", a: "Topo Solo is $89 per seat a month for up to 2 seats, with 1,000 credits per seat. Team is $129 per seat a month from 3 seats, with 1,600 credits. Enterprise starts at 10 seats, on request." },
       { q: "Is distribute.you a Topo alternative?", a: "Yes, for a founder without a sales team. Topo gives your reps an AI outbound platform. distribute.you runs the campaign for you and answers the replies until the meeting is booked." },
-      { q: "Does distribute.you charge per seat?", a: "No. The AI agent is free. You pay each action at the vendor's API price, from a prepaid balance you can pause anytime." },
+      { q: "Does distribute.you charge per seat?", a: "No. The AI agent is usage based, with 0% markup. You pay each action at the vendor's API price, from a prepaid balance you can pause anytime." },
     ],
     pricingAnswer: {
       answer: "Topo costs $89 per seat a month on Solo, for up to 2 seats, and $129 per seat a month on Team, from 3 seats. Enterprise starts at 10 seats and is priced on request. Each seat comes with monthly credits the AI agent spends on emails, phone numbers and qualified leads.",
@@ -1955,7 +1955,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "A product with a future: Persana says it is sunsetting its platform as its team joins Rox.",
       "We write, send from our own domains, answer and book the meeting.",
-      "The AI agent is free and every action is at the API price with 0% markup.",
+      "The AI agent is usage based: every action is at the API price with 0% markup.",
     ],
     chooseThemIf: [
       "You are already a Persana customer moving to Rox with their team.",
@@ -1963,7 +1963,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     chooseUsIf: [
       "You want the outreach run for you, from finding the lead to the meeting.",
-      "You need a tool that stays: start free, pay as you go.",
+      "You need a tool that stays: start with $10, pay as you go.",
     ],
     faq: [
       { q: "How much does Persana cost?", a: "Persana's pricing page lists a free plan with 50 credits, then Starter at $68 a month, Growth at $151, Pro at $400 and Unlimited at $600, all billed annually. An email found is 1 credit and a phone number 10." },
@@ -1991,7 +1991,7 @@ export const COMPETITORS: readonly Competitor[] = [
       },
       faq: [
         { q: "Is Persana worth it?", a: "Persana says its platform is being retired as its team joins Rox. Before a yearly plan, check the transition terms on its blog, or pick a tool that will stay." },
-        { q: "What should Persana customers move to?", a: "Persana points its customers to Rox. If what you used Persana for was outbound, distribute.you finds the leads, writes and sends, and answers the replies for you, free to start." },
+        { q: "What should Persana customers move to?", a: "Persana points its customers to Rox. If what you used Persana for was outbound, distribute.you finds the leads, writes and sends, and answers the replies for you, usage based with 0% markup." },
         { q: "Does Persana have a free plan?", a: "Its pricing page lists a free plan with 50 credits." },
       ],
       whyLeave: [

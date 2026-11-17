@@ -2,7 +2,7 @@
  * The ONE catalogue of outcome pages (OFFER-RESET-1029, owner 2026-10-29).
  *
  * distribute.you sells outcomes, each two ways, split by buyer:
- * - `agent`: "<Outcome> Automation Done For You", for the cheap SaaS founder (CTA Start free);
+ * - `agent`: "<Outcome> Automation Done For You", for the cheap SaaS founder (CTA Get started);
  * - `agency`: "<Outcome> Agency", for a company automating its GTM department (CTA Book a call).
  *
  * The top nav, the three footer variants and the sitemap all READ this list, so a page

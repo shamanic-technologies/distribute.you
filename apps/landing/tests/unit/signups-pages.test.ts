@@ -54,7 +54,7 @@ describe("the Signups catalogue entries", () => {
     expect(footerModel("/signup-automation").variant).toBe("agent");
     expect(footerModel("/user-acquisition-agency").variant).toBe("agency");
     expect(navModel("/user-acquisition-agency").ctas[0].label).toBe("Book a call");
-    expect(navModel("/signup-automation").ctas[0].label).toBe("Start free");
+    expect(navModel("/signup-automation").ctas[0].label).toBe("Get started");
     for (const id of ["path", "tools", "how", "prices", "compare", "pricing", "agent", "faq"]) expect(agent).toContain(`id="${id}"`);
     for (const id of ["how", "legs", "compare", "price", "faq"]) expect(agency).toContain(`id="${id}"`);
   });
@@ -81,8 +81,8 @@ describe("the Signup Automation page", () => {
     expect(agent).toContain("User acquisition automation");
   });
 
-  it("states the current AI Agent offer and starts free", () => {
-    for (const s of ["0% markup", "start with $10", "gtm-factory", "Start free"]) expect(agent).toContain(s);
+  it("states the current AI Agent offer and its Get started button", () => {
+    for (const s of ["0% markup", "start with $10", "gtm-factory", "Get started"]) expect(agent).toContain(s);
     expect(agent).toContain("<!--action-prices-->");
     expect(agent).toContain("__HOT_LEAD_BAND__");
   });

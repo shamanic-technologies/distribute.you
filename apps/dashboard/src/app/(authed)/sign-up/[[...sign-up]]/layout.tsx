@@ -3,7 +3,7 @@ import { AdsSignUpPageTracker } from "@/components/ads-signup-page-tracker";
 
 export const metadata: Metadata = {
   title: "Sign Up",
-  description: "Create your distribute.you account. The platform is free.",
+  description: "Create your distribute.you account. Pricing is usage based, with 0% markup.",
   robots: { index: false, follow: false },
 };
 

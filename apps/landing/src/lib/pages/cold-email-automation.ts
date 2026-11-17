@@ -5,7 +5,7 @@
  * Buyer: the cheap SaaS founder (root CLAUDE.md POSITIONING). Search keyword: "cold email
  * automation" (50 to 110 US searches a month), with "ai cold email" (50 to 70). Its Agency
  * twin is `/cold-email-agency` (company making cash, Book a call); this page sells the same
- * outcome to the founder who runs it from a website, at the API price, starting free. What
+ * outcome to the founder who runs it from a website, at the API price, from a $10 start. What
  * it says that no sibling says: every cold email is written for one buyer, sent from
  * domains we own (the mailbox, DNS and warmup work a cold email tool leaves to you), and
  * each step, down to the send itself, has a public price you see before it runs.
@@ -254,7 +254,7 @@ function showcaseHtml(): string {
           </div>
         </a>
         <a class="show-card yours" href="${SIGN_UP}">
-          <div class="show-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><div class="show-name">Your company</div><div class="show-domain">yourcompany.com</div></div><span class="show-live"><i></i>Start free</span></div>
+          <div class="show-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><div class="show-name">Your company</div><div class="show-domain">yourcompany.com</div></div><span class="show-live"><i></i>Get started</span></div>
           <div class="show-funnel">
             <span class="sf" data-zero><b>0</b><small>Interested leads</small></span>
             <span class="sf" data-zero><b>0</b><small>Meetings booked</small></span>
@@ -290,12 +290,12 @@ function heroHtml(): string {
           <span class="sub">Our AI cold email agent finds your buyers, writes one email per person, sends it from our warmed domains and answers the replies.</span>
         </h1>
 
-        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every email at the API price, 0% markup.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Usage based. Every email at the API price, 0% markup.</div>
 
         <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
           <div class="launch-field">
             <input id="hero-website" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
-            <button class="btn btn-accent" type="submit"><span>Start free</span>${ARROW}</button>
+            <button class="btn btn-accent" type="submit"><span>Get started</span>${ARROW}</button>
           </div>
         </form>
         <div class="hero-links">
@@ -476,9 +476,9 @@ export function compareHtml(): string {
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
       <table class="sdr-table">
-        <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">Free to start</th><th scope="col"></th></tr></thead>
+        <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">Free trial or plan</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${COLD_EMAIL_AUTOMATION_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>Yes, and open source too</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${COLD_EMAIL_AUTOMATION_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Usage based. Every action at the API price, 0% markup</td><td>Start with $10. Open source too.</td><td><a class="sdr-vs" href="${SIGN_UP}">Get started</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -523,9 +523,9 @@ function plansHtml(): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">We host it and send from our inboxes. You pay each email at the API price.</p>
-        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">What's included</div>
         <ul>
           <li><i></i>Every action at the vendor's API price, 0% markup</li>
@@ -587,7 +587,7 @@ export const COLD_EMAIL_AUTOMATION_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How much does each cold email cost?",
-    a: 'The agent is free. Each step, finding the buyer, reading their site, writing and sending, is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+    a: 'Pricing is usage based. Each step, finding the buyer, reading their site, writing and sending, is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
   },
   {
     q: "Who answers the replies?",
@@ -641,7 +641,7 @@ function faqHtml(): string {
 
 export const COLD_EMAIL_AUTOMATION_TITLE = "Cold Email Automation: AI Cold Email Done For You | distribute.you";
 export const COLD_EMAIL_AUTOMATION_DESCRIPTION =
-  "Revenue made easy. Cold email automation by an AI agent that finds your buyers, writes each email, sends it and answers. Free, 0% markup.";
+  "Revenue made easy. Cold email automation by an AI agent that finds your buyers, writes each email, sends it and answers. Usage based, 0% markup.";
 
 export function renderColdEmailAutomationPage(): string {
   const url = `${SITE}${COLD_EMAIL_AUTOMATION_PATH}`;
@@ -674,7 +674,7 @@ export function renderColdEmailAutomationPage(): string {
         operatingSystem: "Web",
         url,
         description: COLD_EMAIL_AUTOMATION_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 10, priceCurrency: "USD", description: "Usage based, 0% markup. Every action at the API price. Start with $10." },
       },
       {
         "@context": "https://schema.org",
