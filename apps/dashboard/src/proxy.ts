@@ -190,6 +190,11 @@ export default clerkMiddleware(
     return res;
   },
   {
+    // Clerk Frontend API served through our own domain at /__clerk: some networks
+    // (Kazakhtelecom, 2026-11-17) cannot reach Clerk's IPs behind clerk.distribute.you,
+    // so sign-in hung. Enabled only ON the proxy path, so every other request keeps its
+    // auth options; browsers switch to it once NEXT_PUBLIC_CLERK_PROXY_URL is set at build.
+    frontendApiProxy: { enabled: (url: URL) => url.pathname.startsWith("/__clerk") },
     // URL [orgId] segment is the source of truth for Clerk's active org.
     // When the URL and Clerk's active org disagree, Clerk auto-setActives to the URL id
     // (or redirects if the user is not a member). Prevents the dashboard from issuing
@@ -213,5 +218,7 @@ export const config = {
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     // Always run for API routes
     "/(api|trpc)(.*)",
+    // Clerk Frontend API proxy (its paths end in .js, which the first pattern skips)
+    "/__clerk/(.*)",
   ],
 };
