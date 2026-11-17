@@ -22,6 +22,9 @@ const ProjectionSchema = z
     nextExpectedAt: z.string().nullable(),
     nextExpectedInHours: num,
     unavailableReason: z.string().nullable(),
+    // PROJECTION-CAP-1117 (features-service v0.179.631): a reached cap pauses the projection until its reset.
+    pausedReason: z.string().nullish(),
+    resumesAt: z.string().nullish(),
   })
   .passthrough();
 
@@ -52,6 +55,8 @@ const MilestoneCardSchema = z
         nextExpectedAt: z.string().nullable(),
         nextExpectedInHours: num,
         unavailableReason: z.string().nullable(),
+        pausedReason: z.string().nullish(),
+        resumesAt: z.string().nullish(),
       })
       .passthrough(),
   })
@@ -109,6 +114,17 @@ export function targetsOfOffer<T extends { offerId: string }>(rows: readonly T[]
 }
 
 /** "Next one expected in about 2 days." from the served hours; null when nothing is expected. */
+/**
+ * Why nothing is expected right now, and from when (features-service PROJECTION-CAP-1117): a cap reached this
+ * period pauses the campaign until it resets. Null when the projection is not paused.
+ */
+export function pausedWords(pausedReason: string | null | undefined, resumesAt: string | null | undefined): string | null {
+  if (!pausedReason) return null;
+  const day = resumesAt ? new Date(resumesAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : null;
+  const what = pausedReason === "budget_cap_reached" ? "Budget used for this period" : pausedReason === "volume_cap_reached" ? "Volume limit reached for this period" : reasonWords(pausedReason);
+  return day ? `${what}. Starts again on ${day}.` : `${what}.`;
+}
+
 export function nextExpectedWords(hours: number | null): string | null {
   if (hours == null || !Number.isFinite(hours) || hours <= 0) return null;
   if (hours < 1) return "Next one expected within the hour.";
@@ -146,6 +162,12 @@ export function reasonWords(reason: string | null): string {
     lens_not_in_ledger: "Not counted for this view",
     per_workflow_not_in_ledger: "Not counted per workflow",
     won_counted_on_ledger: "Counted from paid clients",
+    // PROJECTION-CAP-1117: why nothing is projected.
+    campaign_stopped: "Campaign is off",
+    budget_cap_spent_no_reset: "Budget used, no new period",
+    volume_cap_reached_no_reset: "Volume limit reached, no new period",
+    budget_consumption_unreadable: "Could not read the budget right now",
+    spend_capacity_unreadable: "Could not read the budget right now",
   };
   // `pipe_unpriced:<pipe>` names the step with no price yet; the customer reads the fact, not the id.
   if (reason.startsWith("pipe_unpriced")) return "Not priced yet";
