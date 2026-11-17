@@ -234,3 +234,9 @@ html.distry .dy-page section > div, html.distry main:not(.dy-page) > section > d
 html.distry .dy-page article { background: #ffffff !important; border-color: #e3e8f2 !important; }
 html.distry.js [data-lit]:not(.is-lit), html.distry.js .d-day [data-lit]:not(.is-lit) { filter: none; opacity: 0; transform: translateY(14px); }
 html.distry.js [data-lit] { transition: opacity 0.6s ease, transform 0.6s var(--ease); }
+/* The live page's own tinted and dark bands out-rank a bare `.d-day`: every band is the
+   clean light page (or the night, for the opening one), whatever class it carries. */
+html.distry section.d-day, html.distry section.d-day.tint, html.distry section.d-day.dark, html.distry section.d-day.framed { background: #f6f8fc !important; }
+html.distry section.d-night, html.distry section.d-night.tint, html.distry section.d-night.dark { background: radial-gradient(120% 90% at 70% 0%, #17266b 0%, #0b1340 46%, #060a22 100%) !important; }
+html.distry section.d-day.dark, html.distry section.d-day.dark :is(h2, h3) { color: var(--ink); }
+html.distry section.d-day.dark p { color: var(--ink-soft); }
