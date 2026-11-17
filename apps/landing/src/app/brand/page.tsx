@@ -291,7 +291,7 @@ export default function BrandPage() {
         <footer className="bp-foot">
           <span>Questions about usage? <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#2563eb" }}>{SUPPORT_EMAIL}</a></span>
           <span>
-            <a href={URLS.signUp} style={{ color: "#99a4b6" }}>Start free</a>
+            <a href={URLS.signUp} style={{ color: "#99a4b6" }}>Get started</a>
           </span>
         </footer>
       </div>

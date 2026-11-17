@@ -50,10 +50,10 @@ describe("the catalogue starts with the pages served today", () => {
     const html = navHtml("/") + footerHtml("/");
     for (const p of SITE_PAGES.filter((x) => !x.live)) expect(html).not.toContain(`href="${p.path}"`);
     // The GTM Agency page is served (PAGE-REVENUE-AGENCY-1029): the Agency menu and
-    // the Book a call button appear, Start free stays first on `/`.
+    // the Book a call button appear, Get started stays first on `/`.
     expect(navModel("/").groups.map((g) => g.label)).toContain("Agency");
     expect(navModel("/").ctas).toEqual([
-      { label: "Start free", href: SIGN_UP },
+      { label: "Get started", href: SIGN_UP },
       { label: "Book a call", href: BOOK_A_CALL },
     ]);
     expect(navModel("/gtm-agency").ctas[0]).toEqual({ label: "Book a call", href: BOOK_A_CALL });
@@ -69,8 +69,8 @@ describe("adding a catalogue entry adds it everywhere", () => {
   });
 
   it("the primary button follows the page's buyer", () => {
-    expect(navModel(AGENT, FIXTURE).ctas.map((c) => c.label)).toEqual(["Start free", "Book a call"]);
-    expect(navModel(AGENCY, FIXTURE).ctas.map((c) => c.label)).toEqual(["Book a call", "Start free"]);
+    expect(navModel(AGENT, FIXTURE).ctas.map((c) => c.label)).toEqual(["Get started", "Book a call"]);
+    expect(navModel(AGENCY, FIXTURE).ctas.map((c) => c.label)).toEqual(["Book a call", "Get started"]);
   });
 
   it("each page gets its footer variant, with the bridge to its twin", () => {
@@ -81,7 +81,7 @@ describe("adding a catalogue entry adds it everywhere", () => {
     expect(agent.columns.find((c) => c.title === "AI Agent")?.links.map((l) => l.href)).toContain(AGENT);
     const agency = footerModel(AGENCY, FIXTURE);
     expect(agency.variant).toBe("agency");
-    expect(agency.bridge).toEqual({ label: "Just testing? Start free", href: AGENT });
+    expect(agency.bridge).toEqual({ label: "Just testing? Get started", href: AGENT });
     expect(agency.columns[0].links.map((l) => l.href)).toContain(AGENCY);
     // The home footer carries both columns.
     const home = footerModel("/", FIXTURE).columns.map((c) => c.title);

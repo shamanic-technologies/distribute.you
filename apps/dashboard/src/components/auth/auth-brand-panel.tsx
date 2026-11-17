@@ -14,8 +14,8 @@ import Link from "next/link";
  *
  * Every string here is the SERVED landing's own: the headline, the offer pill and
  * the proof line, verbatim from `apps/landing/public/landing/index-v2.html` as the
- * prepaid offer serves it (owner 2026-10-06: the platform is free, no trial, no
- * monthly plan). A visitor reads them on `/`, clicks
+ * prepaid offer serves it (owner 2026-11-17: usage based, 0% markup, no trial, never
+ * called free). A visitor reads them on `/`, clicks
  * through, and reads the same sentences on the signup screen rather than a second pitch.
  *
  * Colour rides the `brand-*` ramp, never a literal hex or oklch: a customer's
@@ -56,7 +56,7 @@ export function AuthBrandPanel() {
         <h2 className="mt-4 font-display text-4xl leading-none tracking-[-0.04em] text-gray-900 xl:text-5xl">
           Get <span className="text-brand-600">revenue in 24h</span>
           <br />
-          The platform is free
+          Usage based, 0% markup
         </h2>
         <p className="mt-5 max-w-md text-lg leading-snug text-gray-500">
           We A/B test the templates, the AI models and the audiences on every

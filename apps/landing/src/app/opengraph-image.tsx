@@ -55,7 +55,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Our AI agent finds your buyers, writes to them and books your meetings. Free, at the API price with 0% markup.
+            Our AI agent finds your buyers, writes to them and books your meetings. Usage based, 0% markup.
           </div>
         </div>
         <div

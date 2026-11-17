@@ -156,12 +156,12 @@ function heroHtml(): string {
               <span class="sub">Our AI GTM agent finds your buyers, writes to them, answers, books the meeting and follows up until they pay.</span>
             </h1>
 
-            <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every action at the API price, 0% markup.</div>
+            <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Usage based. Every action at the API price, 0% markup.</div>
 
             <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
               <div class="launch-field">
                 <input id="hero-website" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
-                <button class="btn btn-accent" type="submit"><span>Start free</span>${ARROW}</button>
+                <button class="btn btn-accent" type="submit"><span>Get started</span>${ARROW}</button>
               </div>
             </form>
             <div class="hero-links">
@@ -211,7 +211,7 @@ function showcaseHtml(): string {
           </div>
         </a>
         <a class="show-card yours" href="${SIGN_UP}">
-          <div class="show-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><div class="show-name">Your company</div><div class="show-domain">yourcompany.com</div></div><span class="show-live"><i></i>Start free</span></div>
+          <div class="show-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><div class="show-name">Your company</div><div class="show-domain">yourcompany.com</div></div><span class="show-live"><i></i>Get started</span></div>
           <div class="show-funnel">
             <span class="sf" data-zero><b>0</b><small>Interested leads</small></span>
             <span class="sf" data-zero><b>0</b><small>Meetings booked</small></span>
@@ -364,7 +364,7 @@ export const PLATFORM_ROWS: { topic: string; platform: string; agent: string }[]
   { topic: "Sending", platform: "Your sequencer and your mailboxes", agent: "Built in, from our warmed domains" },
   { topic: "Replies", platform: "Your reps answer them", agent: "Answered until the meeting is booked" },
   { topic: "Follow up", platform: "Another tool to wire in", agent: "On WhatsApp, until they buy" },
-  { topic: "How you pay", platform: "Seats, often on a yearly plan", agent: "Free, pause anytime" },
+  { topic: "How you pay", platform: "Seats, often on a yearly plan", agent: "Usage based, pause anytime" },
 ];
 
 function platformHtml(): string {
@@ -441,9 +441,9 @@ export function compareHtml(): string {
     </div>
     <div class="sdr-table-wrap" data-motion="reveal">
       <table class="sdr-table">
-        <thead><tr><th scope="col">Platform</th><th scope="col">Price on their site</th><th scope="col">Free to start</th><th scope="col"></th></tr></thead>
+        <thead><tr><th scope="col">Platform</th><th scope="col">Price on their site</th><th scope="col">Free trial or plan</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${GTM_AUTOMATION_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>Yes, and open source too</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${GTM_AUTOMATION_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Usage based. Every action at the API price, 0% markup</td><td>Start with $10. Open source too.</td><td><a class="sdr-vs" href="${SIGN_UP}">Get started</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -488,9 +488,9 @@ function plansHtml(): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">We host it and send from our inboxes. You pay each action at the API price.</p>
-        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">What's included</div>
         <ul>
           <li><i></i>Every action at the vendor's API price, 0% markup</li>
@@ -562,7 +562,7 @@ export function gtmAutomationFaq(): { q: string; a: string }[] {
     },
     {
       q: "How much does GTM automation cost?",
-      a: 'With us, the agent is free. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+      a: 'With us, pricing is usage based. Each action is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
     },
     {
       q: "Can I run it from Claude Code or Grok?",
@@ -621,7 +621,7 @@ function faqHtml(): string {
 
 export const GTM_AUTOMATION_TITLE = "GTM Automation: an AI GTM Agent Done For You | distribute.you";
 export const GTM_AUTOMATION_DESCRIPTION =
-  "Revenue made easy. GTM automation by one AI agent that finds buyers, writes, answers, books meetings and follows up. Free, 0% markup.";
+  "Revenue made easy. GTM automation by one AI agent that finds buyers, writes, answers, books meetings and follows up. Usage based, 0% markup.";
 
 export function renderGtmAutomationPage(): string {
   const url = `${SITE}${GTM_AUTOMATION_PATH}`;
@@ -658,7 +658,7 @@ export function renderGtmAutomationPage(): string {
         operatingSystem: "Web",
         url,
         description: GTM_AUTOMATION_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 10, priceCurrency: "USD", description: "Usage based, 0% markup. Every action at the API price. Start with $10." },
       },
       {
         "@context": "https://schema.org",

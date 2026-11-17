@@ -70,7 +70,7 @@ describe("/ai-lead-generation targets its keyword", () => {
     expect(html).not.toContain('<i></i>Team</span>'); // one free plan, no Team tier (owner 2026-10-31)
     expect(html).toContain("$10");
     expect(html).toContain("https://github.com/distribute-you/gtm-factory");
-    expect(html).toContain("Start free");
+    expect(html).toContain("Get started");
   });
 
   it("bridges to its Agency twin, and the twin bridges back", () => {

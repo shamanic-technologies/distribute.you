@@ -402,7 +402,7 @@ export default function SignUpPage() {
                   {claimedCopy.tail}
                 </>
               ) : (
-                "The platform is free. You choose how much goes to your outreach."
+                "Pricing is usage based, with 0% markup. You choose how much goes to your outreach."
               )}
             </p>
           </div>
@@ -714,7 +714,7 @@ export default function SignUpPage() {
                       ? captchaWaiting
                         ? "Waiting for verification"
                         : "Creating account..."
-                      : "Start free"}
+                      : "Get started"}
                   </button>
                 </form>
 

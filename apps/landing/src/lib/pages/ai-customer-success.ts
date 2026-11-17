@@ -174,12 +174,12 @@ function heroHtml(): string {
           <span class="sub">Our AI customer success agent writes to each paying customer on WhatsApp when they pay, come back, stop paying or go quiet.</span>
         </h1>
 
-        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every message at the API price, 0% markup.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Usage based. Every message at the API price, 0% markup.</div>
 
         <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
           <div class="launch-field">
             <input id="hero-website" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
-            <button class="btn btn-accent" type="submit"><span>Start free</span>${ARROW}</button>
+            <button class="btn btn-accent" type="submit"><span>Get started</span>${ARROW}</button>
           </div>
         </form>
         <ul class="acs-plugs" aria-label="Tools you can connect">${CONNECTORS.map((c) => `<li>${LOGO(c.domain, 16)}${esc(c.name)}</li>`).join("")}</ul>
@@ -415,7 +415,7 @@ export function compareHtml(): string {
       <table class="sdr-table">
         <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">Their AI agent</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${AI_CS_PAGE_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free</td><td>${esc(OUR_AI_CS_ROW.aiAgent)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${AI_CS_PAGE_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Usage based, 0% markup</td><td>${esc(OUR_AI_CS_ROW.aiAgent)}</td><td><a class="sdr-vs" href="${SIGN_UP}">Get started</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -453,9 +453,9 @@ function plansHtml(): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">We host it. You pay each message at the API price.</p>
-        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">What's included</div>
         <ul>
           <li><i></i>Every action at the vendor's API price, 0% markup</li>
@@ -539,7 +539,7 @@ export function csFaq(): { q: string; a: string }[] {
     },
     {
       q: "What is the price?",
-      a: 'The agent is free. Each message is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+      a: 'Pricing is usage based. Each message is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
     },
     {
       q: "Can I run it on my own server?",
@@ -592,7 +592,7 @@ function faqHtml(faq: { q: string; a: string }[]): string {
 
 export const CS_TITLE = "AI Customer Success: Customers Kept Happy For You | distribute.you";
 export const CS_DESCRIPTION =
-  "Revenue made easy. AI customer success that writes to each paying customer on WhatsApp when they pay, come back or go quiet. Free, 0% markup.";
+  "Revenue made easy. AI customer success that writes to each paying customer on WhatsApp when they pay, come back or go quiet. Usage based, 0% markup.";
 
 export function renderAiCustomerSuccessPage(): string {
   const url = `${SITE}${AI_CS_PAGE_PATH}`;
@@ -627,7 +627,7 @@ export function renderAiCustomerSuccessPage(): string {
         operatingSystem: "Web",
         url,
         description: CS_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 10, priceCurrency: "USD", description: "Usage based, 0% markup. Every action at the API price. Start with $10." },
       },
       {
         "@context": "https://schema.org",

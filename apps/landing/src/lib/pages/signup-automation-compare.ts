@@ -31,7 +31,7 @@ const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 const OUR_WINS = [
   "The agent reaches buyers who have never heard of you, by cold email and WhatsApp.",
   "Every visit and every signup gets its next message, until the person pays.",
-  "Free, every action at the API price with 0% markup.",
+  "Usage based, every action at the API price with 0% markup.",
 ];
 
 const CHOOSE_US = [
@@ -48,7 +48,7 @@ function faqFor(t: SignupTool): { q: string; a: string }[] {
   return [
     {
       q: `How much does ${t.name} cost?`,
-      a: `${t.name} starts at ${t.entryPrice.replace(/^From /, "").replace(/^Free, then from /, "free, then ")}. ${t.prices.map((p) => `${p.plan}: ${p.price}`).join(". ")}. distribute.you is free, and every action is billed at the vendor's API price with 0% markup.`,
+      a: `${t.name} starts at ${t.entryPrice.replace(/^From /, "").replace(/^Free, then from /, "free, then ")}. ${t.prices.map((p) => `${p.plan}: ${p.price}`).join(". ")}. distribute.you is usage based: every action is billed at the vendor's API price with 0% markup.`,
     },
     { q: `What does ${t.name} do best?`, a: t.whereTheyWin.join(" ") },
     {
@@ -94,7 +94,7 @@ export function renderSignupVsPage(t: SignupTool): string {
     <h1>distribute.you <span class="accent">vs</span> ${esc(t.name)}</h1>
     <p class="hero-sub">${esc(t.name)}: ${esc(t.oneLiner)} distribute.you is the AI signup agent: it invites new buyers by cold email and WhatsApp, then follows every visit and signup until they pay.</p>
     ${whyLine()}
-    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
+    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
   </div>
 </section>
 
@@ -106,7 +106,7 @@ export function renderSignupVsPage(t: SignupTool): string {
         <thead><tr><th scope="col">What you are comparing</th><th scope="col" class="us">distribute.you</th><th scope="col">${esc(t.name)}</th></tr></thead>
         <tbody data-motion="reveal" data-motion-stagger>
           ${row("Entry price", OUR_SIGNUP_ROW.entryPrice, t.entryPrice)}
-          ${row("Free to start", OUR_SIGNUP_ROW.freeTier, t.freeTier)}
+          ${row("Free trial or plan", OUR_SIGNUP_ROW.freeTier, t.freeTier)}
           ${row("Where signups come from", OUR_SIGNUP_ROW.how, t.how)}
           ${row("Who does the work", OUR_SIGNUP_ROW.whoWorks, "You set it up and run it")}
           ${row("What it reads", OUR_SIGNUP_ROW.signals, "The events and flows you set up")}
@@ -123,9 +123,9 @@ export function renderSignupVsPage(t: SignupTool): string {
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
         <span class="plan-tag">distribute.you</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">Every action at the API price, 0% markup. Start with $10. Pause or cancel anytime.</p>
-        <a class="btn btn-accent" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">Included in the plan</div>
         <ul><li><i></i>Cold email from our domains, and WhatsApp</li><li><i></i>PostHog, Clerk and Stripe connectors</li><li><i></i>Every signup followed up until they pay</li><li><i></i>Open source under MIT</li></ul>
       </div>
@@ -159,7 +159,7 @@ __HOT_LEAD_BAND__
 
   return shell({
     title: `${t.name} alternative: distribute.you vs ${t.name} for signup automation`,
-    description: `Looking at ${t.name} alternatives? distribute.you's AI signup agent invites new buyers and follows every signup until they pay, free. Compare prices.`,
+    description: `Looking at ${t.name} alternatives? distribute.you's AI signup agent invites new buyers and follows every signup until they pay, usage based. Compare prices.`,
     path,
     head: signupHead(),
     bodyClass: "signups",

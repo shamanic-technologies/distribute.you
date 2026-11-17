@@ -239,9 +239,9 @@ export function plansHtml(w: PlanWords): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">${esc(w.hostedDesc)}</p>
-        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">What's included</div>
         <ul>
           <li><i></i>Every action at the vendor's API price, 0% markup</li>

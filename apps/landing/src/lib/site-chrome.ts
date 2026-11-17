@@ -56,7 +56,7 @@ export type FooterVariant = "home" | "agent" | "agency";
 export type FooterColumn = { title: string; links: ChromeLink[]; indexLinks?: boolean };
 export type FooterModel = { variant: FooterVariant; columns: FooterColumn[]; bridge?: ChromeLink };
 
-const START_FREE: ChromeLink = { label: "Start free", href: SIGN_UP };
+const START_FREE: ChromeLink = { label: "Get started", href: SIGN_UP };
 const BOOK: ChromeLink = { label: "Book a call", href: BOOK_A_CALL };
 const DOCS: ChromeLink = { label: "Docs", href: DOCS_HREF };
 const CATALOG: ChromeLink = { label: "Price catalog", href: "/catalog" };
@@ -196,7 +196,7 @@ export function footerModel(path: string, pages: SitePage[] = SITE_PAGES): Foote
         COMPANY_COLUMN,
         LEGAL_COLUMN,
       ],
-      bridge: { label: "Just testing? Start free", href: twin?.path ?? SIGN_UP },
+      bridge: { label: "Just testing? Get started", href: twin?.path ?? SIGN_UP },
     };
   }
 

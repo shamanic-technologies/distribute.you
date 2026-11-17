@@ -156,8 +156,8 @@ const SECTIONS: SectionDef[] = [
           are not re-priced in either direction.
         </p>
         <p>
-          <strong>Current offer: the AI agent.</strong> The AI agent is free,
-          for up to 5 members per organization. You pay for the work done on your campaigns: each tool behind
+          <strong>Current offer: the AI agent.</strong> The AI agent is usage
+          based, for up to 5 members per organization. You pay for the work done on your campaigns: each tool behind
           them (lead data, research, AI writing, email checks, sending, calls)
           is billed by the unit at our public catalogue price, published at{" "}
           <a href="/catalog" className="text-brand-400 underline">
@@ -192,7 +192,7 @@ const SECTIONS: SectionDef[] = [
         </p>
         <p>
           <strong>Earlier offers.</strong> For accounts created before October
-          29, 2026, the platform is free and each tool is billed by the unit at
+          29, 2026, each tool is billed by the unit at
           our public catalogue price, our margin included. Depending on the
           offer such an account signed up under, it pays with prepaid credit,
           through a monthly plan, or after use (post-paid), and it may hold a

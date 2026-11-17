@@ -46,7 +46,7 @@ describe("/ai-customer-success targets its keyword", () => {
     expect(html).not.toContain('<i></i>Team</span>'); // one free plan, no Team tier (owner 2026-10-31)
     expect(html).toContain("$10");
     expect(html).toContain("https://github.com/distribute-you/gtm-factory");
-    expect(html).toContain("Start free");
+    expect(html).toContain("Get started");
   });
 
   it("names the connectors and only the channel the catalogue runs for paying customers", () => {

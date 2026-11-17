@@ -83,10 +83,10 @@ describe("each page targets its keyword and states the why", () => {
 });
 
 describe("the offer follows the buyer", () => {
-  it("the AI Agent pages: free, 0% markup, no Team tier, $10 top-up, open source, Start free", () => {
+  it("the AI Agent pages: usage based, 0% markup, no Team tier, $10 top-up, open source, Get started", () => {
     for (const html of [pages[0][1], pages[2][1]]) {
       expect(html).not.toContain("<i></i>Team</span>");
-      for (const s of ["0% markup", "$10", "https://github.com/distribute-you/gtm-factory", "Start free", "Claude Code", "Grok"]) expect(html).toContain(s);
+      for (const s of ["0% markup", "$10", "https://github.com/distribute-you/gtm-factory", "Get started", "Claude Code", "Grok"]) expect(html).toContain(s);
       expect(html).toContain('<form class="launch" action="https://dashboard.distribute.you/get-started" method="get" id="hero-form">');
     }
   });

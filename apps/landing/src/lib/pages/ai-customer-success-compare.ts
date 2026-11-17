@@ -24,7 +24,7 @@ const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 const OUR_WINS = [
   "The agent writes first, when a customer pays, comes back, stops paying or goes quiet.",
   "Each message is written for one customer on WhatsApp, then the reply is answered and the next check-in set.",
-  "Free, every message at the API price with 0% markup, WhatsApp included.",
+  "Usage based, every message at the API price with 0% markup, WhatsApp included.",
 ];
 
 const CHOOSE_US = [
@@ -41,7 +41,7 @@ function faqFor(t: CsTool): { q: string; a: string }[] {
   return [
     {
       q: `How much does ${t.name} cost?`,
-      a: `${t.name} starts at ${t.entryPrice.replace(/^From /, "").replace(/^Free, then from /, "free, then ")}. ${t.prices.map((p) => `${p.plan}: ${p.price}`).join(". ")}. distribute.you is free, and every message is billed at the vendor's API price with 0% markup.`,
+      a: `${t.name} starts at ${t.entryPrice.replace(/^From /, "").replace(/^Free, then from /, "free, then ")}. ${t.prices.map((p) => `${p.plan}: ${p.price}`).join(". ")}. distribute.you is usage based: every message is billed at the vendor's API price with 0% markup.`,
     },
     { q: `What does ${t.name} do best?`, a: t.whereTheyWin.join(" ") },
     {
@@ -87,7 +87,7 @@ export function renderCsVsPage(t: CsTool): string {
     <h1>distribute.you <span class="accent">vs</span> ${esc(t.name)}</h1>
     <p class="hero-sub">${esc(t.name)}: ${esc(t.oneLiner)} distribute.you is the AI customer success agent: you plug Stripe, Clerk, PostHog or GoHighLevel, and our agent writes to each paying customer on WhatsApp when they act or go quiet.</p>
     ${whyLine()}
-    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
+    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
   </div>
 </section>
 
@@ -100,7 +100,7 @@ export function renderCsVsPage(t: CsTool): string {
         <tbody data-motion="reveal" data-motion-stagger>
           ${row("Entry price", OUR_AI_CS_ROW.entryPrice, t.entryPrice)}
           ${row("AI agent price", OUR_AI_CS_ROW.aiAgent, t.aiAgent)}
-          ${row("Free to start", OUR_AI_CS_ROW.freeTier, t.freeTier)}
+          ${row("Free trial or plan", OUR_AI_CS_ROW.freeTier, t.freeTier)}
           ${row("WhatsApp", OUR_AI_CS_ROW.whatsapp, t.whatsapp)}
           ${row("Who starts the conversation", OUR_AI_CS_ROW.whoStarts, "Your customer, when they write in with a question")}
           ${row("What it counts", OUR_AI_CS_ROW.counts, "Conversations and tickets resolved")}
@@ -117,9 +117,9 @@ export function renderCsVsPage(t: CsTool): string {
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
         <span class="plan-tag">distribute.you</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">Every action at the API price, 0% markup. Start with $10. Pause or cancel anytime.</p>
-        <a class="btn btn-accent" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">Included in the plan</div>
         <ul><li><i></i>Stripe, Clerk, PostHog and GoHighLevel connectors</li><li><i></i>WhatsApp messages to your paying customers</li><li><i></i>Every reply answered, the next check-in set</li><li><i></i>Open source under MIT</li></ul>
       </div>
@@ -153,7 +153,7 @@ __HOT_LEAD_BAND__
 
   return shell({
     title: `${t.name} alternative: distribute.you vs ${t.name} for AI customer success`,
-    description: `Looking at ${t.name} alternatives? distribute.you's AI customer success agent checks in with each paying customer on WhatsApp, free.`,
+    description: `Looking at ${t.name} alternatives? distribute.you's AI customer success agent checks in with each paying customer on WhatsApp, 0% markup.`,
     path,
     head: csHead(),
     bodyClass: "cs-agent",

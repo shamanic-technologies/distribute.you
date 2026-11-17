@@ -1,7 +1,7 @@
 export const BRAND = {
   name: "distribute.you",
   tagline: "Revenue made easy.",
-  hero: "Our AI agent finds your buyers, writes to them and books your meetings. Free, at the API price with 0% markup.",
+  hero: "Our AI agent finds your buyers, writes to them and books your meetings. Usage based, 0% markup.",
   license: "MIT",
   isOpenSource: true,
   social: {

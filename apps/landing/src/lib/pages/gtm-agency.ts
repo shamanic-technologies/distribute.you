@@ -369,7 +369,7 @@ export function callHtml(agentPath = "/"): string {
       <div class="ag-call-side">
         <ul><li>Your market, read before the call</li><li>A plan for your first month</li><li>Live in 5 days if you go</li></ul>
         <a class="btn btn-accent" ${BOOK_ATTRS}>Book a call</a>
-        <a class="alt" href="${agentPath}">Just testing? Start free</a>
+        <a class="alt" href="${agentPath}">Just testing? Get started</a>
       </div>
     </div>
   </div>

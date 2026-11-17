@@ -10,7 +10,7 @@ import { livePages } from "../../src/lib/site-pages";
 /**
  * `/` as the Revenue AI Agent page (PAGE-REVENUE-AGENT-1029, owner 2026-10-29): the
  * cheap SaaS founder gets our agent at the API price with 0% markup, open source, run
- * locally if they want, and starts free. These guards hold the parts that are not copy:
+ * locally if they want, and starts with $10, usage based. These guards hold the parts that are not copy:
  * the live price list, the agent command, the bridges, the sourced competitor prices
  * and the signature motion.
  */

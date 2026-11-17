@@ -6,7 +6,7 @@
  * generation" (1,600 US searches a month), with "ai lead generation agent" (140) and
  * "lead generation automation" (90). Its Agency twin is `/lead-generation-agency`
  * (company making cash, Book a call); this page sells the same outcome to the founder who
- * runs it from a website, at the API price, starting free. What it says that no sibling
+ * runs it from a website, at the API price, from a $10 start. What it says that no sibling
  * says: a lead is found, judged, checked and written to, and each of those steps has a
  * public price you see before it runs.
  *
@@ -170,7 +170,7 @@ function showcaseHtml(): string {
           </div>
         </a>
         <a class="show-card yours" href="${SIGN_UP}">
-          <div class="show-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><div class="show-name">Your company</div><div class="show-domain">yourcompany.com</div></div><span class="show-live"><i></i>Start free</span></div>
+          <div class="show-top"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><div class="show-name">Your company</div><div class="show-domain">yourcompany.com</div></div><span class="show-live"><i></i>Get started</span></div>
           <div class="show-funnel">
             <span class="sf" data-zero><b>0</b><small>Interested leads</small></span>
             <span class="sf" data-zero><b>0</b><small>Meetings booked</small></span>
@@ -205,12 +205,12 @@ function heroHtml(): string {
           <span class="sub">Our AI lead generation agent finds your buyers, judges every lead, checks the email and writes to them for you.</span>
         </h1>
 
-        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Free. Every lead at the API price, 0% markup.</div>
+        <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7-6.2-3.4-6.2 3.4 1.3-7L2 9.4l7-.9z"/></svg>Usage based. Every lead at the API price, 0% markup.</div>
 
         <form class="launch" action="${SIGN_UP}" method="get" id="hero-form">
           <div class="launch-field">
             <input id="hero-website" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
-            <button class="btn btn-accent" type="submit"><span>Start free</span>${ARROW}</button>
+            <button class="btn btn-accent" type="submit"><span>Get started</span>${ARROW}</button>
           </div>
         </form>
         <div class="hero-links">
@@ -390,7 +390,7 @@ export function compareHtml(): string {
       <table class="sdr-table">
         <thead><tr><th scope="col">Tool</th><th scope="col">Price on their site</th><th scope="col">How you get leads</th><th scope="col"></th></tr></thead>
         <tbody>
-          <tr class="ours"><th scope="row"><a href="${AI_LEAD_GEN_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Free. Every action at the API price, 0% markup</td><td>Our AI agent finds, judges and contacts them from your website</td><td><a class="sdr-vs" href="${SIGN_UP}">Start free</a></td></tr>
+          <tr class="ours"><th scope="row"><a href="${AI_LEAD_GEN_PATH}"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20">distribute.you</a></th><td>Usage based. Every action at the API price, 0% markup</td><td>Our AI agent finds, judges and contacts them from your website</td><td><a class="sdr-vs" href="${SIGN_UP}">Get started</a></td></tr>
           ${rows}
         </tbody>
       </table>
@@ -427,9 +427,9 @@ function plansHtml(): string {
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Hosted</span>
-        <div class="plan-price">Free<small>no monthly fee</small></div>
+        <div class="plan-price">Usage based<small>0% markup</small></div>
         <p class="plan-desc">We host it. You pay each lead at the API price.</p>
-        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a>
+        <a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">What's included</div>
         <ul>
           <li><i></i>Every action at the vendor's API price, 0% markup</li>
@@ -491,7 +491,7 @@ export const AI_LEAD_GEN_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How much does a lead cost?",
-    a: 'The agent is free. Each step of a lead, finding it, checking the email and judging the fit, is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
+    a: 'Pricing is usage based. Each step of a lead, finding it, checking the email and judging the fit, is billed at the vendor\'s API price with 0% markup, from a prepaid balance you start with $10. Every price is on our <a href="/catalog">catalog</a>.',
   },
   {
     q: "Is it a lead list or real outreach?",
@@ -545,7 +545,7 @@ function faqHtml(): string {
 
 export const AI_LEAD_GEN_TITLE = "AI Lead Generation: Qualified Leads Found For You | distribute.you";
 export const AI_LEAD_GEN_DESCRIPTION =
-  "Revenue made easy. AI lead generation that finds your buyers, judges every lead, checks the email and writes to them. Free, 0% markup.";
+  "Revenue made easy. AI lead generation that finds your buyers, judges every lead, checks the email and writes to them. Usage based, 0% markup.";
 
 export function renderAiLeadGenerationPage(): string {
   const url = `${SITE}${AI_LEAD_GEN_PATH}`;
@@ -578,7 +578,7 @@ export function renderAiLeadGenerationPage(): string {
         operatingSystem: "Web",
         url,
         description: AI_LEAD_GEN_DESCRIPTION,
-        offers: { "@type": "Offer", price: 0, priceCurrency: "USD", description: "Free. Every action at the API price, 0% markup." },
+        offers: { "@type": "Offer", price: 10, priceCurrency: "USD", description: "Usage based, 0% markup. Every action at the API price. Start with $10." },
       },
       {
         "@context": "https://schema.org",

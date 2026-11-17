@@ -66,7 +66,7 @@ function ourItem(p: BestForPage): string {
     <div class="cmp-card-top"><span class="best-rank">1</span><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><b>distribute.you</b><small>Cold email agency · ${esc(DISTRIBUTE_ROW.entryPrice)}</small></div></div>
     <p><strong>Best for:</strong> ${esc(p.usBestFor)}.</p>
     <p>${esc(DISTRIBUTE_ROW.operatedBy)}. ${esc(DISTRIBUTE_ROW.sendingDomains)} ${esc(DISTRIBUTE_ROW.pricingModel)}</p>
-    <p class="cmp-source"><a href="${SIGN_UP}">Start free</a></p>
+    <p class="cmp-source"><a href="${SIGN_UP}">Get started</a></p>
   </li>`;
 }
 
@@ -126,7 +126,7 @@ export function renderBestForPage(p: BestForPage): string {
     <p class="hero-sub">${esc(p.answer)}</p>
     ${whyLine()}
     ${metaLine()}
-    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#ranking">See the ranking</a></div>
+    <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Get started</a><a class="btn btn-outline btn-lg" href="#ranking">See the ranking</a></div>
   </div>
 </section>
 
