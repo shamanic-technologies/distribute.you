@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CampaignTargetsSchema, nextExpectedWords, reasonWords, targetsOfOffer } from "../src/lib/campaign-targets";
+import { CampaignTargetsSchema, nextExpectedWords, pausedWords, reasonWords, targetsOfOffer } from "../src/lib/campaign-targets";
 
 const row = (offerId: string, id: string) => ({
   salesFunnelCampaignId: id,
@@ -62,5 +62,19 @@ describe("campaign targets (LEAD-GENERIC-1106)", () => {
     expect(reasonWords("target_has_no_value")).toBe("No value set for this outcome");
     expect(reasonWords("some_new_reason")).toBe("Some new reason");
     expect(reasonWords("pipe_unpriced:threads-post|start_to_post_published")).toBe("Not priced yet");
+  });
+});
+
+describe("a paused projection says why and when (PROJECTION-CAP-1117)", () => {
+  it("a reached budget cap names the reset day, never a far-off ETA", () => {
+    expect(pausedWords("budget_cap_reached", "2026-12-01T00:00:00Z")).toBe("Budget used for this period. Starts again on Dec 1.");
+    expect(pausedWords("volume_cap_reached", null)).toBe("Volume limit reached for this period.");
+    expect(pausedWords(null, null)).toBeNull();
+  });
+  it("both projection lines read the paused words before the ETA", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("../src/components/v2/today-targets.tsx", import.meta.url), "utf8");
+    expect(src).toContain("pausedWords(row.projection.pausedReason, row.projection.resumesAt) ?? nextExpectedWords(");
+    expect(src).toContain("pausedWords(card.projection.pausedReason, card.projection.resumesAt) ?? nextExpectedWords(");
   });
 });

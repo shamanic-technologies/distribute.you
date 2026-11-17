@@ -3,7 +3,7 @@
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { friendlyDate } from "@/lib/friendly-datetime";
-import { nextExpectedWords, reasonWords, targetsOfOffer, type CampaignTargetRow, type MilestoneCard, type OfferTargetEntry } from "@/lib/campaign-targets";
+import { nextExpectedWords, pausedWords, reasonWords, targetsOfOffer, type CampaignTargetRow, type MilestoneCard, type OfferTargetEntry } from "@/lib/campaign-targets";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { StepMark } from "@/components/marks/step-mark";
 import { RoiLabel } from "@/components/v2/roi-label";
@@ -54,7 +54,7 @@ export function TodayTargets({ orgId, brandId }: { orgId: string; brandId: strin
 function TargetRow({ row, offerName }: { row: OfferTargetEntry; offerName: string | null }) {
   const label = row.target?.label ?? null;
   const roi = row.measuredReturn.roiMultiple;
-  const next = nextExpectedWords(row.projection.nextExpectedInHours);
+  const next = pausedWords(row.projection.pausedReason, row.projection.resumesAt) ?? nextExpectedWords(row.projection.nextExpectedInHours);
   return (
     <div>
       <div className="mb-2 flex min-w-0 items-center gap-2">
@@ -126,7 +126,7 @@ export function CampaignMilestoneCards({ brandId, campaignId }: { brandId: strin
 
 function MilestoneCardView({ card, row }: { card: MilestoneCard; row: CampaignTargetRow }) {
   const roi = card.isTarget ? row.measuredReturn.roiMultiple : null;
-  const next = nextExpectedWords(card.projection.nextExpectedInHours);
+  const next = pausedWords(card.projection.pausedReason, card.projection.resumesAt) ?? nextExpectedWords(card.projection.nextExpectedInHours);
   return (
     <div className="k-card flex min-w-0 flex-col p-4">
       <div className="flex min-w-0 items-center gap-2">
