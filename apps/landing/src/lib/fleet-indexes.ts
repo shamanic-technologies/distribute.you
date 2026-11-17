@@ -292,34 +292,12 @@ export const UNAVAILABLE: Readonly<Record<string, string>> = {
   vendor_cost_unknown: "Part of the spend behind this number has no known vendor price yet. The number comes back once every cost is priced.",
 };
 
-/** The served outcome as words, singular and plural. An outcome we do not know yet names no count. */
-const OUTCOME_WORDS: Readonly<Record<string, [string, string]>> = {
-  website_visit: ["click", "clicks"],
-  positive_reply: ["positive reply", "positive replies"],
-  meeting_booked: ["meeting booked", "meetings booked"],
-  engaged_lead: ["engaged lead", "engaged leads"],
-};
-
-/** What the number rests on so far, for a `not_measured` day: the served count and the served bar. */
-export type UnavailableContext = { outcome: string; outcomes: number; minOutcomes: number };
-
 /**
  * Why there is no number today, in plain words. An unknown reason still reads as a sentence.
- * With `ctx`, `not_measured` says what the number rests on so far ("5 positive replies so
- * far. The number is published from 10."): both figures are served, nothing is derived here.
+ * Never a count of outcomes (owner 2026-11-17: « 5 positive replies so far » is not said to
+ * clients): the sentence names the reason only.
  */
-export function unavailableLine(reason: string | null, ctx?: UnavailableContext): string {
-  if (reason === "not_measured" && ctx) {
-    const words = OUTCOME_WORDS[ctx.outcome];
-    if (!words) {
-      console.error(`[landing] fleet index: no words for outcome ${JSON.stringify(ctx.outcome)}`);
-    } else if (ctx.outcomes > 0) {
-      const n = ctx.outcomes.toLocaleString("en-US");
-      return `${n} ${ctx.outcomes === 1 ? words[0] : words[1]} so far. The number is published from ${ctx.minOutcomes}.`;
-    } else {
-      return `No ${words[0]} yet. The number is published from ${ctx.minOutcomes} ${words[1]}.`;
-    }
-  }
+export function unavailableLine(reason: string | null): string {
   if (reason && UNAVAILABLE[reason]) return UNAVAILABLE[reason];
   console.error(`[landing] fleet index: unknown unavailableReason ${JSON.stringify(reason)}`);
   return "This number is not available today. It is recorded every hour.";
