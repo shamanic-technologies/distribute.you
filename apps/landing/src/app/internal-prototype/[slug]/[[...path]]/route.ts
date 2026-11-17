@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { clonePathFor, contentTypeFor, originPathFor, withinRoot } from "@/lib/clone-files";
 import { PROTOTYPE_ROUTE_PREFIX, byteRangeFor, prototypeFor } from "@/lib/prototype-catalogue";
+import { withDistryLogo } from "@/lib/distry-skin";
 import { withSiteChrome } from "@/lib/site-chrome";
 import { withLiveFigures } from "@/lib/static-html";
 
@@ -86,7 +87,7 @@ export async function GET(
   }
 
   if (found.file.endsWith(".html")) {
-    const page = await withLiveFigures(withSiteChrome(found.body.toString("utf8"), "/"));
+    const page = withDistryLogo(await withLiveFigures(withSiteChrome(found.body.toString("utf8"), "/")));
     return new Response(page, { headers: { ...BASE_HEADERS, "content-type": "text/html; charset=utf-8" } });
   }
 

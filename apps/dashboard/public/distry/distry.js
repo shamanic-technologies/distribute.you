@@ -10,6 +10,11 @@
  */
 function dress(cfg) {
   const body = document.body;
+  // The site's mark becomes Distry's (the page's own images are swapped, not re-rendered).
+  document.querySelectorAll('img[src*="logo-mark"]').forEach((img) => {
+    img.removeAttribute("srcset");
+    img.src = cfg.logo;
+  });
   body.insertAdjacentHTML("afterbegin", cfg.sky);
   body.insertAdjacentHTML("beforeend", cfg.buddy);
   const sections = Array.from(document.querySelectorAll("section"));
