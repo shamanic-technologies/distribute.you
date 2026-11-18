@@ -2,7 +2,7 @@
 
 import { offersNoFreeMoney } from "@/lib/v2/get-started";
 import { useState } from "react";
-import { configureAutoTopup, disableAutoTopup, getFreeCreditPromises, getOrgUsage } from "@/lib/api";
+import { armAutoTopupAtReloadRules, disableAutoTopup, getFreeCreditPromises, getOrgUsage } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollIntervalFor } from "@/lib/query-options";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
@@ -11,11 +11,7 @@ import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
 import { paymentModeOf, type BillingMode } from "@/lib/payment-mode";
 import { postpaidOwed } from "@/lib/v2/pay-balance";
 import { LossDialog, SubscriptionPlan } from "@/components/v2/subscription-plan";
-import {
-  AUTO_TOPUP_ENABLE_AMOUNT_CENTS,
-  AUTO_TOPUP_ENABLE_THRESHOLD_CENTS,
-  useBillingController,
-} from "@/components/billing/use-billing-controller";
+import { useBillingController } from "@/components/billing/use-billing-controller";
 import {
   CardBrandLogo,
   cardBrandLabel,
@@ -125,7 +121,7 @@ export function V2BillingPage() {
     setAutoPending(true);
     setAutoError(null);
     try {
-      if (on) await configureAutoTopup(AUTO_TOPUP_ENABLE_AMOUNT_CENTS, AUTO_TOPUP_ENABLE_THRESHOLD_CENTS);
+      if (on) await armAutoTopupAtReloadRules();
       else await disableAutoTopup();
     } catch (err) {
       console.error("[billing v2] auto top-up change failed:", err);

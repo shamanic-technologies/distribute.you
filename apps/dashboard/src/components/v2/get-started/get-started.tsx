@@ -148,7 +148,6 @@ import {
   type GetStartedStepKey,
   type StepPhase,
   TOPUP_CHOICES_USD,
-  AT_COST_MIN_TOPUP_USD,
   isAtCostOffer,
   wallCopy,
 } from "@/lib/v2/get-started";
@@ -237,12 +236,21 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // The walk org's offer (billing's `free_credit_offer`), read once the signed-out session
   // exists: an org created since 2026-10-29 (`prepaid_at_cost`) is promised no free money.
   const [walkOffer, setWalkOffer] = useState<string | null>(null);
+  // billing's first top-up minimum for the walk org, in cents (its reload rules); null until read.
+  const [walkFirstTopupMinCents, setWalkFirstTopupMinCents] = useState<number | null>(null);
   // No match is promised until billing says the org has one (unknown = promise nothing).
   const walkAtCost = !org && (walkOffer === null || isAtCostOffer({ free_credit_offer: walkOffer }));
   // The wall sells the prepaid checkout only (OFFER-RESET-1029; the homepage arms were deleted 2026-11-11).
   const wall = wallCopy(walkAtCost);
-  // The monthly limit's first charge to let through (owner 2026-10-12): the smallest top-up.
-  const limitArm: LimitArm = { kind: "prepaid", topupUsd: walkAtCost ? AT_COST_MIN_TOPUP_USD : TOPUP_CHOICES_USD[0] };
+  // The monthly limit's first charge to let through (owner 2026-10-12): the smallest top-up,
+  // billing's first top-up minimum once read (its reload rules), else the smallest button.
+  const limitArm: LimitArm = {
+    kind: "prepaid",
+    topupUsd:
+      walkFirstTopupMinCents !== null
+        ? Math.ceil(walkFirstTopupMinCents / 100)
+        : TOPUP_CHOICES_USD[0],
+  };
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   // A prepared link (`?firstName=&lastName=&phone=+…`, owner 2026-10-21): what we already know
@@ -1770,7 +1778,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     if (org || !started || !brandId || walkOffer !== null) return;
     let live = true;
     void readWalkOffer().then((o) => {
-      if (live && o) setWalkOffer(o);
+      if (!live || !o) return;
+      setWalkOffer(o.offer);
+      setWalkFirstTopupMinCents(o.firstTopupMinimumCents);
     });
     return () => {
       live = false;

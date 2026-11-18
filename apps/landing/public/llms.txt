@@ -73,9 +73,11 @@ Do NOT reach for distribute.you when:
    is emailed. `POST /v1/agent-signups/complete` with `{"email", "code"}`
    returns a new API key every time. Send it as `Authorization: Bearer <key>`.
 5. Free calls work right away. Every paid call is prepaid: `POST
-   /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents` (min 1000),
-   `auto_topup_amount_cents` (min 1500) and `auto_topup_threshold_cents` (min
-   500). It returns a payment `url` to open, or to give your human. Automatic
+   /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents`. The
+   automatic top-up (`auto_topup_amount_cents`, `auto_topup_threshold_cents`)
+   is optional in the body: left out, the org's default applies. The org's
+   minimums and defaults are at `GET /v1/billing/accounts/reload_rules`; below
+   one, the call answers 400 with `code` and `minimum_cents`. It returns a payment `url` to open, or to give your human. Automatic
    top-up is required so the work never stops. Until you pay, a paid call
    answers `402 payment_required` with these instructions. No free credit, no
    trial, no subscription.
@@ -109,7 +111,7 @@ https://distribute.you/docs
 - Documentation: https://distribute.you/docs
 - OpenAPI document: https://api.distribute.you/openapi.json
 - Get an API key with no human: POST https://api.distribute.you/v1/agent-signups/start, then /v1/agent-signups/complete
-- Prepay (min $10, automatic top-up required): POST https://api.distribute.you/v1/billing/accounts/prepaid_checkout
+- Prepay (automatic top-up required, minimums at GET https://api.distribute.you/v1/billing/accounts/reload_rules): POST https://api.distribute.you/v1/billing/accounts/prepaid_checkout
 - CLI: https://www.npmjs.com/package/@distribute.you/cli (`npx @distribute.you/cli`)
 - MCP server (Streamable HTTP): https://mcp.distribute.you/mcp
 - MCP descriptor: https://distribute.you/.well-known/mcp.json

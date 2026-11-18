@@ -5,7 +5,7 @@
  * signed-out walk opens the account and credit wall, this opens the credit step (owner
  * 2026-10-06: prepaid, no plan, no trial). An org that already holds a card launches on
  * the account it has; one with no card adds prepaid credit first (`PrepaidTopup`, at
- * least $100, the automatic reload required). Then the SAME launch as the signed-out walk
+ * least billing's first top-up minimum, the automatic reload required). Then the SAME launch as the signed-out walk
  * (`launchFromPreview`: the funnel campaign set at the "Your campaign" step, its caps
  * first), the org marked set up with a token minted FOR it, and only THEN made active
  * (the edge first-run gate would bounce a not-yet-set-up org), and the person lands on

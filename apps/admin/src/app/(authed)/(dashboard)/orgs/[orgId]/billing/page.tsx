@@ -25,6 +25,7 @@ import {
   type UsageDiscount,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
+import { thresholdCentsOrDefault, thresholdCentsParamOrDefault, useReloadRulesUsd } from "@/lib/reload-rules";
 import { formatBillingCents } from "@/lib/format-number";
 import { todayIsoDate } from "@/lib/credit-grant-body";
 import { pollOptions } from "@/lib/query-options";
@@ -211,7 +212,13 @@ export default function BillingPage() {
   // Auto-topup toggle (integrated into top-up flow) — pre-selected by default
   const [enableAutoTopup, setEnableAutoTopup] = useState(true);
   const [topupAmount, setTopupAmount] = useState("25");
-  const [topupThreshold, setTopupThreshold] = useState("5");
+  const [topupThreshold, setTopupThreshold] = useState("");
+  // billing's reload rules (RELOAD-RULE-ONE-HOME-1118): minimums + default threshold, no copy here.
+  const reloadRules = useReloadRulesUsd();
+  // The field opens on billing's default threshold once read (an existing config overwrites it).
+  useEffect(() => {
+    if (reloadRules) setTopupThreshold((t) => t || String(reloadRules.defaultThresholdUsd));
+  }, [reloadRules]);
 
   // Edit mode for existing auto-topup config
   const [editingTopup, setEditingTopup] = useState(false);
@@ -230,10 +237,10 @@ export default function BillingPage() {
 
   function handleThresholdBlur() {
     if (!topupThreshold) {
-      setTopupThreshold("5");
+      if (reloadRules) setTopupThreshold(String(reloadRules.defaultThresholdUsd));
       setThresholdError(null);
-    } else if (parseFloat(topupThreshold) < 5) {
-      setThresholdError("Minimum threshold is $5.");
+    } else if (reloadRules && parseFloat(topupThreshold) < reloadRules.thresholdMinUsd) {
+      setThresholdError(`Minimum threshold is $${reloadRules.thresholdMinUsd}.`);
     } else {
       setThresholdError(null);
     }
@@ -244,16 +251,16 @@ export default function BillingPage() {
       const defaultTopup = customAmount ? customAmount : (topupSelected / 100).toString();
       setTopupAmount(defaultTopup);
       setTopupAmountError(null);
-    } else if (parseFloat(topupAmount) < 10) {
-      setTopupAmountError("Minimum top-up amount is $10.");
+    } else if (reloadRules && parseFloat(topupAmount) < reloadRules.reloadMinUsd) {
+      setTopupAmountError(`Minimum top-up amount is $${reloadRules.reloadMinUsd}.`);
     } else {
       setTopupAmountError(null);
     }
   }
 
   function handleCustomAmountBlur() {
-    if (customAmount && parseFloat(customAmount) < 10) {
-      setCustomAmountError("Minimum top-up is $10.");
+    if (customAmount && reloadRules && parseFloat(customAmount) < reloadRules.firstTopupMinUsd) {
+      setCustomAmountError(`Minimum top-up is $${reloadRules.firstTopupMinUsd}.`);
     } else {
       setCustomAmountError(null);
     }
@@ -290,9 +297,8 @@ export default function BillingPage() {
   useEffect(() => {
     if (showSuccess && pendingTopup) {
       const topupCents = parseInt(pendingTopup, 10);
-      const thresholdCents = pendingThreshold ? parseInt(pendingThreshold, 10) : 500;
-      import("@/lib/api").then(({ configureAutoTopup }) =>
-        configureAutoTopup(topupCents, thresholdCents)
+      thresholdCentsParamOrDefault(pendingThreshold).then((thresholdCents) =>
+        import("@/lib/api").then(({ configureAutoTopup }) => configureAutoTopup(topupCents, thresholdCents))
       ).then(() => {
         queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
       }).catch(() => {});
@@ -340,7 +346,7 @@ export default function BillingPage() {
       if (account?.has_payment_method) {
         if (enableAutoTopup && topupAmount) {
           const topupCents = Math.round(parseFloat(topupAmount) * 100);
-          const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+          const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
           const { configureAutoTopup } = await import("@/lib/api");
           await configureAutoTopup(topupCents, thresholdCents);
         } else if (!enableAutoTopup && hasAutoTopup) {
@@ -354,7 +360,7 @@ export default function BillingPage() {
       successUrl.searchParams.set("success", "true");
       if (enableAutoTopup && topupAmount && !account?.has_payment_method) {
         const topupCents = Math.round(parseFloat(topupAmount) * 100);
-        const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+        const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
         successUrl.searchParams.set("pending_topup", topupCents.toString());
         successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
       }
@@ -377,7 +383,7 @@ export default function BillingPage() {
     setError(null);
     try {
       const topupCents = Math.round(parseFloat(topupAmount) * 100);
-      const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+      const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
       const { configureAutoTopup } = await import("@/lib/api");
       await configureAutoTopup(topupCents, thresholdCents);
       queryClient.invalidateQueries({ queryKey: ["billingAccount"] });

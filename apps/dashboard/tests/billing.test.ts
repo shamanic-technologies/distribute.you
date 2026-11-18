@@ -54,8 +54,10 @@ describe("Billing API wrappers", () => {
     // is allowed; only the legacy /auto_reload endpoint family + reload_*_cents body is banned.
     expect(content).not.toContain("/billing/accounts/auto_reload");
     expect(content).not.toContain("/billing/accounts/auto-reload");
-    expect(content).not.toContain("reload_amount_cents");
-    expect(content).not.toContain("reload_threshold_cents");
+    // billing's reload RULES read (`default_reload_amount_cents`, RELOAD-RULE-ONE-HOME-1118)
+    // is a different, current contract: only the bare legacy body fields are banned.
+    expect(content).not.toMatch(/(?<!default_)reload_amount_cents/);
+    expect(content).not.toMatch(/(?<!default_)reload_threshold_cents/);
     expect(content).not.toContain("configureAutoReload");
     expect(content).not.toContain("disableAutoReload");
   });
@@ -305,7 +307,8 @@ describe("Billing page", () => {
 
   it("should save auto-topup on successful return from Stripe", () => {
     expect(content).toContain("showSuccess && pendingTopup");
-    expect(content).toContain("configureAutoTopup(topupCents, thresholdCents)");
+    // Armed at billing's default reload for the org (RELOAD-RULE-ONE-HOME-1118).
+    expect(content).toContain("armAutoTopupAtReloadRules()");
   });
 
   it("should NOT have auto-topup amount/threshold blur validators (fields removed — derived server-side)", () => {
@@ -324,11 +327,11 @@ describe("Billing page", () => {
     expect(content).toContain("setTopupSelected");
   });
 
-  it("should arm the auto-topup enabled flag with fixed derived-tier placeholder values", () => {
-    // The stored amount/threshold are only the "enabled" flag; the real values
-    // are derived server-side, so the page sends fixed placeholders.
-    expect(content).toContain("AUTO_TOPUP_ENABLE_AMOUNT_CENTS");
-    expect(content).toContain("AUTO_TOPUP_ENABLE_THRESHOLD_CENTS");
+  it("should arm auto-topup at billing's default reload, never a fixed amount of its own", () => {
+    // A prepaid org binds what it stores: a fixed $50 here armed a $50 reload
+    // (RELOAD-RULE-ONE-HOME-1118). billing's reload rules carry the default.
+    expect(content).toContain("armAutoTopupAtReloadRules()");
+    expect(content).not.toContain("AUTO_TOPUP_ENABLE_AMOUNT_CENTS");
   });
 
   it("should redirect to Stripe checkout via createCheckoutSession", () => {
@@ -368,15 +371,17 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("When balance below ($)");
   });
 
-  it("should validate minimum top-up amount ($10) and threshold ($5)", () => {
-    expect(content).toContain("Minimum top-up amount is $10.");
-    expect(content).toContain("Minimum threshold is $5.");
+  it("should validate the top-up amount and threshold against billing's reload rules", () => {
+    expect(content).toContain("getReloadRules()");
+    expect(content).toContain("Minimum top-up amount is $${rules.reloadMinUsd}.");
+    expect(content).toContain("Minimum threshold is $${rules.thresholdMinUsd}.");
+    expect(content).not.toContain(": 500;");
   });
 
   it("should support custom top-up amount input", () => {
     expect(content).toContain("customAmount");
     expect(content).toContain("Custom amount ($)");
-    expect(content).toContain("Minimum top-up is $10.");
+    expect(content).toContain("Minimum top-up is $${rules.firstTopupMinUsd}.");
   });
 
   it("should support proactive mode with an inspiring, sell-forward title and description", () => {

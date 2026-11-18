@@ -8,6 +8,7 @@ import {
   createEmbeddedCheckoutSession,
   configureAutoTopup,
   getBillingAccount,
+  getReloadRules,
   payBalance,
   type BillingAccount,
 } from "@/lib/api";
@@ -16,6 +17,7 @@ import { getStripe } from "@/lib/stripe";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { paymentModeOf } from "@/lib/payment-mode";
+import { reloadRulesUsd, type ReloadRulesUsd } from "@/lib/v2/get-started";
 
 // API responses now ship cents as decimal strings (billing-service v2). FE-computed
 // budgets are still integer cents — accept both shapes everywhere they cross.
@@ -49,6 +51,12 @@ export interface PaymentRequiredInfo {
    *  brand's daily budget (amount ÷ dailyBudget). Omitted (org-level callers
    *  with no single brand) → amounts render without a day-equivalent. */
   brandDailyBudgetCents?: number | null;
+}
+
+/** The typed reload threshold in cents, else billing's default; undefined = billing decides. */
+function thresholdCentsOf(typed: string, rules: ReloadRulesUsd | null): number | undefined {
+  if (typed) return Math.round(parseFloat(typed) * 100);
+  return rules ? rules.defaultThresholdUsd * 100 : undefined;
 }
 
 function toCentsNumber(v: string | number): number {
@@ -95,7 +103,11 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   // Auto-topup state
   const [enableAutoTopup, setEnableAutoTopup] = useState(true);
   const [topupAmount, setTopupAmount] = useState("25");
-  const [topupThreshold, setTopupThreshold] = useState("5");
+  // Empty until billing's reload rules answer: the default threshold is billing's.
+  const [topupThreshold, setTopupThreshold] = useState("");
+  // billing's reload rules for this org (RELOAD-RULE-ONE-HOME-1118): every minimum and default
+  // below is read from here, none is held in this file. null while reading or unreadable.
+  const [rules, setRules] = useState<ReloadRulesUsd | null>(null);
   const [topupAmountError, setTopupAmountError] = useState<string | null>(null);
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [account, setAccount] = useState<BillingAccount | null>(null);
@@ -105,10 +117,10 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
   function handleThresholdBlur() {
     if (!topupThreshold) {
-      setTopupThreshold("5");
+      if (rules) setTopupThreshold(String(rules.defaultThresholdUsd));
       setThresholdError(null);
-    } else if (parseFloat(topupThreshold) < 5) {
-      setThresholdError("Minimum threshold is $5.");
+    } else if (rules && parseFloat(topupThreshold) < rules.thresholdMinUsd) {
+      setThresholdError(`Minimum threshold is $${rules.thresholdMinUsd}.`);
     } else {
       setThresholdError(null);
     }
@@ -119,16 +131,16 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       const defaultTopup = customAmount ? customAmount : (selectedAmount / 100).toString();
       setTopupAmount(defaultTopup);
       setTopupAmountError(null);
-    } else if (parseFloat(topupAmount) < 10) {
-      setTopupAmountError("Minimum top-up amount is $10.");
+    } else if (rules && parseFloat(topupAmount) < rules.reloadMinUsd) {
+      setTopupAmountError(`Minimum top-up amount is $${rules.reloadMinUsd}.`);
     } else {
       setTopupAmountError(null);
     }
   }
 
   function handleCustomAmountBlur() {
-    if (customAmount && parseFloat(customAmount) < 10) {
-      setCustomAmountError("Minimum top-up is $10.");
+    if (customAmount && rules && parseFloat(customAmount) < rules.firstTopupMinUsd) {
+      setCustomAmountError(`Minimum top-up is $${rules.firstTopupMinUsd}.`);
     } else {
       setCustomAmountError(null);
     }
@@ -169,12 +181,23 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setTopupAmountError(null);
     setThresholdError(null);
     setEnableAutoTopup(true);
-    setTopupThreshold("5");
+    setTopupThreshold("");
     setCheckoutError(null);
     setCheckoutLoading(false);
     setSavingAutoTopup(false);
     setEmbeddedSecret(null);
     setVisible(true);
+
+    // billing's reload rules: the minimums checked here and the default threshold. An
+    // existing config (below) wins over the default.
+    let configured = false;
+    getReloadRules()
+      .then((r) => {
+        const u = reloadRulesUsd(r);
+        setRules(u);
+        if (!configured) setTopupThreshold((t) => t || String(u.defaultThresholdUsd));
+      })
+      .catch((err) => console.error("[billing-guard] reload rules read failed:", err));
 
     // Fetch latest account info to pre-fill auto-topup from existing config
     getBillingAccount().then((acct) => {
@@ -183,7 +206,10 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       if (acct.payment_mode !== "postpaid" && acct.has_auto_topup) {
         setEnableAutoTopup(true);
         if (acct.topup_amount_cents !== null) setTopupAmount((acct.topup_amount_cents / 100).toString());
-        if (acct.topup_threshold_cents !== null) setTopupThreshold((acct.topup_threshold_cents / 100).toString());
+        if (acct.topup_threshold_cents !== null) {
+          configured = true;
+          setTopupThreshold((acct.topup_threshold_cents / 100).toString());
+        }
       }
     }).catch(() => {});
   }, []);
@@ -260,7 +286,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     try {
       if (enableAutoTopup && topupAmount && acct?.has_payment_method && !autoTopupBlocked) {
         const topupCents = Math.round(parseFloat(topupAmount) * 100);
-        const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+        const thresholdCents = thresholdCentsOf(topupThreshold, rules);
         await configureAutoTopup(topupCents, thresholdCents);
       }
     } catch (err) {
@@ -281,7 +307,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setCheckoutError(null);
     try {
       const topupCents = Math.round(parseFloat(topupAmount) * 100);
-      const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+      const thresholdCents = thresholdCentsOf(topupThreshold, rules);
       await configureAutoTopup(topupCents, thresholdCents);
       setVisible(false);
       window.dispatchEvent(new CustomEvent("billing:resolved"));

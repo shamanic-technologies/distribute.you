@@ -96,18 +96,22 @@ export async function startAnonSession(
 
 /**
  * The free-credit offer of the org this browser's walk built (billing's
- * `free_credit_offer`, through `/api/anon/offer`), or null when it could not be read.
- * The wall promises a match only when this says the org has one.
+ * `free_credit_offer`, through `/api/anon/offer`), with billing's first top-up minimum
+ * for it in cents (null when billing's reload rules could not be read), or null when the
+ * offer could not be read. The wall promises a match only when this says the org has one.
  */
-export async function readWalkOffer(): Promise<string | null> {
+export async function readWalkOffer(): Promise<{ offer: string; firstTopupMinimumCents: number | null } | null> {
   try {
     const res = await fetch("/api/anon/offer", { credentials: "same-origin" });
-    const body = (await res.json().catch(() => null)) as { freeCreditOffer?: unknown } | null;
+    const body = (await res.json().catch(() => null)) as
+      | { freeCreditOffer?: unknown; reloadRules?: { first_topup_minimum_cents?: unknown } | null }
+      | null;
     if (!res.ok || typeof body?.freeCreditOffer !== "string") {
       console.error("[get-started] walk offer read failed:", res.status, body);
       return null;
     }
-    return body.freeCreditOffer;
+    const min = body.reloadRules?.first_topup_minimum_cents;
+    return { offer: body.freeCreditOffer, firstTopupMinimumCents: typeof min === "number" ? min : null };
   } catch (e) {
     console.error("[get-started] walk offer read failed:", e);
     return null;

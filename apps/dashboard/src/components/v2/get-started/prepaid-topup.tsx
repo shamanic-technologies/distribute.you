@@ -2,24 +2,27 @@
 
 /**
  * The credit a new org adds before its campaigns start (owner 2026-10-06): prepaid, no
- * free trial. A first amount picked from the choices or typed (at least $100). The
- * automatic reload is REQUIRED (owner 2026-10-11): when the credit falls under
- * `DEFAULT_RELOAD_THRESHOLD_USD`, the same amount is added again; there is no switch, here
+ * free trial. A first amount picked from the choices or typed (at least billing's first
+ * top-up minimum). The automatic reload is REQUIRED (owner 2026-10-11): when the credit
+ * falls under billing's default threshold, the same amount is added again; there is no switch, here
  * or in Billing (a customer who wants to stop removes their card or stops their campaigns).
+ * Every minimum and default is billing's reload rules (`getReloadRules`,
+ * RELOAD-RULE-ONE-HOME-1118), read here before the step shows: no number lives in this file.
  * The statements of `spendConsentLines` are ticked before the button turns on. The
  * wall and the dashboard walk's launch both draw it; the charge itself is theirs (`payTopup`).
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getReloadRules } from "@/lib/api";
 import {
-  AT_COST_DEFAULT_RELOAD_USD,
-  AT_COST_DEFAULT_THRESHOLD_USD,
   AT_COST_TOPUP_CHOICES_USD,
-  DEFAULT_RELOAD_THRESHOLD_USD,
   TOPUP_CHOICES_USD,
   atCostCheckout,
   parseTopupUsd,
+  reloadRulesUsd,
+  type ReloadRulesUsd,
 } from "@/lib/v2/get-started";
+import { Shimmer } from "../ui";
 import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
 import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/lib/v2/spend-consent";
 import { SpendConsent, allTicked } from "./spend-consent";
@@ -102,8 +105,8 @@ function AmountPicker({
 }
 
 /** The picked amount, or the reason the typed one cannot be used. */
-function amountOf(value: number | typeof OTHER, other: string): { usd: number } | { problem: string } {
-  return value === OTHER ? parseTopupUsd(other) : { usd: value };
+function amountOf(value: number | typeof OTHER, other: string, minUsd: number): { usd: number } | { problem: string } {
+  return value === OTHER ? parseTopupUsd(other, minUsd) : { usd: value };
 }
 
 /** One whole-dollar field of the at-cost checkout, with its own problem under it. */
@@ -140,32 +143,34 @@ function DollarField({
 }
 
 /**
- * The at-cost checkout (owner 2026-10-29, every org created since): the first top-up
- * (at least $10), then the automatic reload, OPTIONAL and ticked by default: under $X
- * (at least $5), add $Y (at least $X + $10). One step, one payment. No match, nothing free.
+ * The at-cost checkout (owner 2026-10-29, every org created since): the first top-up,
+ * then the automatic reload, OPTIONAL and ticked by default: under $X, add $Y. Each
+ * minimum and default is billing's (`rules`). One step, one payment. No match, nothing free.
  */
 function AtCostTopup({
   busy,
   disabled,
   monthlyLimit,
+  rules,
   cta,
   onPay,
 }: {
   busy: boolean;
   disabled: boolean;
   monthlyLimit?: string | null;
+  rules: ReloadRulesUsd;
   cta: (usd: number) => string;
   onPay: (choice: TopupChoice) => void;
 }) {
   const [first, setFirst] = useState<number | typeof OTHER>(AT_COST_TOPUP_CHOICES_USD[0]);
   const [firstOther, setFirstOther] = useState("");
-  const [threshold, setThreshold] = useState(String(AT_COST_DEFAULT_THRESHOLD_USD));
-  const [reload, setReload] = useState(String(AT_COST_DEFAULT_RELOAD_USD));
+  const [threshold, setThreshold] = useState(String(rules.defaultThresholdUsd));
+  const [reload, setReload] = useState(String(rules.defaultReloadUsd));
   const [reloadOn, setReloadOn] = useState(true);
   const [ticked, setTicked] = useState([false, false]);
   const [shown, setShown] = useState(false);
 
-  const checked = atCostCheckout({ topup: first === OTHER ? firstOther : String(first), threshold, reload, reloadOn });
+  const checked = atCostCheckout({ topup: first === OTHER ? firstOther : String(first), threshold, reload, reloadOn }, rules);
   const off = busy || disabled;
   const topupUsd = checked.values?.topupUsd ?? AT_COST_TOPUP_CHOICES_USD[0];
   const limit = monthlyLimit === undefined ? null : monthlyLimitToSave(monthlyLimit, { kind: "prepaid", topupUsd });
@@ -175,8 +180,8 @@ function AtCostTopup({
       topupUsd,
       reload: reloadOn
         ? {
-            thresholdUsd: checked.values?.thresholdUsd ?? AT_COST_DEFAULT_THRESHOLD_USD,
-            amountUsd: checked.values?.reloadUsd ?? AT_COST_DEFAULT_RELOAD_USD,
+            thresholdUsd: checked.values?.thresholdUsd ?? rules.defaultThresholdUsd,
+            amountUsd: checked.values?.reloadUsd ?? rules.defaultReloadUsd,
           }
         : null,
       ...(limit && "usd" in limit ? { limitUsd: limit.usd } : {}),
@@ -248,11 +253,14 @@ function MatchTopup({
   disabled = false,
   matchNote,
   monthlyLimit,
+  rules,
   cta,
   onPay,
 }: {
   busy: boolean;
   disabled?: boolean;
+  /** billing's reload rules for this org: the first top-up minimum and the reload threshold. */
+  rules: ReloadRulesUsd;
 
   /** The monthly limit typed at the campaign step (null while untouched); absent where none is set. */
   monthlyLimit?: string | null;
@@ -267,7 +275,7 @@ function MatchTopup({
   const [ticked, setTicked] = useState([false, false]);
   const [shown, setShown] = useState(false);
 
-  const firstParsed = amountOf(first, firstOther);
+  const firstParsed = amountOf(first, firstOther, rules.firstTopupMinUsd);
   const problem = shown && "problem" in firstParsed ? firstParsed.problem : null;
   const off = busy || disabled;
   // Until a valid amount is typed, the statement names the smallest one we take.
@@ -283,7 +291,7 @@ function MatchTopup({
     if ("problem" in firstParsed || !allTicked(ticked)) return;
     onPay({
       topupUsd: firstParsed.usd,
-      reload: { thresholdUsd: DEFAULT_RELOAD_THRESHOLD_USD, amountUsd: firstParsed.usd },
+      reload: { thresholdUsd: rules.defaultThresholdUsd, amountUsd: firstParsed.usd },
       consent: consentRecord(lines, new Date(), navigator.userAgent),
     });
   }
@@ -316,6 +324,30 @@ function MatchTopup({
 }
 
 /**
+ * billing's reload rules for the open org, read once when the credit step shows. null
+ * while reading; `failed` when billing could not be asked (the step then says so: it
+ * never falls back on a number of its own).
+ */
+function useReloadRules(): { rules: ReloadRulesUsd | null; failed: boolean } {
+  const [state, setState] = useState<{ rules: ReloadRulesUsd | null; failed: boolean }>({ rules: null, failed: false });
+  useEffect(() => {
+    let live = true;
+    getReloadRules()
+      .then((r) => {
+        if (live) setState({ rules: reloadRulesUsd(r), failed: false });
+      })
+      .catch((e) => {
+        console.error("[get-started] reload rules read failed:", e);
+        if (live) setState({ rules: null, failed: true });
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  return state;
+}
+
+/**
  * The wall's and the dashboard walk's credit step: the at-cost checkout for an org
  * billing serves `prepaid_at_cost`, else the older offer's (match, unchanged).
  */
@@ -330,8 +362,21 @@ export function PrepaidTopup(props: {
   onPay: (choice: TopupChoice) => void;
 }) {
   const { atCost = false, ...rest } = props;
-  if (atCost) {
-    return <AtCostTopup busy={rest.busy} disabled={rest.disabled ?? false} monthlyLimit={rest.monthlyLimit} cta={rest.cta} onPay={rest.onPay} />;
+  const { rules, failed } = useReloadRules();
+  if (failed) {
+    return <p className="text-[12.5px] text-[var(--data-rose)]">We could not load the credit amounts. Reload the page to try again.</p>;
   }
-  return <MatchTopup {...rest} />;
+  if (!rules) {
+    return (
+      <div className="grid gap-3" aria-busy="true">
+        <Shimmer className="h-7 w-full" />
+        <Shimmer className="h-7 w-2/3" />
+        <Shimmer className="h-12 w-full" />
+      </div>
+    );
+  }
+  if (atCost) {
+    return <AtCostTopup busy={rest.busy} disabled={rest.disabled ?? false} monthlyLimit={rest.monthlyLimit} rules={rules} cta={rest.cta} onPay={rest.onPay} />;
+  }
+  return <MatchTopup {...rest} rules={rules} />;
 }
