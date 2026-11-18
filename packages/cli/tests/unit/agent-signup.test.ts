@@ -33,6 +33,8 @@ beforeEach(() => {
       calls.push({ url, init });
       if (url.endsWith("/v1/agent-signups/start")) return json(200, { email: "a@x.com", codeTtlMinutes: 15 });
       if (url.endsWith("/v1/agent-signups/complete")) return json(200, { apiKey: "distrib.usr_new", orgId: "o1", created: true });
+      if (url.endsWith("/v1/billing/accounts/prepaid_checkout") && JSON.parse(String(init.body)).topup_amount_cents < 777)
+        return json(400, { error: "Top-up below the minimum.", code: "topup_below_minimum", minimum_cents: 777 });
       if (url.endsWith("/v1/billing/accounts/prepaid_checkout")) return json(200, { url: "https://pay.example/s1" });
       if (url.endsWith("/v1/billing/accounts/prepaid_status")) return json(200, { state: "awaiting_payment" });
       if (url.endsWith("/v1/campaigns")) return json(402, { error: "payment_required", prepay: { path: "/v1/billing/accounts/prepaid_checkout" } });
@@ -66,17 +68,35 @@ describe("signup, no key needed", () => {
 });
 
 describe("prepay", () => {
-  it("turns dollars into cents and sends the stored key", async () => {
+  it("turns dollars into cents and sends the stored key, no threshold", async () => {
     env.DISTRIBUTE_API_KEY = "distrib.usr_k";
-    expect(await runCli(["prepay", "--amount", "10", "--reload", "15", "--below", "5"])).toBe(EXIT.ok);
-    expect(sentBody(0)).toEqual({ topup_amount_cents: 1000, auto_topup_amount_cents: 1500, auto_topup_threshold_cents: 500 });
+    expect(await runCli(["prepay", "--amount", "12", "--reload", "20"])).toBe(EXIT.ok);
+    expect(sentBody(0)).toEqual({ topup_amount_cents: 1200, auto_topup_amount_cents: 2000 });
     expect(sentAuth(0)).toBe("Bearer distrib.usr_k");
     expect(lastJson(out).url).toBe("https://pay.example/s1");
   });
 
-  it("needs all three amounts", async () => {
+  it("leaves the reload amount to billing when --reload is absent", async () => {
     env.DISTRIBUTE_API_KEY = "distrib.usr_k";
-    expect(await runCli(["prepay", "--amount", "10"])).toBe(EXIT.usage);
+    expect(await runCli(["prepay", "--amount", "12"])).toBe(EXIT.ok);
+    expect(sentBody(0)).toEqual({ topup_amount_cents: 1200 });
+  });
+
+  it("never sends a threshold, even when --below is passed", async () => {
+    env.DISTRIBUTE_API_KEY = "distrib.usr_k";
+    expect(await runCli(["prepay", "--amount", "12", "--below", "3"])).toBe(EXIT.ok);
+    expect(sentBody(0)).not.toHaveProperty("auto_topup_threshold_cents");
+  });
+
+  it("prints billing's minimum refusal as-is", async () => {
+    env.DISTRIBUTE_API_KEY = "distrib.usr_k";
+    expect(await runCli(["prepay", "--amount", "1"])).toBe(EXIT.api);
+    expect(lastJson(err).error.details).toEqual({ error: "Top-up below the minimum.", code: "topup_below_minimum", minimum_cents: 777 });
+  });
+
+  it("needs an amount", async () => {
+    env.DISTRIBUTE_API_KEY = "distrib.usr_k";
+    expect(await runCli(["prepay"])).toBe(EXIT.usage);
     expect(calls).toHaveLength(0);
   });
 

@@ -41,11 +41,13 @@ Free calls work right away. Every paid call is paid upfront, with automatic top-
 the work never stops:
 
 ```bash
-distribute prepay --amount 10 --reload 15 --below 5   # dollars: min $10, reload min $15, under $5 or more
+distribute prepay --amount <dollars> [--reload <dollars>]   # each at least the minimum billing states
 distribute prepay status
 ```
 
-`prepay` returns a payment `url`: open it, or give it to your human. Until it is paid, a paid call
+The reload amount is charged to the saved card each time the balance runs out; leave out
+`--reload` and billing applies its default. An amount below a minimum is refused with billing's
+own error (`code`, `minimum_cents`), printed as-is. `prepay` returns a payment `url`: open it, or give it to your human. Until it is paid, a paid call
 exits `8` with `payment_required` and the same instructions. No free credit, no trial.
 
 ## Authenticating

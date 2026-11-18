@@ -74,7 +74,7 @@ export async function request(options: RequestOptions, fetcher: Fetcher = fetch)
   if (response.status === 402) {
     throw new CliError({
       code: "payment_required",
-      message: `${options.method} ${options.path} costs money and the balance is empty. Run \`distribute prepay --amount 10 --reload 15 --below 5\`, pay the url it returns, then retry.`,
+      message: `${options.method} ${options.path} costs money and the balance is empty. Run \`distribute prepay --amount <dollars>\`, pay the url it returns, then retry.`,
       exitCode: EXIT.paymentRequired,
       details: body,
     });
@@ -112,4 +112,4 @@ export function userAgent(): string {
 }
 
 /** Kept in step with package.json by tests/unit/version.test.ts. */
-export const VERSION = "0.2.0";
+export const VERSION = "0.3.0";
