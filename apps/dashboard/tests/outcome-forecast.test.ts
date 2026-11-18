@@ -45,6 +45,12 @@ describe("campaign forecast (features-service OUTCOME-FORECAST-1117)", () => {
     expect(delayWords(46)).toBe("about 2 days");
     expect(delayWords(1800)).toBe("about 3 months");
     expect(forecastUnavailableWords("campaign_states_no_target")).toContain("no Target yet");
+    // Every reason features-service serves has its own words: none falls to a line that says nothing.
+    expect(forecastUnavailableWords("cost_unmeasured_and_plan_prices_no_target")).toContain("price its Target");
+    expect(forecastUnavailableWords("target_ledger_unreadable")).toContain("Retrying");
+    for (const r of ["target_outcome_not_declared_in_ledger", "target_no_producer_declares_outcome", "target_not_counted_in_ledger"]) expect(forecastUnavailableWords(r)).toContain("Target can be counted");
+    expect(forecastUnavailableWords("yield_unmeasured:lead_found->message_sent")).toContain("enough results");
+    expect(forecastUnavailableWords("no_unit_reaches_a_step")).toContain("first results");
   });
 
   it("reads net pricing through the gateway and computes nothing in the browser", () => {
