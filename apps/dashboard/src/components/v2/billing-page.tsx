@@ -2,7 +2,7 @@
 
 import { offersNoFreeMoney } from "@/lib/v2/get-started";
 import { useState } from "react";
-import { armAutoTopupAtReloadRules, disableAutoTopup, getFreeCreditPromises, getOrgUsage } from "@/lib/api";
+import { armAutoTopupAtReloadRules, configureAutoTopup, disableAutoTopup, getFreeCreditPromises, getOrgUsage } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollIntervalFor } from "@/lib/query-options";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
