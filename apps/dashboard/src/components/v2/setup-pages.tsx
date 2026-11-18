@@ -128,10 +128,16 @@ export function V2Page({
  */
 export function V2OffersPage() {
   const { orgId, brandId } = useIds();
+  const router = useRouter();
   const q = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
   const [creating, setCreating] = useState(false);
   const offers = q.data?.offers ?? null;
   const settled = q.data !== undefined || q.isError;
+  // One offer: no choice to make, the list opens that offer's page (owner 2026-11-18).
+  const sole = offers?.length === 1 ? offers[0].offerId : null;
+  useEffect(() => {
+    if (sole) router.replace(v2OfferHref(orgId, brandId, sole));
+  }, [sole, orgId, brandId, router]);
   return (
     <V2Page
       crumbs={[{ label: "Offers" }]}
@@ -144,7 +150,7 @@ export function V2OffersPage() {
       }
       width="max-w-[1280px]"
     >
-      {!settled ? (
+      {!settled || sole ? (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Shimmer className="h-28 w-full" />
           <Shimmer className="h-28 w-full" />
@@ -256,12 +262,24 @@ function offerTabs(orgId: string, brandId: string, offerId: string, active: "ove
 export function V2OfferPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
+  // A brand selling one offer never sees the Offers list (it opens this page), so New offer
+  // lives here and the crumb does not link back to a list that would bounce to this page.
+  const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
+  const isSole = offersQ.data?.offers.length === 1 && offersQ.data.offers[0].offerId === offerId;
+  const [creating, setCreating] = useState(false);
   if (!offerId) return null;
   return (
     <V2Page
-      crumbs={[{ label: "Offers", href: v2Href(orgId, brandId, "offers") }, { label: name ?? " " }]}
+      crumbs={[isSole ? { label: "Offers" } : { label: "Offers", href: v2Href(orgId, brandId, "offers") }, { label: name ?? " " }]}
       title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
       tabs={offerTabs(orgId, brandId, offerId, "overview")}
+      actions={
+        isSole ? (
+          <button type="button" className="k-btn-accent" onClick={() => setCreating(true)}>
+            New offer
+          </button>
+        ) : undefined
+      }
     >
       <OfferPlanBanner brandId={brandId} offerId={offerId} />
       <div className="space-y-8">
@@ -271,6 +289,7 @@ export function V2OfferPage() {
         <OfferDocuments brandId={brandId} offerId={offerId} />
         <OfferArchiveCard brandId={brandId} offerId={offerId} />
       </div>
+      {creating && <V2NewOfferModal brandId={brandId} orgId={orgId} onClose={() => setCreating(false)} />}
     </V2Page>
   );
 }
