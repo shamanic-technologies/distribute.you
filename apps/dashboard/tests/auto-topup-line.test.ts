@@ -35,9 +35,12 @@ describe("parseReloadAmountCents", () => {
     expect(parseReloadAmountCents(" $25 ")).toBe(2500);
     expect(parseReloadAmountCents("1,000")).toBe(100000);
   });
-  it("refuses cents, zero, negatives and words (the minimum is billing's)", () => {
+  it("takes $0: it turns auto top-up off (owner 2026-11-18)", () => {
+    expect(parseReloadAmountCents("0")).toBe(0);
+    expect(parseReloadAmountCents("$0")).toBe(0);
+  });
+  it("refuses cents, negatives and words (the minimum is billing's)", () => {
     expect(parseReloadAmountCents("10.50")).toBeNull();
-    expect(parseReloadAmountCents("0")).toBeNull();
     expect(parseReloadAmountCents("-5")).toBeNull();
     expect(parseReloadAmountCents("ten")).toBeNull();
   });
@@ -57,8 +60,8 @@ describe("Billing page auto top-up card", () => {
     expect(src).toContain("<ReloadAmount amountCents={amountCents} onSave={onSave} />");
   });
 
-  it("saves the amount with the served threshold, never a typed one", () => {
-    expect(src).toContain("configureAutoTopup(cents, account?.topup_threshold_cents ?? undefined)");
+  it("saves the amount alone (billing holds the $0 threshold)", () => {
+    expect(src).toContain("else await configureAutoTopup(cents);");
   });
 
   it("states billing's own minimum on a refusal", () => {

@@ -7,8 +7,9 @@ import { parseReloadAmountCents, usd } from "@/lib/v2/auto-topup-line";
 /**
  * The auto top-up AMOUNT, as text that turns into its field on click (v2 inline edit:
  * blur or Enter saves, Esc drops it, the typed value shows while saving). Owner
- * 2026-11-18: the amount is the client's to change, the $0 threshold is not. The
- * minimum is billing's own: a refusal names it (`minimum_cents`), printed as is.
+ * 2026-11-18: the amount is the client's to change, the $0 threshold is not, and $0
+ * turns auto top-up off. The minimum is billing's own: a refusal names it
+ * (`minimum_cents`), printed as is.
  */
 export function ReloadAmount({
   amountCents,
@@ -38,8 +39,15 @@ export function ReloadAmount({
     } catch (err) {
       console.error("[billing v2] reload amount save failed", { cents, err });
       const min = err instanceof ApiError ? err.body?.minimum_cents : undefined;
+      const required = err instanceof ApiError && err.status === 409 && err.body?.code === "auto_topup_required";
       setText(String(cents / 100));
-      setError(typeof min === "number" ? `At least ${usd(min)}.` : "Not saved. Try again.");
+      setError(
+        required
+          ? "Auto top-up stays on for this account."
+          : typeof min === "number"
+            ? `$0 or at least ${usd(min)}.`
+            : "Not saved. Try again.",
+      );
     } finally {
       setPending(null);
     }
@@ -72,7 +80,7 @@ export function ReloadAmount({
       ) : (
         <button
           type="button"
-          title="Change the amount"
+          title="Change the amount. $0 turns auto top-up off."
           onClick={() => setText(String(shown / 100))}
           className="k-hover k-fg rounded-[6px] px-1 font-medium tabular-nums underline decoration-dotted underline-offset-2"
         >

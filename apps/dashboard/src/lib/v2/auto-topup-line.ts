@@ -35,13 +35,13 @@ export function autoTopupLine(thresholdCents: number | null | undefined, amountC
 
 /**
  * A reload amount typed by the client: whole dollars ("10", "$25", "1,000") to cents.
- * The minimum is billing's (it refuses less with `minimum_cents`), never a copy here.
+ * 0 is accepted: it turns auto top-up off (owner 2026-11-18). Any other minimum is
+ * billing's (it refuses less with `minimum_cents`), never a copy here.
  */
 export function parseReloadAmountCents(text: string): number | null {
   const cleaned = text.replace(/[$,\s]/g, "");
   if (!/^\d+$/.test(cleaned)) return null;
-  const dollars = Number(cleaned);
-  return dollars > 0 ? dollars * 100 : null;
+  return Number(cleaned) * 100;
 }
 
 /** Whole dollars when the figure is whole ($5), cents otherwise ($2.50). */
