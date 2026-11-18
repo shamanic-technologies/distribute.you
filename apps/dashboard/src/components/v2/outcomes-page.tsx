@@ -597,10 +597,15 @@ function OutcomeRoiCell({ answered, mix }: { answered: boolean; mix: OfferMix | 
   );
 }
 
-/** What it is worth: the traced value of our Target outcomes (beside $ Spent), else what one is worth. */
+/**
+ * What it is worth: the traced value of our Target outcomes (beside $ Spent), else what one is worth. A served
+ * total of 0 (no Target outcome yet) reads as what one is worth, like the rows with no total: a "$0.00" beside
+ * the row's expected ROI read as a broken figure (owner 2026-11-18, Paid clients at $50,000 each).
+ */
 function OutcomeValueCell({ answered, mix }: { answered: boolean; mix: OfferMix | null }) {
   if (!answered) return <Shimmer className="ml-auto h-4 w-12" />;
-  const total = mix?.measuredReturn.valueUsd ?? null;
+  const served = mix?.measuredReturn.valueUsd ?? null;
+  const total = served === 0 ? null : served;
   const each = mix?.valuePerOutcomeUsd ?? null;
   if (total == null && each == null) return <span className="k-fg4">—</span>;
   return (
