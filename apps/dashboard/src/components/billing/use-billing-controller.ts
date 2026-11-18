@@ -53,14 +53,6 @@ function lastDayOfMonthLabel(): string {
   return last.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
-// Fixed values sent to configureAutoTopup ONLY to set the "auto-topup enabled"
-// flag (both columns non-null ⇒ enabled). The effective reload amount + credit-
-// line floor are DERIVED server-side from a tier ladder (billing-service
-// topup-tier), so these numbers are never used for the charge math — they only
-// arm the flag. See "Threshold-based postpaid top-up" in billing-service.
-export const AUTO_TOPUP_ENABLE_AMOUNT_CENTS = 5000;
-export const AUTO_TOPUP_ENABLE_THRESHOLD_CENTS = 500;
-
 export function useBillingController() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -72,7 +64,6 @@ export function useBillingController() {
 
   const showSuccess = searchParams.get("success") === "true";
   const pendingTopup = searchParams.get("pending_topup");
-  const pendingThreshold = searchParams.get("pending_threshold");
 
   // Data fetching
   // Gate the page on isPending (not isLoading): during Clerk org-settle useAuthQuery
@@ -192,9 +183,25 @@ export function useBillingController() {
   // Inline validation error (shown on blur) for the one-off custom amount
   const [customAmountError, setCustomAmountError] = useState<string | null>(null);
 
+  // billing's first top-up minimum for this org (its reload rules, RELOAD-RULE-ONE-HOME-1118):
+  // no number lives here. null while reading or unreadable (billing still refuses below it).
+  const [firstTopupMinUsd, setFirstTopupMinUsd] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    import("@/lib/api")
+      .then(({ getReloadRules }) => getReloadRules())
+      .then((r) => {
+        if (live) setFirstTopupMinUsd(Math.ceil(r.first_topup_minimum_cents / 100));
+      })
+      .catch((err) => console.error("[billing] reload rules read failed:", err));
+    return () => {
+      live = false;
+    };
+  }, []);
+
   function handleCustomAmountBlur() {
-    if (customAmount && parseFloat(customAmount) < 10) {
-      setCustomAmountError("Minimum top-up is $10.");
+    if (customAmount && firstTopupMinUsd !== null && parseFloat(customAmount) < firstTopupMinUsd) {
+      setCustomAmountError(`Minimum top-up is $${firstTopupMinUsd}.`);
     } else {
       setCustomAmountError(null);
     }
@@ -288,14 +295,11 @@ export function useBillingController() {
   }, [autoReloadSupported]);
 
   // After successful Stripe checkout, arm auto-topup if it was requested pre-checkout
-  // (no card yet). The pending values only set the enabled flag; the reload amount +
-  // floor are derived server-side.
+  // (no card yet), at billing's default reload for the org (its reload rules).
   useEffect(() => {
     if (showSuccess && pendingTopup) {
-      const topupCents = parseInt(pendingTopup, 10);
-      const thresholdCents = pendingThreshold ? parseInt(pendingThreshold, 10) : 500;
-      import("@/lib/api").then(({ configureAutoTopup }) =>
-        configureAutoTopup(topupCents, thresholdCents)
+      import("@/lib/api").then(({ armAutoTopupAtReloadRules }) =>
+        armAutoTopupAtReloadRules()
       ).then(() => {
         queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
       }).catch(() => {});
@@ -306,7 +310,7 @@ export function useBillingController() {
       window.history.replaceState({}, "", url.toString());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSuccess, pendingTopup, pendingThreshold]);
+  }, [showSuccess, pendingTopup]);
 
   // When the user selects a one-off top-up amount
   function handleSelectTopup(amount: number) {
@@ -542,8 +546,8 @@ export function useBillingController() {
       // Otherwise, pass the enabled flag via URL params to arm after checkout.
       if (account?.has_payment_method) {
         if (enableAutoTopup) {
-          const { configureAutoTopup } = await import("@/lib/api");
-          await configureAutoTopup(AUTO_TOPUP_ENABLE_AMOUNT_CENTS, AUTO_TOPUP_ENABLE_THRESHOLD_CENTS);
+          const { armAutoTopupAtReloadRules } = await import("@/lib/api");
+          await armAutoTopupAtReloadRules();
         } else if (!enableAutoTopup && hasAutoTopup) {
           const { disableAutoTopup } = await import("@/lib/api");
           await disableAutoTopup();
@@ -558,8 +562,8 @@ export function useBillingController() {
       // payment succeeded; AdsPurchaseTracker reads paid_amount on return.
       successUrl.searchParams.set("paid_amount", String(amountCents));
       if (enableAutoTopup && !account?.has_payment_method) {
-        successUrl.searchParams.set("pending_topup", String(AUTO_TOPUP_ENABLE_AMOUNT_CENTS));
-        successUrl.searchParams.set("pending_threshold", String(AUTO_TOPUP_ENABLE_THRESHOLD_CENTS));
+        // The reload's figures are billing's default, read again on the way back.
+        successUrl.searchParams.set("pending_topup", "default");
       }
 
       // Revolut saves the card ONLY when the payment is taken in its in-page card

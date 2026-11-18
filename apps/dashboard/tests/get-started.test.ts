@@ -18,7 +18,6 @@ import {
   matchNote,
   wallCopy,
   parseGetStartedSnapshot,
-  parseReloadThresholdUsd,
   parseTopupUsd,
   stageDwellMs,
   stageMove,
@@ -64,12 +63,11 @@ describe("the rules the page decides on", () => {
     expect(hostOf("")).toBeNull();
   });
 
-  it("adds credit from $100 and reloads under $5 at the lowest (owner 2026-10-06)", () => {
-    expect(parseTopupUsd("99")).toEqual({ problem: "At least $100." });
-    expect(parseTopupUsd("$1,000")).toEqual({ usd: 1000 });
-    expect(parseTopupUsd("100.5")).toEqual({ problem: "Whole dollars." });
-    expect(parseReloadThresholdUsd("4")).toEqual({ problem: "At least $5." });
-    expect(parseReloadThresholdUsd("5")).toEqual({ usd: 5 });
+  it("adds credit from billing's first top-up minimum (RELOAD-RULE-ONE-HOME-1118)", () => {
+    expect(parseTopupUsd("99", 100)).toEqual({ problem: "At least $100." });
+    expect(parseTopupUsd("$1,000", 100)).toEqual({ usd: 1000 });
+    expect(parseTopupUsd("100.5", 100)).toEqual({ problem: "Whole dollars." });
+    expect(parseTopupUsd("10", 10)).toEqual({ usd: 10 });
   });
 
   it("states the match with no end date, and never calls the $30 advance free (owner 2026-10-06)", () => {

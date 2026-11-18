@@ -2740,6 +2740,35 @@ export async function listOrgRuns(
   );
 }
 
+/**
+ * The org's prepaid reload rules (billing-service `GET /v1/accounts/reload_rules`,
+ * RELOAD-RULE-ONE-HOME-1118): first top-up minimum, reload amount + threshold minimums,
+ * and the default reload. billing is their ONE home: no page holds a copy.
+ */
+export interface ReloadRules {
+  first_topup_minimum_cents: number;
+  reload_amount_minimum_cents: number;
+  reload_threshold_minimum_cents: number;
+  default_reload_amount_cents: number;
+  default_reload_threshold_cents: number;
+}
+
+export async function getReloadRules(token?: string): Promise<ReloadRules> {
+  const r = await apiCall<Partial<ReloadRules>>("/billing/accounts/reload_rules", { token });
+  const keys = [
+    "first_topup_minimum_cents",
+    "reload_amount_minimum_cents",
+    "reload_threshold_minimum_cents",
+    "default_reload_amount_cents",
+    "default_reload_threshold_cents",
+  ] as const;
+  if (!r || keys.some((k) => typeof r[k] !== "number")) {
+    console.error("[admin] getReloadRules: response shape mismatch", r);
+    throw new Error("[admin] getReloadRules: invalid response shape");
+  }
+  return r as ReloadRules;
+}
+
 export async function configureAutoTopup(
   topupAmountCents: number,
   topupThresholdCents?: number,

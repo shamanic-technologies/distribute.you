@@ -19,9 +19,9 @@ import {
 } from "@/lib/api";
 import { topupRefusal } from "@/lib/v2/get-started";
 
-/** What a refused billing call says to the person: billing's minimums by name, else null. */
+/** What a refused billing call says to the person: billing's own words for its minimum, else null. */
 function refusalOf(e: unknown): string | null {
-  return e instanceof ApiError && e.status === 400 ? topupRefusal(typeof e.body?.code === "string" ? e.body.code : undefined) : null;
+  return e instanceof ApiError && e.status === 400 ? topupRefusal(e.body) : null;
 }
 
 /** billing's credited total, in cents (a decimal string on the wire). */

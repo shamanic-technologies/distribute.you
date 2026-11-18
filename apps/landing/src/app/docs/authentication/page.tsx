@@ -34,8 +34,9 @@ Returns apiKey. Every call mints a new key.
 CLI: distribute signup --email <e> --phone <p>, then distribute signup verify --email <e> --code <c>
 
 Free calls work right away. Paid calls are prepaid:
-POST /v1/billing/accounts/prepaid_checkout  {"topup_amount_cents": 1000, "auto_topup_amount_cents": 1500, "auto_topup_threshold_cents": 500}
-Minimums: $10 prepay, $15 automatic top-up, when the balance falls under $5 or more. Automatic top-up is required.
+GET /v1/billing/accounts/reload_rules  (the org's minimums and default automatic top-up)
+POST /v1/billing/accounts/prepaid_checkout  {"topup_amount_cents": 1000}
+The automatic top-up fields are optional: left out, the org's default applies. Automatic top-up is required.
 Returns a payment url: open it, or give it to your human. Until paid, a paid call answers 402 payment_required.
 No free credit, no trial.
 
@@ -95,8 +96,9 @@ curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
         </pre>
         <p>
           Free calls work right away. Every paid call is paid upfront with{" "}
-          <code>POST /v1/billing/accounts/prepaid_checkout</code>: at least $10, plus an automatic
-          top-up of at least $15 when the balance falls under $5 or more. It returns a payment link to
+          <code>POST /v1/billing/accounts/prepaid_checkout</code>, plus an automatic top-up. The
+          minimums and the default top-up are your organization&apos;s, at{" "}
+          <code>GET /v1/billing/accounts/reload_rules</code>. It returns a payment link to
           open, or to hand to your human. Until then a paid call answers{" "}
           <code>402 payment_required</code> with these instructions. No free credit, no trial.
         </p>

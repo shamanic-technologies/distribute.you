@@ -72,7 +72,7 @@ export const AGENT_QUICKSTART_LINES: QuickstartLine[] = [
   },
   {
     label: "Paying",
-    text: `Free calls work right away. Every paid call is prepaid: \`POST /v1/billing/accounts/prepaid_checkout\` with \`topup_amount_cents\` (min 1000), \`auto_topup_amount_cents\` (min 1500), \`auto_topup_threshold_cents\` (min 500) returns a payment \`url\` to open or give your human (MCP: \`distribute_prepay\`). Automatic top-up is required. Until paid, a paid call answers \`402 payment_required\` with these steps. No free credit, no trial. Work is billed per action at the public prices on ${CATALOG_URL}.`,
+    text: `Free calls work right away. Every paid call is prepaid: \`POST /v1/billing/accounts/prepaid_checkout\` with \`topup_amount_cents\` (the automatic top-up fields \`auto_topup_amount_cents\` and \`auto_topup_threshold_cents\` are optional: left out, the org's default applies; minimums and defaults at \`GET /v1/billing/accounts/reload_rules\`, a 400 names \`code\` and \`minimum_cents\` below one) returns a payment \`url\` to open or give your human (MCP: \`distribute_prepay\`). Automatic top-up is required. Until paid, a paid call answers \`402 payment_required\` with these steps. No free credit, no trial. Work is billed per action at the public prices on ${CATALOG_URL}.`,
   },
   {
     label: "Method",

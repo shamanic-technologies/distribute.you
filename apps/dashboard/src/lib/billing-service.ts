@@ -65,6 +65,43 @@ export async function getOrgFreeCreditOffer(orgId: string): Promise<string> {
 }
 
 /**
+ * The org's prepaid reload rules (billing-service
+ * `GET /internal/accounts/by-org/:orgId/reload-rules`, RELOAD-RULE-ONE-HOME-1118): the
+ * first top-up minimum, reload minimums and defaults, in cents. The signed-out walk reads
+ * the first top-up minimum from it; nothing in the dashboard holds a copy.
+ * THROWS on failure.
+ */
+export interface OrgReloadRules {
+  first_topup_minimum_cents: number;
+  reload_amount_minimum_cents: number;
+  reload_threshold_minimum_cents: number;
+  default_reload_amount_cents: number;
+  default_reload_threshold_cents: number;
+}
+
+export async function getOrgReloadRules(orgId: string): Promise<OrgReloadRules> {
+  if (!BILLING_SERVICE_URL || !BILLING_SERVICE_API_KEY) {
+    throw new Error("[billing-service] BILLING_SERVICE_URL / BILLING_SERVICE_API_KEY not set");
+  }
+  const res = await fetch(
+    `${BILLING_SERVICE_URL}/internal/accounts/by-org/${encodeURIComponent(orgId)}/reload-rules`,
+    { headers: { "x-api-key": BILLING_SERVICE_API_KEY }, signal: AbortSignal.timeout(TIMEOUT_MS) },
+  );
+  const body = (await res.json().catch(() => null)) as Partial<OrgReloadRules> | null;
+  const keys = [
+    "first_topup_minimum_cents",
+    "reload_amount_minimum_cents",
+    "reload_threshold_minimum_cents",
+    "default_reload_amount_cents",
+    "default_reload_threshold_cents",
+  ] as const;
+  if (!res.ok || !body || keys.some((k) => typeof body[k] !== "number")) {
+    throw new Error(`[billing-service] reload-rules read failed: ${res.status} ${JSON.stringify(body)}`);
+  }
+  return body as OrgReloadRules;
+}
+
+/**
  * Put the trial seed on an org nobody has signed up for.
  *
  * THROWS on failure, and the caller must let that refuse the whole session. An

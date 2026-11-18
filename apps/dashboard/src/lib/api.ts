@@ -11118,6 +11118,41 @@ export async function getBillingBalance(token?: string): Promise<BillingBalance>
   return apiCall<BillingBalance>("/billing/accounts/balance", { token });
 }
 
+/**
+ * The org's prepaid reload rules (billing-service `GET /v1/accounts/reload_rules`,
+ * RELOAD-RULE-ONE-HOME-1118): the first top-up minimum, the smallest reload amount and
+ * threshold, and the reload armed when the person changes nothing. billing is their ONE
+ * home: no page holds a copy of these numbers, it shows and checks what this serves.
+ */
+const ReloadRulesSchema = z.object({
+  first_topup_minimum_cents: z.number().int().nonnegative(),
+  reload_amount_minimum_cents: z.number().int().nonnegative(),
+  reload_threshold_minimum_cents: z.number().int().nonnegative(),
+  default_reload_amount_cents: z.number().int().nonnegative(),
+  default_reload_threshold_cents: z.number().int().nonnegative(),
+});
+export type ReloadRules = z.infer<typeof ReloadRulesSchema>;
+
+export async function getReloadRules(token?: string): Promise<ReloadRules> {
+  const raw = await apiCall<unknown>("/billing/accounts/reload_rules", { token });
+  const parsed = ReloadRulesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getReloadRules: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getReloadRules: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Arm the automatic reload at billing's DEFAULT for this org (its reload rules): the
+ * switch on Billing carries no amount of its own (RELOAD-RULE-ONE-HOME-1118; a fixed
+ * $50 here armed a $50 reload on a prepaid org that binds what it stores).
+ */
+export async function armAutoTopupAtReloadRules(token?: string): Promise<BillingAccount> {
+  const rules = await getReloadRules(token);
+  return configureAutoTopup(rules.default_reload_amount_cents, rules.default_reload_threshold_cents, token);
+}
+
 export async function configureAutoTopup(
   topupAmountCents: number,
   topupThresholdCents?: number,

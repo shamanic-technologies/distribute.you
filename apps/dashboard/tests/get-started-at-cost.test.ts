@@ -2,12 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { AT_COST_MIN_TOPUP_USD, AT_COST_TOPUP_CHOICES_USD, atCostCheckout, isAtCostOffer, matchNote, offersNoFreeMoney, topupCta, wallCopy } from "../src/lib/v2/get-started";
+import { AT_COST_TOPUP_CHOICES_USD, atCostCheckout as check, isAtCostOffer, matchNote, offersNoFreeMoney, reloadRulesUsd, topupCta, topupRefusal, wallCopy } from "../src/lib/v2/get-started";
 import { spendConsentLines } from "../src/lib/v2/spend-consent";
 
 // ONBOARDING-PREPAID-1029 (owner 2026-10-29): every org created since is billing's
-// `prepaid_at_cost`: first top-up + automatic reload in one checkout, minimums $10 / $5 /
-// reload $10 checked HERE (billing refuses none), no match, no free money promised.
+// `prepaid_at_cost`: first top-up + automatic reload in one checkout, no match, no free
+// money promised. The minimums are billing's reload rules (RELOAD-RULE-ONE-HOME-1118):
+// the fixture below is billing's prod answer for an at-cost org, never a dashboard copy.
+const RULES = reloadRulesUsd({
+  first_topup_minimum_cents: 1000,
+  reload_amount_minimum_cents: 1000,
+  reload_threshold_minimum_cents: 500,
+  default_reload_amount_cents: 1000,
+  default_reload_threshold_cents: 500,
+});
+const atCostCheckout = (input: Parameters<typeof check>[0]) => check(input, RULES);
 
 const src = (rel: string) => fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
 
@@ -78,7 +87,6 @@ describe("no free money for an at-cost org", () => {
     }
     expect(wallCopy(isAtCostOffer({ free_credit_offer: "match_100" })).creditUsd).toBe(100);
     expect(AT_COST_TOPUP_CHOICES_USD).toEqual([100, 250, 500, 1000]);
-    expect(AT_COST_MIN_TOPUP_USD).toBe(10);
     const under = atCostCheckout({ topup: "9", threshold: "5", reload: "10" });
     expect(under.problems.topup).toBe("At least $10.");
     expect(atCostCheckout({ topup: "10", threshold: "5", reload: "10" }).values).toEqual({ topupUsd: 10, thresholdUsd: 5, reloadUsd: 10 });
@@ -127,6 +135,7 @@ describe("the wall and the dashboard walk use the at-cost checkout", () => {
     expect(walk).toContain("readWalkOffer()");
     expect(walk).toContain("wallCopy(walkAtCost)");
     expect(src("src/app/api/anon/offer/route.ts")).toContain("getOrgFreeCreditOffer(session.orgId)");
+    expect(src("src/app/api/anon/offer/route.ts")).toContain("getOrgReloadRules(session.orgId)");
   });
 });
 
@@ -149,5 +158,55 @@ describe("no referral or free credit surface for a no-free-money org", () => {
     expect(src("src/components/v2/setup-pages.tsx")).not.toContain("V2ReferralPage");
     expect(src("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/referral/page.tsx")).toContain("/billing`);");
     expect(src("src/components/v2/billing-page.tsx")).toContain('{account && !offersNoFreeMoney(account) && hasFreeCredit && (\n        <Section id="free-credit"');
+  });
+});
+
+describe("billing's reload rules are the only source of the figures (RELOAD-RULE-ONE-HOME-1118)", () => {
+  it("follows whatever billing serves: a staff override of $25 / $8 moves every check", () => {
+    const rules = reloadRulesUsd({
+      first_topup_minimum_cents: 2500,
+      reload_amount_minimum_cents: 2500,
+      reload_threshold_minimum_cents: 800,
+      default_reload_amount_cents: 2500,
+      default_reload_threshold_cents: 800,
+    });
+    const r = check({ topup: "20", threshold: "5", reload: "10" }, rules);
+    expect(r.problems).toEqual({ topup: "At least $25.", threshold: "At least $8.", reload: "At least $25." });
+    expect(check({ topup: "25", threshold: "8", reload: "50" }, rules).values).toEqual({ topupUsd: 25, thresholdUsd: 8, reloadUsd: 50 });
+  });
+
+  it("a minimum in cents rounds UP to whole dollars", () => {
+    expect(
+      reloadRulesUsd({
+        first_topup_minimum_cents: 1050,
+        reload_amount_minimum_cents: 1001,
+        reload_threshold_minimum_cents: 450,
+        default_reload_amount_cents: 1001,
+        default_reload_threshold_cents: 450,
+      }),
+    ).toEqual({ firstTopupMinUsd: 11, reloadMinUsd: 11, thresholdMinUsd: 5, defaultReloadUsd: 11, defaultThresholdUsd: 5 });
+  });
+
+  it("relays billing's own refusal words, for its three minimum codes only", () => {
+    expect(topupRefusal({ code: "reload_below_minimum", minimum_cents: 1000, error: "An automatic reload must add at least $10.00" })).toBe(
+      "An automatic reload must add at least $10.00.",
+    );
+    expect(topupRefusal({ code: "topup_threshold_below_minimum", minimum_cents: 500, error: "The reload threshold must be at least $5.00" })).toBe(
+      "The reload threshold must be at least $5.00.",
+    );
+    expect(topupRefusal({ code: "topup_below_minimum", minimum_cents: 1000, error: "A top-up must be at least $10.00" })).toBe("A top-up must be at least $10.00.");
+    expect(topupRefusal({ code: "other", error: "x" })).toBeNull();
+    expect(topupRefusal({ code: "topup_below_minimum" })).toBeNull();
+    expect(topupRefusal(undefined)).toBeNull();
+  });
+
+  it("the credit step reads the rules from billing and holds no number of its own", () => {
+    const topup = src("src/components/v2/get-started/prepaid-topup.tsx");
+    expect(topup).toContain("getReloadRules()");
+    expect(topup).toContain("useState(String(rules.defaultThresholdUsd))");
+    expect(topup).toContain("useState(String(rules.defaultReloadUsd))");
+    const lib = src("src/lib/v2/get-started.ts");
+    expect(lib).not.toMatch(/(MIN|DEFAULT)_(RELOAD|THRESHOLD|TOPUP)\w*\s*=/);
+    expect(src("src/lib/api.ts")).toContain('"/billing/accounts/reload_rules"');
   });
 });

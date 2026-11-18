@@ -52,8 +52,10 @@ describe("Billing API wrappers", () => {
 
   it("should NOT reference legacy auto-reload paths or reload_*_cents body fields", () => {
     expect(content).not.toContain("auto-reload");
-    expect(content).not.toContain("reload_amount_cents");
-    expect(content).not.toContain("reload_threshold_cents");
+    // billing's reload RULES read (`default_reload_amount_cents`, RELOAD-RULE-ONE-HOME-1118)
+    // is a current contract: only the bare legacy body fields are banned.
+    expect(content).not.toMatch(/(?<!default_)reload_amount_cents/);
+    expect(content).not.toMatch(/(?<!default_)reload_threshold_cents/);
     expect(content).not.toContain("configureAutoReload");
     expect(content).not.toContain("disableAutoReload");
   });
@@ -270,10 +272,11 @@ describe("Billing page", () => {
     expect(content).toContain("topupThreshold");
   });
 
-  it("should pre-select auto-topup with $25 amount and $5 threshold by default", () => {
+  it("should pre-select auto-topup, the threshold opening on billing's default (RELOAD-RULE-ONE-HOME-1118)", () => {
     expect(content).toContain("useState(true)");
     expect(content).toContain('useState("25")');
-    expect(content).toContain('useState("5")');
+    expect(content).toContain("String(reloadRules.defaultThresholdUsd)");
+    expect(content).not.toContain('useState("5")');
   });
 
   it("should only save auto-topup before checkout when payment method exists", () => {
@@ -289,17 +292,18 @@ describe("Billing page", () => {
   it("should save auto-topup on successful return from Stripe", () => {
     expect(content).toContain("showSuccess && pendingTopup");
     expect(content).toContain("configureAutoTopup(topupCents, thresholdCents)");
+    expect(content).toContain("thresholdCentsParamOrDefault(pendingThreshold)");
   });
 
-  it("should show inline error on blur when threshold is below $5", () => {
+  it("should show inline error on blur when threshold is below billing's minimum", () => {
     expect(content).toContain("handleThresholdBlur");
-    expect(content).toContain("Minimum threshold is $5.");
+    expect(content).toContain("Minimum threshold is $${reloadRules.thresholdMinUsd}.");
     expect(content).toContain("thresholdError");
     expect(content).toContain("onBlur={handleThresholdBlur}");
   });
 
-  it("should reset threshold to $5 when left empty on blur", () => {
-    expect(content).toContain('setTopupThreshold("5")');
+  it("should reset threshold to billing's default when left empty on blur", () => {
+    expect(content).toContain("setTopupThreshold(String(reloadRules.defaultThresholdUsd))");
   });
 
   it("should reset top-up amount to selected value when left empty on blur", () => {
@@ -307,14 +311,14 @@ describe("Billing page", () => {
     expect(content).toContain("onBlur={handleTopupAmountBlur}");
   });
 
-  it("should show inline error on blur when top-up amount is below $10", () => {
+  it("should show inline error on blur when top-up amount is below billing's reload minimum", () => {
     expect(content).toContain("topupAmountError");
-    expect(content).toContain("Minimum top-up amount is $10.");
+    expect(content).toContain("Minimum top-up amount is $${reloadRules.reloadMinUsd}.");
   });
 
-  it("should show inline error on blur when custom amount is below $10", () => {
+  it("should show inline error on blur when custom amount is below billing's first top-up minimum", () => {
     expect(content).toContain("handleCustomAmountBlur");
-    expect(content).toContain("Minimum top-up is $10.");
+    expect(content).toContain("Minimum top-up is $${reloadRules.firstTopupMinUsd}.");
     expect(content).toContain("customAmountError");
     expect(content).toContain("onBlur={handleCustomAmountBlur}");
   });
@@ -328,9 +332,10 @@ describe("Billing page", () => {
     expect(content).toContain("setTopupAmount");
   });
 
-  it("should default auto-topup threshold to $5 (500 cents)", () => {
-    // Fallback threshold when not set by user
-    expect(content).toContain(": 500");
+  it("should default the auto-topup threshold to billing's default (RELOAD-RULE-ONE-HOME-1118)", () => {
+    // Fallback threshold when not set by user: billing's reload rules, never a local copy.
+    expect(content).toContain("thresholdCentsOrDefault(topupThreshold)");
+    expect(content).not.toContain(": 500;");
   });
 
   it("should redirect to Stripe checkout via createCheckoutSession", () => {
@@ -380,15 +385,15 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("When balance below ($)");
   });
 
-  it("should validate minimum top-up amount ($10) and threshold ($5)", () => {
-    expect(content).toContain("Minimum top-up amount is $10.");
-    expect(content).toContain("Minimum threshold is $5.");
+  it("should validate the top-up amount and threshold against billing's reload rules", () => {
+    expect(content).toContain("Minimum top-up amount is $${reloadRules.reloadMinUsd}.");
+    expect(content).toContain("Minimum threshold is $${reloadRules.thresholdMinUsd}.");
   });
 
   it("should support custom top-up amount input", () => {
     expect(content).toContain("customAmount");
     expect(content).toContain("Custom amount ($)");
-    expect(content).toContain("Minimum top-up is $10.");
+    expect(content).toContain("Minimum top-up is $${reloadRules.firstTopupMinUsd}.");
   });
 
   it("should support proactive mode with an inspiring, sell-forward title and description", () => {
