@@ -1,18 +1,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { autoTopupLine } from "../src/lib/v2/auto-topup-line";
+import { autoTopupLine, autoTopupWhen, parseReloadAmountCents } from "../src/lib/v2/auto-topup-line";
 
 // BILLING-RELOAD-COPY-1118: the Billing "Auto top-up" line prints the threshold AND the
-// amount billing serves for the org, never a hard-coded "$0" (owner 2026-11-18, Ethan's
-// account read "reaches $0, we add $15" for a "$10 below $5" reload).
-describe("autoTopupLine", () => {
-  it("prints the served threshold and amount", () => {
-    expect(autoTopupLine(500, 1000)).toBe("When your balance falls below $5, we add $10 from your card.");
+// amount billing serves for the org. Owner 2026-11-18: the threshold is $0 for everyone,
+// editable nowhere; the amount is the client's to change.
+describe("auto top-up sentence", () => {
+  it("reads the served $0 threshold as 'reaches $0'", () => {
+    expect(autoTopupLine(0, 1000)).toBe("When your balance reaches $0, we add $10 from your card.");
   });
 
-  it("keeps cents when a figure is not whole dollars", () => {
-    expect(autoTopupLine(250, 1550)).toBe("When your balance falls below $2.50, we add $15.50 from your card.");
+  it("an account billing has not moved yet still reads its own threshold", () => {
+    expect(autoTopupLine(500, 1000)).toBe("When your balance falls below $5, we add $10 from your card.");
+    expect(autoTopupWhen(250)).toBe("When your balance falls below $2.50, we add");
   });
 
   it("never adds the threshold to the amount", () => {
@@ -21,21 +22,47 @@ describe("autoTopupLine", () => {
 
   it("returns null (loud) when billing serves a figure missing", () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(autoTopupLine(null, 1000)).toBeNull();
-    expect(autoTopupLine(500, undefined)).toBeNull();
+    expect(autoTopupWhen(null)).toBeNull();
+    expect(autoTopupLine(0, undefined)).toBeNull();
     expect(err).toHaveBeenCalled();
     err.mockRestore();
   });
 });
 
-describe("Billing page auto top-up sentence", () => {
-  const src = readFileSync(join(__dirname, "../src/components/v2/billing-page.tsx"), "utf8");
+describe("parseReloadAmountCents", () => {
+  it("takes whole dollars, with or without $ and commas", () => {
+    expect(parseReloadAmountCents("10")).toBe(1000);
+    expect(parseReloadAmountCents(" $25 ")).toBe(2500);
+    expect(parseReloadAmountCents("1,000")).toBe(100000);
+  });
+  it("refuses cents, zero, negatives and words (the minimum is billing's)", () => {
+    expect(parseReloadAmountCents("10.50")).toBeNull();
+    expect(parseReloadAmountCents("0")).toBeNull();
+    expect(parseReloadAmountCents("-5")).toBeNull();
+    expect(parseReloadAmountCents("ten")).toBeNull();
+  });
+});
 
-  it("has no hard-coded $0 threshold", () => {
-    expect(src).not.toContain("When your balance reaches $0");
+describe("Billing page auto top-up card", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/billing-page.tsx"), "utf8");
+  const amount = readFileSync(join(__dirname, "../src/components/v2/reload-amount.tsx"), "utf8");
+
+  it("has no hard-coded threshold sentence", () => {
+    expect(src).not.toContain("When your balance reaches $0, we add ${");
   });
 
-  it("builds the line from both served fields", () => {
-    expect(src).toContain("autoTopupLine(account?.topup_threshold_cents, account?.topup_amount_cents)");
+  it("reads the served threshold and amount, the amount editable in place", () => {
+    expect(src).toContain("thresholdCents={account?.topup_threshold_cents}");
+    expect(src).toContain("amountCents={account?.topup_amount_cents}");
+    expect(src).toContain("<ReloadAmount amountCents={amountCents} onSave={onSave} />");
+  });
+
+  it("saves the amount with the served threshold, never a typed one", () => {
+    expect(src).toContain("configureAutoTopup(cents, account?.topup_threshold_cents ?? undefined)");
+  });
+
+  it("states billing's own minimum on a refusal", () => {
+    expect(amount).toContain("err.body?.minimum_cents");
+    expect(amount).toContain("onBlur={commit}");
   });
 });

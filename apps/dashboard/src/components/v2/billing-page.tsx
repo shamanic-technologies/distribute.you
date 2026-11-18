@@ -31,7 +31,8 @@ import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm
 import { BarSpark, EmptyNote, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
 import { CreditBalanceCard, PostpaidOwedCard } from "@/components/v2/balance-hero";
 import { MonthlyLimitCard } from "@/components/v2/monthly-limit-card";
-import { autoTopupLine } from "@/lib/v2/auto-topup-line";
+import { autoTopupWhen } from "@/lib/v2/auto-topup-line";
+import { ReloadAmount } from "@/components/v2/reload-amount";
 
 /**
  * Billing, in the v2 frame.
@@ -134,6 +135,13 @@ export function V2BillingPage() {
     }
     await refetchMoney();
     setAutoPending(false);
+  }
+
+  // The reload AMOUNT is the client's to change (owner 2026-11-18); the threshold rides
+  // along as billing serves it (the gateway still asks for it), never a number typed here.
+  async function saveReloadAmount(cents: number) {
+    await configureAutoTopup(cents, account?.topup_threshold_cents ?? undefined);
+    await refetchMoney();
   }
 
   const available = c.availableCents;
@@ -332,10 +340,15 @@ export function V2BillingPage() {
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium">Auto top-up</p>
                       <p className="k-fg3 mt-0.5 text-[12px] leading-[18px]">
-                        {c.hasAutoTopup
-                          ? (autoTopupLine(account?.topup_threshold_cents, account?.topup_amount_cents) ??
-                            "We could not read your auto top-up amounts right now.")
-                          : "Off. Your campaigns pause when your credit runs out."}
+                        {c.hasAutoTopup ? (
+                          <AutoTopupSentence
+                            thresholdCents={account?.topup_threshold_cents}
+                            amountCents={account?.topup_amount_cents}
+                            onSave={saveReloadAmount}
+                          />
+                        ) : (
+                          "Off. Your campaigns pause when your credit runs out."
+                        )}
                       </p>
                     </div>
                     {/* Prepaid reload is required once on (owner 2026-10-11, like Google Ads): no
@@ -746,5 +759,31 @@ function UsageSection({
         )}
       </div>
     </Section>
+  );
+}
+
+/**
+ * "When your balance reaches $0, we add [$10] from your card.": the threshold as billing
+ * serves it, the amount editable in place. Billing serving either figure missing is said
+ * plainly, never filled in.
+ */
+function AutoTopupSentence({
+  thresholdCents,
+  amountCents,
+  onSave,
+}: {
+  thresholdCents: number | null | undefined;
+  amountCents: number | null | undefined;
+  onSave: (cents: number) => Promise<void>;
+}) {
+  const when = autoTopupWhen(thresholdCents);
+  if (when === null || typeof amountCents !== "number") {
+    if (typeof amountCents !== "number") console.error("[billing v2] auto top-up on without an amount", { amountCents });
+    return <>We could not read your auto top-up amounts right now.</>;
+  }
+  return (
+    <>
+      {when} <ReloadAmount amountCents={amountCents} onSave={onSave} /> from your card.
+    </>
   );
 }
