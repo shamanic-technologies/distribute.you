@@ -133,10 +133,12 @@ export function V2BillingPage() {
     setAutoPending(false);
   }
 
-  // The reload AMOUNT is the client's to change (owner 2026-11-18); the threshold rides
-  // along as billing serves it (the gateway still asks for it), never a number typed here.
+  // The reload AMOUNT is the client's to change (owner 2026-11-18); $0 turns auto top-up
+  // OFF (owner 2026-11-18: « Accepte une valeur $0, ca enleve lauto top up », never by
+  // taking the card away). Billing holds the threshold ($0 for everyone): none is sent.
   async function saveReloadAmount(cents: number) {
-    await configureAutoTopup(cents, account?.topup_threshold_cents ?? undefined);
+    if (cents === 0) await disableAutoTopup();
+    else await configureAutoTopup(cents);
     await refetchMoney();
   }
 
@@ -347,8 +349,7 @@ export function V2BillingPage() {
                         )}
                       </p>
                     </div>
-                    {/* Prepaid reload is required once on (owner 2026-10-11, like Google Ads): no
-                        off switch; the way out is removing the card or stopping the campaigns. */}
+                    {/* Once on, no switch: setting the amount to $0 turns it off (owner 2026-11-18). */}
                     {!(mode === "prepaid" && c.hasAutoTopup) && (
                     <button
                       type="button"
@@ -369,9 +370,6 @@ export function V2BillingPage() {
                     </button>
                     )}
                   </div>
-                  {c.hasAutoTopup && (
-                    <p className="k-fg3 mt-2 text-[12px] leading-[18px]">It stays on while your campaigns run. To stop it, remove your card.</p>
-                  )}
                   {autoError && <p role="alert" className="mt-2 text-[13px] text-[var(--data-rose)]">{autoError}</p>}
                 </div>
               )}
