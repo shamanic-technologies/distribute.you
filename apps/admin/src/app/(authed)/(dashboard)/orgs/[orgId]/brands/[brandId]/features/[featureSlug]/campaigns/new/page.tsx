@@ -36,7 +36,6 @@ import {
   type WorkflowProjectionResponse,
   type SalesObjective,
 } from "@/lib/api";
-import { thresholdCentsParamOrDefault } from "@/lib/reload-rules";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { CampaignIdentityPicker, campaignIdentityProblem, useCampaignIdentity } from "@/components/campaigns/campaign-identity-picker";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -1109,7 +1108,6 @@ export default function FeatureCreateCampaignPage() {
     // or no-card top-up). Capture before cleaning the URL; the card is now on file so
     // enabling auto-topup below will succeed.
     const pendingTopupRaw = searchParams.get("pending_topup");
-    const pendingThresholdRaw = searchParams.get("pending_threshold");
 
     // Clean URL params
     const url = new URL(window.location.href);
@@ -1138,9 +1136,8 @@ export default function FeatureCreateCampaignPage() {
           // Enable auto-topup now that the card is captured (no-op if no pending config).
           if (pendingTopupRaw) {
             const topupCents = parseInt(pendingTopupRaw, 10);
-            const thresholdCents = await thresholdCentsParamOrDefault(pendingThresholdRaw);
             if (Number.isFinite(topupCents)) {
-              await configureAutoTopup(topupCents, thresholdCents);
+              await configureAutoTopup(topupCents);
             }
           }
           let result: { campaign: Campaign };

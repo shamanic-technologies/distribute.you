@@ -82,7 +82,7 @@ export async function payTopup(params: {
  */
 export async function settleTopup(
   creditedBefore: number,
-  reload: { thresholdUsd: number; amountUsd: number } | null,
+  reload: { amountUsd: number } | null,
 ): Promise<{ ok: true; account: BillingAccount; reloadRefused: boolean } | { ok: false; message: string }> {
   let acct: BillingAccount | null = null;
   for (let i = 0; i < 20; i++) {
@@ -98,7 +98,8 @@ export async function settleTopup(
     return { ok: false, message: "Your payment is still being confirmed. Wait a few seconds and check again." };
   }
   try {
-    if (reload) acct = await configureAutoTopup(reload.amountUsd * 100, reload.thresholdUsd * 100);
+    // No threshold: billing reloads at $0 for everyone (owner 2026-11-18).
+    if (reload) acct = await configureAutoTopup(reload.amountUsd * 100);
     // Optional (owner 2026-10-06): billing arms one by itself when a card is on file at
     // the switch to prepaid, so an org that did not ask for it has it taken off.
     // Postpaid has no auto top-up to take off (billing 409s it, owner 2026-10-21).

@@ -886,30 +886,26 @@ export const TOPUP_CHOICES_USD = [100, 250, 500, 1000] as const;
  * billing's reload rules for this org, in whole dollars (billing serves cents). Every
  * minimum and default the credit step shows or checks comes from here
  * (RELOAD-RULE-ONE-HOME-1118): a page holding its own copy gave a client a $15 reload.
+ * There is no threshold: a reload fires when the balance reaches $0, for everyone, and
+ * nobody can change it (owner 2026-11-18: « On mets $0 pour tout le monde »).
  */
 export interface ReloadRulesUsd {
   firstTopupMinUsd: number;
   reloadMinUsd: number;
-  thresholdMinUsd: number;
   defaultReloadUsd: number;
-  defaultThresholdUsd: number;
 }
 
 export function reloadRulesUsd(rules: {
   first_topup_minimum_cents: number;
   reload_amount_minimum_cents: number;
-  reload_threshold_minimum_cents: number;
   default_reload_amount_cents: number;
-  default_reload_threshold_cents: number;
 }): ReloadRulesUsd {
   // A minimum in cents rounds UP to whole dollars, so a dollar figure we accept is never under it.
   const up = (c: number) => Math.ceil(c / 100);
   return {
     firstTopupMinUsd: up(rules.first_topup_minimum_cents),
     reloadMinUsd: up(rules.reload_amount_minimum_cents),
-    thresholdMinUsd: up(rules.reload_threshold_minimum_cents),
     defaultReloadUsd: up(rules.default_reload_amount_cents),
-    defaultThresholdUsd: up(rules.default_reload_threshold_cents),
   };
 }
 
@@ -955,9 +951,9 @@ export function offersNoFreeMoney(account: { free_credit_offer?: string } | null
 
 /**
  * The at-cost checkout (owner 2026-10-29): a first top-up, then an OPTIONAL automatic
- * reload. The reload ADDS at least billing's minimum, whatever the threshold (owner
- * 2026-11-11: « +10 dès qu'on arrive sous $5 »; never "threshold + $10"). Every minimum
- * and default is billing's (`ReloadRulesUsd`); billing refuses below them too.
+ * reload that adds at least billing's minimum when the balance reaches $0 (owner
+ * 2026-11-18: no threshold, $0 for everyone). Every minimum and default is billing's
+ * (`ReloadRulesUsd`); billing refuses below them too.
  */
 // The buttons stay $100 / $250 / $500 / $1,000; "Other" takes any amount from billing's
 // first top-up minimum (owner 2026-11-17: « permet as low as $10 dans le custom »).
@@ -971,39 +967,32 @@ function wholeDollars(input: string): number | null {
 /**
  * The amounts of the at-cost checkout, each checked against its minimum. The automatic
  * reload is OPTIONAL, ticked by default (owner 2026-10-29: « optional, but checked by
- * default »): with `reloadOn` false its two fields are neither checked nor sent. Every
- * field carries its own problem (null = fine); `values` is set only when all pass.
+ * default »): with `reloadOn` false its amount is neither checked nor sent. Every field
+ * carries its own problem (null = fine); `values` is set only when all pass.
  */
 export function atCostCheckout(
-  input: { topup: string; threshold: string; reload: string; reloadOn?: boolean },
+  input: { topup: string; reload: string; reloadOn?: boolean },
   rules: ReloadRulesUsd,
 ): {
-  problems: { topup: string | null; threshold: string | null; reload: string | null };
-  values: { topupUsd: number; thresholdUsd: number; reloadUsd: number } | { topupUsd: number; thresholdUsd: null; reloadUsd: null } | null;
+  problems: { topup: string | null; reload: string | null };
+  values: { topupUsd: number; reloadUsd: number | null } | null;
 } {
   const reloadOn = input.reloadOn ?? true;
   const topup = wholeDollars(input.topup);
-  const threshold = wholeDollars(input.threshold);
   const reload = wholeDollars(input.reload);
   const topupProblem =
     topup === null ? "Whole dollars." : topup < rules.firstTopupMinUsd ? `At least $${rules.firstTopupMinUsd}.` : null;
-  const thresholdProblem = !reloadOn
+  const reloadProblem = !reloadOn
     ? null
-    : threshold === null
+    : reload === null
       ? "Whole dollars."
-      : threshold < rules.thresholdMinUsd
-        ? `At least $${rules.thresholdMinUsd}.`
+      : reload < rules.reloadMinUsd
+        ? `At least $${rules.reloadMinUsd}.`
         : null;
-  const reloadMin = rules.reloadMinUsd;
-  const reloadProblem = !reloadOn ? null : reload === null ? "Whole dollars." : reload < reloadMin ? `At least $${reloadMin}.` : null;
-  const problems = { topup: topupProblem, threshold: thresholdProblem, reload: reloadProblem };
+  const problems = { topup: topupProblem, reload: reloadProblem };
   if (topup === null || topupProblem) return { problems, values: null };
-  if (!reloadOn) return { problems, values: { topupUsd: topup, thresholdUsd: null, reloadUsd: null } };
-  const values =
-    threshold !== null && reload !== null && !thresholdProblem && !reloadProblem
-      ? { topupUsd: topup, thresholdUsd: threshold, reloadUsd: reload }
-      : null;
-  return { problems, values };
+  if (!reloadOn) return { problems, values: { topupUsd: topup, reloadUsd: null } };
+  return { problems, values: reload !== null && !reloadProblem ? { topupUsd: topup, reloadUsd: reload } : null };
 }
 
 /** The next slide of a carousel, wrapping. */

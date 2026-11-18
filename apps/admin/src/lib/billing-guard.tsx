@@ -9,7 +9,7 @@ import {
   getBillingAccount,
   type BillingAccount,
 } from "@/lib/api";
-import { thresholdCentsOrDefault, useReloadRulesUsd } from "@/lib/reload-rules";
+import { useReloadRulesUsd } from "@/lib/reload-rules";
 import { formatBillingCents } from "@/lib/format-number";
 
 // API responses now ship cents as decimal strings (billing-service v2). FE-computed
@@ -70,31 +70,15 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   // Auto-topup state
   const [enableAutoTopup, setEnableAutoTopup] = useState(true);
   const [topupAmount, setTopupAmount] = useState("25");
-  const [topupThreshold, setTopupThreshold] = useState("");
-  // billing's reload rules (RELOAD-RULE-ONE-HOME-1118): minimums + default threshold, no copy here.
+  // billing's reload rules (RELOAD-RULE-ONE-HOME-1118): the minimums, no copy here. No
+  // threshold: a reload fires at $0 for everyone (owner 2026-11-18).
   // Re-read each time the modal opens, so the figures are the open org's.
   const reloadRules = useReloadRulesUsd(visible);
-  // The field opens on billing's default threshold once read (an existing config overwrites it).
-  useEffect(() => {
-    if (reloadRules && visible) setTopupThreshold((t) => t || String(reloadRules.defaultThresholdUsd));
-  }, [reloadRules, visible]);
   const [topupAmountError, setTopupAmountError] = useState<string | null>(null);
-  const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [account, setAccount] = useState<BillingAccount | null>(null);
   const [savingAutoTopup, setSavingAutoTopup] = useState(false);
 
-  const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
-
-  function handleThresholdBlur() {
-    if (!topupThreshold) {
-      if (reloadRules) setTopupThreshold(String(reloadRules.defaultThresholdUsd));
-      setThresholdError(null);
-    } else if (reloadRules && parseFloat(topupThreshold) < reloadRules.thresholdMinUsd) {
-      setThresholdError(`Minimum threshold is $${reloadRules.thresholdMinUsd}.`);
-    } else {
-      setThresholdError(null);
-    }
-  }
+  const hasValidationError = !!(customAmountError || topupAmountError);
 
   function handleTopupAmountBlur() {
     if (!topupAmount) {
@@ -140,9 +124,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setCustomAmount("");
     setCustomAmountError(null);
     setTopupAmountError(null);
-    setThresholdError(null);
     setEnableAutoTopup(true);
-    setTopupThreshold("");
     setCheckoutError(null);
     setCheckoutLoading(false);
     setSavingAutoTopup(false);
@@ -155,7 +137,6 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       if (acct.payment_mode !== "postpaid" && acct.has_auto_topup) {
         setEnableAutoTopup(true);
         if (acct.topup_amount_cents !== null) setTopupAmount((acct.topup_amount_cents / 100).toString());
-        if (acct.topup_threshold_cents !== null) setTopupThreshold((acct.topup_threshold_cents / 100).toString());
       }
     }).catch(() => {});
   }, []);
@@ -190,8 +171,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       if (account?.has_payment_method && !postpaid) {
         if (enableAutoTopup && topupAmount) {
           const topupCents = Math.round(parseFloat(topupAmount) * 100);
-          const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
-          await configureAutoTopup(topupCents, thresholdCents);
+          await configureAutoTopup(topupCents);
         } else if (!enableAutoTopup && account.has_auto_topup) {
           await disableAutoTopup();
         }
@@ -206,9 +186,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       successUrl.searchParams.set("success", "true");
       if (enableAutoTopup && topupAmount && !account?.has_payment_method && !postpaid) {
         const topupCents = Math.round(parseFloat(topupAmount) * 100);
-        const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
         successUrl.searchParams.set("pending_topup", topupCents.toString());
-        successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
       }
 
       // Proactive flow with no card on file: capture a reusable card via a no-charge
@@ -243,8 +221,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setCheckoutError(null);
     try {
       const topupCents = Math.round(parseFloat(topupAmount) * 100);
-      const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
-      await configureAutoTopup(topupCents, thresholdCents);
+      await configureAutoTopup(topupCents);
       setVisible(false);
       info.onAutoTopupConfigured?.();
     } catch (err) {
@@ -397,7 +374,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               {(isProactive || enableAutoTopup) && (
                 <div className={`grid grid-cols-2 gap-3 mt-3 ${isProactive ? "" : "ml-7"}`}>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
+                    <label className="block text-xs text-gray-500 mb-1">When the balance reaches $0, add ($)</label>
                     <input
                       type="number"
                       value={topupAmount}
@@ -405,25 +382,10 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                       onBlur={handleTopupAmountBlur}
                       placeholder="e.g. 25"
                       className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${topupAmountError ? "border-red-300" : "border-gray-200"}`}
-                      min="10"
+                      min={reloadRules?.reloadMinUsd}
                     />
                     {topupAmountError && (
                       <p className="text-xs text-red-600 mt-1">{topupAmountError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
-                    <input
-                      type="number"
-                      value={topupThreshold}
-                      onChange={(e) => { setTopupThreshold(e.target.value); setThresholdError(null); }}
-                      onBlur={handleThresholdBlur}
-                      placeholder="e.g. 5"
-                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
-                      min="5"
-                    />
-                    {thresholdError && (
-                      <p className="text-xs text-red-600 mt-1">{thresholdError}</p>
                     )}
                   </div>
                 </div>

@@ -11127,9 +11127,10 @@ export async function getBillingBalance(token?: string): Promise<BillingBalance>
 const ReloadRulesSchema = z.object({
   first_topup_minimum_cents: z.number().int().nonnegative(),
   reload_amount_minimum_cents: z.number().int().nonnegative(),
-  reload_threshold_minimum_cents: z.number().int().nonnegative(),
   default_reload_amount_cents: z.number().int().nonnegative(),
-  default_reload_threshold_cents: z.number().int().nonnegative(),
+  // Served by billing but read by no page: the reload fires at $0 for everyone (owner 2026-11-18).
+  reload_threshold_minimum_cents: z.number().int().nonnegative().optional(),
+  default_reload_threshold_cents: z.number().int().nonnegative().optional(),
 });
 export type ReloadRules = z.infer<typeof ReloadRulesSchema>;
 
@@ -11150,7 +11151,8 @@ export async function getReloadRules(token?: string): Promise<ReloadRules> {
  */
 export async function armAutoTopupAtReloadRules(token?: string): Promise<BillingAccount> {
   const rules = await getReloadRules(token);
-  return configureAutoTopup(rules.default_reload_amount_cents, rules.default_reload_threshold_cents, token);
+  // No threshold: billing reloads at $0 for everyone (owner 2026-11-18).
+  return configureAutoTopup(rules.default_reload_amount_cents, undefined, token);
 }
 
 export async function configureAutoTopup(

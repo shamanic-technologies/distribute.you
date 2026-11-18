@@ -25,7 +25,7 @@ import {
   type UsageDiscount,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
-import { thresholdCentsOrDefault, thresholdCentsParamOrDefault, useReloadRulesUsd } from "@/lib/reload-rules";
+import { useReloadRulesUsd } from "@/lib/reload-rules";
 import { formatBillingCents } from "@/lib/format-number";
 import { todayIsoDate } from "@/lib/credit-grant-body";
 import { pollOptions } from "@/lib/query-options";
@@ -43,7 +43,6 @@ export default function BillingPage() {
 
   const showSuccess = searchParams.get("success") === "true";
   const pendingTopup = searchParams.get("pending_topup");
-  const pendingThreshold = searchParams.get("pending_threshold");
 
   // Data fetching
   const { data: account, isLoading: accountLoading } = useAuthQuery<BillingAccount>(
@@ -212,13 +211,9 @@ export default function BillingPage() {
   // Auto-topup toggle (integrated into top-up flow) — pre-selected by default
   const [enableAutoTopup, setEnableAutoTopup] = useState(true);
   const [topupAmount, setTopupAmount] = useState("25");
-  const [topupThreshold, setTopupThreshold] = useState("");
-  // billing's reload rules (RELOAD-RULE-ONE-HOME-1118): minimums + default threshold, no copy here.
+  // billing's reload rules (RELOAD-RULE-ONE-HOME-1118): the minimums, no copy here. No
+  // threshold: a reload fires at $0 for everyone (owner 2026-11-18).
   const reloadRules = useReloadRulesUsd();
-  // The field opens on billing's default threshold once read (an existing config overwrites it).
-  useEffect(() => {
-    if (reloadRules) setTopupThreshold((t) => t || String(reloadRules.defaultThresholdUsd));
-  }, [reloadRules]);
 
   // Edit mode for existing auto-topup config
   const [editingTopup, setEditingTopup] = useState(false);
@@ -231,20 +226,8 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Inline validation errors (shown on blur)
-  const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [customAmountError, setCustomAmountError] = useState<string | null>(null);
   const [topupAmountError, setTopupAmountError] = useState<string | null>(null);
-
-  function handleThresholdBlur() {
-    if (!topupThreshold) {
-      if (reloadRules) setTopupThreshold(String(reloadRules.defaultThresholdUsd));
-      setThresholdError(null);
-    } else if (reloadRules && parseFloat(topupThreshold) < reloadRules.thresholdMinUsd) {
-      setThresholdError(`Minimum threshold is $${reloadRules.thresholdMinUsd}.`);
-    } else {
-      setThresholdError(null);
-    }
-  }
 
   function handleTopupAmountBlur() {
     if (!topupAmount) {
@@ -266,7 +249,7 @@ export default function BillingPage() {
     }
   }
 
-  const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
+  const hasValidationError = !!(customAmountError || topupAmountError);
 
   const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
   // Postpaid has no auto top-up (owner 2026-10-21): it is charged at each step of its
@@ -288,18 +271,15 @@ export default function BillingPage() {
     if (account?.payment_mode !== "postpaid" && account?.has_auto_topup) {
       setEnableAutoTopup(true);
       if (!topupAmount && account.topup_amount_cents !== null) setTopupAmount((account.topup_amount_cents / 100).toString());
-      if (!topupThreshold && account.topup_threshold_cents !== null) setTopupThreshold((account.topup_threshold_cents / 100).toString());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.has_auto_topup, account?.topup_amount_cents, account?.topup_threshold_cents]);
+  }, [account?.has_auto_topup, account?.topup_amount_cents]);
 
   // After successful Stripe checkout, save pending auto-topup settings
   useEffect(() => {
     if (showSuccess && pendingTopup) {
       const topupCents = parseInt(pendingTopup, 10);
-      thresholdCentsParamOrDefault(pendingThreshold).then((thresholdCents) =>
-        import("@/lib/api").then(({ configureAutoTopup }) => configureAutoTopup(topupCents, thresholdCents))
-      ).then(() => {
+      import("@/lib/api").then(({ configureAutoTopup }) => configureAutoTopup(topupCents)).then(() => {
         queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
       }).catch(() => {});
       // Clean URL params
@@ -309,7 +289,7 @@ export default function BillingPage() {
       window.history.replaceState({}, "", url.toString());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSuccess, pendingTopup, pendingThreshold]);
+  }, [showSuccess, pendingTopup]);
 
   // When the user selects a top-up amount, sync both selected and auto-topup amount
   function handleSelectTopup(amount: number) {
@@ -346,9 +326,8 @@ export default function BillingPage() {
       if (account?.has_payment_method) {
         if (enableAutoTopup && topupAmount) {
           const topupCents = Math.round(parseFloat(topupAmount) * 100);
-          const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
           const { configureAutoTopup } = await import("@/lib/api");
-          await configureAutoTopup(topupCents, thresholdCents);
+          await configureAutoTopup(topupCents);
         } else if (!enableAutoTopup && hasAutoTopup) {
           const { disableAutoTopup } = await import("@/lib/api");
           await disableAutoTopup();
@@ -360,9 +339,7 @@ export default function BillingPage() {
       successUrl.searchParams.set("success", "true");
       if (enableAutoTopup && topupAmount && !account?.has_payment_method) {
         const topupCents = Math.round(parseFloat(topupAmount) * 100);
-        const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
         successUrl.searchParams.set("pending_topup", topupCents.toString());
-        successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
       }
 
       const session = await createCheckoutSession({
@@ -383,9 +360,8 @@ export default function BillingPage() {
     setError(null);
     try {
       const topupCents = Math.round(parseFloat(topupAmount) * 100);
-      const thresholdCents = await thresholdCentsOrDefault(topupThreshold);
       const { configureAutoTopup } = await import("@/lib/api");
-      await configureAutoTopup(topupCents, thresholdCents);
+      await configureAutoTopup(topupCents);
       queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
       setEditingTopup(false);
     } catch (err) {
@@ -601,7 +577,7 @@ export default function BillingPage() {
               <>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
+                    <label className="block text-xs text-gray-500 mb-1">When the balance reaches $0, add ($)</label>
                     <input
                       type="number"
                       value={topupAmount}
@@ -609,25 +585,10 @@ export default function BillingPage() {
                       onBlur={handleTopupAmountBlur}
                       placeholder="e.g. 25"
                       className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${topupAmountError ? "border-red-300" : "border-gray-200"}`}
-                      min="10"
+                      min={reloadRules?.reloadMinUsd}
                     />
                     {topupAmountError && (
                       <p className="text-xs text-red-600 mt-1">{topupAmountError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
-                    <input
-                      type="number"
-                      value={topupThreshold}
-                      onChange={(e) => { setTopupThreshold(e.target.value); setThresholdError(null); }}
-                      onBlur={handleThresholdBlur}
-                      placeholder="e.g. 5"
-                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
-                      min="5"
-                    />
-                    {thresholdError && (
-                      <p className="text-xs text-red-600 mt-1">{thresholdError}</p>
                     )}
                   </div>
                 </div>
@@ -643,7 +604,6 @@ export default function BillingPage() {
                     onClick={() => {
                       setEditingTopup(false);
                       if (account?.topup_amount_cents !== null && account?.topup_amount_cents !== undefined) setTopupAmount((account.topup_amount_cents / 100).toString());
-                      if (account?.topup_threshold_cents !== null && account?.topup_threshold_cents !== undefined) setTopupThreshold((account.topup_threshold_cents / 100).toString());
                     }}
                     className="px-5 py-2 text-sm text-gray-600 hover:text-gray-800 transition"
                   >
@@ -663,10 +623,6 @@ export default function BillingPage() {
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Top-up amount</p>
                   <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.topup_amount_cents ?? 0)}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">When balance below</p>
-                  <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.topup_threshold_cents ?? 0)}</p>
                 </div>
               </div>
             )}
@@ -724,7 +680,7 @@ export default function BillingPage() {
               {enableAutoTopup && (
                 <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
+                    <label className="block text-xs text-gray-500 mb-1">When the balance reaches $0, add ($)</label>
                     <input
                       type="number"
                       value={topupAmount}
@@ -732,25 +688,10 @@ export default function BillingPage() {
                       onBlur={handleTopupAmountBlur}
                       placeholder="e.g. 25"
                       className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${topupAmountError ? "border-red-300" : "border-gray-200"}`}
-                      min="10"
+                      min={reloadRules?.reloadMinUsd}
                     />
                     {topupAmountError && (
                       <p className="text-xs text-red-600 mt-1">{topupAmountError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">When balance below ($)</label>
-                    <input
-                      type="number"
-                      value={topupThreshold}
-                      onChange={(e) => { setTopupThreshold(e.target.value); setThresholdError(null); }}
-                      onBlur={handleThresholdBlur}
-                      placeholder="e.g. 5"
-                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${thresholdError ? "border-red-300" : "border-gray-200"}`}
-                      min="5"
-                    />
-                    {thresholdError && (
-                      <p className="text-xs text-red-600 mt-1">{thresholdError}</p>
                     )}
                   </div>
                 </div>
