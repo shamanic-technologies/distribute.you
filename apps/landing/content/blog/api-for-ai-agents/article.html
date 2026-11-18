@@ -68,13 +68,13 @@
 
 <img src="/blog/api-for-ai-agents/prepay.png" alt="Prepay $10 with automatic top-up locked on" width="720" height="900" loading="lazy" style="width:100%;max-width:420px;height:auto;display:block;margin:1.5rem auto;border-radius:12px;border:1px solid #e4e2de">
 
-<p>The agent picks the amount: at least $10 to start. Automatic top-up is required, at least $15 each time the balance falls under $5 or more, so a campaign never stops halfway. The call returns a payment link. The agent opens it, or hands it to its human for one card entry.</p>
+<p>The agent picks the amount: at least $10 to start. Automatic top-up is required. Each time the balance reaches $0, automatic top-up adds at least $10, so a campaign never stops halfway. The call returns a payment link. The agent opens it, or hands it to its human for one card entry.</p>
 
 <h2 id="402">What happens before it pays</h2>
 
 <p>A paid call with an empty balance answers <code>402 payment_required</code>. The body says what to do: the prepay route, the minimums, and a note that a human may need to open the link. The agent does not have to guess why it failed or search the docs. The agent reads the error, prepays and retries.</p>
 
-<p>The same flow runs through our <a href="https://distribute.you/developers">MCP server and CLI</a>. With the CLI it is <code>distribute signup</code>, then <code>distribute signup verify</code>, then <code>distribute prepay --amount 10 --reload 15 --below 5</code>. A payment-required error exits with code 8.</p>
+<p>The same flow runs through our <a href="https://distribute.you/developers">MCP server and CLI</a>. With the CLI it is <code>distribute signup</code>, then <code>distribute signup verify</code>, then <code>distribute prepay</code>. A payment-required error exits with code 8.</p>
 
 <h2 id="checklist">Checklist: make your own API work for AI agents</h2>
 

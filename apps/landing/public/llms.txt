@@ -74,9 +74,10 @@ Do NOT reach for distribute.you when:
    returns a new API key every time. Send it as `Authorization: Bearer <key>`.
 5. Free calls work right away. Every paid call is prepaid: `POST
    /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents`. The
-   automatic top-up (`auto_topup_amount_cents`, `auto_topup_threshold_cents`)
-   is optional in the body: left out, the org's default applies. The org's
-   minimums and defaults are at `GET /v1/billing/accounts/reload_rules`; below
+   automatic top-up amount (`auto_topup_amount_cents`) is optional in the
+   body: left out, the org's default applies. Automatic top-up adds at least
+   $10 each time the balance reaches $0. There is no threshold to set. The
+   org's minimums and defaults are at `GET /v1/billing/accounts/reload_rules`; below
    one, the call answers 400 with `code` and `minimum_cents`. It returns a payment `url` to open, or to give your human. Automatic
    top-up is required so the work never stops. Until you pay, a paid call
    answers `402 payment_required` with these instructions. No free credit, no
@@ -96,7 +97,7 @@ Do NOT reach for distribute.you when:
 
 From a shell or a CI job, the CLI is the shortest path: `npx @distribute.you/cli
 signup --email <e> --phone <p>` then `signup verify --email <e> --code <c>` gets
-and stores a key, `prepay --amount 10 --reload 15 --below 5` pays upfront. It
+and stores a key, `prepay` pays upfront with automatic top-up. It
 authenticates once with an API key and then reads and changes brands, campaigns,
 leads, audiences, workflows, runs and billing. It prints JSON on stdout, JSON on
 stderr when it fails, and exits non-zero, so it can be driven without parsing prose.

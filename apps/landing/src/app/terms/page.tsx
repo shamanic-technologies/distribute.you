@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "November 9, 2026";
+const LAST_UPDATED = "November 18, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -176,9 +176,8 @@ const SECTIONS: SectionDef[] = [
           <strong>Current offer: prepaid, with automatic reload.</strong> On
           the current offer, the Service is prepaid. Before your campaigns
           start, you pay a first top-up on the checkout page (currently at least
-          $10) and set an automatic reload: a reload threshold (currently at
-          least $5) and a reload amount (currently at least $10 above that
-          threshold). Automatic reload is required for as long as you use the
+          $10) and set an automatic reload amount (currently at least $10).
+          Automatic reload is required for as long as you use the
           Service. An onboarding advance (currently $5) may be added to your
           account when it is created: it is an advance on your first payment,
           and that payment is credited net of it.
@@ -245,12 +244,13 @@ const SECTIONS: SectionDef[] = [
         <p>
           <strong>Automatic reload.</strong> Your campaigns spend money every
           day they run, so a prepaid account opened on or after October 11,
-          2026 keeps automatic reload on to use the Service: when your credit
-          falls under the reload threshold, we charge your saved payment
-          method the reload amount and add it to your credit, as many times as
-          your campaigns need. On the current offer you choose the threshold
-          and the amount within the minimums above; on an earlier offer the
-          threshold is $10 and the amount is that of your first payment. Once it is on,
+          2026 keeps automatic reload on to use the Service: when a charge for
+          your campaigns would take your credit below $0, we charge your saved
+          payment method the reload amount and add it to your credit, as many
+          times as your campaigns need. The reload threshold is $0 for every
+          account and cannot be changed. On the current offer you choose the
+          amount within the minimum above; on an earlier offer the amount is
+          that of your first payment. Once it is on,
           there is no switch to turn it off. To stop these charges, turn your
           campaigns off or remove your payment method; sending then stops when
           your credit runs out. Accounts opened before that date keep the
