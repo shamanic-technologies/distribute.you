@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { MAX_TEXT_LENGTH, VISITOR_COOKIE, isVisitorId, relayWebMessage } from "@/lib/chat/distry-web";
+import { MAX_TEXT_LENGTH, VISITOR_COOKIE, createIpGuard, isVisitorId, relayWebMessage } from "@/lib/chat/distry-web";
 import { prototypeSlugForHost } from "@/lib/prototype-catalogue";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,10 @@ export const dynamic = "force-dynamic";
  */
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   Response.json(body, { status, headers: { "cache-control": "no-store", ...headers } });
+
+// One process serves the site: the count per address lives here.
+const ipGuard = createIpGuard();
+const BUSY = { status: "busy", reply: null, choices: null, continuedOn: null, account: { signedIn: false, email: null } };
 
 function cookieValue(header: string | null, name: string): string | null {
   const match = (header ?? "").split(/;\s*/).find((part) => part.startsWith(`${name}=`));
@@ -27,6 +31,12 @@ export async function POST(request: Request) {
   const messageId = typeof body?.messageId === "string" ? body.messageId : "";
   if (text.length === 0 || text.length > MAX_TEXT_LENGTH || !/^[A-Za-z0-9_-]{8,64}$/.test(messageId)) {
     return json({ error: "invalid_message" }, 400);
+  }
+
+  const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!ipGuard.allow(ip, messageId)) {
+    console.warn(`[landing/chat] page chat: ${ip} wrote faster than a person does, message refused`);
+    return json(BUSY);
   }
 
   const known = cookieValue(request.headers.get("cookie"), VISITOR_COOKIE);

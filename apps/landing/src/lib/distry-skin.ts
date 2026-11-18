@@ -14,7 +14,7 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 11;
+export const SKIN_VERSION = 12;
 
 /** The site's mark, and Distry's, which replaces it wherever the skin is worn (owner 2026-11-17). */
 export const SITE_LOGO = "/landing/v2/assets/logo-mark.svg";
