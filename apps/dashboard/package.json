@@ -30,7 +30,7 @@
     "idb-keyval": "^6.2.1",
     "isomorphic-dompurify": "^3.23.0",
     "lottie-react": "^2.4.1",
-    "next": "^16.4.2",
+    "next": "^16.4.6",
     "posthog-js": "^1.438.19",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
