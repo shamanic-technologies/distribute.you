@@ -2,7 +2,7 @@
 
 import { offersNoFreeMoney } from "@/lib/v2/get-started";
 import { useState } from "react";
-import { armAutoTopupAtReloadRules, configureAutoTopup, disableAutoTopup, getFreeCreditPromises, getOrgUsage } from "@/lib/api";
+import { getFreeCreditPromises, getOrgUsage } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollIntervalFor } from "@/lib/query-options";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
@@ -27,8 +27,7 @@ import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm
 import { BarSpark, EmptyNote, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
 import { CreditBalanceCard, PostpaidOwedCard } from "@/components/v2/balance-hero";
 import { MonthlyLimitCard } from "@/components/v2/monthly-limit-card";
-import { autoTopupWhen } from "@/lib/v2/auto-topup-line";
-import { ReloadAmount } from "@/components/v2/reload-amount";
+import { AutoTopupCard } from "@/components/v2/auto-topup-card";
 
 /**
  * Billing, in the v2 frame.
@@ -107,39 +106,12 @@ export function V2BillingPage() {
 
   // A plan's card: what stops is stated before the usual removal confirmation.
   const [cardLossOpen, setCardLossOpen] = useState(false);
-  const [autoPending, setAutoPending] = useState(false);
-  const [autoError, setAutoError] = useState<string | null>(null);
 
   async function refetchMoney() {
     await Promise.all([
       queryClient.refetchQueries({ queryKey: ["billingAccount"] }),
       queryClient.refetchQueries({ queryKey: ["billingPayments"] }),
     ]).catch((err) => console.error("[billing v2] refetch after write failed:", err));
-  }
-
-  async function toggleAutoTopup(on: boolean) {
-    setAutoPending(true);
-    setAutoError(null);
-    try {
-      if (on) await armAutoTopupAtReloadRules();
-      else await disableAutoTopup();
-    } catch (err) {
-      console.error("[billing v2] auto top-up change failed:", err);
-      setAutoError("We could not change auto top-up. Please try again.");
-      setAutoPending(false);
-      return;
-    }
-    await refetchMoney();
-    setAutoPending(false);
-  }
-
-  // The reload AMOUNT is the client's to change (owner 2026-11-18); $0 turns auto top-up
-  // OFF (owner 2026-11-18: « Accepte une valeur $0, ca enleve lauto top up », never by
-  // taking the card away). Billing holds the threshold ($0 for everyone): none is sent.
-  async function saveReloadAmount(cents: number) {
-    if (cents === 0) await disableAutoTopup();
-    else await configureAutoTopup(cents);
-    await refetchMoney();
   }
 
   const available = c.availableCents;
@@ -331,47 +303,15 @@ export function V2BillingPage() {
                 </div>
               )}
 
-              {/* Auto top-up, in the words of the mode it serves. */}
+              {/* Auto top-up, prepaid only: one sentence, its state in a button opening the
+                  modal that sets it (owner 2026-11-18, the launch payment modal's reload fields). */}
               {mode === "prepaid" && account?.has_payment_method && c.autoReloadSupported && (
-                <div className="k-card mt-3 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-medium">Auto top-up</p>
-                      <p className="k-fg3 mt-0.5 text-[12px] leading-[18px]">
-                        {c.hasAutoTopup ? (
-                          <AutoTopupSentence
-                            thresholdCents={account?.topup_threshold_cents}
-                            amountCents={account?.topup_amount_cents}
-                            onSave={saveReloadAmount}
-                          />
-                        ) : (
-                          "Off. Your campaigns pause when your credit runs out."
-                        )}
-                      </p>
-                    </div>
-                    {/* Once on, no switch: setting the amount to $0 turns it off (owner 2026-11-18). */}
-                    {!(mode === "prepaid" && c.hasAutoTopup) && (
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={c.hasAutoTopup}
-                      aria-label="Auto top-up"
-                      disabled={autoPending}
-                      onClick={() => void toggleAutoTopup(!c.hasAutoTopup)}
-                      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                        c.hasAutoTopup ? "bg-[var(--accent)]" : "bg-[var(--data-track)]"
-                      } ${autoPending ? "cursor-wait" : ""}`}
-                    >
-                      <span
-                        className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                          c.hasAutoTopup ? "translate-x-[18px]" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                    )}
-                  </div>
-                  {autoError && <p role="alert" className="mt-2 text-[13px] text-[var(--data-rose)]">{autoError}</p>}
-                </div>
+                <AutoTopupCard
+                  on={c.hasAutoTopup}
+                  thresholdCents={account?.topup_threshold_cents}
+                  amountCents={account?.topup_amount_cents}
+                  onSaved={refetchMoney}
+                />
               )}
             </>
           )}
@@ -753,31 +693,5 @@ function UsageSection({
         )}
       </div>
     </Section>
-  );
-}
-
-/**
- * "When your balance reaches $0, we add [$10] from your card.": the threshold as billing
- * serves it, the amount editable in place. Billing serving either figure missing is said
- * plainly, never filled in.
- */
-function AutoTopupSentence({
-  thresholdCents,
-  amountCents,
-  onSave,
-}: {
-  thresholdCents: number | null | undefined;
-  amountCents: number | null | undefined;
-  onSave: (cents: number) => Promise<void>;
-}) {
-  const when = autoTopupWhen(thresholdCents);
-  if (when === null || typeof amountCents !== "number") {
-    if (typeof amountCents !== "number") console.error("[billing v2] auto top-up on without an amount", { amountCents });
-    return <>We could not read your auto top-up amounts right now.</>;
-  }
-  return (
-    <>
-      {when} <ReloadAmount amountCents={amountCents} onSave={onSave} /> from your card.
-    </>
   );
 }
