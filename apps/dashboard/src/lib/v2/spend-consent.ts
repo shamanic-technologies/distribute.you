@@ -27,7 +27,7 @@ export type ConsentArm =
    * Prepaid: the amount paid now is added again each time the credit runs out.
    * `limitUsd`: the monthly charge limit set at onboarding, named in the reload sentence.
    */
-  | { kind: "prepaid"; topupUsd: number; limitUsd?: number; reload?: { thresholdUsd: number; amountUsd: number } | null }
+  | { kind: "prepaid"; topupUsd: number; limitUsd?: number; reload?: { amountUsd: number } | null }
   /** Postpaid (an existing post-paid org, `org-launch.tsx`): nothing charged today, the card pays the spend after. */
   | { kind: "postpaid" };
 
@@ -48,12 +48,12 @@ export function spendConsentLines(input: { arm: ConsentArm }): [ConsentLine, Con
     arm.kind === "prepaid"
       ? {
           // Owner 2026-10-13: the reload, the limit that bounds it, and that the customer stays in control.
-          // The at-cost checkout names its own reload pair (owner 2026-10-29).
+          // The at-cost checkout names its reload amount (owner 2026-10-29); it fires at $0 (owner 2026-11-18).
           // `reload: null` = the at-cost checkout's reload box left unticked: nothing is added by itself.
           text: arm.reload === null
             ? "My campaigns run on the credit I add. When it runs out, they pause until I add more."
             : arm.reload
-            ? `When my credit falls under ${usd(arm.reload.thresholdUsd)}, ${usd(arm.reload.amountUsd)} is added automatically${limit(arm.limitUsd)}. My campaigns keep running on the budget I set. I can pause them anytime.`
+            ? `When my balance reaches $0, ${usd(arm.reload.amountUsd)} is added from my card automatically${limit(arm.limitUsd)}. My campaigns keep running on the budget I set. I can pause them anytime.`
             : `When my credit runs out, ${usd(arm.topupUsd)} is added automatically${limit(arm.limitUsd)}. My campaigns keep running on the budget I set. I can pause them anytime.`,
           link: null,
         }

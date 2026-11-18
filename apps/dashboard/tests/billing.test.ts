@@ -364,17 +364,16 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("Enable auto-topup");
   });
 
-  it("should have top-up amount and threshold inputs", () => {
+  it("should have the reload amount input and no threshold (owner 2026-11-18: $0 for everyone)", () => {
     expect(content).toContain("topupAmount");
-    expect(content).toContain("topupThreshold");
-    expect(content).toContain("Top-up amount ($)");
-    expect(content).toContain("When balance below ($)");
+    expect(content).toContain("When your balance reaches $0, add ($)");
+    expect(content).not.toContain("topupThreshold");
+    expect(content).not.toContain("When balance below");
   });
 
-  it("should validate the top-up amount and threshold against billing's reload rules", () => {
+  it("should validate the reload amount against billing's reload rules", () => {
     expect(content).toContain("getReloadRules()");
     expect(content).toContain("Minimum top-up amount is $${rules.reloadMinUsd}.");
-    expect(content).toContain("Minimum threshold is $${rules.thresholdMinUsd}.");
     expect(content).not.toContain(": 500;");
   });
 

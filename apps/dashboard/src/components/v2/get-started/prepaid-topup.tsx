@@ -3,8 +3,8 @@
 /**
  * The credit a new org adds before its campaigns start (owner 2026-10-06): prepaid, no
  * free trial. A first amount picked from the choices or typed (at least billing's first
- * top-up minimum). The automatic reload is REQUIRED (owner 2026-10-11): when the credit
- * falls under billing's default threshold, the same amount is added again; there is no switch, here
+ * top-up minimum). The automatic reload is REQUIRED (owner 2026-10-11): when the balance
+ * reaches $0 (owner 2026-11-18), the same amount is added again; there is no switch, here
  * or in Billing (a customer who wants to stop removes their card or stops their campaigns).
  * Every minimum and default is billing's reload rules (`getReloadRules`,
  * RELOAD-RULE-ONE-HOME-1118), read here before the step shows: no number lives in this file.
@@ -30,7 +30,7 @@ import { SpendConsent, allTicked } from "./spend-consent";
 export interface TopupChoice {
   topupUsd: number;
   /** null = no automatic reload (the at-cost checkout's box unticked, owner 2026-10-29). */
-  reload: { thresholdUsd: number; amountUsd: number } | null;
+  reload: { amountUsd: number } | null;
   /** The statements as ticked, for billing's record. */
   consent: PaymentConsentRecord;
 }
@@ -144,7 +144,8 @@ function DollarField({
 
 /**
  * The at-cost checkout (owner 2026-10-29, every org created since): the first top-up,
- * then the automatic reload, OPTIONAL and ticked by default: under $X, add $Y. Each
+ * then the automatic reload, OPTIONAL and ticked by default: at $0, add $Y (no threshold,
+ * owner 2026-11-18: « On ne permet pas de changer cette valeur nulle part »). Each
  * minimum and default is billing's (`rules`). One step, one payment. No match, nothing free.
  */
 function AtCostTopup({
@@ -164,13 +165,12 @@ function AtCostTopup({
 }) {
   const [first, setFirst] = useState<number | typeof OTHER>(AT_COST_TOPUP_CHOICES_USD[0]);
   const [firstOther, setFirstOther] = useState("");
-  const [threshold, setThreshold] = useState(String(rules.defaultThresholdUsd));
   const [reload, setReload] = useState(String(rules.defaultReloadUsd));
   const [reloadOn, setReloadOn] = useState(true);
   const [ticked, setTicked] = useState([false, false]);
   const [shown, setShown] = useState(false);
 
-  const checked = atCostCheckout({ topup: first === OTHER ? firstOther : String(first), threshold, reload, reloadOn }, rules);
+  const checked = atCostCheckout({ topup: first === OTHER ? firstOther : String(first), reload, reloadOn }, rules);
   const off = busy || disabled;
   const topupUsd = checked.values?.topupUsd ?? AT_COST_TOPUP_CHOICES_USD[0];
   const limit = monthlyLimit === undefined ? null : monthlyLimitToSave(monthlyLimit, { kind: "prepaid", topupUsd });
@@ -178,12 +178,7 @@ function AtCostTopup({
     arm: {
       kind: "prepaid",
       topupUsd,
-      reload: reloadOn
-        ? {
-            thresholdUsd: checked.values?.thresholdUsd ?? rules.defaultThresholdUsd,
-            amountUsd: checked.values?.reloadUsd ?? rules.defaultReloadUsd,
-          }
-        : null,
+      reload: reloadOn ? { amountUsd: checked.values?.reloadUsd ?? rules.defaultReloadUsd } : null,
       ...(limit && "usd" in limit ? { limitUsd: limit.usd } : {}),
     },
   });
@@ -193,10 +188,7 @@ function AtCostTopup({
     if (!checked.values || !allTicked(ticked)) return;
     onPay({
       topupUsd: checked.values.topupUsd,
-      reload:
-        checked.values.thresholdUsd !== null && checked.values.reloadUsd !== null
-          ? { thresholdUsd: checked.values.thresholdUsd, amountUsd: checked.values.reloadUsd }
-          : null,
+      reload: checked.values.reloadUsd !== null ? { amountUsd: checked.values.reloadUsd } : null,
       consent: consentRecord(lines, new Date(), navigator.userAgent),
     });
   }
@@ -230,8 +222,7 @@ function AtCostTopup({
         </label>
         {reloadOn && (
           <div className="mt-2 flex flex-wrap items-start gap-4">
-            <DollarField label="When my credit falls under" value={threshold} onChange={setThreshold} problem={checked.problems.threshold} disabled={off} />
-            <DollarField label="Add" value={reload} onChange={setReload} problem={checked.problems.reload} disabled={off} />
+            <DollarField label="When my balance reaches $0, add" value={reload} onChange={setReload} problem={checked.problems.reload} disabled={off} />
           </div>
         )}
       </div>
@@ -259,7 +250,7 @@ function MatchTopup({
 }: {
   busy: boolean;
   disabled?: boolean;
-  /** billing's reload rules for this org: the first top-up minimum and the reload threshold. */
+  /** billing's reload rules for this org: the first top-up minimum. */
   rules: ReloadRulesUsd;
 
   /** The monthly limit typed at the campaign step (null while untouched); absent where none is set. */
@@ -291,7 +282,7 @@ function MatchTopup({
     if ("problem" in firstParsed || !allTicked(ticked)) return;
     onPay({
       topupUsd: firstParsed.usd,
-      reload: { thresholdUsd: rules.defaultThresholdUsd, amountUsd: firstParsed.usd },
+      reload: { amountUsd: firstParsed.usd },
       consent: consentRecord(lines, new Date(), navigator.userAgent),
     });
   }

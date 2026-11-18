@@ -12,48 +12,44 @@ import { spendConsentLines } from "../src/lib/v2/spend-consent";
 const RULES = reloadRulesUsd({
   first_topup_minimum_cents: 1000,
   reload_amount_minimum_cents: 1000,
-  reload_threshold_minimum_cents: 500,
   default_reload_amount_cents: 1000,
-  default_reload_threshold_cents: 500,
 });
 const atCostCheckout = (input: Parameters<typeof check>[0]) => check(input, RULES);
 
 const src = (rel: string) => fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
 
 describe("at-cost checkout minimums", () => {
-  it("takes the owner's worked example: $10 now, +$10 below $5", () => {
-    expect(atCostCheckout({ topup: "10", threshold: "5", reload: "10" })).toEqual({
-      problems: { topup: null, threshold: null, reload: null },
-      values: { topupUsd: 10, thresholdUsd: 5, reloadUsd: 10 },
+  it("takes the owner's worked example: $10 now, +$10 when the balance reaches $0", () => {
+    expect(atCostCheckout({ topup: "10", reload: "10" })).toEqual({
+      problems: { topup: null, reload: null },
+      values: { topupUsd: 10, reloadUsd: 10 },
     });
   });
 
   it("refuses each amount under its own minimum, by name", () => {
-    const r = atCostCheckout({ topup: "9", threshold: "4", reload: "9" });
+    const r = atCostCheckout({ topup: "9", reload: "9" });
     expect(r.values).toBeNull();
     expect(r.problems.topup).toBe("At least $10.");
-    expect(r.problems.threshold).toBe("At least $5.");
     expect(r.problems.reload).toBe("At least $10.");
   });
 
-  it("a $10 reload passes whatever the threshold (owner 2026-11-11: +$10, never threshold + $10)", () => {
-    expect(atCostCheckout({ topup: "50", threshold: "20", reload: "10" }).values).toEqual({ topupUsd: 50, thresholdUsd: 20, reloadUsd: 10 });
-    expect(atCostCheckout({ topup: "50", threshold: "20", reload: "9" }).problems.reload).toBe("At least $10.");
+  it("a larger reload the person picks passes", () => {
+    expect(atCostCheckout({ topup: "50", reload: "50" }).values).toEqual({ topupUsd: 50, reloadUsd: 50 });
   });
 
   it("refuses anything but whole dollars", () => {
-    expect(atCostCheckout({ topup: "10.5", threshold: "5", reload: "15" }).problems.topup).toBe("Whole dollars.");
-    expect(atCostCheckout({ topup: "$1,000", threshold: "5", reload: "15" }).values?.topupUsd).toBe(1000);
+    expect(atCostCheckout({ topup: "10.5", reload: "15" }).problems.topup).toBe("Whole dollars.");
+    expect(atCostCheckout({ topup: "$1,000", reload: "15" }).values?.topupUsd).toBe(1000);
   });
 });
 
 describe("the automatic reload is optional, ticked by default (owner 2026-10-29)", () => {
   it("unticked: only the top-up is checked, no reload is sent", () => {
-    expect(atCostCheckout({ topup: "10", threshold: "", reload: "", reloadOn: false })).toEqual({
-      problems: { topup: null, threshold: null, reload: null },
-      values: { topupUsd: 10, thresholdUsd: null, reloadUsd: null },
+    expect(atCostCheckout({ topup: "10", reload: "", reloadOn: false })).toEqual({
+      problems: { topup: null, reload: null },
+      values: { topupUsd: 10, reloadUsd: null },
     });
-    expect(atCostCheckout({ topup: "9", threshold: "", reload: "", reloadOn: false }).values).toBeNull();
+    expect(atCostCheckout({ topup: "9", reload: "", reloadOn: false }).values).toBeNull();
   });
 
   it("the box starts ticked and an unticked box pays without a reload", () => {
@@ -87,9 +83,9 @@ describe("no free money for an at-cost org", () => {
     }
     expect(wallCopy(isAtCostOffer({ free_credit_offer: "match_100" })).creditUsd).toBe(100);
     expect(AT_COST_TOPUP_CHOICES_USD).toEqual([100, 250, 500, 1000]);
-    const under = atCostCheckout({ topup: "9", threshold: "5", reload: "10" });
+    const under = atCostCheckout({ topup: "9", reload: "10" });
     expect(under.problems.topup).toBe("At least $10.");
-    expect(atCostCheckout({ topup: "10", threshold: "5", reload: "10" }).values).toEqual({ topupUsd: 10, thresholdUsd: 5, reloadUsd: 10 });
+    expect(atCostCheckout({ topup: "10", reload: "10" }).values).toEqual({ topupUsd: 10, reloadUsd: 10 });
   });
 
   it("the wall's words promise no match, no trial, nothing free", () => {
@@ -111,9 +107,9 @@ describe("no free money for an at-cost org", () => {
     expect(topupCta(10, matchNote(acct))).toBe("Pay $10 and launch");
   });
 
-  it("the reload statement names the pair picked", () => {
-    const [card] = spendConsentLines({ arm: { kind: "prepaid", topupUsd: 10, reload: { thresholdUsd: 5, amountUsd: 15 } } });
-    expect(card.text).toContain("When my credit falls under $5, $15 is added automatically");
+  it("the reload statement names the amount added when the balance reaches $0 (owner 2026-11-18)", () => {
+    const [card] = spendConsentLines({ arm: { kind: "prepaid", topupUsd: 10, reload: { amountUsd: 15 } } });
+    expect(card.text).toContain("When my balance reaches $0, $15 is added from my card automatically");
   });
 });
 
@@ -162,17 +158,15 @@ describe("no referral or free credit surface for a no-free-money org", () => {
 });
 
 describe("billing's reload rules are the only source of the figures (RELOAD-RULE-ONE-HOME-1118)", () => {
-  it("follows whatever billing serves: a staff override of $25 / $8 moves every check", () => {
+  it("follows whatever billing serves: a staff override of $25 moves every check", () => {
     const rules = reloadRulesUsd({
       first_topup_minimum_cents: 2500,
       reload_amount_minimum_cents: 2500,
-      reload_threshold_minimum_cents: 800,
       default_reload_amount_cents: 2500,
-      default_reload_threshold_cents: 800,
     });
-    const r = check({ topup: "20", threshold: "5", reload: "10" }, rules);
-    expect(r.problems).toEqual({ topup: "At least $25.", threshold: "At least $8.", reload: "At least $25." });
-    expect(check({ topup: "25", threshold: "8", reload: "50" }, rules).values).toEqual({ topupUsd: 25, thresholdUsd: 8, reloadUsd: 50 });
+    const r = check({ topup: "20", reload: "10" }, rules);
+    expect(r.problems).toEqual({ topup: "At least $25.", reload: "At least $25." });
+    expect(check({ topup: "25", reload: "50" }, rules).values).toEqual({ topupUsd: 25, reloadUsd: 50 });
   });
 
   it("a minimum in cents rounds UP to whole dollars", () => {
@@ -180,11 +174,9 @@ describe("billing's reload rules are the only source of the figures (RELOAD-RULE
       reloadRulesUsd({
         first_topup_minimum_cents: 1050,
         reload_amount_minimum_cents: 1001,
-        reload_threshold_minimum_cents: 450,
         default_reload_amount_cents: 1001,
-        default_reload_threshold_cents: 450,
       }),
-    ).toEqual({ firstTopupMinUsd: 11, reloadMinUsd: 11, thresholdMinUsd: 5, defaultReloadUsd: 11, defaultThresholdUsd: 5 });
+    ).toEqual({ firstTopupMinUsd: 11, reloadMinUsd: 11, defaultReloadUsd: 11 });
   });
 
   it("relays billing's own refusal words, for its three minimum codes only", () => {
@@ -203,10 +195,25 @@ describe("billing's reload rules are the only source of the figures (RELOAD-RULE
   it("the credit step reads the rules from billing and holds no number of its own", () => {
     const topup = src("src/components/v2/get-started/prepaid-topup.tsx");
     expect(topup).toContain("getReloadRules()");
-    expect(topup).toContain("useState(String(rules.defaultThresholdUsd))");
     expect(topup).toContain("useState(String(rules.defaultReloadUsd))");
     const lib = src("src/lib/v2/get-started.ts");
     expect(lib).not.toMatch(/(MIN|DEFAULT)_(RELOAD|THRESHOLD|TOPUP)\w*\s*=/);
     expect(src("src/lib/api.ts")).toContain('"/billing/accounts/reload_rules"');
+  });
+});
+
+describe("no reload threshold anywhere (owner 2026-11-18: « On mets $0 pour tout le monde »)", () => {
+  it("the credit step and the launch modal show no threshold field and send none", () => {
+    const topup = src("src/components/v2/get-started/prepaid-topup.tsx");
+    expect(topup).not.toContain("falls under");
+    expect(topup).not.toMatch(/thresholdUsd/);
+    expect(topup).toContain("When my balance reaches $0, add");
+    const guard = src("src/lib/billing-guard.tsx");
+    expect(guard).not.toContain("When balance below");
+    expect(guard).not.toMatch(/topupThreshold|thresholdCents/);
+    expect(guard).toContain("When your balance reaches $0, add ($)");
+    const pay = src("src/components/v2/get-started/pay-topup.ts");
+    expect(pay).toContain("configureAutoTopup(reload.amountUsd * 100)");
+    expect(src("src/lib/api.ts")).toContain("configureAutoTopup(rules.default_reload_amount_cents, undefined, token)");
   });
 });
