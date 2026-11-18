@@ -5,18 +5,18 @@ import { EXIT, type ExitCode, usageError } from "../errors.js";
 import { printJson } from "../output.js";
 
 const USAGE =
-  "Usage: distribute prepay --amount <dollars, min 10> --reload <dollars, min 15> --below <dollars, min 5>. Returns a payment url to open, or to give your human.";
+  "Usage: distribute prepay --amount <dollars> [--reload <dollars>]. Each amount must be at least the minimum billing states. Returns a payment url to open, or to give your human.";
 
 /**
- * Every paid call on distribute.you is paid upfront, and the
- * balance refills itself: --reload is charged to the saved card each time the
- * balance falls under --below. The API enforces the minimums and names the one
- * that was missed; this only turns dollars into the cents the API takes.
+ * Every paid call on distribute.you is paid upfront, and the balance refills
+ * itself: the reload amount is charged to the saved card each time the balance
+ * runs out. --reload is optional (billing applies its default). The minimums
+ * live in billing-service only: it refuses an amount below one with a 400 that
+ * names it, printed here as-is. This only turns dollars into cents.
  */
 export async function prepay(context: Context, args: ParsedArgs): Promise<ExitCode> {
   const amount = dollars(args, "amount");
-  const reload = dollars(args, "reload");
-  const below = dollars(args, "below");
+  const reload = flagValue(args, "reload") === undefined ? undefined : dollars(args, "reload");
   const successUrl = flagValue(args, "success-url");
   const cancelUrl = flagValue(args, "cancel-url");
 
@@ -27,8 +27,7 @@ export async function prepay(context: Context, args: ParsedArgs): Promise<ExitCo
     apiKey: requireKey(context),
     body: {
       topup_amount_cents: amount,
-      auto_topup_amount_cents: reload,
-      auto_topup_threshold_cents: below,
+      ...(reload !== undefined ? { auto_topup_amount_cents: reload } : {}),
       ...(successUrl ? { success_url: successUrl } : {}),
       ...(cancelUrl ? { cancel_url: cancelUrl } : {}),
     },
