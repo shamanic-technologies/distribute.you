@@ -32,7 +32,7 @@ import {
 import { cardRemoveConsequence } from "@/lib/card-remove";
 import { pollOptions } from "@/lib/query-options";
 import { chargesAutomatically } from "@/lib/automatic-charges";
-import { cardBrandLabel } from "@/components/billing/billing-display";
+import { savedMethodName } from "@/components/billing/billing-display";
 
 /**
  * Everything the Billing page DOES, apart from how it looks: the reads, the figures
@@ -271,10 +271,7 @@ export function useBillingController() {
   // The card in the customer's own words, so the confirmation names the thing
   // they are looking at. Null when we hold no display fields for it (older
   // billing deploy), and the modal then asks about "your card".
-  const cardLabel =
-    account?.card_brand && account?.card_last4
-      ? `${cardBrandLabel(account.card_brand)} ${account.card_last4}`
-      : null;
+  const cardLabel = savedMethodName(account, " ");
 
   const isNegativeBalance = availableCents < 0;
   const balanceLabel = isNegativeBalance ? "Balance" : "Available";

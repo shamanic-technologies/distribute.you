@@ -216,7 +216,9 @@ describe("Billing page", () => {
     expect(fs.existsSync(billingPagePath)).toBe(true);
   });
 
-  const content = fs.readFileSync(path.resolve(__dirname, "../src/components/billing/use-billing-controller.ts"), "utf-8") + fs.readFileSync(billingPagePath, "utf-8");
+  const content = fs.readFileSync(path.resolve(__dirname, "../src/components/billing/use-billing-controller.ts"), "utf-8") + fs.readFileSync(billingPagePath, "utf-8") +
+    // The Payment method row's line lives in its own component (BILLING-LINK-PAYMENT-METHOD-1118).
+    fs.readFileSync(path.resolve(__dirname, "../src/components/v2/saved-method-line.tsx"), "utf-8");
 
   it("should be a client component", () => {
     expect(content).toContain('"use client"');

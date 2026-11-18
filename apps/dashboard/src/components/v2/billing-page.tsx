@@ -13,10 +13,7 @@ import { postpaidOwed } from "@/lib/v2/pay-balance";
 import { LossDialog, SubscriptionPlan } from "@/components/v2/subscription-plan";
 import { useBillingController } from "@/components/billing/use-billing-controller";
 import {
-  CardBrandLogo,
-  cardBrandLabel,
-  cardExpiryLabel,
-  countryFlag,
+  savedMethodName,
   countryLabel,
   formatGrantDate,
 } from "@/components/billing/billing-display";
@@ -28,6 +25,7 @@ import { BarSpark, EmptyNote, ShareBar, Shimmer, TopBar } from "@/components/v2/
 import { CreditBalanceCard, PostpaidOwedCard } from "@/components/v2/balance-hero";
 import { MonthlyLimitCard } from "@/components/v2/monthly-limit-card";
 import { AutoTopupCard } from "@/components/v2/auto-topup-card";
+import { SavedMethodLine } from "@/components/v2/saved-method-line";
 
 /**
  * Billing, in the v2 frame.
@@ -117,10 +115,8 @@ export function V2BillingPage() {
   const available = c.availableCents;
   const onCredit = available < 0;
   const balanceFigure = formatBillingCents(onCredit ? Math.abs(available) : account?.balance_cents ?? "0");
-  const expiry = cardExpiryLabel(account?.card_exp_month, account?.card_exp_year);
   const owed = postpaidOwed(account);
-  const cardName =
-    account?.card_brand && account?.card_last4 ? `${cardBrandLabel(account.card_brand)} ending ${account.card_last4}` : null;
+  const cardName = savedMethodName(account, " ending ");
   // Free credit shows only once there is some, given or on the way (owner 2026-11-02:
   // "No free credit yet" was a section saying nothing). Same key as ComingCreditsCard.
   const promises = useAuthQuery(["freeCreditPromises"], () => getFreeCreditPromises());
@@ -330,36 +326,14 @@ export function V2BillingPage() {
         <Section
           id="card"
           title="Payment method"
-          description="The card we charge. Adding or replacing it opens our payment provider's form; nothing is removed without asking."
+          description="The card or wallet we charge. Adding or replacing it opens our payment provider's form; nothing is removed without asking."
         >
           <div className="k-card p-4">
             {c.accountPending ? (
               <Shimmer className="h-10 w-64" />
             ) : account?.has_payment_method ? (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
-                <CardBrandLogo brand={account.card_brand} className="k-inset rounded-lg" />
-                <div className="min-w-0 flex-1">
-                  {account.card_last4 ? (
-                    <p className="text-[13px]">
-                      <span className="font-medium">{cardBrandLabel(account.card_brand)}</span>
-                      <span className="k-fg4 mx-1.5 tracking-[0.2em]" aria-hidden>
-                        ••••
-                      </span>
-                      <span className="font-medium tabular-nums">{account.card_last4}</span>
-                    </p>
-                  ) : (
-                    <p className="text-[13px] font-medium">Card connected</p>
-                  )}
-                  <p className="k-fg3 mt-0.5 flex flex-wrap items-center gap-x-1.5 whitespace-nowrap text-[12px]">
-                    {expiry && <span>Expires {expiry}</span>}
-                    {expiry && account.card_country && <span aria-hidden>·</span>}
-                    {account.card_country && (
-                      <span>
-                        {countryFlag(account.card_country)} {countryLabel(account.card_country)}
-                      </span>
-                    )}
-                  </p>
-                </div>
+                <SavedMethodLine account={account} />
                 <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                   <button
                     type="button"
