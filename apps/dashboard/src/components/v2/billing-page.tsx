@@ -31,6 +31,7 @@ import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm
 import { BarSpark, EmptyNote, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
 import { CreditBalanceCard, PostpaidOwedCard } from "@/components/v2/balance-hero";
 import { MonthlyLimitCard } from "@/components/v2/monthly-limit-card";
+import { autoTopupLine } from "@/lib/v2/auto-topup-line";
 
 /**
  * Billing, in the v2 frame.
@@ -332,7 +333,8 @@ export function V2BillingPage() {
                       <p className="text-[13px] font-medium">Auto top-up</p>
                       <p className="k-fg3 mt-0.5 text-[12px] leading-[18px]">
                         {c.hasAutoTopup
-                          ? `When your balance reaches $0, we add ${formatCentsAsUsd(c.topupAmountCents, 0)} from your card.`
+                          ? (autoTopupLine(account?.topup_threshold_cents, account?.topup_amount_cents) ??
+                            "We could not read your auto top-up amounts right now.")
                           : "Off. Your campaigns pause when your credit runs out."}
                       </p>
                     </div>
