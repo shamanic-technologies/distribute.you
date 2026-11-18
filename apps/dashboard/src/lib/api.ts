@@ -10786,6 +10786,11 @@ export interface BillingAccount {
   card_last4?: string | null;
   card_exp_month?: number | null;
   card_exp_year?: number | null;
+  // What we charge, whatever its type (billing-service, BILLING-LINK-PAYMENT-METHOD-1118):
+  // the Stripe type of the method a charge would name ("card", else "link"), and the
+  // Link wallet email when it is Link. Additive: absent on older billing deploys.
+  payment_method_type?: string | null;
+  link_email?: string | null;
   // Per-org usage discount rate (integer 0-100), frozen upstream at cost-declaration so
   // the balance/usage/next-charge numbers above are ALREADY net of it. null = no discount.
   // Absent on older billing deploys.

@@ -48,11 +48,36 @@ const CARD_BRAND_LABELS: Record<string, string> = {
   diners: "Diners Club",
   jcb: "JCB",
   unionpay: "UnionPay",
+  link: "Link",
 };
 
 export function cardBrandLabel(brand: string | null | undefined): string {
   if (!brand) return "Card";
   return CARD_BRAND_LABELS[brand.toLowerCase()] ?? brand.charAt(0).toUpperCase() + brand.slice(1);
+}
+
+/**
+ * The saved method in the customer's words, from the fields billing SERVES: a card is
+ * "<brand> <sep> <last4>", a Stripe Link wallet is "Link <sep> <its email>". Null when
+ * billing states no detail (older deploy, or a card with no display fields).
+ */
+export function savedMethodName(
+  account:
+    | {
+        payment_method_type?: string | null;
+        link_email?: string | null;
+        card_brand?: string | null;
+        card_last4?: string | null;
+      }
+    | null
+    | undefined,
+  sep: string
+): string | null {
+  if (!account) return null;
+  if (account.payment_method_type === "link") return account.link_email ? `Link${sep}${account.link_email}` : "Link";
+  return account.card_brand && account.card_last4
+    ? `${cardBrandLabel(account.card_brand)}${sep}${account.card_last4}`
+    : null;
 }
 
 export function cardExpiryLabel(month: number | null | undefined, year: number | null | undefined): string | null {
@@ -74,6 +99,8 @@ const CARD_BRAND_DOMAINS: Record<string, string> = {
   diners: "dinersclubinternational.com",
   jcb: "global.jcb",
   unionpay: "unionpayintl.com",
+  // Stripe Link (a saved wallet, no card number): its own mark.
+  link: "link.com",
 };
 
 // Generic card glyph — fallback when the brand is unknown or the logo 404s.
