@@ -83,7 +83,7 @@ describe("a Revolut org can always get a card on file", () => {
 describe("how the org pays: a tag, set by staff", () => {
   // Owner 2026-10-01: each client keeps the mode it has, stated plainly; only staff
   // moves an org between modes (admin console), so the page offers no switch.
-  const section = V2.slice(V2.indexOf('id="payment-mode"'), V2.indexOf("{/* Auto top-up, in the words of the mode it serves. */}"));
+  const section = V2.slice(V2.indexOf('id="payment-mode"'), V2.indexOf("{/* Auto top-up, prepaid only"));
 
   it("shows the current mode as a tag with its rule, and nothing to click", () => {
     expect(section).toContain('<span className="k-chip">{MODE_COPY[mode].title}</span>');
@@ -117,18 +117,19 @@ describe("the v2 page speaks Keel", () => {
 });
 
 describe("prepaid automatic reload: $0 turns it off (owner 2026-11-18)", () => {
-  it("offers no switch once on; the amount set to $0 turns it off, never 'remove your card'", () => {
-    expect(V2).toContain('{!(mode === "prepaid" && c.hasAutoTopup) && (');
-    expect(V2).toContain("if (cents === 0) await disableAutoTopup();");
-    expect(V2).not.toContain("remove your card");
+  it("offers no switch: one modal sets it, the amount set to $0 turns it off, never 'remove your card'", () => {
+    const CARD = readFileSync(join(__dirname, "../src/components/v2/auto-topup-card.tsx"), "utf8");
+    expect(V2).not.toContain('role="switch"');
+    expect(CARD).toContain("if (cents === 0) await disableAutoTopup();");
+    expect(V2 + CARD).not.toContain("remove your card");
   });
 });
 
 describe("a postpaid org reads postpaid words only (owner 2026-10-21)", () => {
   it("offers postpaid no auto top-up switch: the switch card is prepaid-only", () => {
-    const auto = V2.slice(V2.indexOf("{/* Auto top-up, in the words of the mode it serves. */}"), V2.indexOf('id="monthly-limit"'));
+    const auto = V2.slice(V2.indexOf("{/* Auto top-up, prepaid only"), V2.indexOf('id="monthly-limit"'));
     expect(auto).toContain('{mode === "prepaid" && account?.has_payment_method && c.autoReloadSupported && (');
-    expect(auto).toContain('role="switch"');
+    expect(auto).toContain("<AutoTopupCard");
     expect(auto).not.toContain('mode === "postpaid"');
   });
 

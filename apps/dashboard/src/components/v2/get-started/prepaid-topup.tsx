@@ -4,8 +4,8 @@
  * The credit a new org adds before its campaigns start (owner 2026-10-06): prepaid, no
  * free trial. A first amount picked from the choices or typed (at least billing's first
  * top-up minimum). The automatic reload is REQUIRED (owner 2026-10-11): when the balance
- * reaches $0 (owner 2026-11-18), the same amount is added again; there is no switch, here
- * or in Billing (a customer who wants to stop removes their card or stops their campaigns).
+ * reaches $0 (owner 2026-11-18), the same amount is added again. Billing changes it in the
+ * same fields (`ReloadFields`, its auto top-up modal); $0 there turns it off.
  * Every minimum and default is billing's reload rules (`getReloadRules`,
  * RELOAD-RULE-ONE-HOME-1118), read here before the step shows: no number lives in this file.
  * The statements of `spendConsentLines` are ticked before the button turns on. The
@@ -110,7 +110,7 @@ function amountOf(value: number | typeof OTHER, other: string, minUsd: number): 
 }
 
 /** One whole-dollar field of the at-cost checkout, with its own problem under it. */
-function DollarField({
+export function DollarField({
   label,
   value,
   onChange,
@@ -139,6 +139,42 @@ function DollarField({
       </span>
       {problem && <span className="text-[12px] text-[var(--data-rose)]">{problem}</span>}
     </label>
+  );
+}
+
+/**
+ * The automatic reload's two controls: the box that turns it on, then "When my balance
+ * reaches $0, add $[ ]". Drawn by the launch payment modal (at-cost checkout) AND the
+ * Billing auto top-up modal (owner 2026-11-18: « on a déjà un modal pour ça »), so the
+ * reload reads and edits the same way everywhere.
+ */
+export function ReloadFields({
+  on,
+  onOn,
+  amount,
+  onAmount,
+  problem,
+  disabled,
+}: {
+  on: boolean;
+  onOn: (next: boolean) => void;
+  amount: string;
+  onAmount: (v: string) => void;
+  problem: string | null;
+  disabled: boolean;
+}) {
+  return (
+    <div>
+      <label className="flex items-center gap-2 text-[13px]">
+        <input type="checkbox" checked={on} onChange={(e) => onOn(e.target.checked)} disabled={disabled} />
+        <span className="k-fg font-medium">Reload my credit automatically</span>
+      </label>
+      {on && (
+        <div className="mt-2 flex flex-wrap items-start gap-4">
+          <DollarField label="When my balance reaches $0, add" value={amount} onChange={onAmount} problem={problem} disabled={disabled} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -211,21 +247,18 @@ function AtCostTopup({
           disabled={off}
         />
       </div>
-      <div>
-        <label className="flex items-center gap-2 text-[13px]">
-          <input type="checkbox" checked={reloadOn} onChange={(e) => {
-              setReloadOn(e.target.checked);
-              // The reload statement changes with it: ticked again on its new words.
-              setTicked((t) => [false, t[1]]);
-            }} disabled={off} />
-          <span className="k-fg font-medium">Reload my credit automatically</span>
-        </label>
-        {reloadOn && (
-          <div className="mt-2 flex flex-wrap items-start gap-4">
-            <DollarField label="When my balance reaches $0, add" value={reload} onChange={setReload} problem={checked.problems.reload} disabled={off} />
-          </div>
-        )}
-      </div>
+      <ReloadFields
+        on={reloadOn}
+        onOn={(next) => {
+          setReloadOn(next);
+          // The reload statement changes with it: ticked again on its new words.
+          setTicked((t) => [false, t[1]]);
+        }}
+        amount={reload}
+        onAmount={setReload}
+        problem={checked.problems.reload}
+        disabled={off}
+      />
       <SpendConsent lines={lines} ticked={ticked} onChange={setTicked} disabled={off} />
       <button
         type="button"

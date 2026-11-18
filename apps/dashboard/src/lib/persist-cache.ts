@@ -260,6 +260,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "billingAccount",
   // The monthly charge limit and this month's charges (Billing, billing-service).
   "monthlyChargeLimit",
+  "reloadRules",
   "billingRunway",
   "subscriptionPlans",
   "subscription",

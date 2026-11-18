@@ -54,15 +54,16 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
 
   it("Billing's card states a SPEND cap and its bar reads the month's spend, never card charges (owner 2026-10-21)", () => {
     const card = read("src/components/v2/monthly-limit-card.tsx");
-    expect(card).toContain(">Never spend more than</span>");
-    expect(card).toContain(">per month</span>");
+    // Billing reads the limit in a button and edits it in a modal (owner 2026-11-18).
+    expect(card).toContain('label="Never spend more than, per month"');
+    expect(card).toContain("`${formatCentsAsUsd(limitCents, 0)}/month`");
     expect(card).not.toContain("spend at most");
-    expect(card).toContain(">No monthly spend limit.</span>");
+    expect(card).toContain('"No limit. Your campaigns spend what your balance allows."');
     expect(card).toContain("const spentRaw = data.spent_this_period_cents;");
     expect(card).toContain("<Meter value={spent} max={limitCents} />");
     // The month is NAMED: "this month" read as a third figure beside the Balance card's
     // since-last-charge one (2026-11-02).
-    expect(card).toContain("spent in {periodMonth(data.period_start)}, provisioned included");
+    expect(card).toContain("spent in ${periodMonth(data.period_start)}, provisioned included.");
     expect(card).not.toContain("charged_this_period_cents");
     expect(card).not.toContain("charged this month");
     expect(card).not.toContain("Never charge me");
