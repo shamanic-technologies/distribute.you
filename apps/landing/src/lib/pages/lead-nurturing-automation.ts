@@ -344,7 +344,7 @@ function pricesHtml(): string {
         <h3>Your data stays yours</h3>
         <p>Run the open source version on your own server with your own keys. Your leads and their history stay in your own database.</p>
         <h3 class="byok-2">Your balance is the cap</h3>
-        <p>Hosted accounts run on a prepaid balance. Auto reload tops it up at the level you choose.</p>
+        <p>Hosted accounts run on a prepaid balance. Auto reload adds at least $10 when the balance reaches $0.</p>
       </aside>
     </div>
   </div>

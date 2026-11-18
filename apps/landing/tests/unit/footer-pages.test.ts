@@ -208,7 +208,7 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("The referred account\n          receives no referral credit.");
     expect(terms).not.toContain("each side");
     expect(terms).toContain("is an acquisition agency delivered as a service");
-    expect(terms).toContain('const LAST_UPDATED = "November 9, 2026"');
+    expect(terms).toContain('const LAST_UPDATED = "November 18, 2026"');
   });
 
   it("the terms state the risk of a brand MCP server our AI reads from and writes to (BRAND-MCP-1109)", () => {
@@ -368,6 +368,11 @@ describe("the terms cover the three offers of the A/B test (owner 2026-10-11, po
     expect(terms).toContain("keeps automatic reload on to use the Service");
     expect(terms).toContain("there is no switch to turn it off");
     expect(terms).not.toContain("Automatic reload is optional");
+  });
+  it("prepaid: the reload threshold is $0 for everyone, never chosen (owner 2026-11-18)", () => {
+    expect(terms).toContain("The reload threshold is $0 for every");
+    expect(terms).not.toContain("a reload threshold (currently");
+    expect(terms).not.toContain("you choose the threshold");
   });
   it("the plan: trial, automatic upgrade in $100 steps even during the trial, cancel to stop, old plans kept", () => {
     expect(terms).toContain("<strong>Monthly plan (earlier offers).</strong>");

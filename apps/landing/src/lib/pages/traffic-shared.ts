@@ -305,7 +305,7 @@ export function pricesHtml(w: { eyebrow: string; h2: string }): string {
         <h3>Your own key always wins</h3>
         <p>Run the open source version with your own data, model and sending keys. Each vendor bills you directly.</p>
         <h3 class="byok-2">Your balance is the cap</h3>
-        <p>Hosted accounts run on a prepaid balance. Auto reload tops it up at the level you choose.</p>
+        <p>Hosted accounts run on a prepaid balance. Auto reload adds at least $10 when the balance reaches $0.</p>
       </aside>
     </div>
   </div>
