@@ -142,5 +142,9 @@ export function forecastUnavailableWords(reason: string | null): string {
   if (reason === "campaign_states_no_target") return "This campaign has no Target yet, so there is nothing to forecast.";
   if (reason === "no_unit_reaches_a_step") return "The forecast starts with this campaign's first results.";
   if (reason.startsWith("yield_unmeasured")) return "The forecast starts once a step has enough results to measure.";
-  return "The forecast is not available yet.";
+  if (reason === "cost_unmeasured_and_plan_prices_no_target") return "The forecast starts once this campaign has enough results to price its Target.";
+  if (reason === "target_ledger_unreadable") return "Could not read this campaign's results right now. Retrying.";
+  // The Target cannot be counted (three served reasons, one fallback): nothing to project to until it can.
+  if (reason.startsWith("target_")) return "The forecast starts once this campaign's Target can be counted.";
+  return "The forecast is being prepared.";
 }
