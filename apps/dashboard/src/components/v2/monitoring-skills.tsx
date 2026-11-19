@@ -129,7 +129,8 @@ function SkillLine({ row, isOpen, selected, onToggle, onSelect }: { row: SkillRo
 
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: string } | { kind: "empty" } | { kind: "failed" };
 
-function SkillPanel({ slug, onClose }: { slug: string; onClose: () => void }) {
+/** Also opened from Monitoring > Distry, which puts its "Read by Distry" switch in `extra`. */
+export function SkillPanel({ slug, onClose, extra }: { slug: string; onClose: () => void; extra?: React.ReactNode }) {
   const queryClient = useQueryClient();
   const q = useAuthQuery(["staffSkill", slug], () => getStaffSkill(slug), { staleTime: 0, retry: false });
   const skill = q.data;
@@ -261,6 +262,7 @@ function SkillPanel({ slug, onClose }: { slug: string; onClose: () => void }) {
           <p className="k-mono k-fg3 mt-2 text-[12px]">
             Version {skill.version} · {editByLine(skill.updatedBy)} · {when(skill.updatedAt)}
           </p>
+          {extra && <div className="mt-3">{extra}</div>}
           <div className="mt-4 flex min-h-0 flex-1">
             {editing ? (
               <textarea

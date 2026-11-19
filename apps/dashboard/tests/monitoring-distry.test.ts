@@ -36,4 +36,13 @@ describe("Monitoring > Distry", () => {
     expect(view).toContain('refetchQueries({ queryKey: ["staffDistryVersions"] })');
     expect(view).not.toContain("location.reload");
   });
+
+  it("lays the page out on two columns and opens every row's detail in a right panel", () => {
+    expect(view).toContain("lg:grid-cols-2");
+    for (const kind of ["tool", "skill", "engine", "version"]) expect(view).toContain(`setOpen({ kind: "${kind}"`);
+    expect(view).toContain('document.getElementById("v2-portal")');
+    // A skill's text is edited in the same panel as Chat > Skills, with Distry's own switch in it.
+    expect(view).toContain("<SkillPanel");
+    expect(read("components/v2/monitoring-skills.tsx")).toContain("export function SkillPanel(");
+  });
 });
