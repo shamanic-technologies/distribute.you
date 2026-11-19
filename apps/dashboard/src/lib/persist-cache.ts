@@ -633,8 +633,11 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  *
  * "11": `campaignTargets` gained the REQUIRED `offerTargets` (TARGET-ROWS-UNIQUE-1107). An older
  * snapshot read `.filter` off undefined on Today.
+ *
+ * "12": `staffDistryEngines` rows gained the REQUIRED `inputs`, `scripts`, `counts` (Distry
+ * Engine panel, DISTRY-PRINCIPAL-1119). An older snapshot read `.map` off undefined.
  */
-const PERSIST_CACHE_VERSION = "11";
+const PERSIST_CACHE_VERSION = "12";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;

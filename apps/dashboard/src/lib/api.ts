@@ -2919,7 +2919,18 @@ const DistryConfigSchema = z.object({
 export type DistryConfig = z.infer<typeof DistryConfigSchema>;
 const DistryVersionWriteSchema = z.object({ version: DistryVersionSchema });
 const DistryEnginesSchema = z.object({
-  engines: z.array(z.object({ outcome: z.string(), name: z.string(), callable: z.boolean(), reason: z.string().nullish() })),
+  engines: z.array(
+    z.object({
+      outcome: z.string(),
+      name: z.string(),
+      callable: z.boolean(),
+      reason: z.string().nullish(),
+      // What a call needs (units another Engine makes, on which channel), the scripts the Rating can pick, and counts.
+      inputs: z.array(z.object({ units: z.array(z.string()), channel: z.string().nullable() })),
+      scripts: z.array(z.object({ dynasty: z.string(), name: z.string(), version: z.number(), units: z.array(z.string()), channel: z.string().nullable() })),
+      counts: z.object({ scripts: z.number(), live: z.number(), runnable: z.number() }),
+    }),
+  ),
   callable: z.number(),
   total: z.number(),
 });
