@@ -326,8 +326,8 @@ export function priceHtml(title = "GTM Agency", included: readonly string[] = IN
   <div class="wrap">
     <div class="section-head center" data-motion="reveal">
       <span class="eyebrow">Price</span>
-      <h2>One fee that grows with your budget.</h2>
-      <p>Move the slider to see your monthly fee.</p>
+      <h2>A whole growth team, from $1K a month.</h2>
+      <p>Slide to see your price for any budget.</p>
     </div>
     <div class="ag-price">
       <div class="ag-card feat">
@@ -342,11 +342,11 @@ export function priceHtml(title = "GTM Agency", included: readonly string[] = IN
         <input id="ag-budget" type="range" min="1000" max="100000" step="1000" value="${DEFAULT_BUDGET_USD}" aria-describedby="ag-fee-out">
         <div class="scale"><span>$1,000</span><span>$100,000</span></div>
         <div class="ag-sum">
-          <div><span>Our base fee</span><output>${usd(AGENCY_FEE_BASE_USD)}</output></div>
+          <div><span>Your growth team</span><output>${usd(AGENCY_FEE_BASE_USD)}</output></div>
           <div><span>10% of your budget</span><output id="ag-share-out">${usd(share)}</output></div>
-          <div class="tot"><span>Your monthly fee</span><output id="ag-fee-out">${usd(fee)}</output></div>
+          <div class="tot"><span>Your monthly price</span><output id="ag-fee-out">${usd(fee)}</output></div>
         </div>
-        <p style="margin-top:18px;font-size:14px">Your budget goes to your campaigns. The fee pays our team.</p>
+        <p style="margin-top:18px;font-size:14px">All of your budget goes to campaigns.</p>
       </div>
     </div>
   </div>

@@ -63,8 +63,8 @@ html.distry {
 @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
 /* ---------- Distry, walking beside you ---------- */
 .buddy { position: fixed; z-index: 40; right: 18px; bottom: 18px; display: flex; align-items: flex-end; gap: 10px; pointer-events: none; }
-.buddy-face { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex: none; box-shadow: 0 0 0 3px var(--gold), 0 0 40px rgba(246, 198, 103, 0.55), 0 14px 30px rgba(3, 6, 24, 0.45); animation: bob 4.6s ease-in-out infinite; }
-.buddy-face img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.18); }
+.buddy-face { width: 76px; height: 76px; flex: none; filter: drop-shadow(0 10px 18px rgba(11, 18, 48, 0.35)); animation: bob 4.6s ease-in-out infinite; }
+.buddy-face img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .buddy.is-excited .buddy-face { animation: hop 0.6s var(--ease) infinite; }
 @keyframes hop { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-16px) scale(1.06); } 70% { transform: translateY(0) scale(0.97, 1.03); } }
 .buddy-say { max-width: 240px; padding: 10px 14px; margin-bottom: 18px; border-radius: 18px 18px 4px 18px; background: var(--paper); color: var(--ink); font-size: 0.92rem; font-weight: 500; line-height: 1.35; box-shadow: 0 12px 30px rgba(3, 6, 24, 0.35); opacity: 0; transform: translateY(8px) scale(0.94); transform-origin: bottom right; transition: opacity 0.4s ease, transform 0.5s var(--ease); }
@@ -102,7 +102,7 @@ html.distry, html.distry .d-night, html.distry .d-dawn {
 /* day: ink on paper, the brand blue */
 html.distry .d-day, html.distry footer, html.distry .foot {
   --bg: #fffdf6; --surface: #fff8e6; --d-card: #fffdf6;
-  --text: #0b1230; --text-2: #17204a; --muted: #46507a; --muted-2: #6c76a0;
+  --text: #0b1230; --text-2: #17204a; --muted: #46507a; --muted-2: #5d678f;
   --hair: #eadfc4; --hair-2: #dccfae;
   --accent: #2563eb; --accent-600: #1d4ed8; --accent-text: #1a4fc3;
   --accent-50: #eef3ff; --accent-100: #dbe6ff;
@@ -183,7 +183,7 @@ html.distry .foot-mark, html.distry .foot-field { display: none !important; }
 /* surfaces the live CSS paints with a translucent white: paper, with paper inks */
 html.distry .show-card {
   background: var(--paper) !important; color: #0b1230;
-  --text: #0b1230; --text-2: #17204a; --muted: #46507a; --muted-2: #6c76a0; --hair: #eadfc4; --accent: #2563eb; --accent-text: #1a4fc3; --accent-50: #eef3ff;
+  --text: #0b1230; --text-2: #17204a; --muted: #46507a; --muted-2: #5d678f; --hair: #eadfc4; --accent: #2563eb; --accent-text: #1a4fc3; --accent-50: #eef3ff;
 }
 html.distry .foot h4, html.distry .foot h4 * { color: var(--ink) !important; opacity: 1 !important; }
 
@@ -225,7 +225,6 @@ html.distry .d-day, html.distry footer, html.distry .foot {
   --shadow-ring: 0 0 0 1px #e3e8f2, 0 12px 32px rgba(11, 18, 48, 0.06);
   --shadow-card: 0 0 0 1px #e3e8f2, 0 12px 32px rgba(11, 18, 48, 0.06);
 }
-html.distry .cta-box { background: #ffffff !important; box-shadow: 0 0 0 1px #e3e8f2 inset, 0 24px 60px rgba(11, 18, 48, 0.08); }
 html.distry .d-frame { margin: 0 auto 28px; width: min(560px, 100%); border-radius: 20px; overflow: hidden; box-shadow: 0 0 0 1px #e3e8f2, 0 18px 44px rgba(11, 18, 48, 0.14); }
 html.distry .d-frame img { display: block; width: 100%; height: auto; }
 html.distry .d-frame-band { background: #f6f8fc; padding: 8px 20px 40px; }
@@ -237,14 +236,41 @@ html.distry.js [data-lit] { transition: opacity 0.6s ease, transform 0.6s var(--
    clean light page (or the night, for the opening one), whatever class it carries. */
 html.distry section.d-day, html.distry section.d-day.tint, html.distry section.d-day.dark, html.distry section.d-day.framed { background: #f6f8fc !important; }
 html.distry section.d-night, html.distry section.d-night.tint, html.distry section.d-night.dark { background: radial-gradient(120% 90% at 70% 0%, #17266b 0%, #0b1340 46%, #060a22 100%) !important; }
-html.distry section.d-day.dark, html.distry section.d-day.dark :is(h2, h3) { color: var(--ink); }
-html.distry section.d-day.dark p { color: var(--ink-soft); }
+/* A band the live page designs DARK (white type on navy: `.dark`, `.ag-dark`, `.ag-story`) keeps
+   the night: painting it light left its white type on a light page (unreadable index, steps,
+   chart on /gtm-agency). Its inks are the night ones. */
+html.distry section.d-day:is(.dark, .ag-dark, .ag-story) {
+  background: radial-gradient(120% 90% at 70% 0%, #17266b 0%, #0b1340 46%, #060a22 100%) !important; color: #fdf8ec;
+  --bg: #0b1340; --surface: rgba(255, 255, 255, 0.04); --d-card: rgba(255, 255, 255, 0.04);
+  --text: #fdf8ec; --text-2: #f4ecd6; --muted: #c9d1ef; --muted-2: #aab5e0;
+  --hair: rgba(255, 255, 255, 0.12); --hair-2: rgba(255, 255, 255, 0.18); --line: rgba(255, 255, 255, 0.12);
+  --accent: #2563eb; --accent-text: #c6d6ff;
+}
+/* a white card inside a dark band (the sample email) keeps paper inks */
+html.distry section.d-day:is(.dark, .ag-dark, .ag-story) .ag-mail { --text: #0b1230; --muted: #46507a; color: #0b1230; }
+html.distry section.d-day:is(.dark, .ag-dark, .ag-story) .ag-mail p { color: #46507a; }
+html.distry section.d-day:is(.dark, .ag-dark, .ag-story) :is(h2, h3) { color: #fdf8ec; }
+html.distry section.d-day:is(.dark, .ag-dark, .ag-story) p { color: #c9d1ef; }
+html.distry section.d-day:is(.dark, .ag-dark, .ag-story) :is(.eyebrow, .kicker) { color: #c6d6ff; }
+/* the closing call box is designed dark too */
+html.distry .cta-box { background: radial-gradient(120% 90% at 70% 0%, #17266b 0%, #0b1340 46%, #060a22 100%) !important; box-shadow: 0 24px 60px rgba(11, 18, 48, 0.25); }
+/* the nav sits above every band (a direct body child is lifted to z 2 by the rule further up) */
+html.distry body > .nav { position: sticky !important; z-index: 50 !important; }
+/* the nav's outline button reads on the night pill and on the day pill */
+html.distry .nav .nav-cta-2 { background: transparent !important; color: #fdf8ec !important; border-color: rgba(255, 255, 255, 0.35) !important; }
+html.distry .nav.is-day .nav-cta-2 { color: #0b1230 !important; border-color: rgba(11, 18, 48, 0.2) !important; }
+html.distry .d-day :is(.scale span, .price small, .sdr-lead em.no) { color: #5d678f; }
+/* a light card inside a night band carries paper inks (the signup preview board) */
+html.distry .su-light { --text: #0b1230; --text-2: #17204a; --muted: #46507a; --muted-2: #5d678f; color: #0b1230; }
+/* day greys: the second grey reads at 4.5:1 on the light page */
+html.distry .d-day, html.distry footer, html.distry .foot { --muted-2: #5d678f; --good: #047857; }
+html.distry main :is(.text-gray-400, .text-gray-500) { color: #5d678f !important; }
 
 /* Distry IS the way to talk to us: the floating WhatsApp button goes, the avatar is the button. */
 html.distry a[aria-label="Chat with us on WhatsApp"] { display: none !important; }
 html.distry .buddy-face { display: block; pointer-events: auto; cursor: pointer; }
-html.distry .buddy-face:hover { box-shadow: 0 0 0 3px var(--gold), 0 0 56px rgba(246, 198, 103, 0.8), 0 14px 30px rgba(3, 6, 24, 0.45); }
-html.distry .buddy-face:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+html.distry .buddy-face:hover { filter: drop-shadow(0 0 16px rgba(37, 99, 235, 0.55)) drop-shadow(0 10px 18px rgba(11, 18, 48, 0.35)); }
+html.distry .buddy-face:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; border-radius: 12px; }
 
 /* The chat preview on the product pages: a clean, channel-neutral conversation in Distry's
    colours (owner: the green WhatsApp phone "ne fait pas propre ni moderne"). */
@@ -252,7 +278,7 @@ html.distry .wa { background: #ffffff; border: 1px solid #e3e8f2; border-radius:
 html.distry .wa-top { background: #ffffff; color: #0b1230; border-bottom: 1px solid #e3e8f2; }
 html.distry .wa-top img { background: #eef3ff; }
 html.distry .wa-top b { font-weight: 600; }
-html.distry .wa-top small { color: #16a34a; opacity: 1; }
+html.distry .wa-top small { color: #15803d; opacity: 1; }
 html.distry .wa-top::after { content: "WhatsApp + Email"; margin-left: auto; padding: 3px 8px; border-radius: 999px; background: #eef3ff; color: #1a4fc3; font-size: 9.5px; font-weight: 600; white-space: nowrap; }
 html.distry .wa-body { background: #f6f8fc; }
 html.distry .wa-msg { box-shadow: none; }

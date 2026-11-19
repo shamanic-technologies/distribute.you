@@ -258,7 +258,7 @@ export function navHtml(path: string, pages: SitePage[] = SITE_PAGES): string {
   const groups = m.groups
     .map(
       (g) =>
-        `<div class="nav-group"><a class="nav-top" href="${esc(g.href)}" aria-haspopup="true">${esc(g.label)}${CHEVRON}</a>${dropHtml(g)}</div>`,
+        `<div class="nav-group"><button type="button" class="nav-top" aria-haspopup="true" onclick="this.focus()">${esc(g.label)}${CHEVRON}</button>${dropHtml(g)}</div>`,
     )
     .join("");
   const links = m.links.map((l) => `<a href="${esc(l.href)}">${esc(l.label)}</a>`).join("");
