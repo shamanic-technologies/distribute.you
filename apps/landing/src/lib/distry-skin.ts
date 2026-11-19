@@ -14,7 +14,7 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 12;
+export const SKIN_VERSION = 13;
 
 /** The site's mark, and Distry's, which replaces it wherever the skin is worn (owner 2026-11-17). */
 export const SITE_LOGO = "/landing/v2/assets/logo-mark.svg";
@@ -83,7 +83,7 @@ const SKY = `<div class="d-sky" aria-hidden="true"><div class="d-sky-layer d-sky
  */
 export const DISTRY_CHAT_URL = `https://wa.me/33680478702?text=${encodeURIComponent("Hi Distry! I have a question about distribute.you:")}`;
 
-const BUDDY = `<aside class="buddy" id="buddy"><p class="buddy-say" id="buddy-say" aria-hidden="true"></p><a class="buddy-face" href="${DISTRY_CHAT_URL}" target="_blank" rel="noopener noreferrer" aria-label="Chat with Distry"><img src="${SKIN_ASSETS}/assets/distry-avatar-160.webp" alt="" width="72" height="72"></a></aside>`;
+const BUDDY = `<aside class="buddy" id="buddy"><p class="buddy-say" id="buddy-say" aria-hidden="true"></p><a class="buddy-face" href="${DISTRY_CHAT_URL}" target="_blank" rel="noopener noreferrer" aria-label="Chat with Distry"><img src="${SKIN_ASSETS}/assets/distry-logo.svg" alt="" width="76" height="76"></a></aside>`;
 
 const HEAD = `<meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/svg+xml" href="${SKIN_ASSETS}/assets/distry-logo.svg">

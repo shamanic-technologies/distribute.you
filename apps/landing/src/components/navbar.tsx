@@ -25,12 +25,12 @@ export function Navbar({ path = "" }: { path?: string }) {
         <nav className="ml-5 hidden items-center gap-0.5 min-[960px]:flex">
           {m.groups.map((g) => (
             <div key={g.label} className="group relative">
-              <a href={g.href} aria-haspopup="true" className={`inline-flex items-center gap-1.5 ${TOP}`}>
+              <button type="button" aria-haspopup="true" onClick={(e) => e.currentTarget.focus()} className={`inline-flex items-center gap-1.5 cursor-pointer border-0 bg-transparent font-[inherit] ${TOP}`}>
                 {g.label}
                 <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true" className="opacity-55 transition group-hover:rotate-180 group-focus-within:rotate-180 motion-reduce:transition-none">
                   <path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </a>
+              </button>
               <div className="invisible absolute left-[-8px] top-full z-[60] translate-y-1.5 pt-3 opacity-0 transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 motion-reduce:transition-none">
                 <div
                   className={`rounded-[18px] border border-[#ececec] bg-white p-2 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_24px_48px_-24px_rgba(10,10,10,0.35)] ${
