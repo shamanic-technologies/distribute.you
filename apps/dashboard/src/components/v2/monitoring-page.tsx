@@ -5,7 +5,7 @@ import { MaturityViewSameNote, MaturityViewSwitch } from "@/components/v2/maturi
 import { createContext, useContext, useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { ApiError, getStaffAbsorbedCosts, getStaffCustomerHealth, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
+import { ApiError, getStaffAbsorbedCosts, getStaffCustomerHealth, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffDistryEngines, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
@@ -33,6 +33,7 @@ import { MonitoringAlertsPage, MonitoringAlertsTile, useMonitoringAlerts } from 
 import { brokenAlerts } from "@/lib/monitoring/monitoring-alerts";
 import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { SkillsView } from "@/components/v2/monitoring-skills";
+import { DistryView } from "@/components/v2/monitoring-distry";
 import { CapacityPage, RulesPage, SendPoolTile, VendorRefusalTile, useOpsInfra } from "@/components/v2/monitoring-capacity";
 import { emptySendPools, vendorRefusals } from "@/lib/monitoring/capacity";
 import { BlocklistsPage } from "@/components/v2/monitoring-blocklists";
@@ -216,6 +217,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "ai/schema": { section: "ai", title: "Answer shape", question: "Does every AI model answer our scripts in the shape they ask for?" },
   "ai/scripts": { section: "ai", title: "Scripts per Engine", question: "Which scripts compete in each Engine, and which one does the Rating favour today?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
+  "chat/distry": { section: "chat", title: "Distry", question: "Who is Distry, what can it do, and which Engines can it call?" },
   "chat/distry-spend": { section: "chat", title: "Distry spend on non-clients", question: "How much does Distry spend a day on people with no account?" },
   "alerts/raised": { section: "alerts", title: "Raised", question: "Did any of our services raise an alert in the last 24 hours?" },
 };
@@ -397,6 +399,7 @@ export function V2Monitoring() {
         {view.page === "ai/scripts" && <ScriptEnginesPage />}
         {view.page === "chat/distry-spend" && <DistrySpendPage />}
         {view.page === "chat/skills" && <SkillsView />}
+        {view.page === "chat/distry" && <DistryView />}
         {view.page === "alerts/raised" && <MonitoringAlertsPage />}
       </div>
     </Frame>
@@ -471,6 +474,7 @@ function Hub({ base }: { base: string }) {
   const ab = absorbed.data?.fleet;
   const real = useLatestRealCosts();
   const skills = useSkills();
+  const distryEngines = useAuthQuery(["staffDistryEngines"], getStaffDistryEngines, { staleTime: 30_000, retry: false });
   const rc = real.data;
   const sp = sendPrice.data;
   const m = margin.data;
@@ -1293,8 +1297,17 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={2}>Copilot</SectionTitle>
-      <Section section="chat" count={2}>
+      <SectionTitle count={3}>Copilot</SectionTitle>
+      <Section section="chat" count={3}>
+        <Card
+          href={href("chat/distry")}
+          page="chat/distry"
+          error={distryEngines.isError}
+          cells={[
+            { label: "Engines callable", value: distryEngines.data?.callable, note: "by Distry, right now" },
+            { label: "Engines", value: distryEngines.data?.total, note: "in the live catalogue" },
+          ]}
+        />
         <Card
           href={href("chat/skills")}
           page="chat/skills"
