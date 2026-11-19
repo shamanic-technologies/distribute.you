@@ -148,9 +148,27 @@ describe("reseedProofCards", () => {
         ]
       )
     );
-    expect(out).toContain("<b>$184</b>");
-    // the sibling step's price is served and must NOT land on this line
-    expect(out).not.toContain("$1,224");
+    // Owner 2026-11-19: a served cost per booked meeting comes FIRST, so the line moves
+    // to the meeting key AND its words together (a label over the wrong key was #4180).
+    expect(out).toContain('<div class="proof-line" data-proof-cost-step="meeting_booked"><span>Cost per booked meeting</span><b>$1,224</b></div>');
+    expect(out).not.toContain("$184");
+  });
+
+  it("keeps the positive-reply price when no meeting price is served", () => {
+    const html = card("docdinners.com", [], "2.2", "$1,159");
+    const out = reseedProofCards(html, payload("docdinners.com", [["meeting_booked", 5, null], ["conversation", 20, 183.543]]));
+    expect(out).toContain('data-proof-cost-step="conversation"><span>Cost per positive reply</span><b>$184</b>');
+  });
+
+  it("puts the meetings booked first in the funnel, and adds them when the card did not list them", () => {
+    const listed = card("docdinners.com", [["contacted", "1", "contacted"], ["conversation", "2", "positive replies"], ["meeting_booked", "3", "meetings booked"]]);
+    const a = reseedProofCards(listed, payload("docdinners.com", [["meeting_booked", 173]]));
+    expect(a).toContain('<div class="proof-funnel"><span data-proof-step="meeting_booked"><b>173</b>meetings booked</span><span data-proof-step="contacted">');
+    const missing = card("shockwavecenters.com", [["contacted", "6,495", "contacted"], ["conversation", "10", "positive replies"]]);
+    const b = reseedProofCards(missing, payload("shockwavecenters.com", [["meeting_booked", 5]]));
+    expect(b).toContain('<div class="proof-funnel"><span data-proof-step="meeting_booked"><b>5</b>meetings booked</span><span data-proof-step="contacted">');
+    const none = reseedProofCards(missing, payload("shockwavecenters.com", [["meeting_booked", 0]]));
+    expect(none).not.toContain("meetings booked");
   });
 
   it("keeps a decimal on a price under $10, exactly as the page shipped it", () => {

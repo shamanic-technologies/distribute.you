@@ -544,3 +544,24 @@ body { background: #f6f8fc; }
 .dc, .dc-top b, .dc-them, .dc-form input { color: #0b1230; }
 .dc-top b { margin: 0; }
 .dc-me { color: #ffffff; }
+
+/* ---------- readable cards on the light page (owner 2026-11-19 « contraste est pété ») ----------
+   A translucent night card over the light page reads grey-purple, and its half-opacity
+   labels drop under 3:1. On a day band, a card is paper with inks; figures are the brand blue. */
+.day :is(.proof-card, .show-card) { background: #ffffff; backdrop-filter: none; color: #0b1230; box-shadow: 0 0 0 1px #e3e8f2 inset, 0 12px 32px rgba(11, 18, 48, 0.06); }
+.day .show-card:hover { box-shadow: 0 0 0 1px #c9d6f5 inset, 0 18px 40px rgba(37, 99, 235, 0.14); }
+.day .show-card.yours { box-shadow: 0 0 0 1.5px #2563eb inset, 0 12px 32px rgba(37, 99, 235, 0.12); }
+.day :is(.proof-card, .show-card) :is(b, .show-name) { color: #0b1230; }
+.day :is(.proof-top small, .proof-line span, .proof-channel, .show-domain) { color: #46507a; opacity: 1; }
+.day .proof-line b { color: #1a4fc3; }
+.day .proof-funnel { color: #17204a; }
+.day .sf { background: #f3f6fd; }
+.day .sf b { color: #1a4fc3; }
+.day .sf small { color: #46507a; opacity: 1; }
+.day .show-live { color: #15803d; }
+.day .show-live i { background: #16a34a; box-shadow: none; }
+.day .show-card.yours .show-live { color: #8a5a00; }
+.day .show-card.yours .show-live i { background: #e9a93a; box-shadow: none; }
+.day .show-label, .day .showcase-label { color: #1a4fc3; }
+.msg.day { opacity: 1; color: #c9d1ef; }
+

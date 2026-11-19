@@ -179,6 +179,28 @@ function reseedProofCard(
     }
   );
 
+  // Meetings booked lead the funnel whenever the producer counts any (owner 2026-11-19:
+  // « les meeting booked … c'est l'info à mettre en #1 »): moved to the front when the
+  // card lists them, added at the front when it does not. A zero is never added.
+  const meetings = counts.get("meeting_booked");
+  if (typeof meetings === "number" && meetings > 0) {
+    const cell = `<span data-proof-step="meeting_booked"><b>${formatInt(meetings)}</b>meetings booked</span>`;
+    out = out.replace(/<span data-proof-step="meeting_booked">[\s\S]*?<\/span>/, "");
+    out = out.replace('<div class="proof-funnel">', `<div class="proof-funnel">${cell}`);
+  }
+
+  // A served cost per booked meeting is the price the card states (owner 2026-11-19,
+  // « donne le prix par booking en prio quand tu l'as »): the line moves to that key
+  // AND those words together, never one without the other (#4180).
+  const meetingCost = costs.get("meeting_booked");
+  if (typeof meetingCost === "number") {
+    out = out.replace(
+      /<div class="proof-line" data-proof-cost-step="[a-z_]+"><span>[^<]*<\/span><b>[^<]*<\/b>/,
+      `<div class="proof-line" data-proof-cost-step="meeting_booked"><span>Cost per booked meeting</span><b>${formatCostUsd(meetingCost)}</b>`,
+    );
+    return out;
+  }
+
   // The card names ONE outcome in its own words ("Cost per positive reply") and carries
   // that step's key beside it, so the price is joined by key like every count above.
   // The producer prices every outcome on one formula, base included, which is what

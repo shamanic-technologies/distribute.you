@@ -67,14 +67,15 @@ function measuredSteps(brand: ShowcaseBrand): ShowcaseOutcome[] {
 }
 
 /**
- * THE HERO CARD STATES TWO FIGURES: interested leads, then meetings booked (owner 2026-10-19).
+ * THE HERO CARD STATES TWO FIGURES: meetings booked first, then interested leads (owner
+ * 2026-10-19 for the pair; 2026-11-19 for the order: « les meeting booked … c'est l'info à mettre en #1 »).
  *
  * Keyed on the producer's step keys; the hero's word for `conversation` is the owner's own,
  * "Interested leads".
  */
 export const HERO_STEPS: readonly { key: string; label: string }[] = [
-  { key: "conversation", label: "Interested leads" },
   { key: "meeting_booked", label: "Meetings booked" },
+  { key: "conversation", label: "Interested leads" },
 ];
 
 /**
