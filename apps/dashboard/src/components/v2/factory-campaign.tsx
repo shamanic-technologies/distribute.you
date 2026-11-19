@@ -16,6 +16,7 @@ import { EmptyNote, SectionTitle, ShareBar, Shimmer } from "@/components/v2/ui";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { CampaignMilestoneCards } from "@/components/v2/today-targets";
 import { CampaignForecast } from "@/components/v2/campaign-forecast";
+import { CampaignChanges } from "@/components/v2/campaign-changes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
@@ -49,6 +50,7 @@ export function FactoryCampaignSections({ campaign }: { campaign: SalesFunnelCam
   return (
     <>
       <CampaignForecast brandId={campaign.brandId} campaignId={campaign.id} />
+      <CampaignChanges brandId={campaign.brandId} campaignId={campaign.id} />
       {staffMode && (
         <>
           <CampaignMilestoneCards brandId={campaign.brandId} campaignId={campaign.id} />
