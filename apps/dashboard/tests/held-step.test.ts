@@ -58,6 +58,22 @@ describe("held step (NEXT-STEPS-TRUE-REASON-1111)", () => {
     expect(waitingOnLimit(ours)).toBeNull();
   });
 
+  it("a hold the producer calls expected is the client's own, whatever its spelling (DOC-DINNERS-SENDS-1119)", () => {
+    // Prod 2026-11-19, Doc Dinners: the gate's credit refusal, served verbatim, with the holder's verdict.
+    const steps = CampaignNextStepsSchema.parse({
+      salesFunnelCampaignId: "c1",
+      nextSends: { heldBy: { ...HELD, outcome: "email_sent", reason: "Insufficient credits", expected: true }, leadsWaitingOnHeldEngine: 1385 },
+    });
+    expect(heldStepOf(steps)).toBeNull();
+    expect(waitingOnLimit(steps)).toBe(1385);
+    const fault = CampaignNextStepsSchema.parse({
+      salesFunnelCampaignId: "c1",
+      nextSends: { heldBy: { ...HELD, reason: "no_runnable_script_kept", expected: false }, leadsWaitingOnHeldEngine: 7 },
+    });
+    expect(heldStepOf(fault)?.waiting).toBe(7);
+    expect(waitingOnLimit(fault)).toBeNull();
+  });
+
   it("the limit note on the funnel page carries the people waiting", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/funnel-campaigns.tsx"), "utf8");
     expect(src).toContain("waitingOnLimit(useFunnelCampaignNextSteps(campaign.brandId, campaign.id).data)");
