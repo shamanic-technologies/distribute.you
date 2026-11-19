@@ -2747,6 +2747,7 @@ import { FactoryShadowMonitoringSchema, type FactoryShadowMonitoring } from "./f
 import { PlanChangesSchema, PlanFollowingSchema, type PlanChanges, type PlanFollowing } from "./plan-following";
 import { EnginePicksSchema, type EnginePicks } from "./engine-picks";
 import { CampaignOutcomeForecastSchema, type CampaignOutcomeForecast } from "./outcome-forecast";
+import { CampaignChangesSchema, type CampaignChanges } from "./campaign-changes";
 import { ScriptsMonitoringSchema, type ScriptsMonitoring } from "./monitoring/scripts-monitoring";
 
 /** A campaign's Engines in scripts (features-service CAMPAIGN-SCRIPTS-1113): what competes, today's draws, its own runs. 503 = being built. */
@@ -2768,6 +2769,16 @@ export async function getFunnelCampaignOutcomeForecast(brandId: string, salesFun
     `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/outcome-forecast?pricing=net`,
   );
   return parseStaff("getFunnelCampaignOutcomeForecast", CampaignOutcomeForecastSchema, raw);
+}
+
+/** A campaign's change log: each change, dated, who made it, its measured result and verdict, newest first (features-service CAMPAIGN-CHANGE-LOG-1119). */
+export async function getFunnelCampaignChanges(brandId: string, salesFunnelCampaignId: string, cursor?: string | null): Promise<CampaignChanges> {
+  const qs = new URLSearchParams({ limit: "20" });
+  if (cursor) qs.set("cursor", cursor);
+  const raw = await apiCall<unknown>(
+    `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/changes?${qs.toString()}`,
+  );
+  return parseStaff("getFunnelCampaignChanges", CampaignChangesSchema, raw);
 }
 
 /** Today's "Why each one was picked": the offer's latest Engine picks, newest first (features-service, FACTORY-USER-DASHBOARD-1102). */

@@ -227,6 +227,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "campaignEngineScripts",
   // The campaign page's Forecast (OUTCOME-FORECAST-1117).
   "campaignOutcomeForecast",
+  // The campaign page's Changes (CAMPAIGN-CHANGE-LOG-1119).
+  "campaignChanges",
   // Today > Why each one was picked (FACTORY-USER-DASHBOARD-1102).
   "offerEnginePicks",
   // The brand's own LinkedIn company page (Brand settings).
