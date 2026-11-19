@@ -13679,6 +13679,17 @@ export async function getStaffDistrySpend(days: number): Promise<StaffDistrySpen
   return parseStaff("getStaffDistrySpend", StaffDistrySpendSchema, await apiCall<unknown>(`${STAFF_DISTRY_SPEND_PATH}?days=${days}`));
 }
 
+// ─── Monitoring > Cost > Email sources (APOLLO-ZERO-COST-1119) ───
+import { EmailSourcesSchema as StaffEmailSourcesSchema, type EmailSources as StaffEmailSources } from "./monitoring/email-sources";
+
+/** apollo-service's emails found per day by path (our stock, format guess, treg, Apollo), through api-service's staff passthrough. */
+export const STAFF_EMAIL_SOURCES_PATH = "/apollo/ops/email-sources/daily";
+
+/** One row per UTC day over the last `days` (oldest first). */
+export async function getStaffEmailSources(days: number): Promise<StaffEmailSources> {
+  return parseStaff("getStaffEmailSources", StaffEmailSourcesSchema, await apiCall<unknown>(`${STAFF_EMAIL_SOURCES_PATH}?days=${days}`));
+}
+
 // ─── Monitoring > AI vendors > Credit (VENDOR-CREDIT-1030) ───
 import { VendorCreditSchema as StaffVendorCreditSchema, type VendorCredit as StaffVendorCredit } from "./monitoring/vendor-credit";
 import { CampaignEngineScriptsSchema, SCRIPT_RATING_NOT_BUILT_YET, type CampaignEngineScriptsRead } from "./campaign-engine-scripts";

@@ -424,7 +424,7 @@ describe("monitoring: real cost per credit of each subscription (owner 2026-10-0
   it("is a Cost card and its own page, read through the staff gateway, never written to disk", () => {
     expect(MONITORING_PAGES).toContain("cost/subscriptions");
     const page = read("components/v2/monitoring-page.tsx");
-    expect(page).toContain('<Section section="cost" count={4}>');
+    expect(page).toContain('<Section section="cost" count={5}>');
     expect(page).toContain('page="cost/subscriptions"');
     expect(page).toContain('{view.page === "cost/subscriptions" && <SubscriptionsPage />}');
     expect(page).toContain('["staffSubscriptionCosts"]');
