@@ -261,11 +261,11 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
     // day the producer started picking WHICH clients the page names and each surface gained
     // its own branch — a guard freezing the instrument alongside the rule.
     expect((body.match(/await fetchShowcaseOutcomes\(\)/g) ?? []).length).toBe(1);
-    // Both surfaces are still covered by that one read: the hero takes the producer's pick when
-    // it answered, its shipped clients reseeded when it did not; the proof section always keeps
-    // its shipped clients, reseeded (its return-ranked pick is gone, ROI-CONSISTENCY-1103).
+    // Both surfaces ride that one read: the hero takes the producer's pick when it answered, and
+    // the proof section shows the SAME three clients (owner 2026-11-19, « 3 cards tout le temps »),
+    // its shipped faces kept; when the pick is unanswered both keep their shipped clients, reseeded.
     expect(body).toContain("renderShowcaseSelection(");
-    expect(body).not.toContain("renderProofSelection(");
+    expect(body).toContain("renderProofSelection(out, recent)");
     expect(body).toContain("reseedShowcaseCards(out, data)");
     expect(body).toContain("reseedProofCards(out, data)");
   });
