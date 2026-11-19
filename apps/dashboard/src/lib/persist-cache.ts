@@ -124,6 +124,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffSophieReplies",
   // Monitoring > Copilot > Distry spend on non-clients, per day against the $30 cap (DISTRY-SPEND-CHART-1119).
   "staffDistrySpend",
+  // Monitoring > Cost > Email sources: emails found per day by path, Apollo last (APOLLO-ZERO-COST-1119).
+  "staffEmailSources",
   // Monitoring > Cost ledger: fleet spend per service and per org-day (COST-ACCOUNTING-1023-MONITOR).
   "staffOutcomeCoverage",
   "staffLedgerCheck",

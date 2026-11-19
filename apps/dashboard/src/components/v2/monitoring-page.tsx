@@ -42,6 +42,8 @@ import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/compon
 import { SophieRepliesChart, SophieRepliesPage, SophieRepliesTile, useSophieReplies } from "@/components/v2/monitoring-sophie";
 import { recentNotDelivered } from "@/lib/monitoring/sophie-replies";
 import { DistrySpendPage, DistrySpendTile, useDistrySpend } from "@/components/v2/monitoring-distry-spend";
+import { EmailSourcesPage, EmailSourcesTile, useEmailSources } from "@/components/v2/monitoring-email-sources";
+import { emailsFound, todayRow as emailSourcesToday, withoutApolloPct } from "@/lib/monitoring/email-sources";
 import { dollars, dollarsExact } from "@/components/v2/monitoring-charts";
 import { cappedToday, todayRow } from "@/lib/monitoring/distry-spend";
 import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
@@ -175,6 +177,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "cost/spend": { section: "cost", title: "Spend per provider", question: "How much has each provider charged us since inception?" },
   "cost/subscriptions": { section: "cost", title: "Subscriptions", question: "What does one credit of each subscription really cost us?" },
   "cost/email-sending": { section: "cost", title: "Email sending", question: "What does sending one cold email really cost us?" },
+  "cost/email-sources": { section: "cost", title: "Email sources", question: "How many of our emails do we find without paying Apollo?" },
   "ledger/coverage": { section: "ledger", title: "Outcome coverage", question: "How much of our spend says which outcome it produced?" },
   "ledger/check": { section: "ledger", title: "To the cent", question: "Does every org-day of the cost ledger balance to the cent?" },
   "ledger/reconciliation": { section: "ledger", title: "Reconciled", question: "Does every dollar spent land in one part, to the cent, every day?" },
@@ -316,6 +319,8 @@ export function V2Monitoring() {
           ? "Every org, read live from production. Each alert keeps the facts it was raised with. Days are UTC."
           : meta.section === "ai"
           ? "Every AI vendor chat-service calls, read live from production. Days are UTC."
+          : view.page === "cost/email-sources"
+          ? "Every org pooled, read live from apollo-service's daily count. Days are UTC."
           : view.page === "chat/distry-spend"
           ? "Every person Distry answered with no account, read live from chat-service's stored daily series. Days are UTC."
           : meta.section === "chat"
@@ -398,6 +403,7 @@ export function V2Monitoring() {
         {view.page === "ai/schema" && <SchemaConformancePage />}
         {view.page === "ai/scripts" && <ScriptEnginesPage />}
         {view.page === "chat/distry-spend" && <DistrySpendPage />}
+        {view.page === "cost/email-sources" && <EmailSourcesPage />}
         {view.page === "chat/skills" && <SkillsView />}
         {view.page === "chat/distry" && <DistryView />}
         {view.page === "alerts/raised" && <MonitoringAlertsPage />}
@@ -509,6 +515,9 @@ function Hub({ base }: { base: string }) {
   const vendors = useVendorCredit();
   const schemaConf = useSchemaConformance();
   const distry = useDistrySpend();
+  const emailSources = useEmailSources();
+  const emailSourcesDay = emailSources.data ? emailSourcesToday(emailSources.data) : undefined;
+  const withoutApollo = emailSourcesDay ? withoutApolloPct(emailSourcesDay) : undefined;
   const distryToday = distry.data ? todayRow(distry.data) : undefined;
   const distryRed = distry.data ? cappedToday(distry.data) : false;
   const schemaBroken = schemaConf.data ? brokenModels(schemaConf.data) : undefined;
@@ -596,6 +605,8 @@ function Hub({ base }: { base: string }) {
         <ScriptEnginesTile href={href("ai/scripts")} />
         {/* Distry's spend on people with no account reached the $30 day cap TODAY (DISTRY-SPEND-CHART-1119): red here IS the alert; a past capped day stays red on its own bar only. */}
         <DistrySpendTile href={href("chat/distry-spend")} />
+        {/* How many emails we found without paying Apollo today (APOLLO-ZERO-COST-1119, owner 2026-11-19: Apollo last): a high Apollo share is normal colours, red ONLY when the read fails. */}
+        <EmailSourcesTile href={href("cost/email-sources")} />
         {/* A mailbox vendor refusing our API, its mailboxes out of the send pool (SEND-PRIMEFORGE-402-1030, Primeforge 402 on 2026-10-29): shown only while one refuses, red here IS the alert, never an email. */}
         <VendorRefusalTile href={href("emails/capacity")} />
         {/* How many mailboxes can take a new email now, through the sender's own selection; zero = every org's new emails refused (SEND-POOL-VENDOR-402-1030, a day at zero from 2026-10-29): red here IS the alert, never an email. */}
@@ -674,7 +685,7 @@ function Hub({ base }: { base: string }) {
       <SectionTitle count={5}>Money</SectionTitle>
       <div className="space-y-3">
 
-      <Section section="cost" count={4}>
+      <Section section="cost" count={5}>
         <Card
           href={href("cost/providers")}
           page="cost/providers"
@@ -718,6 +729,25 @@ function Hub({ base }: { base: string }) {
               bars: sp?.monthly.slice(-7).map((mo) => mo.priceUsdCents ?? 0),
             },
             { label: "Emails to leads", value: sp?.totals.emailsToLeads.toLocaleString("en-US"), note: sp ? `${usd(sp.totals.spendUsd * 100)} infra spend, net` : undefined },
+          ]}
+        />
+        <Card
+          href={href("cost/email-sources")}
+          page="cost/email-sources"
+          error={emailSources.isError && !emailSources.data}
+          cells={[
+            {
+              label: "Without Apollo",
+              value: withoutApollo === undefined ? (emailSources.data ? null : undefined) : withoutApollo === null ? null : formatRatePct(withoutApollo),
+              note: emailSourcesDay ? `of ${emailsFound(emailSourcesDay).toLocaleString("en-US")} emails today` : undefined,
+              bars: emailSources.data?.days.slice(-7).map(emailsFound),
+            },
+            {
+              label: "Free people found",
+              value: emailSourcesDay?.freeSourcePeople.toLocaleString("en-US"),
+              note: "today, at no cost",
+              bars: emailSources.data?.days.slice(-7).map((d) => d.freeSourcePeople),
+            },
           ]}
         />
       </Section>
