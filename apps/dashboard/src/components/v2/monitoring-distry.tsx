@@ -244,9 +244,18 @@ function PromptEditor({ value, onSave }: { value: string; onSave: (v: string) =>
       style={{ font: "inherit" }}
     />
   ) : (
-    <button type="button" onClick={() => setEditing(true)} title="Click to edit" className="k-card block max-h-[420px] w-full cursor-text overflow-y-auto p-4 text-left text-[13px] leading-5 whitespace-pre-wrap">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => setEditing(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") setEditing(true);
+      }}
+      title="Click to edit"
+      className="k-card block max-h-[420px] w-full cursor-text overflow-y-auto p-4 text-left text-[13px] leading-5 whitespace-pre-wrap"
+    >
       {value}
-    </button>
+    </div>
   );
 }
 
