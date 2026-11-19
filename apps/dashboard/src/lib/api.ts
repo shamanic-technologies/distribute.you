@@ -2535,6 +2535,10 @@ export const STAFF_MONITORING_PATHS = {
   scriptsMonitoring: "/scripts/ops/monitoring",
   // Every staff alert transactional-email-service records instead of emailing (provider out of credits, campaign failing, trigger silent, domain blocklisted, newsletter halted...): per type the verdict, a daily series, the latest occurrences (SIGNUP-EMAILS-1111-MONITORING).
   monitoringAlerts: "/transactional-email/ops/monitoring-alerts",
+  // Distry's versioned definition: prompt, tools, skills, model + its history (chat-service #869 via api-service #1543, DISTRY-PRINCIPAL-1119).
+  distryConfig: "/chat/distry/config",
+  // Every Engine of the live catalogue, callable now or why not (workflow-service #1150 via api-service #1543, DISTRY-PRINCIPAL-1119).
+  distryEngines: "/engines",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -2882,6 +2886,67 @@ export async function getStaffSkill(slug: string): Promise<StaffSkill> {
 export async function saveStaffSkill(slug: string, content: string): Promise<StaffSkill> {
   const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}`, { method: "PUT", body: { content } });
   return parseStaff("saveStaffSkill", SkillWriteSchema, raw).skill;
+}
+
+// --- Distry (DISTRY-PRINCIPAL-1119): the AI principal's definition, versions, and the Engines it can call ---
+
+const DistryDefinitionSchema = z.object({
+  systemPrompt: z.string(),
+  enabledTools: z.array(z.string()),
+  skillSlugs: z.array(z.string()).nullable(),
+  provider: z.string(),
+  model: z.string(),
+  effort: z.string().nullable(),
+});
+export type DistryDefinition = z.infer<typeof DistryDefinitionSchema>;
+const DistryVersionSchema = DistryDefinitionSchema.extend({
+  version: z.number(),
+  editedBy: z.string(),
+  note: z.string().nullable(),
+  restoredFrom: z.number().nullable(),
+  createdAt: z.string(),
+});
+export type DistryVersion = z.infer<typeof DistryVersionSchema>;
+const DistryConfigSchema = z.object({
+  current: DistryVersionSchema,
+  code: DistryDefinitionSchema,
+  codeDiffers: z.boolean(),
+  availableTools: z.array(z.object({ name: z.string(), description: z.string(), staffOnly: z.boolean() })),
+  skills: z.array(z.object({ slug: z.string(), parentSlug: z.string().nullable(), title: z.string(), description: z.string() })),
+  models: z.record(z.string(), z.array(z.string())),
+  efforts: z.array(z.string()),
+});
+export type DistryConfig = z.infer<typeof DistryConfigSchema>;
+const DistryVersionWriteSchema = z.object({ version: DistryVersionSchema });
+const DistryEnginesSchema = z.object({
+  engines: z.array(z.object({ outcome: z.string(), name: z.string(), callable: z.boolean(), reason: z.string().nullish() })),
+  callable: z.number(),
+  total: z.number(),
+});
+export type DistryEngines = z.infer<typeof DistryEnginesSchema>;
+
+export async function getStaffDistryConfig(): Promise<DistryConfig> {
+  return parseStaff("getStaffDistryConfig", DistryConfigSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.distryConfig));
+}
+
+export async function getStaffDistryVersions(): Promise<DistryVersion[]> {
+  const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.distryConfig}/versions`);
+  return parseStaff("getStaffDistryVersions", z.object({ versions: z.array(DistryVersionSchema) }), raw).versions;
+}
+
+/** Every save is a new version; the gateway stamps who saved it from the session. 409 = another save landed first. */
+export async function saveStaffDistryConfig(definition: DistryDefinition, note?: string): Promise<DistryVersion> {
+  const raw = await apiCall<unknown>(STAFF_MONITORING_PATHS.distryConfig, { method: "PUT", body: { ...definition, ...(note ? { note } : {}) } });
+  return parseStaff("saveStaffDistryConfig", DistryVersionWriteSchema, raw).version;
+}
+
+export async function restoreStaffDistryVersion(version: number): Promise<DistryVersion> {
+  const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.distryConfig}/versions/${version}/restore`, { method: "POST", body: {} });
+  return parseStaff("restoreStaffDistryVersion", DistryVersionWriteSchema, raw).version;
+}
+
+export async function getStaffDistryEngines(): Promise<DistryEngines> {
+  return parseStaff("getStaffDistryEngines", DistryEnginesSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.distryEngines));
 }
 
 export async function getStaffCostMargin(): Promise<CostMargin> {
