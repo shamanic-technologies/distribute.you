@@ -23,7 +23,7 @@ import {
   pickedBrands,
   type ShowcaseOutcomes,
 } from "@/lib/showcase-outcomes";
-import { hasHeroOutcome } from "@/lib/showcase-cards";
+import { hasHeroOutcome, renderProofSelection } from "@/lib/showcase-cards";
 
 // Analytics for the statically-served landing pages. These route handlers
 // return raw HTML and bypass the React root layout (GA) and Next client
@@ -453,8 +453,10 @@ async function withShowcaseOutcomes(html: string): Promise<string> {
     // leaves the hero on its shipped clients, reseeded. Nothing here ranks, floors or divides.
     const recent = pickedBrands(data.groups?.recentlyStarted, "recentlyStarted", hasHeroOutcome);
     let out = html;
-    if (recent) out = renderShowcaseSelection(out, recent);
-    else out = reseedShowcaseCards(out, data);
+    if (recent) {
+      out = renderShowcaseSelection(out, recent);
+      out = renderProofSelection(out, recent);
+    } else out = reseedShowcaseCards(out, data);
     out = reseedProofCards(out, data);
     return out;
   } catch (error) {

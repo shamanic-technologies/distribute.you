@@ -128,3 +128,47 @@ export function renderShowcaseCard(brand: ShowcaseBrand): string | null {
           </div>
         </a>`;
 }
+
+/**
+ * THE PROOF SECTION ALWAYS SHOWS THREE CLIENTS, the same three the hero picks (owner 2026-11-19:
+ * « il faut 3 cards tout le temps »). A client whose card the page ships (a named person, a face)
+ * keeps it; any other picked client gets a card cut from the page's own first card, with the
+ * company's logo and name where the person sat. Figures are reseeded after, by step key.
+ */
+export function renderProofSelection(html: string, brands: ShowcaseBrand[]): string {
+  // The grid's opening tag, then its run of cards (and nothing past the last card).
+  const grid = html.match(/(<div class="(?:proof-grid|receipts)"[^>]*>\s*)((?:<article class="proof-card[\s\S]*?<\/article>\s*)+)/);
+  if (!grid) return html;
+  const shipped = [...grid[2].matchAll(/<article class="proof-card[^"]*" data-proof-brand="([^"]+)"[^>]*>[\s\S]*?<\/article>/g)];
+  if (shipped.length === 0) return html;
+  const byDomain = new Map(shipped.map((m) => [m[1], m[0]]));
+  const template = shipped[0][0];
+  const cards: string[] = [];
+  for (const brand of brands) {
+    const domain = brand.brand?.domain;
+    if (!domain) continue;
+    const own = byDomain.get(domain);
+    if (own) {
+      cards.push(own);
+      continue;
+    }
+    const name = brand.brand?.name || domain;
+    const person = template.match(/<div class="proof-top">[\s\S]*?<\/div><\/div>/);
+    if (!person) continue;
+    const face = person[0].includes('class="face"') ? ' class="face"' : "";
+    const top = person[0].includes('class="name"')
+      ? `<div class="proof-top"><img${face} src="${logoUrl(domain, 96)}" alt="" width="44" height="44"><div><div class="name">${esc(name)}</div><div class="meta">${esc(domain)}</div></div></div>`
+      : `<div class="proof-top"><img src="${logoUrl(domain, 96)}" alt="" width="44" height="44" loading="lazy"><div><b>${esc(name)}</b><small>${esc(domain)}</small></div></div>`;
+    cards.push(
+      template
+        .replace(/data-proof-brand="[^"]+"/, `data-proof-brand="${esc(domain)}"`)
+        .replace(person[0], top),
+    );
+  }
+  if (cards.length < 3) {
+    console.error(`[landing] only ${cards.length} proof card(s) for the picked clients, keeping the shipped cards`);
+    return html;
+  }
+  const trailing = grid[2].match(/\s*$/)?.[0] ?? "";
+  return html.replace(grid[0], `${grid[1]}${cards.slice(0, 3).join("\n        ")}${trailing}`);
+}
