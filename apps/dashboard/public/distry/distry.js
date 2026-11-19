@@ -419,19 +419,23 @@ function start() {
 
 /*
  * The chat: a click on Distry opens a conversation in the page with the same assistant
- * as on WhatsApp and email (the site only carries the messages). The transcript is kept
- * in this browser so a reload shows it again; the conversation itself lives server-side.
- * When the chat cannot answer, the visitor is offered the WhatsApp conversation instead.
+ * as on WhatsApp and email (the site only carries the messages). A visitor can go all the
+ * way here: their plan, their account (an email code typed in the chat), the payment link,
+ * the launch. The transcript is kept in this browser so a reload shows it again; the
+ * conversation itself lives server-side. When the chat cannot answer, the visitor is
+ * offered the WhatsApp conversation instead.
  */
 function setupChat() {
   const face = document.querySelector("a.buddy-face");
   if (!face) return;
   const STORE = "distry_chat_v1";
+  const ACCOUNT = "distry_chat_account";
   const whatsapp = face.href;
   let panel = null;
   let log = [];
   try { log = JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { log = []; }
   const save = () => { try { localStorage.setItem(STORE, JSON.stringify(log.slice(-60))); } catch (e) { /* private mode */ } };
+  const wait = (ms) => new Promise((done) => setTimeout(done, ms));
 
   function bubble(list, who, text) {
     const p = document.createElement("p");
@@ -461,33 +465,95 @@ function setupChat() {
     const list = panel.querySelector(".dc-list");
     const form = panel.querySelector("form");
     const input = form.querySelector("input");
-    bubble(list, "them", "Hi, I'm Distry. Ask me anything about distribute.you.");
+    const who = panel.querySelector(".dc-top small");
+    // Their own email, once they proved it in the chat: the conversation acts with their account.
+    const showAccount = (email) => { who.textContent = email ? `Signed in as ${email}` : "distribute.you assistant"; };
+    try { showAccount(localStorage.getItem(ACCOUNT)); } catch (e) { /* private mode */ }
+    bubble(list, "them", "Hi, I'm Distry. Share your website and I will build your plan right here.");
     log.forEach((m) => bubble(list, m.who, m.text));
     panel.querySelector(".dc-close").addEventListener("click", () => { panel.hidden = true; });
     panel.addEventListener("keydown", (e) => { if (e.key === "Escape") panel.hidden = true; });
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const text = input.value.trim();
+
+    // The answers the assistant offers, as buttons under its message: a click sends the label.
+    function offer(choices) {
+      const box = document.createElement("div");
+      box.className = "dc-choices";
+      box.setAttribute("role", "group");
+      box.setAttribute("aria-label", choices.question || "Your answer");
+      choices.choices.forEach((choice) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = choice.label;
+        if (choice.description) {
+          const more = document.createElement("small");
+          more.textContent = choice.description;
+          button.append(more);
+        }
+        button.addEventListener("click", () => send(choice.label));
+        box.append(button);
+      });
+      list.append(box);
+      list.scrollTop = list.scrollHeight;
+    }
+
+    // One message, asked again with the same id while a long turn is still running.
+    async function ask(messageId, text) {
+      let failures = 0;
+      for (let tries = 0; tries < 100; tries++) {
+        let answer = null;
+        try {
+          const res = await fetch("/api/chat/distry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messageId, text }) });
+          if (res.ok) answer = await res.json();
+        } catch (e) { answer = null; }
+        if (!answer || answer.status === "in_progress") {
+          if (!answer && ++failures > 2) return null;
+          await wait(3000);
+          continue;
+        }
+        return answer;
+      }
+      return null;
+    }
+
+    async function send(text) {
       if (!text || form.dataset.busy) return;
-      input.value = "";
       form.dataset.busy = "1";
+      list.querySelectorAll(".dc-choices").forEach((box) => box.remove());
       bubble(list, "me", text);
       log.push({ who: "me", text }); save();
       const typing = bubble(list, "them", "…");
       typing.classList.add("dc-typing");
       const messageId = `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-      let answer = null;
-      try {
-        const res = await fetch("/api/chat/distry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messageId, text }) });
-        if (res.ok) answer = await res.json();
-      } catch (e) { answer = null; }
+      const answer = await ask(messageId, text);
       typing.remove();
       delete form.dataset.busy;
-      const reply = answer && answer.reply ? answer.reply : "I could not answer just now. Send it again, or continue on WhatsApp below.";
+      const answered = Boolean(answer && answer.reply);
+      const reply = answered
+        ? answer.reply
+        : answer && answer.status === "busy"
+          ? "I am answering a lot of people right now. Send it again in a minute, or continue on WhatsApp below."
+          : "I could not answer just now. Send it again, or continue on WhatsApp below.";
       bubble(list, "them", reply);
-      if (answer && answer.reply) { log.push({ who: "them", text: reply }); save(); }
-      panel.classList.toggle("dc-ask", !answer || answer.askForContact === true || answer.status === "contact_needed");
+      if (answered) { log.push({ who: "them", text: reply }); save(); }
+      if (answer && answer.choices) {
+        if (answer.choices.question && answer.choices.question !== reply) bubble(list, "them", answer.choices.question);
+        offer(answer.choices);
+      }
+      if (answer && answer.account) {
+        const email = answer.account.signedIn ? answer.account.email : null;
+        showAccount(email);
+        try { if (email) localStorage.setItem(ACCOUNT, email); else localStorage.removeItem(ACCOUNT); } catch (e) { /* private mode */ }
+      }
+      panel.classList.toggle("dc-ask", !answered);
       input.focus();
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text || form.dataset.busy) return;
+      input.value = "";
+      send(text);
     });
     input.focus();
   }
