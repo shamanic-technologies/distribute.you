@@ -279,14 +279,19 @@ export function SkillPanel({ slug, onClose, extra }: { slug: string; onClose: ()
                 className="k-inset k-mono min-h-0 w-full flex-1 resize-none rounded-[10px] p-3 text-[13px] leading-[20px] outline-none shadow-[inset_0_0_0_1px_var(--accent)]"
               />
             ) : (
-              <button
-                type="button"
+              // A div, never a <button>: a button centers its text vertically in the tall box (owner 2026-11-19).
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={startEditing}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") startEditing();
+                }}
                 title="Click to edit"
                 className="k-inset k-mono min-h-0 w-full flex-1 cursor-text overflow-y-auto whitespace-pre-wrap rounded-[10px] p-3 text-left text-[13px] leading-[20px] shadow-[inset_0_0_0_1px_var(--line-subtle)] hover:shadow-[inset_0_0_0_1px_var(--line)]"
               >
                 {skill.content}
-              </button>
+              </div>
             )}
           </div>
         </div>

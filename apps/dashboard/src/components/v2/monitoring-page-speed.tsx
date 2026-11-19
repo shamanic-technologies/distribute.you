@@ -52,7 +52,7 @@ function PageRow({ check, scaleMs }: { check: BoxCheck; scaleMs: number }) {
   const d = pageSpeedDetails(check);
   const stale = check.stale;
   return (
-    <tr className="k-row align-middle">
+    <tr className="k-row">
       <td className={TD}>
         <div className="flex min-w-0 items-center gap-2">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: check.verdict === "broken" ? RED : OK }} aria-hidden="true" />

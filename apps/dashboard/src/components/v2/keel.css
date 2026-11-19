@@ -331,3 +331,11 @@ html.gs-vt::view-transition-new(*) { animation: gs-vt-in 560ms cubic-bezier(.23,
 .v2-root .v2-embed .bg-brand-50 { background-color: var(--accent-soft); }
 .v2-root .v2-embed .border-brand-200,
 .v2-root .v2-embed .border-brand-300 { border-color: color-mix(in oklab, var(--accent) 35%, transparent); }
+
+/* Monitoring (owner 2026-11-19 « je n'aime pas comment le texte est centré verticalement »):
+   a row whose cells hold one line beside two keeps every cell on the row's first line. */
+.v2-root .k-monitoring td,
+.v2-root .k-monitoring th {
+  vertical-align: top;
+}
+

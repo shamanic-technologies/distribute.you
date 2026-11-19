@@ -416,7 +416,7 @@ function Frame({ crumbs, children }: { crumbs: { label: string; href?: string }[
   return (
     <>
       <TopBar crumbs={crumbs} actions={<MaturityViewSwitch />} />
-      <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
+      <div className="k-monitoring mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <MaturityViewSameNote />
         {children}
       </div>
