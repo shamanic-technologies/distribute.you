@@ -183,7 +183,7 @@ describe("the Distry home wears the live site's chrome and figures", () => {
     expect(proof).toContain("<b>20,001</b>contacted");
     expect(proof).toContain("<b>$71</b>");
     const hero = reseedShowcaseCards(html, payload);
-    expect(hero).toContain('data-brand="docdinners.com" data-steps="41,4"');
+    expect(hero).toContain('data-brand="docdinners.com" data-steps="4,41"');
     expect(html).toContain('<div class="showcase-grid" id="live-cards">');
     expect(html).toContain('<a class="show-card yours"');
     expect(reseedFounderCount(html, 237)).toContain("Loved by 230+ founders");

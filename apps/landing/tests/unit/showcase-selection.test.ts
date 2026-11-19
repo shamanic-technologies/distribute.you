@@ -128,24 +128,24 @@ describe("a hero card", () => {
 
   it("carries every attribute main.js drives it by", () => {
     expect(card).toContain('data-live data-brand="docdinners.com"');
-    expect(card).toContain('data-steps="22,3"');
-    expect(card).toContain('<b data-n="0">22</b>');
-    expect(card).toContain('<b data-n="1">3</b>');
+    expect(card).toContain('data-steps="3,22"');
+    expect(card).toContain('<b data-n="0">3</b>');
+    expect(card).toContain('<b data-n="1">22</b>');
     expect(card).toContain("<em data-status>Sending</em>");
   });
 
-  it("states exactly two figures: Interested leads, then Meetings booked", () => {
+  it("states exactly two figures: Meetings booked first, then Interested leads", () => {
     // Owner 2026-10-19: no Contacted, no attended meeting, no paid client on a hero card.
     expect(HERO_STEPS).toEqual([
-      { key: "conversation", label: "Interested leads" },
       { key: "meeting_booked", label: "Meetings booked" },
+      { key: "conversation", label: "Interested leads" },
     ]);
     const cells = [...card.matchAll(/data-step="([a-z_]+)"[^>]*><b data-n="(\d+)">[^<]*<\/b><small>([^<]*)<\/small>/g)].map(
       (m) => [m[1], m[2], m[3]]
     );
     expect(cells).toEqual([
-      ["conversation", "0", "Interested leads"],
-      ["meeting_booked", "1", "Meetings booked"],
+      ["meeting_booked", "0", "Meetings booked"],
+      ["conversation", "1", "Interested leads"],
     ]);
     expect(card).not.toMatch(/contacted|meeting_attended|paid_client/);
   });
@@ -155,8 +155,8 @@ describe("a hero card", () => {
     // the DOM carrying `data-zero` — removing it leaves the counter climbing with nowhere
     // to render and the step never comes back.
     const rendered = renderShowcaseCard(shockwave)!;
-    expect(rendered).toContain('data-step="meeting_booked" data-zero><b data-n="1">0</b>');
-    expect(rendered).toContain('data-steps="8,0"');
+    expect(rendered).toContain('data-step="meeting_booked" data-zero><b data-n="0">0</b>');
+    expect(rendered).toContain('data-steps="0,8"');
     expect(rendered).not.toContain('data-step="conversation" data-zero');
   });
 
