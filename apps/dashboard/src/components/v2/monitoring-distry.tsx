@@ -188,20 +188,47 @@ function Check({ on, onToggle, label, sub, chip, depth = 0 }: { on: boolean; onT
       <span className="min-w-0 flex-1">
         <span className={`text-[13px] ${on ? "k-fg" : "k-fg3"}`}>{label}</span>
         {chip && <span className="k-chip ml-2">{chip}</span>}
-        {sub && <span className="k-fg3 block text-[12px]">{sub}</span>}
+        {sub && (
+          <span className="k-fg3 block truncate text-[12px]" title={sub}>
+            {sub}
+          </span>
+        )}
       </span>
     </label>
   );
 }
 
 function ToolsEditor({ config, onSave }: { config: DistryConfig; onSave: (tools: string[]) => void }) {
+  const [showOff, setShowOff] = useState(false);
+  const [q, setQ] = useState("");
   const on = new Set(config.current.enabledTools);
   const toggle = (name: string) => onSave(on.has(name) ? config.current.enabledTools.filter((t) => t !== name) : [...config.current.enabledTools, name]);
+  const used = config.availableTools.filter((t) => on.has(t.name));
+  const off = config.availableTools.filter((t) => !on.has(t.name));
+  const needle = q.trim().toLowerCase();
+  const shownOff = needle ? off.filter((t) => t.name.toLowerCase().includes(needle) || t.description.toLowerCase().includes(needle)) : off;
   return (
     <div className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-      {config.availableTools.map((t) => (
-        <Check key={t.name} on={on.has(t.name)} onToggle={() => toggle(t.name)} label={t.name} sub={t.description} chip={t.staffOnly ? "Staff only" : undefined} />
+      {used.map((t) => (
+        <Check key={t.name} on onToggle={() => toggle(t.name)} label={t.name} sub={t.description} chip={t.staffOnly ? "Staff only" : undefined} />
       ))}
+      {showOff ? (
+        <>
+          <div className="px-4 py-2.5">
+            <input className="k-input w-full" placeholder={`Search ${off.length} tools Distry does not use`} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+          </div>
+          {shownOff.map((t) => (
+            <Check key={t.name} on={false} onToggle={() => toggle(t.name)} label={t.name} sub={t.description} chip={t.staffOnly ? "Staff only" : undefined} />
+          ))}
+          {shownOff.length === 0 && <EmptyNote>No tool matches.</EmptyNote>}
+        </>
+      ) : (
+        <div className="k-fg3 px-4 py-2.5 text-[12px]">
+          <button type="button" className="k-btn-ghost" onClick={() => setShowOff(true)}>
+            Add a tool ({off.length} more)
+          </button>
+        </div>
+      )}
     </div>
   );
 }
