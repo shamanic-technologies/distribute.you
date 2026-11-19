@@ -142,6 +142,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Monitoring > AI vendors > Schema: AI answers that do not follow the script's response schema (SCHEMA-HONOURED-1115).
   "staffSchemaConformance",
   "staffUnsentAnswers",
+  // Monitoring > Triggers > Waiting on us (REPLY-NO-BALANCE-1118).
+  "staffAwaitingAnswers",
   // Monitoring > Alerts: every staff alert recorded instead of emailed (SIGNUP-EMAILS-1111-MONITORING).
   "staffMonitoringAlerts",
   // Monitoring > Connected tools: records each client tool takes in per day (CONNECTOR-INTAKE-MONITORING-1028).

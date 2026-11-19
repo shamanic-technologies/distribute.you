@@ -2523,6 +2523,8 @@ export const STAFF_MONITORING_PATHS = {
   triggerHealth: "/campaigns/ops/trigger-health",
   // Answers owed to a person who wrote, refused by the sender or given up after failed runs, per day + the served verdict (campaign-service, ONE-AI-REFUSED-ANSWERS-1029).
   unsentAnswers: "/campaigns/ops/unsent-answers",
+  // People who wrote to a brand and wait on our answer for more than an hour, per day + the served verdict (lead-service, REPLY-NO-BALANCE-1118).
+  awaitingAnswers: "/leads/ops/awaiting-answers",
   // Per tool a client connected (GoHighLevel, PostHog, Stripe, Clerk): records taken in per day + the served verdict (crm-service, CONNECTOR-INTAKE-MONITORING-1028).
   connectorIntake: "/crm/ops/connector-intake",
   // Per client org and day, the funnel campaigns whose shadow plan or Jev pick differs from what runs + the verdict (features-service, FACTORY-P1-DASH).
@@ -13678,6 +13680,14 @@ import { UnsentAnswersSchema as StaffUnsentAnswersSchema, type UnsentAnswers as 
 /** Answers owed to a person who wrote that the sender refused or that every run failed, over the last `days` UTC days, with campaign-service's served verdict. */
 export async function getStaffUnsentAnswers(days: number): Promise<StaffUnsentAnswers> {
   return parseStaff("getStaffUnsentAnswers", StaffUnsentAnswersSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.unsentAnswers}?days=${days}`));
+}
+
+// ─── Monitoring > Triggers > Waiting on us (REPLY-NO-BALANCE-1118) ───
+import { AwaitingAnswersSchema as StaffAwaitingAnswersSchema, type AwaitingAnswers as StaffAwaitingAnswers } from "./monitoring/awaiting-answers";
+
+/** People who wrote to a brand and wait on our answer for more than an hour, with lead-service's served verdict and daily series. */
+export async function getStaffAwaitingAnswers(days: number): Promise<StaffAwaitingAnswers> {
+  return parseStaff("getStaffAwaitingAnswers", StaffAwaitingAnswersSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.awaitingAnswers}?days=${days}`));
 }
 
 // ─── Monitoring > Alerts > Raised (SIGNUP-EMAILS-1111-MONITORING) ───
