@@ -16,11 +16,12 @@ import {
 } from "@/lib/api";
 import { SkillPanel } from "@/components/v2/monitoring-skills";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
+import { timeAgo } from "@/lib/friendly-datetime";
 
 /**
  * Monitoring > Chat > Distry (staff, DISTRY-PRINCIPAL-1119): Distry, our AI principal, as chat-service
- * stores it. Two columns (owner 2026-11-19): what Distry IS on the left (prompt, model, versions),
- * what it can DO on the right (tools, skills, Engines). Every row opens its detail in a right panel;
+ * stores it. Two columns (owner 2026-11-19): what Distry IS and reads on the left (prompt, model, skills,
+ * versions), what it can DO on the right (tools, Engines). Every row opens its detail in a right panel;
  * text we own is edited there in place (a skill's text, the prompt), every change a new version.
  * The Engines list is workflow-service's live catalogue verdict, rendered in the served order.
  */
@@ -30,7 +31,7 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 const who = (editedBy: string) => (editedBy === "seed" ? "From the code" : editedBy);
 
 type Engine = DistryEngines["engines"][number];
-type Open = { kind: "tool"; name: string } | { kind: "skill"; slug: string } | { kind: "engine"; outcome: string } | { kind: "version"; version: number } | null;
+type Open = { kind: "tool"; name: string } | { kind: "skill"; slug: string } | { kind: "engine"; outcome: string } | { kind: "version"; version: number } | { kind: "model" } | null;
 
 function definitionOf(v: DistryVersion): DistryDefinition {
   return { systemPrompt: v.systemPrompt, enabledTools: v.enabledTools, skillSlugs: v.skillSlugs, provider: v.provider, model: v.model, effort: v.effort };
@@ -101,16 +102,8 @@ export function DistryView() {
           <Block title="Prompt" sub="Who Distry is and how it acts. Click the text to edit it.">
             {current ? <PromptEditor key={current.version} value={current.systemPrompt} onSave={(systemPrompt) => save({ systemPrompt })} /> : <Lines />}
           </Block>
-          <Block title="Model" sub="The model Distry thinks with, and how long it thinks.">
-            {c ? <ModelPicker config={c} onSave={save} /> : <Lines />}
-          </Block>
-          <Block title="Versions" count={versions.data?.length} sub="Every save is a version. Click one to read it whole.">
-            <VersionsTable versions={versions} currentVersion={current?.version} onOpen={(version) => setOpen({ kind: "version", version })} />
-          </Block>
-        </div>
-        <div className="min-w-0 space-y-8">
-          <Block title="Tools" count={current?.enabledTools.length} sub="What Distry can do. Staff-only tools load only when Distry talks to our team.">
-            {c ? <ToolsList config={c} isOn={toolOn} onToggle={toggleTool} onOpen={(name) => setOpen({ kind: "tool", name })} /> : <Lines />}
+          <Block title="Model" sub="The model Distry thinks with, and how long it thinks. Click to change it.">
+            {current ? <ModelRow version={current} onOpen={() => setOpen({ kind: "model" })} /> : <Lines />}
           </Block>
           <Block title="Skills" count={c ? (current?.skillSlugs === null ? c.skills.length : current?.skillSlugs.length) : undefined} sub="What Distry reads before it acts. Click one to read and edit its text.">
             {c ? (
@@ -124,6 +117,14 @@ export function DistryView() {
             ) : (
               <Lines />
             )}
+          </Block>
+          <Block title="Versions" count={versions.data?.length} sub="Every save is a version. Click one to read it whole.">
+            <VersionsTable versions={versions} currentVersion={current?.version} onOpen={(version) => setOpen({ kind: "version", version })} />
+          </Block>
+        </div>
+        <div className="min-w-0 space-y-8">
+          <Block title="Tools" count={current?.enabledTools.length} sub="What Distry can do. Staff-only tools load only when Distry talks to our team.">
+            {c ? <ToolsList config={c} isOn={toolOn} onToggle={toggleTool} onOpen={(name) => setOpen({ kind: "tool", name })} /> : <Lines />}
           </Block>
           <Block title="Engines" count={engines.data?.total} sub="Every outcome Distry can ask for. A call runs the Engine's best script and waits for the result.">
             <EnginesTable engines={engines} onOpen={(outcome) => setOpen({ kind: "engine", outcome })} />
@@ -147,6 +148,13 @@ export function DistryView() {
         />
       )}
       {open?.kind === "tool" && c && <ToolPanel tool={c.availableTools.find((t) => t.name === open.name)} on={toolOn(open.name)} onToggle={() => toggleTool(open.name)} saving={saving} onClose={() => setOpen(null)} />}
+      {open?.kind === "model" && c && (
+        <Panel label="Distry · model" onClose={() => setOpen(null)}>
+          <h2 className="text-[18px] font-medium leading-6">Model</h2>
+          <p className="k-fg3 mt-1 mb-4 text-[12px]">A change is saved as a new version, live from Distry&apos;s next turn.</p>
+          <ModelPicker config={c} onSave={save} />
+        </Panel>
+      )}
       {open?.kind === "engine" && <EnginePanel engine={engines.data?.engines.find((e) => e.outcome === open.outcome)} onClose={() => setOpen(null)} />}
       {open?.kind === "version" && (
         <VersionPanel
@@ -164,7 +172,7 @@ export function DistryView() {
 
 function Strip({ config, engines, saving }: { config: DistryConfig | undefined; engines: { callable: number; total: number } | undefined; saving: boolean }) {
   const cells: { label: string; value: string | null; note: string }[] = [
-    { label: "Version", value: config ? `v${config.current.version}` : null, note: config ? (saving ? "Saving…" : `${who(config.current.editedBy)}, ${when(config.current.createdAt)}`) : "" },
+    { label: "Version", value: config ? `v${config.current.version}` : null, note: config ? (saving ? "Saving…" : `${who(config.current.editedBy)}, ${timeAgo(config.current.createdAt)}`) : "" },
     { label: "Tools on", value: config ? `${config.current.enabledTools.length} of ${config.availableTools.length}` : null, note: "Engines count as one" },
     { label: "Skills read", value: config ? (config.current.skillSlugs === null ? "All" : `${config.current.skillSlugs.length} of ${config.skills.length}`) : null, note: "with every skill under them" },
     { label: "Engines callable", value: engines ? `${engines.callable} of ${engines.total}` : null, note: "from the live catalogue" },
@@ -330,6 +338,25 @@ function SkillsList({ config, isOn, onToggle, onAll, onOpen }: { config: DistryC
   );
 }
 
+function ModelRow({ version, onOpen }: { version: DistryVersion; onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} className="k-card k-row flex w-full items-center gap-6 px-4 py-3 text-left">
+      <span className="min-w-0">
+        <span className="k-label block">Model</span>
+        <span className="text-[13px]">{version.model}</span>
+        <span className="k-fg3 ml-1.5 text-[12px]">{version.provider}</span>
+      </span>
+      <span className="min-w-0">
+        <span className="k-label block">Thinking</span>
+        <span className="text-[13px]">{version.effort ?? "Model default"}</span>
+      </span>
+      <span className="k-fg3 ml-auto text-[16px]" aria-hidden>
+        ›
+      </span>
+    </button>
+  );
+}
+
 function ModelPicker({ config, onSave }: { config: DistryConfig; onSave: (change: Partial<DistryDefinition>) => void }) {
   const { provider, model, effort } = config.current;
   return (
@@ -482,7 +509,9 @@ function VersionsTable({ versions, currentVersion, onOpen }: { versions: { data?
                     {who(v.editedBy)}
                     {(v.note || v.restoredFrom) && <span className="k-fg3 block truncate text-[12px]">{v.restoredFrom ? `Restored v${v.restoredFrom}` : v.note}</span>}
                   </td>
-                  <td className="k-mono k-fg2 px-3 py-2 text-[12px] last:pr-4">{when(v.createdAt)}</td>
+                  <td className="k-fg2 px-3 py-2 text-[12px] last:pr-4" title={when(v.createdAt)}>
+                    {timeAgo(v.createdAt)}
+                  </td>
                 </tr>
               ))}
         </tbody>
@@ -645,7 +674,7 @@ function VersionPanel({
             <div>
               <h2 className="text-[18px] font-medium leading-6">Version {version.version}</h2>
               <p className="k-fg3 mt-1 text-[12px]">
-                {who(version.editedBy)}, {when(version.createdAt)}
+                {who(version.editedBy)}, {timeAgo(version.createdAt)} ({when(version.createdAt)})
                 {version.restoredFrom ? ` · restored v${version.restoredFrom}` : ""}
               </p>
             </div>
