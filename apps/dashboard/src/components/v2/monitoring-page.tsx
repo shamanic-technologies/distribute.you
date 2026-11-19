@@ -60,6 +60,7 @@ import { outOfCreditVendors } from "@/lib/monitoring/vendor-credit";
 import { SchemaConformancePage, SchemaConformanceTile, useSchemaConformance } from "@/components/v2/monitoring-schema-conformance";
 import { brokenModels } from "@/lib/monitoring/schema-conformance";
 import { UnsentAnswersPage, UnsentAnswersTile, useUnsentAnswers } from "@/components/v2/monitoring-unsent-answers";
+import { AwaitingAnswersPage, AwaitingAnswersTile, useAwaitingAnswers } from "@/components/v2/monitoring-awaiting-answers";
 import { PlugsConnectedIcon } from "@phosphor-icons/react/dist/csr/PlugsConnected";
 import { ConnectorIntakePage, ConnectorIntakeTile, useConnectorIntake } from "@/components/v2/monitoring-connectors";
 import { connectionName, redConnections } from "@/lib/monitoring/connector-intake";
@@ -202,6 +203,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "triggers/waiting": { section: "triggers", title: "Prospects waiting", question: "Is any prospect waiting on a blocked campaign answer?" },
   "triggers/firing": { section: "triggers", title: "Firing", question: "Is any trigger our campaigns wait on broken?" },
   "triggers/unsent": { section: "triggers", title: "Unsent answers", question: "Did anyone who wrote to a brand get no answer?" },
+  "triggers/awaiting": { section: "triggers", title: "Waiting on us", question: "Is anyone who wrote to a brand still waiting on our answer after an hour?" },
   "tools/intake": { section: "tools", title: "Records taken in", question: "Does every tool a client connected still bring records in?" },
   "factory/plan": { section: "factory", title: "Would change", question: "Which client campaigns would change if they followed their plan?" },
   "factory/following": { section: "factory", title: "Following its plan", question: "Does every campaign switched to its plan actually run it?" },
@@ -373,6 +375,7 @@ export function V2Monitoring() {
         {view.page === "triggers/waiting" && <ProspectsWaitingPage />}
         {view.page === "triggers/firing" && <TriggerHealthPage />}
         {view.page === "triggers/unsent" && <UnsentAnswersPage />}
+        {view.page === "triggers/awaiting" && <AwaitingAnswersPage />}
         {view.page === "tools/intake" && <ConnectorIntakePage />}
         {view.page === "factory/plan" && <FactoryShadowPage />}
         {view.page === "factory/following" && <PlanFollowingPage />}
@@ -487,6 +490,7 @@ function Hub({ base }: { base: string }) {
   const waiting = useStuckOccurrences();
   const firing = useTriggerHealth();
   const unsent = useUnsentAnswers();
+  const awaiting = useAwaitingAnswers();
   const tools = useConnectorIntake();
   const factory = useFactoryShadowMonitoring();
   const following = usePlanFollowing();
@@ -556,6 +560,8 @@ function Hub({ base }: { base: string }) {
         <TriggerHealthTile href={href("triggers/firing")} />
         {/* A person wrote to a brand and the answer we owed them was refused by the sender or given up after failed runs, in the last 24 h (ONE-AI-REFUSED-ANSWERS-1029): red here IS the alert, never an email. */}
         <UnsentAnswersTile href={href("triggers/unsent")} />
+        {/* A person who wrote to a brand still waits on our answer after an hour (REPLY-NO-BALANCE-1118): red here IS the alert, never an email. */}
+        <AwaitingAnswersTile href={href("triggers/awaiting")} />
         {/* A tool a client connected that syncs "fine" but takes in nothing for longer than its habit, or whose sync fails (CONNECTOR-INTAKE-MONITORING-1028): red here IS the alert, never an email. */}
         <ConnectorIntakeTile href={href("tools/intake")} />
         {/* The GTM Factory shadow pass failed to judge or plan a live campaign, or stopped running (FACTORY-P1-DASH): red here IS the alert, never an email. */}
@@ -889,12 +895,13 @@ function Hub({ base }: { base: string }) {
 
       <div>
       <SectionTitle count={1}>Triggers</SectionTitle>
-      <Section section="triggers" count={4} grid={false}>
+      <Section section="triggers" count={5} grid={false}>
         <HubChips>
           <HubChip href={href("triggers/reports")} color={trig.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Reports" />
           <HubChip href={href("triggers/waiting")} color={waiting.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Prospects waiting" />
           <HubChip href={href("triggers/firing")} color={firing.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Firing" />
           <HubChip href={href("triggers/unsent")} color={unsent.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Unsent answers" />
+          <HubChip href={href("triggers/awaiting")} color={awaiting.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Waiting on us" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -960,6 +967,24 @@ function Hub({ base }: { base: string }) {
               note: unsent.data ? `last ${unsent.data.redWindowHours} h` : "last 24 h",
             },
             { label: "Listed", value: unsent.data?.unsent.length.toLocaleString("en-US"), note: unsent.data ? `last ${unsent.data.days} days` : undefined },
+          ]}
+        />
+        <Card
+          href={href("triggers/awaiting")}
+          page="triggers/awaiting"
+          error={awaiting.isError && !awaiting.data}
+          cells={[
+            {
+              label: "Waiting now",
+              value: awaiting.data && <span style={{ color: awaiting.data.status === "red" ? "var(--data-rose)" : undefined }}>{awaiting.data.waiting.length.toLocaleString("en-US")}</span>,
+              note: "over 1 h",
+            },
+            {
+              label: "Worst check today",
+              value: awaiting.data && (awaiting.data.byDay.at(-1)?.maxWaitingOverHour.toLocaleString("en-US") ?? "—"),
+              note: "bars: worst check per day",
+              bars: awaiting.data?.byDay.slice(-7).reverse().map((d) => d.maxWaitingOverHour),
+            },
           ]}
         />
         </div>
