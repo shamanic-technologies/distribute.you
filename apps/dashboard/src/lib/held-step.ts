@@ -15,6 +15,8 @@ const HeldEngineSchema = z.object({
   reason: z.string(),
   heldSince: z.string(),
   lastAnsweredAt: z.string().nullish(),
+  /** The holder calls it a normal business state: the client's own credit, budget or limit (an older producer omits it). */
+  expected: z.boolean().nullish(),
 });
 
 /** The part of the next-steps read the campaign page uses. Every field lenient: an older producer omits them. */
@@ -87,16 +89,26 @@ export function heldStepCopy(held: HeldEngine, waiting: number | null | undefine
  */
 const LIMIT_HOLD_REASONS = new Set(["daily_ceiling_reached", "unfunded", "insufficient_credits"]);
 
+/**
+ * A hold the client's own money or limit makes: the producer's `expected` verdict, else (older producer) a known limit
+ * code. DOC-DINNERS-SENDS-1119 (prod 2026-11-19): the gate states its credit refusal as "Insufficient credits", a
+ * spelling the code list never held, so an out-of-credit client read "Our team is on it. You have nothing to do." under
+ * "You are out of credit". The verdict is the producer's: never a second list of its reasons here.
+ */
+function isClientsOwnHold(held: HeldEngine): boolean {
+  return held.expected === true || LIMIT_HOLD_REASONS.has(held.reason);
+}
+
 /** The held step to state: the producer's `heldBy`, else nothing. A limit hold is the limit note's to state. */
 export function heldStepOf(steps: CampaignNextSteps | null | undefined): { held: HeldEngine; waiting: number | null } | null {
   const held = steps?.nextSends?.heldBy ?? null;
-  if (!held || LIMIT_HOLD_REASONS.has(held.reason)) return null;
+  if (!held || isClientsOwnHold(held)) return null;
   return { held, waiting: steps?.nextSends?.leadsWaitingOnHeldEngine ?? null };
 }
 
 /** People waiting behind a LIMIT hold (served `leadsWaitingOnHeldEngine`), for the limit note; null otherwise. */
 export function waitingOnLimit(steps: CampaignNextSteps | null | undefined): number | null {
   const held = steps?.nextSends?.heldBy ?? null;
-  if (!held || !LIMIT_HOLD_REASONS.has(held.reason)) return null;
+  if (!held || !isClientsOwnHold(held)) return null;
   return steps?.nextSends?.leadsWaitingOnHeldEngine ?? null;
 }
