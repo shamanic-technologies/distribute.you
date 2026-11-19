@@ -122,6 +122,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffWhatsappLines",
   // Monitoring > WhatsApp > Sophie's replies delivered or not per day (SOPHIE-WA-DELIVERY-CHART-1029).
   "staffSophieReplies",
+  // Monitoring > Copilot > Distry spend on non-clients, per day against the $30 cap (DISTRY-SPEND-CHART-1119).
+  "staffDistrySpend",
   // Monitoring > Cost ledger: fleet spend per service and per org-day (COST-ACCOUNTING-1023-MONITOR).
   "staffOutcomeCoverage",
   "staffLedgerCheck",

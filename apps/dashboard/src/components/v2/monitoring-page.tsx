@@ -41,6 +41,9 @@ import { ThreadsPage } from "@/components/v2/monitoring-threads";
 import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/components/v2/monitoring-whatsapp";
 import { SophieRepliesChart, SophieRepliesPage, SophieRepliesTile, useSophieReplies } from "@/components/v2/monitoring-sophie";
 import { recentNotDelivered } from "@/lib/monitoring/sophie-replies";
+import { DistrySpendPage, DistrySpendTile, useDistrySpend } from "@/components/v2/monitoring-distry-spend";
+import { dollars, dollarsExact } from "@/components/v2/monitoring-charts";
+import { cappedToday, todayRow } from "@/lib/monitoring/distry-spend";
 import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
 import { ShieldCheckIcon } from "@phosphor-icons/react/dist/csr/ShieldCheck";
 import { SecurityAdvisoriesPage, SecurityAdvisoriesTile, useSecurityAdvisories } from "@/components/v2/monitoring-security";
@@ -215,6 +218,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "ai/scripts": { section: "ai", title: "Scripts per Engine", question: "Which scripts compete in each Engine, and which one does the Rating favour today?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
   "chat/distry": { section: "chat", title: "Distry", question: "Who is Distry, what can it do, and which Engines can it call?" },
+  "chat/distry-spend": { section: "chat", title: "Distry spend on non-clients", question: "How much does Distry spend a day on people with no account?" },
   "alerts/raised": { section: "alerts", title: "Raised", question: "Did any of our services raise an alert in the last 24 hours?" },
 };
 
@@ -312,6 +316,8 @@ export function V2Monitoring() {
           ? "Every org, read live from production. Each alert keeps the facts it was raised with. Days are UTC."
           : meta.section === "ai"
           ? "Every AI vendor chat-service calls, read live from production. Days are UTC."
+          : view.page === "chat/distry-spend"
+          ? "Every person Distry answered with no account, read live from chat-service's stored daily series. Days are UTC."
           : meta.section === "chat"
           ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
           : meta.section === "ledger"
@@ -391,6 +397,7 @@ export function V2Monitoring() {
         {view.page === "ai/credit" && <VendorCreditPage />}
         {view.page === "ai/schema" && <SchemaConformancePage />}
         {view.page === "ai/scripts" && <ScriptEnginesPage />}
+        {view.page === "chat/distry-spend" && <DistrySpendPage />}
         {view.page === "chat/skills" && <SkillsView />}
         {view.page === "chat/distry" && <DistryView />}
         {view.page === "alerts/raised" && <MonitoringAlertsPage />}
@@ -501,6 +508,9 @@ function Hub({ base }: { base: string }) {
   const scripts = useScriptsMonitoring();
   const vendors = useVendorCredit();
   const schemaConf = useSchemaConformance();
+  const distry = useDistrySpend();
+  const distryToday = distry.data ? todayRow(distry.data) : undefined;
+  const distryRed = distry.data ? cappedToday(distry.data) : false;
   const schemaBroken = schemaConf.data ? brokenModels(schemaConf.data) : undefined;
   const alerts = useMonitoringAlerts();
   const alertsBroken = alerts.data ? brokenAlerts(alerts.data) : undefined;
@@ -584,6 +594,8 @@ function Hub({ base }: { base: string }) {
         <SchemaConformanceTile href={href("ai/schema")} />
         {/* The Rating's script board not rebuilt for over an hour (SCRIPT-VALUE-RATING-1113-MON-DASH): red here IS the alert, never an email; « being built » is normal. */}
         <ScriptEnginesTile href={href("ai/scripts")} />
+        {/* Distry's spend on people with no account reached the $30 day cap TODAY (DISTRY-SPEND-CHART-1119): red here IS the alert; a past capped day stays red on its own bar only. */}
+        <DistrySpendTile href={href("chat/distry-spend")} />
         {/* A mailbox vendor refusing our API, its mailboxes out of the send pool (SEND-PRIMEFORGE-402-1030, Primeforge 402 on 2026-10-29): shown only while one refuses, red here IS the alert, never an email. */}
         <VendorRefusalTile href={href("emails/capacity")} />
         {/* How many mailboxes can take a new email now, through the sender's own selection; zero = every org's new emails refused (SEND-POOL-VENDOR-402-1030, a day at zero from 2026-10-29): red here IS the alert, never an email. */}
@@ -1285,8 +1297,8 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={2}>Copilot</SectionTitle>
-      <Section section="chat" count={2}>
+      <SectionTitle count={3}>Copilot</SectionTitle>
+      <Section section="chat" count={3}>
         <Card
           href={href("chat/distry")}
           page="chat/distry"
@@ -1303,6 +1315,25 @@ function Hub({ base }: { base: string }) {
           cells={[
             { label: "Skills", value: skills.data?.length, note: "in the Copilot's tree" },
             { label: "Edited by a person", value: skills.data?.filter((x) => x.updatedBy !== "seed").length, note: "the rest are as seeded" },
+          ]}
+        />
+        <Card
+          href={href("chat/distry-spend")}
+          page="chat/distry-spend"
+          error={distry.isError && !distry.data}
+          cells={[
+            {
+              label: "Spent today",
+              value: distryToday && <span style={{ color: distryRed ? "var(--data-rose)" : undefined }}>{dollarsExact(distryToday.nonClientSpendUsd)}</span>,
+              note: distryToday ? (distryRed ? "cap reached" : `of the ${dollars(distryToday.thresholdUsd)} day cap`) : undefined,
+              bars: distry.data?.days.slice(-7).map((d) => d.nonClientSpendUsd),
+            },
+            {
+              label: "Visitors cut today",
+              value: distryToday?.visitorsCut,
+              note: distryToday ? `at $5 each · ${distryToday.turnsRefusedByDayCap} ${distryToday.turnsRefusedByDayCap === 1 ? "turn" : "turns"} refused` : undefined,
+              bars: distry.data?.days.slice(-7).map((d) => d.visitorsCut),
+            },
           ]}
         />
       </Section>

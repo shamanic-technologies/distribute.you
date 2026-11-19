@@ -13657,6 +13657,17 @@ export async function getStaffSophieReplies(days: number): Promise<StaffSophieRe
   return parseStaff("getStaffSophieReplies", StaffSophieReplyDaysSchema, await apiCall<unknown>(`${STAFF_SOPHIE_REPLIES_PATH}?days=${days}`));
 }
 
+// ─── Monitoring > Copilot > Distry spend on non-clients (DISTRY-SPEND-CHART-1119) ───
+import { DistrySpendSchema as StaffDistrySpendSchema, type DistrySpend as StaffDistrySpend } from "./monitoring/distry-spend";
+
+/** chat-service's per-day spend of Distry on non-clients against the $30 day cap, through api-service's staff passthrough. */
+export const STAFF_DISTRY_SPEND_PATH = "/chat/ops/distry-spend/daily";
+
+/** One row per UTC day over the last `days` (oldest first, quiet days at zero). */
+export async function getStaffDistrySpend(days: number): Promise<StaffDistrySpend> {
+  return parseStaff("getStaffDistrySpend", StaffDistrySpendSchema, await apiCall<unknown>(`${STAFF_DISTRY_SPEND_PATH}?days=${days}`));
+}
+
 // ─── Monitoring > AI vendors > Credit (VENDOR-CREDIT-1030) ───
 import { VendorCreditSchema as StaffVendorCreditSchema, type VendorCredit as StaffVendorCredit } from "./monitoring/vendor-credit";
 import { CampaignEngineScriptsSchema, SCRIPT_RATING_NOT_BUILT_YET, type CampaignEngineScriptsRead } from "./campaign-engine-scripts";
