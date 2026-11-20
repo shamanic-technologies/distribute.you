@@ -48,6 +48,11 @@ export function v2Href(orgId: string, brandId: string, section: V2Section): stri
   return section === "today" ? base : `${base}/${section}`;
 }
 
+/** A Company page's URL from its key (domain when served, else features-service's org id). */
+export function companyKeyHref(orgId: string, brandId: string, key: string | null): string | null {
+  return key ? `${v2Href(orgId, brandId, "companies")}/${encodeURIComponent(key)}` : null;
+}
+
 /** The tabs of one campaign's page. Workflows is offered in staff mode only. */
 export type V2CampaignTab = "overview" | "inbox" | "sent" | "targeting" | "settings" | "workflows";
 

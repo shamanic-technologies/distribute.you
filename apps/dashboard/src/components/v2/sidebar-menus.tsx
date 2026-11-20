@@ -19,8 +19,7 @@ import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
 import { useLeadScope, useBrandRevenue, useCompanyList, useReachedCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
-import { companyKeyHref } from "@/components/v2/companies-page";
-import { v2Base, v2Href, v2NewBrandHref, type V2Section } from "@/lib/v2/routes";
+import { companyKeyHref, v2Base, v2Href, v2NewBrandHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { moveOrgCursor, showOrgSearch, switcherOrgs } from "@/lib/v2/org-switcher-list";
 

@@ -1,7 +1,12 @@
 "use client";
 
 import { CaretDoubleRightIcon } from "@phosphor-icons/react/dist/csr/CaretDoubleRight";
-import { CopilotChat } from "@/components/v2/copilot-chat";
+import dynamic from "next/dynamic";
+
+// The chat (AI SDK, markdown, its cards) is its own chunk, still server-rendered: the page's shell
+// and query provider hydrate without waiting on it, and the server HTML of the panel stays in place
+// until its chunk arrives (MON-PAGE-SPEED-FLOOR-1120: the v2 shell's JavaScript is every page's floor).
+const CopilotChat = dynamic(() => import("@/components/v2/copilot-chat").then((m) => m.CopilotChat));
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 
 /**
