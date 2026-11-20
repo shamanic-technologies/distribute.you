@@ -7,7 +7,7 @@ import { getBrandCompaniesPage } from "@/lib/api";
 import { COMPANIES_PAGE_SIZE, type BrandCompanyRow, type CompanyListQuery } from "@/lib/brand-companies";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
-import { v2Href } from "@/lib/v2/routes";
+import { companyKeyHref, v2Href } from "@/lib/v2/routes";
 import { useCompanyList } from "@/components/v2/data";
 import { dealsBoardRungs } from "@/lib/deals-board";
 import { uniboxValueTag, uniboxValueTone, type LifecycleRung } from "@/lib/unibox-leads";
@@ -39,10 +39,8 @@ export function companyKey(o: { orgDomain?: string | null; orgId: string | null 
   return o.orgDomain ?? o.orgId ?? null;
 }
 
-/** A Company page's URL from its key. */
-export function companyKeyHref(orgId: string, brandId: string, key: string | null): string | null {
-  return key ? `${v2Href(orgId, brandId, "companies")}/${encodeURIComponent(key)}` : null;
-}
+// A Company page's URL from its key lives in `lib/v2/routes.ts` (the sidebar's search reads it without this page body).
+export { companyKeyHref };
 
 export function companyHref(orgId: string, brandId: string, o: { orgDomain?: string | null; orgId: string | null }): string | null {
   return companyKeyHref(orgId, brandId, companyKey(o));

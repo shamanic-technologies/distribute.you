@@ -5,18 +5,12 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ProviderLogo } from "@/components/provider-logo";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions } from "@/lib/query-options";
-import { getBrandPublishedUnits } from "@/lib/api";
 import { formatCount, formatUsdAdaptive, formatUsdUnit } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
-import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { outcomeOf } from "@/lib/v2/outcomes";
 import { v2Href, v2OutcomeHref } from "@/lib/v2/routes";
 import {
   PUBLISHED_OUTCOME_COPY,
   PUBLISHED_OUTCOME_DOMAIN,
-  PUBLISHED_OUTCOME_KEYS,
   costPerSignupReasonWords,
   dayTime,
   rowValueReasonWords,
@@ -29,6 +23,9 @@ import {
 import { EmptyNote, Figure, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { OutcomePinButton } from "@/components/v2/outcome-pins";
 import { OutcomeAccountingCard } from "@/components/v2/outcome-accounting-card";
+// The sidebar reads these hooks from their own module so the v2 shell never loads this page body (recharts included).
+import { usePublishedOutcomeLabel, usePublishedOutcomes, usePublishedUnits } from "@/components/v2/published-outcome-data";
+export { usePublishedOutcomeLabel, usePublishedOutcomes, usePublishedUnits };
 import { accountingReasonWords } from "@/lib/v2/outcome-accounting";
 
 /**
@@ -46,35 +43,6 @@ const OURS = "var(--accent)";
 const PAGE = 50;
 /** Tile count to grid columns (static class names, so Tailwind compiles them). */
 const TILE_COLS: Record<number, string> = { 4: "lg:grid-cols-4", 5: "lg:grid-cols-5", 6: "lg:grid-cols-6", 7: "lg:grid-cols-7" };
-
-export function usePublishedUnits(brandId: string, outcomeKey: PublishedOutcomeKey) {
-  return useAuthQuery(["publishedUnits", brandId, outcomeKey], () => getBrandPublishedUnits(brandId, outcomeKey), { ...pollOptions, enabled: !!brandId });
-}
-
-/** Every published outcome's read, in a fixed order (the Outcomes overview lists one card per outcome with a row). */
-export function usePublishedOutcomes(brandId: string) {
-  const newsletter = usePublishedUnits(brandId, "newsletter_email_sent");
-  const x = usePublishedUnits(brandId, "x_post_published");
-  const linkedin = usePublishedUnits(brandId, "linkedin_post_published");
-  const threads = usePublishedUnits(brandId, "threads_post_published");
-  const byKey = { newsletter_email_sent: newsletter, x_post_published: x, linkedin_post_published: linkedin, threads_post_published: threads };
-  const reads = PUBLISHED_OUTCOME_KEYS.map((key) => ({ key, q: byKey[key] }));
-  return {
-    settled: reads.every((r) => r.q.data !== undefined || r.q.isError),
-    failed: reads.filter((r) => !r.q.data && r.q.isError).map((r) => r.key),
-    withRows: reads.flatMap((r) => (r.q.data && r.q.data.rows.length > 0 ? [{ key: r.key, data: r.q.data }] : [])),
-  };
-}
-
-/** A published outcome's served catalogue name (the sidebar entry and the page title read the same one). */
-export function usePublishedOutcomeLabel(key: PublishedOutcomeKey): string {
-  return useLabel(key);
-}
-
-function useLabel(key: PublishedOutcomeKey): string {
-  const catalogue = useLegCatalogue();
-  return outcomeOf(catalogue, null, key)?.label ?? key;
-}
 
 export function NetworkLogo({ outcomeKey, size = 16 }: { outcomeKey: PublishedOutcomeKey; size?: number }) {
   return <ProviderLogo domain={PUBLISHED_OUTCOME_DOMAIN[outcomeKey]} size={size} className="rounded-[3px]" />;
@@ -97,7 +65,7 @@ function CostPerSignup({ data }: { data: PublishedUnits }) {
 export function PublishedOutcomePage({ outcomeKey }: { outcomeKey: PublishedOutcomeKey }) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const q = usePublishedUnits(brandId, outcomeKey);
-  const name = useLabel(outcomeKey);
+  const name = usePublishedOutcomeLabel(outcomeKey);
   const copy = PUBLISHED_OUTCOME_COPY[outcomeKey];
   const data = q.data;
   return (

@@ -11,6 +11,7 @@ import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 import { useOrganization } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { waitForHydrationSettled } from "@/lib/hydration-settled";
 import {
   PERSIST_GC_TIME_MS,
   PERSIST_MAX_AGE_MS,
@@ -129,6 +130,12 @@ async function reseedColdQueriesFromDisk(
     // ~0.5-1.2 s of the floor (MON-PAGE-SPEED-FLOOR-1120). The disk read still starts
     // during render; only the WRITE waits for the hydration commit.
     if (hydrated) await hydrated;
+    // The provider's effect only proves the ROOT hydrated. Suspense boundaries hydrate
+    // later, each when its own JavaScript has arrived: the page under the brand
+    // `loading.tsx` boundary, the Copilot chat chunk. A write before THEY hydrate still
+    // threw #418 once per reload (args `HTML`) and client-rebuilt the section. Wait for
+    // every server-rendered boundary to carry React's fiber (`lib/hydration-settled.ts`).
+    if (hydrated) await waitForHydrationSettled({ root: document.body, timeoutMs: HYDRATION_SETTLE_TIMEOUT_MS });
     const buster = persistCacheVersion();
     for (const [key, value] of entries) {
       const restore = coldRestoreFromValue(key, value, prefix, buster);
@@ -167,6 +174,12 @@ async function reseedColdQueriesFromDisk(
  * - `filters.predicate` — only successful, non-sensitive, allowlisted queries persist
  *   (key material never touches disk).
  */
+/**
+ * Longest wait for the page's sections to hydrate before the saved copy is written anyway
+ * (a section whose chunk failed to load never hydrates; the wait says so in the console).
+ */
+const HYDRATION_SETTLE_TIMEOUT_MS = 5_000;
+
 /** Boot housekeeping of the disk cache waits this long, out of the first paint. */
 const HOUSEKEEPING_DELAY_MS = 10_000;
 

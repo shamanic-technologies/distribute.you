@@ -1,68 +1,71 @@
 "use client";
 
 import type { Icon } from "@phosphor-icons/react";
-import { AddressBookIcon } from "@phosphor-icons/react/dist/csr/AddressBook";
-import { AtIcon } from "@phosphor-icons/react/dist/csr/At";
-import { BellIcon } from "@phosphor-icons/react/dist/csr/Bell";
-import { BirdIcon } from "@phosphor-icons/react/dist/csr/Bird";
-import { CalendarCheckIcon } from "@phosphor-icons/react/dist/csr/CalendarCheck";
-import { CalendarPlusIcon } from "@phosphor-icons/react/dist/csr/CalendarPlus";
-import { ChatCircleIcon } from "@phosphor-icons/react/dist/csr/ChatCircle";
-import { ChatCircleTextIcon } from "@phosphor-icons/react/dist/csr/ChatCircleText";
-import { ChatTextIcon } from "@phosphor-icons/react/dist/csr/ChatText";
-import { CircleIcon } from "@phosphor-icons/react/dist/csr/Circle";
-import { ClipboardTextIcon } from "@phosphor-icons/react/dist/csr/ClipboardText";
-import { CurrencyDollarIcon } from "@phosphor-icons/react/dist/csr/CurrencyDollar";
-import { CursorClickIcon } from "@phosphor-icons/react/dist/csr/CursorClick";
-import { EnvelopeIcon } from "@phosphor-icons/react/dist/csr/Envelope";
-import { FacebookLogoIcon } from "@phosphor-icons/react/dist/csr/FacebookLogo";
-import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
-import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
-import { FunnelIcon } from "@phosphor-icons/react/dist/csr/Funnel";
-import { HandHeartIcon } from "@phosphor-icons/react/dist/csr/HandHeart";
-import { HandshakeIcon } from "@phosphor-icons/react/dist/csr/Handshake";
-import { InstagramLogoIcon } from "@phosphor-icons/react/dist/csr/InstagramLogo";
-import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
-import { LinkedinLogoIcon } from "@phosphor-icons/react/dist/csr/LinkedinLogo";
-import { ListBulletsIcon } from "@phosphor-icons/react/dist/csr/ListBullets";
-import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
-import { MedalIcon } from "@phosphor-icons/react/dist/csr/Medal";
-import { MegaphoneIcon } from "@phosphor-icons/react/dist/csr/Megaphone";
-import { MicrophoneIcon } from "@phosphor-icons/react/dist/csr/Microphone";
-import { NotePencilIcon } from "@phosphor-icons/react/dist/csr/NotePencil";
-import { PhoneIcon } from "@phosphor-icons/react/dist/csr/Phone";
-import { PhoneCallIcon } from "@phosphor-icons/react/dist/csr/PhoneCall";
-import { QuestionIcon } from "@phosphor-icons/react/dist/csr/Question";
-import { ShareNetworkIcon } from "@phosphor-icons/react/dist/csr/ShareNetwork";
-import { ShoppingCartIcon } from "@phosphor-icons/react/dist/csr/ShoppingCart";
-import { TargetIcon } from "@phosphor-icons/react/dist/csr/Target";
-import { ThumbsUpIcon } from "@phosphor-icons/react/dist/csr/ThumbsUp";
-import { UserCheckIcon } from "@phosphor-icons/react/dist/csr/UserCheck";
-import { UserFocusIcon } from "@phosphor-icons/react/dist/csr/UserFocus";
-import { UserPlusIcon } from "@phosphor-icons/react/dist/csr/UserPlus";
-import { UsersIcon } from "@phosphor-icons/react/dist/csr/Users";
-import { WavesIcon } from "@phosphor-icons/react/dist/csr/Waves";
-import { YoutubeLogoIcon } from "@phosphor-icons/react/dist/csr/YoutubeLogo";
+// Duotone-only twins of the Phosphor icons (each Phosphor module ships six weights; MON-PAGE-SPEED-FLOOR-1120).
+import {
+  AddressBookIcon,
+  AtIcon,
+  BellIcon,
+  BirdIcon,
+  CalendarCheckIcon,
+  CalendarPlusIcon,
+  ChatCircleIcon,
+  ChatCircleTextIcon,
+  ChatTextIcon,
+  CircleIcon,
+  ClipboardTextIcon,
+  CurrencyDollarIcon,
+  CursorClickIcon,
+  EnvelopeIcon,
+  FacebookLogoIcon,
+  FileTextIcon,
+  FlowArrowIcon,
+  FunnelIcon,
+  HandHeartIcon,
+  HandshakeIcon,
+  InstagramLogoIcon,
+  LightningIcon,
+  LinkedinLogoIcon,
+  ListBulletsIcon,
+  MagnifyingGlassIcon,
+  MedalIcon,
+  MegaphoneIcon,
+  MicrophoneIcon,
+  NotePencilIcon,
+  PhoneIcon,
+  PhoneCallIcon,
+  QuestionIcon,
+  ShareNetworkIcon,
+  ShoppingCartIcon,
+  TargetIcon,
+  ThumbsUpIcon,
+  UserCheckIcon,
+  UserFocusIcon,
+  UserPlusIcon,
+  UsersIcon,
+  WavesIcon,
+  YoutubeLogoIcon,
+  PencilSimpleLineIcon,
+  SealCheckIcon,
+  SmileyIcon,
+  UsersThreeIcon,
+  BrowserIcon,
+  SparkleIcon,
+  EnvelopeSimpleIcon,
+  HandWavingIcon,
+  ThreadsLogoIcon,
+  TrayIcon,
+  VideoCameraIcon,
+  LinkIcon,
+  ChatCircleDotsIcon,
+  QueueIcon,
+  EnvelopeOpenIcon,
+  NewspaperIcon,
+  CheckCircleIcon,
+  WhatsappLogoIcon,
+  XLogoIcon,
+} from "@/components/v2/duotone-icons";
 import { catalogueFaceSrc } from "@/lib/staff-catalogue";
-import { PencilSimpleLineIcon } from "@phosphor-icons/react/dist/csr/PencilSimpleLine";
-import { SealCheckIcon } from "@phosphor-icons/react/dist/csr/SealCheck";
-import { SmileyIcon } from "@phosphor-icons/react/dist/csr/Smiley";
-import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
-import { BrowserIcon } from "@phosphor-icons/react/dist/csr/Browser";
-import { SparkleIcon } from "@phosphor-icons/react/dist/csr/Sparkle";
-import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
-import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
-import { ThreadsLogoIcon } from "@phosphor-icons/react/dist/csr/ThreadsLogo";
-import { TrayIcon } from "@phosphor-icons/react/dist/csr/Tray";
-import { VideoCameraIcon } from "@phosphor-icons/react/dist/csr/VideoCamera";
-import { LinkIcon } from "@phosphor-icons/react/dist/csr/Link";
-import { ChatCircleDotsIcon } from "@phosphor-icons/react/dist/csr/ChatCircleDots";
-import { QueueIcon } from "@phosphor-icons/react/dist/csr/Queue";
-import { EnvelopeOpenIcon } from "@phosphor-icons/react/dist/csr/EnvelopeOpen";
-import { NewspaperIcon } from "@phosphor-icons/react/dist/csr/Newspaper";
-import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
-import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
-import { XLogoIcon } from "@phosphor-icons/react/dist/csr/XLogo";
 import { MARK_ICONS } from "@/components/v2/catalogue-mark-icons";
 
 /**

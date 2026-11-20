@@ -27,7 +27,6 @@ import {
   asCapPeriod,
   centsToUsd,
   formatCapUsd,
-  funnelCampaignFaceSrc,
   isOngoingFunnelCampaign as isFunnelCampaignOn,
   capWords,
   funnelTypeOf,
@@ -77,6 +76,9 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview } from "@/lib/v2/campaign-layout-preview";
 import { FunnelCampaignPageNext } from "@/components/v2/campaign-page-next";
 import { CampaignAimSection } from "@/components/v2/campaign-aim";
+// The face lives in its own module so the v2 shell (sidebar) loads it without this page body.
+import { FunnelFace } from "@/components/v2/funnel-face";
+export { FunnelFace };
 
 /**
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
@@ -103,21 +105,6 @@ function useFunnelCaps(c: Pick<SalesFunnelCampaign, "brandId" | "offerId" | "sal
     ["salesFunnelCaps", c.brandId, c.offerId, c.salesFunnelId],
     () => getSalesFunnelCaps(c.brandId, c.offerId, c.salesFunnelId),
     pollOptions,
-  );
-}
-
-/** The campaign's face, drawn by features-service from its name. */
-export function FunnelFace({ name, size }: { name: string; size: number }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={funnelCampaignFaceSrc(name)}
-      alt=""
-      width={size}
-      height={size}
-      className="shrink-0 rounded-full bg-[var(--bg-inset)] shadow-[inset_0_0_0_1px_var(--line)]"
-      style={{ width: size, height: size }}
-    />
   );
 }
 
