@@ -2966,7 +2966,7 @@ const DistryModelsSchema = z.object({
   refresh: z.object({ state: z.string(), broken: z.boolean(), sentence: z.string(), lastAttemptAt: z.string().nullable(), lastSuccessAt: z.string().nullable() }),
   priceBasis: z.string(),
   ratioBasis: z.string(),
-  current: z.object({ provider: z.string(), model: z.string(), modelId: z.string() }),
+  current: z.object({ provider: z.string(), model: z.string(), modelId: z.string(), effort: z.string().nullable() }),
   models: z.array(
     z.object({
       provider: z.string(),
@@ -2976,7 +2976,21 @@ const DistryModelsSchema = z.object({
       capabilityTier: z.string(),
       isCurrent: z.boolean(),
       price: z.object({ inputPer1mUsd: z.number().nullable(), outputPer1mUsd: z.number().nullable(), reason: z.string().nullable() }),
-      index: z.object({ aaName: z.string().nullable(), score: z.number().nullable(), rank: z.number().nullable(), rankOutOf: z.number(), indexCostUsd: z.number().nullable(), reason: z.string().nullable() }),
+      // The thinking Distry would run this model at, in words, and the Artificial Analysis entry read at it.
+      thinking: z.string(),
+      index: z.object({ aaName: z.string().nullable(), variantLabel: z.string().nullable(), score: z.number().nullable(), rank: z.number().nullable(), rankOutOf: z.number(), indexCostPerTaskUsd: z.number().nullable(), reason: z.string().nullable() }),
+      // Every thinking level Artificial Analysis scored this model at, best score first (chat-service #873).
+      variants: z.array(
+        z.object({
+          aaName: z.string(),
+          variantLabel: z.string().nullable(),
+          effort: z.string().nullable(),
+          score: z.number().nullable(),
+          indexCostPerTaskUsd: z.number().nullable(),
+          intelligencePerDollar: z.number().nullable(),
+          isDistrysThinking: z.boolean(),
+        }),
+      ),
       intelligencePerDollar: z.object({ value: z.number().nullable(), basis: z.string().nullable(), reason: z.string().nullable() }),
     }),
   ),

@@ -639,8 +639,11 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  *
  * "12": `staffDistryEngines` rows gained the REQUIRED `inputs`, `scripts`, `counts` (Distry
  * Engine panel, DISTRY-PRINCIPAL-1119). An older snapshot read `.map` off undefined.
+ *
+ * "13": `staffDistryModels` rows gained the REQUIRED `thinking` + `variants` (Distry model panel,
+ * thinking levels, DISTRY-MODELS-1119). An older snapshot read `.map` off undefined.
  */
-const PERSIST_CACHE_VERSION = "12";
+const PERSIST_CACHE_VERSION = "13";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
