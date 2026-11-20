@@ -19,8 +19,10 @@ import {
   ChatOpenPageRecordSchema,
   getChatSessionHistory,
   getLatestChatSession,
+  parseSavedChatSession,
   type ChatSessionHistory,
 } from "@/lib/api";
+import { clearCopilotSnapshot, readCopilotSnapshot, writeCopilotSnapshot } from "@/lib/copilot-snapshot";
 import { historyToUIMessages } from "@/lib/chat-session-history";
 import { isSessionNotFoundError } from "@/lib/chat-session";
 import {
@@ -400,12 +402,37 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   // A reload shows the last conversation: the user's latest one for this brand on any device,
   // else the one this browser kept (sessions from before chat-service recorded the brand);
   // none opens a new chat.
+  //
+  // Local first (MON-PAGE-SPEED-ROOT-1120): the copy this browser saved of that conversation
+  // paints at once, then chat-service is asked behind it and its answer replaces the copy. The
+  // panel sits beside every brand page, so waiting on that read showed a skeleton on every page
+  // for 0.5 to 16 s after the page itself was ready.
   useEffect(() => {
     // Until Clerk names the user there is no key to read: stay loading.
     if (!storageKey) return;
     let cancelled = false;
     const localSid = loadSessionId(storageKey);
-    setPhase("loading");
+    const storage = typeof window === "undefined" ? null : window.localStorage;
+    const saved = parseSavedChatSession(readCopilotSnapshot(storage, storageKey));
+    const shownFromSaved = saved !== null && isThisBrandsSession(saved, brandId);
+    const show = (h: ChatSessionHistory) => {
+      sessionIdRef.current = h.sessionId;
+      saveSessionId(storageKey, h.sessionId);
+      setOlderCursor(h.hasOlder ? (h.olderCursor ?? null) : null);
+      setMessages(historyToUIMessages(h.messages));
+      setHistoryChoices(choicesByTurn(h.messages));
+      setHistoryPages(openPagesByTurn(h.messages));
+      setHistoryCredits(creditsRequiredByTurn(h.messages));
+    };
+    if (saved && shownFromSaved) {
+      show(saved);
+      setPhase("ready");
+    } else {
+      setPhase("loading");
+    }
+    // The person already acted on the saved copy (wrote, a turn or a proactive ask runs): the
+    // fresh answer is saved for the next load but never swapped under them.
+    const acted = () => userSpokeRef.current || turnsInFlightRef.current > 0 || nudgingRef.current || busyRef.current;
     const load = async (): Promise<ChatSessionHistory | null> => {
       const latest = await getLatestChatSession(COPILOT_CONFIG_KEY, { limit: CHAT_HISTORY_PAGE_SIZE });
       if (isThisBrandsSession(latest, brandId)) return latest;
@@ -414,9 +441,11 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     load()
       .then((h) => {
         if (cancelled) return;
-        setOlderCursor(h?.hasOlder ? (h.olderCursor ?? null) : null);
         if (!h) {
+          clearCopilotSnapshot(storage, storageKey);
+          if (shownFromSaved) return;
           sessionIdRef.current = null;
+          setOlderCursor(null);
           setMessages([]);
           setHistoryChoices(new Map());
           setHistoryPages(new Map());
@@ -425,19 +454,20 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
           setPhase("ready");
           return;
         }
-        sessionIdRef.current = h.sessionId;
-        saveSessionId(storageKey, h.sessionId);
-        setMessages(historyToUIMessages(h.messages));
-        setHistoryChoices(choicesByTurn(h.messages));
-        setHistoryPages(openPagesByTurn(h.messages));
-        setHistoryCredits(creditsRequiredByTurn(h.messages));
+        writeCopilotSnapshot(storage, storageKey, h);
+        if (shownFromSaved && acted()) return;
+        show(h);
         setPhase("ready");
       })
       .catch((err) => {
         if (cancelled) return;
-        if (!(err instanceof ApiError && (err.status === 404 || err.status === 403))) {
+        const gone = err instanceof ApiError && (err.status === 404 || err.status === 403);
+        if (!gone) {
           console.error("[copilot] could not load the last conversation", { localSid, err });
         }
+        // chat-service down: the saved copy stays on screen (stale, never a blank panel).
+        if (shownFromSaved && !gone) return;
+        clearCopilotSnapshot(storage, storageKey);
         sessionIdRef.current = null;
         saveSessionId(storageKey, null);
         setOlderCursor(null);
@@ -552,6 +582,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       // The newest page of that conversation (it is the latest one), else the whole one by id.
       const latest = await getLatestChatSession(COPILOT_CONFIG_KEY, { limit: CHAT_HISTORY_PAGE_SIZE });
       const h = latest?.sessionId === sid ? latest : await getChatSessionHistory(sid);
+      writeCopilotSnapshot(window.localStorage, storageKey, h);
       // The user started a turn meanwhile: the stored answer shows on the next load.
       if (abort.signal.aborted || busyRef.current || turnsInFlightRef.current > 0) return;
       setOlderCursor(h.hasOlder ? (h.olderCursor ?? null) : null);
@@ -582,6 +613,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     userSpokeRef.current = false;
     sessionIdRef.current = null;
     saveSessionId(storageKey, null);
+    clearCopilotSnapshot(typeof window === "undefined" ? null : window.localStorage, storageKey);
     setOlderCursor(null);
     setMessages([]);
     setHistoryChoices(new Map());
