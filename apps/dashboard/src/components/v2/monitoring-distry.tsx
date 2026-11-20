@@ -155,7 +155,7 @@ export function DistryView() {
           <h2 className="text-[18px] font-medium leading-6">Model</h2>
           <p className="k-fg3 mt-1 mb-4 text-[12px]">A change is saved as a new version, live from Distry&apos;s next turn.</p>
           <ModelPicker config={c} onSave={save} />
-          <ModelsTable saving={saving} onUse={(provider, model) => save({ provider, model, effort: provider === "anthropic" ? current?.effort ?? null : null })} />
+          <ModelsTable saving={saving} onUse={(provider, model, effort) => save({ provider, model, effort: provider === "anthropic" ? effort : null })} />
         </Panel>
       )}
       {open?.kind === "engine" && <EnginePanel engine={engines.data?.engines.find((e) => e.outcome === open.outcome)} onClose={() => setOpen(null)} />}
@@ -406,7 +406,7 @@ function ModelPicker({ config, onSave }: { config: DistryConfig; onSave: (change
 const usd = (n: number | null) => (n == null ? null : `$${n.toLocaleString("en-US", { maximumFractionDigits: 3 })}`);
 
 /** Every model Distry can run, as chat-service serves them: best intelligence per dollar first (served order). */
-function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: string) => void; saving: boolean }) {
+function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: string, effort: string | null) => void; saving: boolean }) {
   const q = useAuthQuery(["staffDistryModels"], getStaffDistryModels, READ);
   if (q.isError) {
     console.error("[dashboard] distry: models read failed", q.error);
@@ -443,16 +443,17 @@ function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: strin
                     </td>
                   </tr>
                 ))
-              : d.models.map((m) => {
+              : d.models.flatMap((m) => {
                   const why = m.index.reason ?? m.intelligencePerDollar.reason ?? m.price.reason;
-                  return (
-                    <tr key={m.modelId} className="k-row k-line-subtle border-b last:border-b-0">
+                  const modelName = m.names[0] ?? m.modelId;
+                  const ratio = (v: number | null) => (v == null ? dash : v.toLocaleString("en-US", { maximumSignificantDigits: 3 }));
+                  const head = (
+                    <tr key={m.modelId} className="k-row k-line-subtle border-b">
                       <td className="px-3 py-2 first:pl-4">
                         {m.displayName}
                         {m.isCurrent && <span className="k-chip ml-1.5">Live</span>}
-                        <span className="k-fg3 block truncate text-[12px]" title={why ?? undefined}>
-                          {m.provider}
-                          {why ? ` · ${why}` : ""}
+                        <span className="k-fg3 block truncate text-[12px]" title={why ?? m.thinking}>
+                          {m.provider} · {why ?? m.thinking}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
@@ -461,17 +462,43 @@ function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: strin
                       <td className="px-3 py-2 text-right tabular-nums">{m.index.score ?? dash}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{m.index.rank == null ? dash : `${m.index.rank} of ${m.index.rankOutOf}`}</td>
                       <td className="px-3 py-2 text-right tabular-nums" title={m.intelligencePerDollar.basis === "blended_price_3_to_1" ? "On our blended 1M-token price (no published index run cost)" : undefined}>
-                        {m.intelligencePerDollar.value == null ? dash : m.intelligencePerDollar.value.toLocaleString("en-US", { maximumSignificantDigits: 3 })}
+                        {ratio(m.intelligencePerDollar.value)}
                       </td>
                       <td className="px-3 py-2 text-right last:pr-4">
-                        {!m.isCurrent && (
-                          <button type="button" className="k-btn-ghost" disabled={saving} onClick={() => onUse(m.provider, m.names[0] ?? m.modelId)}>
+                        {m.variants.length === 0 && !m.isCurrent && (
+                          <button type="button" className="k-btn-ghost" disabled={saving} onClick={() => onUse(m.provider, modelName, null)}>
                             Use
                           </button>
                         )}
                       </td>
                     </tr>
                   );
+                  // Every thinking level Artificial Analysis scored this model at, in the served order (best score first).
+                  const levels = m.variants.map((v) => {
+                    const live = m.isCurrent && v.isDistrysThinking;
+                    return (
+                      <tr key={`${m.modelId}-${v.aaName}`} className="k-row k-line-subtle border-b">
+                        <td className="k-fg2 py-1.5 pr-3 pl-8 text-[12px]">
+                          {v.variantLabel ?? v.aaName}
+                          {v.isDistrysThinking && <span className="k-fg3"> · Distry&apos;s thinking</span>}
+                        </td>
+                        <td className="px-3 py-1.5" />
+                        <td className="px-3 py-1.5 text-right text-[12px] tabular-nums">{v.score ?? dash}</td>
+                        <td className="px-3 py-1.5" />
+                        <td className="px-3 py-1.5 text-right text-[12px] tabular-nums">{ratio(v.intelligencePerDollar)}</td>
+                        <td className="px-3 py-1.5 text-right last:pr-4">
+                          {live ? (
+                            <span className="k-chip">Live</span>
+                          ) : (
+                            <button type="button" className="k-btn-ghost" disabled={saving} onClick={() => onUse(m.provider, modelName, v.effort)}>
+                              Use
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  });
+                  return [head, ...levels];
                 })}
           </tbody>
         </table>
