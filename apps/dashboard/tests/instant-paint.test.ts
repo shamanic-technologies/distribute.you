@@ -143,9 +143,25 @@ describe("query-provider wiring — the reseed reads keys first and caps what it
   it("kicks the disk read during RENDER, not after the children have mounted", () => {
     // An effect runs post-commit, so the first page of a session paints its skeleton
     // and only then asks IndexedDB what it should have shown.
-    const init = src.indexOf("const [{ client }] = useState(() => {");
+    const init = src.indexOf("const [{ client, markHydrated }] = useState(() => {");
     expect(init).toBeGreaterThan(-1);
-    expect(src.slice(init, init + 400)).toContain("reseedColdQueriesFromDisk(made.client, orgId)");
+    expect(src.slice(init, init + 400)).toContain("reseedColdQueriesFromDisk(made.client, orgId, hydrated)");
+  });
+
+  it("writes the disk copy into the cache only AFTER hydration (MON-PAGE-SPEED-FLOOR-1120)", () => {
+    // A setQueryData landing mid-hydration rendered data where the server rendered a
+    // skeleton: React #418, the whole page rebuilt, the disk read twice, on every reload.
+    const fn = src.slice(src.indexOf("async function reseedColdQueriesFromDisk("), src.indexOf("function makeQueryClient("));
+    expect(fn.indexOf("if (hydrated) await hydrated;")).toBeGreaterThan(fn.indexOf("await valuesForKeys(cold)"));
+    expect(fn.indexOf("if (hydrated) await hydrated;")).toBeLessThan(fn.indexOf("client.setQueryData("));
+    const init = src.indexOf("const [{ client, markHydrated }] = useState(() => {");
+    expect(init).toBeGreaterThan(-1);
+    expect(src.slice(init, init + 1200)).toMatch(/useEffect\(\(\) => \{\s*markHydrated\(\);/);
+  });
+
+  it("keeps disk housekeeping out of the first paint", () => {
+    expect(src).toMatch(/const HOUSEKEEPING_DELAY_MS = 10_000;/);
+    expect(src).toContain("}, HOUSEKEEPING_DELAY_MS);");
   });
 
   it("latches the mount read so the nav effect does not repeat it", () => {

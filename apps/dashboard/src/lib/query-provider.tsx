@@ -101,6 +101,7 @@ function makeIdbStorage(prefix: string) {
 async function reseedColdQueriesFromDisk(
   client: QueryClient,
   orgId: string,
+  hydrated?: Promise<void>,
 ): Promise<void> {
   const prefix = persisterStorageKey(orgId);
   try {
@@ -120,6 +121,14 @@ async function reseedColdQueriesFromDisk(
     );
     if (cold.length === 0) return;
     const entries = await valuesForKeys(cold);
+    // Never write into the cache while React is still HYDRATING the server HTML. A
+    // `setQueryData` that lands mid-hydration makes the browser render the saved data
+    // where the server rendered a skeleton: React throws #418, discards the server HTML
+    // and rebuilds the whole page from scratch (a fresh QueryClient, a second disk read,
+    // a second parse). Measured on the box robot 2026-11-20: every reload rebuilt once,
+    // ~0.5-1.2 s of the floor (MON-PAGE-SPEED-FLOOR-1120). The disk read still starts
+    // during render; only the WRITE waits for the hydration commit.
+    if (hydrated) await hydrated;
     const buster = persistCacheVersion();
     for (const [key, value] of entries) {
       const restore = coldRestoreFromValue(key, value, prefix, buster);
@@ -158,6 +167,9 @@ async function reseedColdQueriesFromDisk(
  * - `filters.predicate` — only successful, non-sensitive, allowlisted queries persist
  *   (key material never touches disk).
  */
+/** Boot housekeeping of the disk cache waits this long, out of the first paint. */
+const HOUSEKEEPING_DELAY_MS = 10_000;
+
 function makeQueryClient(orgId: string | null) {
   const persistEnabled = typeof window !== "undefined" && !!orgId;
   const persister = experimental_createQueryPersister({
@@ -220,13 +232,22 @@ function OrgScopedQueryClientProvider({
   // whole commit — the read is fire-and-forget either way, and `setQueryData` on a
   // client nobody is rendering yet is a no-op that lands before the first paint when
   // it wins the race and behaves exactly as before when it does not.
-  const [{ client }] = useState(() => {
+  const [{ client, markHydrated }] = useState(() => {
     const made = makeQueryClient(orgId);
+    let markHydrated: () => void = () => {};
+    const hydrated = new Promise<void>((resolve) => {
+      markHydrated = resolve;
+    });
     if (orgId && typeof window !== "undefined") {
-      void reseedColdQueriesFromDisk(made.client, orgId);
+      void reseedColdQueriesFromDisk(made.client, orgId, hydrated);
     }
-    return made;
+    return { ...made, markHydrated };
   });
+  // Effects run after the commit that finished hydrating this subtree: from here a
+  // cache write re-renders normally instead of breaking hydration (see the reseed).
+  useEffect(() => {
+    markHydrated();
+  }, [markHydrated]);
   const pathname = usePathname();
   // Only re-seed on org-scoped routes (nothing to gate / restore off `/orgs/…`).
   const isOrgScopedRoute = !!pathname && /\/orgs\/[^/]+/.test(pathname);
@@ -308,22 +329,30 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   //
   // Order matters only in that reclaiming first leaves the sweep nothing to do on the
   // one boot they share.
+  //
+  // DEFERRED out of the boot window (MON-PAGE-SPEED-FLOOR-1120): the sweep walks every
+  // value with a cursor on the same IndexedDB the page is restoring from, and on the box
+  // robot its ~35 cursor reads ran in the very second the page was painting its saved
+  // copy. Housekeeping has no deadline, so it waits HOUSEKEEPING_DELAY_MS.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    void (async () => {
-      try {
-        await reclaimLegacyStore();
-        await sweepStaleEntries(
-          persistCacheVersion(),
-          Date.now(),
-          PERSIST_MAX_AGE_MS,
-        );
-      } catch (err) {
-        // Disk housekeeping — a failure costs storage, never correctness, so it must
-        // not reach the render path. Logged rather than swallowed.
-        console.error("[dashboard] persisted-cache housekeeping failed", err);
-      }
-    })();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          await reclaimLegacyStore();
+          await sweepStaleEntries(
+            persistCacheVersion(),
+            Date.now(),
+            PERSIST_MAX_AGE_MS,
+          );
+        } catch (err) {
+          // Disk housekeeping — a failure costs storage, never correctness, so it must
+          // not reach the render path. Logged rather than swallowed.
+          console.error("[dashboard] persisted-cache housekeeping failed", err);
+        }
+      })();
+    }, HOUSEKEEPING_DELAY_MS);
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Atomically reset the ENTIRE in-memory React Query cache on org switch by
