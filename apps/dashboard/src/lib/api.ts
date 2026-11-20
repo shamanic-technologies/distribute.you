@@ -2090,6 +2090,21 @@ const ChatSessionHistorySchema = z.object({
 });
 export type ChatSessionHistory = z.infer<typeof ChatSessionHistorySchema>;
 
+/**
+ * A conversation saved in this browser (`lib/copilot-snapshot.ts`), read back through the same
+ * schema as the network answer. Null when the saved copy no longer matches it (shape changed by
+ * a deploy): the panel then loads from the network as it did before the copy existed.
+ */
+export function parseSavedChatSession(raw: unknown): ChatSessionHistory | null {
+  if (raw == null) return null;
+  const parsed = ChatSessionHistorySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("parseSavedChatSession: saved copy does not match, ignored", parsed.error);
+    return null;
+  }
+  return parsed.data;
+}
+
 /** Messages the Copilot reads per page: its first paint on every page, older ones on scroll. */
 export const CHAT_HISTORY_PAGE_SIZE = 30;
 
