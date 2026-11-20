@@ -6,12 +6,14 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getStaffDistryConfig,
   getStaffDistryEngines,
+  getStaffDistryModels,
   getStaffDistryVersions,
   restoreStaffDistryVersion,
   saveStaffDistryConfig,
   type DistryConfig,
   type DistryDefinition,
   type DistryEngines,
+  type DistryModels,
   type DistryVersion,
 } from "@/lib/api";
 import { SkillPanel } from "@/components/v2/monitoring-skills";
@@ -149,10 +151,11 @@ export function DistryView() {
       )}
       {open?.kind === "tool" && c && <ToolPanel tool={c.availableTools.find((t) => t.name === open.name)} on={toolOn(open.name)} onToggle={() => toggleTool(open.name)} saving={saving} onClose={() => setOpen(null)} />}
       {open?.kind === "model" && c && (
-        <Panel label="Distry · model" onClose={() => setOpen(null)}>
+        <Panel label="Distry · model" wide onClose={() => setOpen(null)}>
           <h2 className="text-[18px] font-medium leading-6">Model</h2>
           <p className="k-fg3 mt-1 mb-4 text-[12px]">A change is saved as a new version, live from Distry&apos;s next turn.</p>
           <ModelPicker config={c} onSave={save} />
+          <ModelsTable saving={saving} onUse={(provider, model, effort) => save({ provider, model, effort: provider === "anthropic" ? effort : null })} />
         </Panel>
       )}
       {open?.kind === "engine" && <EnginePanel engine={engines.data?.engines.find((e) => e.outcome === open.outcome)} onClose={() => setOpen(null)} />}
@@ -400,6 +403,119 @@ function ModelPicker({ config, onSave }: { config: DistryConfig; onSave: (change
   );
 }
 
+const usd = (n: number | null) => (n == null ? null : `$${n.toLocaleString("en-US", { maximumFractionDigits: 3 })}`);
+
+/** Every model Distry can run, as chat-service serves them: best intelligence per dollar first (served order). */
+function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: string, effort: string | null) => void; saving: boolean }) {
+  const q = useAuthQuery(["staffDistryModels"], getStaffDistryModels, READ);
+  if (q.isError) {
+    console.error("[dashboard] distry: models read failed", q.error);
+    return <EmptyNote>Could not read the models from production.</EmptyNote>;
+  }
+  const d: DistryModels | undefined = q.data;
+  const dash = <span className="k-fg4">—</span>;
+  return (
+    <div className="mt-6">
+      <h3 className="k-label mb-1">Every model, best intelligence per dollar first</h3>
+      {d && (
+        <p className={`mb-3 text-[12px] ${d.refresh.broken ? "text-[var(--data-rose)]" : "k-fg3"}`}>
+          {d.refresh.state === "ok" && d.readAt ? `${d.indexName}, read ${timeAgo(d.readAt)}.` : d.refresh.sentence}
+        </p>
+      )}
+      <div className="k-card overflow-hidden">
+        <table className="w-full table-fixed text-[13px]">
+          <thead>
+            <tr className="k-line-subtle border-b text-left">
+              <th className="k-label px-3 py-2.5 first:pl-4">Model</th>
+              <th className="k-label w-[150px] px-3 py-2.5 text-right">$ / 1M in · out</th>
+              <th className="k-label w-[84px] px-3 py-2.5 text-right">Index</th>
+              <th className="k-label w-[72px] px-3 py-2.5 text-right">Rank</th>
+              <th className="k-label w-[96px] px-3 py-2.5 text-right">Index / $</th>
+              <th className="k-label w-[72px] px-3 py-2.5 last:pr-4" />
+            </tr>
+          </thead>
+          <tbody>
+            {d === undefined
+              ? [0, 1, 2, 3].map((i) => (
+                  <tr key={i} className="h-10">
+                    <td colSpan={6} className="px-4">
+                      <Shimmer className="h-4 w-full" />
+                    </td>
+                  </tr>
+                ))
+              : d.models.flatMap((m) => {
+                  const why = m.index.reason ?? m.intelligencePerDollar.reason ?? m.price.reason;
+                  const modelName = m.names[0] ?? m.modelId;
+                  const ratio = (v: number | null) => (v == null ? dash : v.toLocaleString("en-US", { maximumSignificantDigits: 3 }));
+                  const head = (
+                    <tr key={m.modelId} className="k-row k-line-subtle border-b">
+                      <td className="px-3 py-2 first:pl-4">
+                        {m.displayName}
+                        {m.isCurrent && <span className="k-chip ml-1.5">Live</span>}
+                        <span className="k-fg3 block truncate text-[12px]" title={why ?? m.thinking}>
+                          {m.provider} · {why ?? m.thinking}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {m.price.inputPer1mUsd == null ? dash : `${usd(m.price.inputPer1mUsd)} · ${usd(m.price.outputPer1mUsd)}`}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{m.index.score ?? dash}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{m.index.rank == null ? dash : `${m.index.rank} of ${m.index.rankOutOf}`}</td>
+                      <td className="px-3 py-2 text-right tabular-nums" title={m.intelligencePerDollar.basis === "blended_price_3_to_1" ? "On our blended 1M-token price (no published index run cost)" : undefined}>
+                        {ratio(m.intelligencePerDollar.value)}
+                      </td>
+                      <td className="px-3 py-2 text-right last:pr-4">
+                        {m.variants.length === 0 && !m.isCurrent && (
+                          <button type="button" className="k-btn-ghost" disabled={saving} onClick={() => onUse(m.provider, modelName, null)}>
+                            Use
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                  // Every thinking level Artificial Analysis scored this model at, in the served order (best score first).
+                  const levels = m.variants.map((v) => {
+                    const live = m.isCurrent && v.isDistrysThinking;
+                    return (
+                      <tr key={`${m.modelId}-${v.aaName}`} className="k-row k-line-subtle border-b">
+                        <td className="k-fg2 py-1.5 pr-3 pl-8 text-[12px]">
+                          {v.variantLabel ?? v.aaName}
+                          {v.isDistrysThinking && <span className="k-fg3"> · Distry&apos;s thinking</span>}
+                        </td>
+                        <td className="px-3 py-1.5" />
+                        <td className="px-3 py-1.5 text-right text-[12px] tabular-nums">{v.score ?? dash}</td>
+                        <td className="px-3 py-1.5" />
+                        <td className="px-3 py-1.5 text-right text-[12px] tabular-nums">{ratio(v.intelligencePerDollar)}</td>
+                        <td className="px-3 py-1.5 text-right last:pr-4">
+                          {live ? (
+                            <span className="k-chip">Live</span>
+                          ) : (
+                            <button type="button" className="k-btn-ghost" disabled={saving} onClick={() => onUse(m.provider, modelName, v.effort)}>
+                              Use
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  });
+                  return [head, ...levels];
+                })}
+          </tbody>
+        </table>
+      </div>
+      {d && (
+        <p className="k-fg3 mt-3 text-[12px]">
+          {d.source.attribution}{" "}
+          <a href={d.source.url} target="_blank" rel="noreferrer" className="underline">
+            {d.source.name}
+          </a>
+          . {d.ratioBasis}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
@@ -531,7 +647,7 @@ function VersionsTable({ versions, currentVersion, onOpen }: { versions: { data?
 
 // ─── Right panels ───────────────────────────────────────────────────────────
 
-function Panel({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+function Panel({ label, onClose, children, wide = false }: { label: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => setHost(document.getElementById("v2-portal")), []);
   useEffect(() => {
@@ -543,7 +659,7 @@ function Panel({ label, onClose, children }: { label: string; onClose: () => voi
   }, [onClose]);
   if (!host) return null;
   return createPortal(
-    <aside role="dialog" aria-label={label} className="k-popover fixed inset-y-2 right-2 z-[80] flex w-[min(640px,calc(100vw-16px))] flex-col overflow-hidden">
+    <aside role="dialog" aria-label={label} className={`k-popover fixed inset-y-2 right-2 z-[80] flex flex-col overflow-hidden ${wide ? "w-[min(920px,calc(100vw-16px))]" : "w-[min(640px,calc(100vw-16px))]"}`}>
       <div className="k-line-subtle flex h-11 shrink-0 items-center justify-between gap-3 border-b px-4">
         <span className="k-label truncate">{label}</span>
         <button type="button" aria-label="Close" onClick={onClose} className="k-btn-ghost inline-flex h-6 w-6 items-center justify-center">

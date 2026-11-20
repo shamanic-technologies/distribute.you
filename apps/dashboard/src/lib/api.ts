@@ -2554,6 +2554,8 @@ export const STAFF_MONITORING_PATHS = {
   distryConfig: "/chat/distry/config",
   // Every Engine of the live catalogue, callable now or why not (workflow-service #1150 via api-service #1543, DISTRY-PRINCIPAL-1119).
   distryEngines: "/engines",
+  // Every model Distry can run: price, Artificial Analysis Intelligence Index, intelligence per dollar, best ratio first (chat-service #871, DISTRY-MODELS-1119).
+  distryModels: "/chat/distry/models",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -2969,6 +2971,49 @@ export async function saveStaffDistryConfig(definition: DistryDefinition, note?:
 export async function restoreStaffDistryVersion(version: number): Promise<DistryVersion> {
   const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.distryConfig}/versions/${version}/restore`, { method: "POST", body: {} });
   return parseStaff("restoreStaffDistryVersion", DistryVersionWriteSchema, raw).version;
+}
+
+const DistryModelsSchema = z.object({
+  indexName: z.string(),
+  indexVersion: z.string().nullable(),
+  readAt: z.string().nullable(),
+  source: z.object({ name: z.string(), url: z.string(), attribution: z.string() }),
+  refresh: z.object({ state: z.string(), broken: z.boolean(), sentence: z.string(), lastAttemptAt: z.string().nullable(), lastSuccessAt: z.string().nullable() }),
+  priceBasis: z.string(),
+  ratioBasis: z.string(),
+  current: z.object({ provider: z.string(), model: z.string(), modelId: z.string(), effort: z.string().nullable() }),
+  models: z.array(
+    z.object({
+      provider: z.string(),
+      modelId: z.string(),
+      displayName: z.string(),
+      names: z.array(z.string()),
+      capabilityTier: z.string(),
+      isCurrent: z.boolean(),
+      price: z.object({ inputPer1mUsd: z.number().nullable(), outputPer1mUsd: z.number().nullable(), reason: z.string().nullable() }),
+      // The thinking Distry would run this model at, in words, and the Artificial Analysis entry read at it.
+      thinking: z.string(),
+      index: z.object({ aaName: z.string().nullable(), variantLabel: z.string().nullable(), score: z.number().nullable(), rank: z.number().nullable(), rankOutOf: z.number(), indexCostPerTaskUsd: z.number().nullable(), reason: z.string().nullable() }),
+      // Every thinking level Artificial Analysis scored this model at, best score first (chat-service #873).
+      variants: z.array(
+        z.object({
+          aaName: z.string(),
+          variantLabel: z.string().nullable(),
+          effort: z.string().nullable(),
+          score: z.number().nullable(),
+          indexCostPerTaskUsd: z.number().nullable(),
+          intelligencePerDollar: z.number().nullable(),
+          isDistrysThinking: z.boolean(),
+        }),
+      ),
+      intelligencePerDollar: z.object({ value: z.number().nullable(), basis: z.string().nullable(), reason: z.string().nullable() }),
+    }),
+  ),
+});
+export type DistryModels = z.infer<typeof DistryModelsSchema>;
+
+export async function getStaffDistryModels(): Promise<DistryModels> {
+  return parseStaff("getStaffDistryModels", DistryModelsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.distryModels));
 }
 
 export async function getStaffDistryEngines(): Promise<DistryEngines> {
