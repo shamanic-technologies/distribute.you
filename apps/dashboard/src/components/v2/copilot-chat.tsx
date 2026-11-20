@@ -266,6 +266,10 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   // load reads only the newest page. Null = nothing older to read.
   const [olderCursor, setOlderCursor] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  // The shimmer above the messages shows only for a read the reader asked for by scrolling up;
+  // the automatic fill of a page too short to scroll runs silently (MON-PAGE-SPEED-ROOT-1120:
+  // on every load it put a skeleton beside every page after the conversation had painted).
+  const [olderShimmer, setOlderShimmer] = useState(false);
   // Set while older messages are prepended: keeps the reader's place instead of jumping down.
   const keepPlaceRef = useRef<{ height: number; top: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -642,11 +646,12 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   }, [stop, storageKey, setMessages]);
 
   // Scrolling up reads the page just older and puts it above, the reader keeps their place.
-  const loadOlder = useCallback(async () => {
+  const loadOlder = useCallback(async (asked: boolean) => {
     const sid = sessionIdRef.current;
     const el = scrollRef.current;
     if (!olderCursor || loadingOlder || !sid || !el) return;
     setLoadingOlder(true);
+    if (asked) setOlderShimmer(true);
     try {
       const h = await getLatestChatSession(COPILOT_CONFIG_KEY, { limit: CHAT_HISTORY_PAGE_SIZE, before: olderCursor });
       // A new chat or another conversation replaced this one meanwhile: drop the page.
@@ -665,6 +670,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       console.error("[copilot] could not load earlier messages", err);
     } finally {
       setLoadingOlder(false);
+      setOlderShimmer(false);
     }
   }, [olderCursor, loadingOlder, setMessages]);
 
@@ -705,7 +711,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   // A first page too short to scroll still reaches the older messages.
   useEffect(() => {
     const el = scrollRef.current;
-    if (phase === "ready" && olderCursor && el && el.scrollHeight <= el.clientHeight) void loadOlder();
+    if (phase === "ready" && olderCursor && el && el.scrollHeight <= el.clientHeight) void loadOlder(false);
   }, [phase, olderCursor, messages, loadOlder]);
 
   // The box grows with what is typed (capped, then it scrolls).
@@ -738,7 +744,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
         ref={scrollRef}
         className="k-scroll min-h-0 flex-1 overflow-y-auto"
         onScroll={(e) => {
-          if (e.currentTarget.scrollTop < 160) void loadOlder();
+          if (e.currentTarget.scrollTop < 160) void loadOlder(true);
         }}
         // A dashboard link the model wrote opens beside the panel; the chat keeps its place.
         onClickCapture={(e) => {
@@ -753,7 +759,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
         <div className="mx-auto w-full max-w-[760px] px-4 pb-6 pt-2">
           <AccountCard orgId={orgId} brandId={brandId} figures={figures} revPending={revPending} winPending={winPending} />
 
-          {loadingOlder && (
+          {olderShimmer && (
             <div className="mt-6 space-y-2" aria-label="Loading earlier messages">
               <Shimmer className="h-4 w-2/3" />
               <Shimmer className="h-4 w-1/3" />

@@ -201,7 +201,7 @@ describe("copilot wiring", () => {
   it("a page load reads only the newest messages, older ones on scroll up (MON-PAGE-SPEED-1114)", () => {
     expect(chat).toContain("before: olderCursor");
     expect(chat).toContain("keepPlaceRef.current = { height: el.scrollHeight, top: el.scrollTop }");
-    expect(chat).toContain("if (e.currentTarget.scrollTop < 160) void loadOlder()");
+    expect(chat).toContain("if (e.currentTarget.scrollTop < 160) void loadOlder(true)");
     const api = src("src/lib/api.ts");
     expect(api).toContain('params.set("limit", String(page.limit))');
     expect(api).toContain('if (page.before) params.set("before", page.before)');

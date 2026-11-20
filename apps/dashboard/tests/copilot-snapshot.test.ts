@@ -126,4 +126,12 @@ describe("Copilot saved conversation (MON-PAGE-SPEED-ROOT-1120)", () => {
     expect(src.slice(at, next)).not.toContain("setOpenerWanted(true)");
     expect(src).toContain("writeCopilotSnapshot(storage, storageKey, NO_CONVERSATION);");
   });
+
+  it("the automatic fill of older messages shows no shimmer; only a scroll up does", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/copilot-chat.tsx"), "utf8");
+    expect(src).toContain("el.scrollHeight <= el.clientHeight) void loadOlder(false);");
+    expect(src).toContain("if (e.currentTarget.scrollTop < 160) void loadOlder(true);");
+    expect(src).toContain("{olderShimmer && (");
+    expect(src).not.toContain("{loadingOlder && (");
+  });
 });
