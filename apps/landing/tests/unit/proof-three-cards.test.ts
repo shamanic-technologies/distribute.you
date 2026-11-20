@@ -34,6 +34,8 @@ describe("the proof section always shows three clients (owner 2026-11-19)", () =
       expect(legistai).toContain("img.logo.dev/legistai.com");
       expect(legistai).toContain("Legistai");
       expect(legistai).not.toContain("Ryan");
+      // The built card closes every div it opens (an extra </div> ended the card early on prod 2026-11-20).
+      expect((legistai.match(/<div\b/g) ?? []).length).toBe((legistai.match(/<\/div>/g) ?? []).length);
       const filled = reseedProofCards(out, { brands: PICK, measured: true, unmeasuredReason: null } as never);
       const legistaiFilled = filled.match(/data-proof-brand="legistai.com"[\s\S]*?<\/article>/)![0];
       expect(legistaiFilled).toContain("<b>14</b>meetings booked");

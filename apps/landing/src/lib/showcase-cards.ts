@@ -153,7 +153,9 @@ export function renderProofSelection(html: string, brands: ShowcaseBrand[]): str
       continue;
     }
     const name = brand.brand?.name || domain;
-    const person = template.match(/<div class="proof-top">[\s\S]*?<\/div><\/div>/);
+    // The whole person block, which sits on one line (a lazy `</div></div>` stopped one close short on the
+    // name/meta markup and left a stray `</div>` that ended the card early, prod 2026-11-20).
+    const person = template.match(/<div class="proof-top">.*/);
     if (!person) continue;
     const face = person[0].includes('class="face"') ? ' class="face"' : "";
     const top = person[0].includes('class="name"')
