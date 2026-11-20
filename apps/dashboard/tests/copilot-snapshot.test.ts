@@ -6,6 +6,8 @@ import {
   clearCopilotSnapshot,
   copilotSnapshotKey,
   readCopilotSnapshot,
+  NO_CONVERSATION,
+  isNoConversation,
   userIdFromSessionCookie,
   writeCopilotSnapshot,
 } from "../src/lib/copilot-snapshot";
@@ -81,7 +83,7 @@ describe("Copilot saved conversation (MON-PAGE-SPEED-ROOT-1120)", () => {
 
   it("the panel paints the saved copy before asking chat-service, and re-saves every answer", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/copilot-chat.tsx"), "utf8");
-    const at = src.indexOf("const saved = parseSavedChatSession(readCopilotSnapshot(");
+    const at = src.indexOf("const savedRaw = readCopilotSnapshot(storage, storageKey);");
     const ask = src.indexOf("const latest = await getLatestChatSession(COPILOT_CONFIG_KEY, { limit: CHAT_HISTORY_PAGE_SIZE });", at);
     expect(at).toBeGreaterThan(0);
     expect(ask).toBeGreaterThan(at);
@@ -107,5 +109,21 @@ describe("Copilot saved conversation (MON-PAGE-SPEED-ROOT-1120)", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/copilot-chat.tsx"), "utf8");
     expect(src).toContain("const userId = clerkUserId ?? cookieUserId;");
     expect(src).toContain("setCookieUserId(userIdFromSessionCookie(document.cookie));");
+  });
+
+  it("a user with no conversation saves that too: the panel opens empty at once, the opener waits on chat-service", () => {
+    const st = memoryStorage();
+    writeCopilotSnapshot(st, KEY, NO_CONVERSATION);
+    expect(isNoConversation(readCopilotSnapshot(st, KEY))).toBe(true);
+    expect(isNoConversation(history)).toBe(false);
+    expect(isNoConversation(null)).toBe(false);
+    const src = readFileSync(join(__dirname, "../src/components/v2/copilot-chat.tsx"), "utf8");
+    const at = src.indexOf("} else if (savedNone) {");
+    const next = src.indexOf("} else {", at);
+    expect(at).toBeGreaterThan(0);
+    // Ready at once, and no opener from the saved "none" (only chat-service's own answer asks for it).
+    expect(src.slice(at, next)).toContain('setPhase("ready");');
+    expect(src.slice(at, next)).not.toContain("setOpenerWanted(true)");
+    expect(src).toContain("writeCopilotSnapshot(storage, storageKey, NO_CONVERSATION);");
   });
 });

@@ -22,7 +22,7 @@ import {
   parseSavedChatSession,
   type ChatSessionHistory,
 } from "@/lib/api";
-import { clearCopilotSnapshot, readCopilotSnapshot, userIdFromSessionCookie, writeCopilotSnapshot } from "@/lib/copilot-snapshot";
+import { NO_CONVERSATION, clearCopilotSnapshot, isNoConversation, readCopilotSnapshot, userIdFromSessionCookie, writeCopilotSnapshot } from "@/lib/copilot-snapshot";
 import { historyToUIMessages } from "@/lib/chat-session-history";
 import { isSessionNotFoundError } from "@/lib/chat-session";
 import {
@@ -420,8 +420,11 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     let cancelled = false;
     const localSid = loadSessionId(storageKey);
     const storage = typeof window === "undefined" ? null : window.localStorage;
-    const saved = parseSavedChatSession(readCopilotSnapshot(storage, storageKey));
-    const shownFromSaved = saved !== null && isThisBrandsSession(saved, brandId);
+    const savedRaw = readCopilotSnapshot(storage, storageKey);
+    const savedNone = isNoConversation(savedRaw);
+    // The copy is keyed by brand already: whatever this browser showed here last is shown again.
+    const saved = savedNone ? null : parseSavedChatSession(savedRaw);
+    const shownFromSaved = saved !== null || savedNone;
     const show = (h: ChatSessionHistory) => {
       sessionIdRef.current = h.sessionId;
       saveSessionId(storageKey, h.sessionId);
@@ -431,8 +434,17 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       setHistoryPages(openPagesByTurn(h.messages));
       setHistoryCredits(creditsRequiredByTurn(h.messages));
     };
-    if (saved && shownFromSaved) {
+    if (saved) {
       show(saved);
+      setPhase("ready");
+    } else if (savedNone) {
+      // Empty panel at once; the opener waits for chat-service to confirm there is none.
+      sessionIdRef.current = null;
+      setOlderCursor(null);
+      setMessages([]);
+      setHistoryChoices(new Map());
+      setHistoryPages(new Map());
+      setHistoryCredits(new Map());
       setPhase("ready");
     } else {
       setPhase("loading");
@@ -449,8 +461,8 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       .then((h) => {
         if (cancelled) return;
         if (!h) {
-          clearCopilotSnapshot(storage, storageKey);
-          if (shownFromSaved) return;
+          writeCopilotSnapshot(storage, storageKey, NO_CONVERSATION);
+          if (shownFromSaved && acted()) return;
           sessionIdRef.current = null;
           setOlderCursor(null);
           setMessages([]);
