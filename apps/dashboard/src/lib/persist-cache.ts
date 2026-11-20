@@ -196,6 +196,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffDistryConfig",
   "staffDistryVersions",
   "staffDistryEngines",
+  "staffDistryModels",
   "staffBrands",
   // Staff catalogue sections (fleet economics of every business object).
   "staffCatalogueList",
