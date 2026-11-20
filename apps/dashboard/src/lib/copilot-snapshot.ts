@@ -66,6 +66,18 @@ export function writeCopilotSnapshot(storage: WriteStorage | null, sessionStorag
   }
 }
 
+/**
+ * What a user with NO conversation yet saves: the panel then opens empty at once instead of a
+ * skeleton waiting for chat-service to answer "none" (the case of every new user and of the
+ * page-speed robot). The opener still waits for chat-service's own answer before it is sent.
+ */
+export const NO_CONVERSATION = { none: true } as const;
+
+/** True when the saved value says "this user had no conversation for this brand". */
+export function isNoConversation(saved: unknown): boolean {
+  return typeof saved === "object" && saved !== null && (saved as { none?: unknown }).none === true;
+}
+
 /** Drops the saved copy (new chat, conversation gone). */
 export function clearCopilotSnapshot(storage: WriteStorage | null, sessionStorageKey: string | null): void {
   if (!storage || !sessionStorageKey) return;
