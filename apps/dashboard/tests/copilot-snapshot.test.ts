@@ -6,8 +6,12 @@ import {
   clearCopilotSnapshot,
   copilotSnapshotKey,
   readCopilotSnapshot,
+  userIdFromSessionCookie,
   writeCopilotSnapshot,
 } from "../src/lib/copilot-snapshot";
+
+const b64url = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const jwt = (sub: string) => `${b64url({ alg: "RS256" })}.${b64url({ sub, sid: "sess_1" })}.sig`;
 
 function memoryStorage() {
   const m = new Map<string, string>();
@@ -88,5 +92,20 @@ describe("Copilot saved conversation (MON-PAGE-SPEED-ROOT-1120)", () => {
     // Every fresh answer is saved; a new chat forgets the copy.
     expect(src).toContain("writeCopilotSnapshot(storage, storageKey, h);");
     expect(src).toMatch(/saveSessionId\(storageKey, null\);\s*clearCopilotSnapshot\(/);
+  });
+
+  it("names the signed-in user from Clerk's session cookie before clerk-js boots", () => {
+    expect(userIdFromSessionCookie(`_ga=1; __session=${jwt("user_abc")}; x=y`)).toBe("user_abc");
+    expect(userIdFromSessionCookie(`__client_uat=1; __session_NmYW9ItM=${jwt("user_suffixed")}`)).toBe("user_suffixed");
+    expect(userIdFromSessionCookie("__session=not-a-jwt")).toBeNull();
+    expect(userIdFromSessionCookie(`__session=${jwt("org_x")}`)).toBeNull();
+    expect(userIdFromSessionCookie("")).toBeNull();
+    expect(userIdFromSessionCookie(null)).toBeNull();
+  });
+
+  it("the panel keys the saved copy on Clerk's user, else the session cookie's", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/copilot-chat.tsx"), "utf8");
+    expect(src).toContain("const userId = clerkUserId ?? cookieUserId;");
+    expect(src).toContain("setCookieUserId(userIdFromSessionCookie(document.cookie));");
   });
 });
