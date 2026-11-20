@@ -22,7 +22,7 @@ import {
   parseSavedChatSession,
   type ChatSessionHistory,
 } from "@/lib/api";
-import { clearCopilotSnapshot, readCopilotSnapshot, writeCopilotSnapshot } from "@/lib/copilot-snapshot";
+import { clearCopilotSnapshot, readCopilotSnapshot, userIdFromSessionCookie, writeCopilotSnapshot } from "@/lib/copilot-snapshot";
 import { historyToUIMessages } from "@/lib/chat-session-history";
 import { isSessionNotFoundError } from "@/lib/chat-session";
 import {
@@ -242,7 +242,14 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   const router = useRouter();
   const pathname = usePathname();
   // Keyed per signed-in user: a teammate on the same browser never restores this chat.
-  const { userId } = useAuth();
+  const { userId: clerkUserId } = useAuth();
+  // Clerk names the user only once clerk-js has booted; its session cookie names the same user
+  // from the first frame, so the saved conversation paints at hydration (MON-PAGE-SPEED-ROOT-1120).
+  const [cookieUserId, setCookieUserId] = useState<string | null>(null);
+  useEffect(() => {
+    setCookieUserId(userIdFromSessionCookie(document.cookie));
+  }, []);
+  const userId = clerkUserId ?? cookieUserId;
   const storageKey = userId ? copilotSessionStorageKey(orgId, userId, brandId) : null;
   const sessionIdRef = useRef<string | null>(null);
   const [historyChoices, setHistoryChoices] = useState<Map<string, CopilotChoices>>(new Map());
