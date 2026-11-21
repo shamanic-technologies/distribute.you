@@ -27,6 +27,8 @@ import {
   SalesFunnelCampaignListSchema,
   SalesFunnelCampaignOneSchema,
   SalesFunnelCapsSchema,
+  campaignCapsPath,
+  type CapsTarget,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
   type SalesFunnelCapsInput,
@@ -2872,6 +2874,22 @@ export async function getSalesFunnelCaps(brandId: string, offerId: string, sales
     `/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(offerId)}/sales-funnels/${encodeURIComponent(salesFunnelId)}/caps`,
   );
   return parseStaff("getSalesFunnelCaps", SalesFunnelCapsSchema, raw);
+}
+
+/** A campaign's caps, offer or not (`campaignCapsPath`): what the funnel campaign states and consumed. */
+export async function getCampaignCaps(c: CapsTarget): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(campaignCapsPath(c));
+  return parseStaff("getCampaignCaps", SalesFunnelCapsSchema, raw);
+}
+
+/** States a campaign's two caps at once (null clears one), offer or not. Charges nothing; answers the read's shape. */
+export async function saveCampaignCaps(c: CapsTarget, caps: SalesFunnelCapsInput, token?: string): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(campaignCapsPath(c), {
+    token,
+    method: "PUT",
+    body: { maxBudget: caps.maxBudget, maxVolume: caps.maxVolume },
+  });
+  return parseStaff("saveCampaignCaps", SalesFunnelCapsSchema, raw);
 }
 
 // ─── Copilot skill tree (chat-service `/internal/skills`, owner 2026-10-09) ────────────────
