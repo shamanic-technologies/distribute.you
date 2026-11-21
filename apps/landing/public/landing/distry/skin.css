@@ -329,7 +329,7 @@ html.distry .wa-dots { background: #ffffff; border: 1px solid #e3e8f2; }
    desktop and phone. Each rule below is one family of pages the measure caught. */
 /* the live page's own dark cards inside a light band keep their night inks: the day rule
    (ink on every heading) out-ranked them and their titles vanished */
-html.distry :is(.ag-call, .csa-score, .csa-own, .dra-own, .ln-own) :is(h1, h2, h3, h4) { color: var(--cream); }
+html.distry :is(.ag-call, .csa-score, .csa-own, .dra-own, .ln-own, .ua-legs) :is(h1, h2, h3, h4) { color: var(--cream); }
 html.distry .ag-call p.why { color: var(--gold); }
 /* a white header inside a dark chat mock writes in ink */
 html.distry .wa-top :is(b, strong) { color: #0b1230 !important; }
@@ -346,12 +346,21 @@ html.distry h3[class*="text-[11px]"] { color: #5d678f !important; }
 html.distry .ag-core img { width: 58px; height: 58px; border-radius: 0; }
 @media (max-width: 900px) { html.distry .ag-core img { width: 40px; height: 40px; } }
 /* React pages: their muted grey reads on the night header, and stays ink-grey on paper */
-html.distry .dy-page { --dy-muted: #aab5e0; }
-html.distry .dy-page section > div, html.distry .dy-page article { --dy-muted: #5d678f; }
+html.distry .dy-page { --dy-muted: #aab5e0; --dy-sub: #c9d1ef; }
+html.distry .dy-page section > div, html.distry .dy-page article, html.distry .dy-page aside { --dy-muted: #5d678f; --dy-sub: #46507a; }
 html.distry .dy-page section > div .dy-title { color: var(--ink) !important; }
 /* the brand kit's do / don't lists sit on the light page */
 html.distry .bp-sec :is(h3, li) { color: #0b1230; }
 html.distry .bp-sec li { color: #46507a; }
 /* the docs menu links read on the light page */
 html.distry main:not(.dy-page) a[class*="text-gray-500"], html.distry main:not(.dy-page) a[class*="text-[#5e5e66]"] { color: #46507a !important; }
-
+/* the docs: the whole page is the light page (the night stays in the menu bar only);
+   a section the sky script marks is still a light card there */
+html.distry body:has(aside.w-56) { background: #f6f8fc; }
+html.distry body:has(aside.w-56) :is(.d-sky, .d-fireflies) { display: none; }
+html.distry aside.w-56 { background: #ffffff !important; }
+html.distry main:not(.dy-page) section:is(.d-night, .d-dawn, .d-day) { background: #f9fafb !important; color: #111827; }
+html.distry main:not(.dy-page) section:is(.d-night, .d-dawn, .d-day) :is(h1, h2, h3, h4) { color: #111827; }
+/* a blog article's closing line sits on the light page */
+html.distry .dy-page .d-day .dy-title { color: var(--ink) !important; }
+html.distry .dy-page aside.bg-gray-50 .dy-title { color: var(--ink) !important; }
