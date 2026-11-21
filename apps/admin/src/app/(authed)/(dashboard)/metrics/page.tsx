@@ -6,7 +6,6 @@ import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
 import { PeriodCompoundCard } from "@/components/period-compound-card";
 import { ActiveUsersView } from "@/components/active-users-view";
 import { OverviewView } from "@/components/overview-view";
-import { RevenueView } from "@/components/revenue-view";
 import { SignupView } from "@/components/signup-view";
 import { CardsView } from "@/components/cards-view";
 import {
@@ -28,6 +27,7 @@ import {
 import { fetchOrgAcquisitions } from "@/lib/client-service-acquisitions";
 import { AiBotReadsCard, type AiBotReads } from "@/components/ai-bot-reads-card";
 import { botTrafficWindows, fetchBotTraffic } from "@/lib/bot-traffic";
+import { DASHBOARD_MONITORING_URL } from "@/lib/cold-email-moved";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -38,7 +38,6 @@ const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
   { id: "signups", label: "Signups", href: "/metrics?view=signups" },
   { id: "cards", label: "Paid users", href: "/metrics?view=cards" },
   { id: "active-users", label: "Active users", href: "/metrics?view=active-users" },
-  { id: "revenue", label: "Revenue", href: "/metrics?view=revenue" },
 ];
 
 interface PageProps {
@@ -46,18 +45,8 @@ interface PageProps {
 }
 
 // The footer names where the numbers ABOVE it come from, so it cannot be one
-// fixed list — the Revenue tab shares none of the funnel tabs' sources. It used
-// to claim PostHog and saved payment methods on every view, which on Revenue
-// named three things that feed none of its figures and omitted the cost ledger
-// that feeds nearly all of them.
+// fixed list.
 function dataSourcesFor(view: PublicAnalyticsView): Array<{ tier: string; label: string }> {
-  if (view === "revenue") {
-    return [
-      { tier: "Bronze", label: "Payments, refunds and lost disputes across every acquirer" },
-      { tier: "Silver", label: "Actualized cold-email spend on the runs cost ledger" },
-      { tier: "Gold", label: "Fleet revenue history and committed-budget snapshots" },
-    ];
-  }
   if (view === "overview") {
     return [
       { tier: "Bronze", label: "PostHog unique visitors and signup events" },
@@ -85,8 +74,7 @@ function parseView(raw: string | string[] | undefined): PublicAnalyticsView {
     value === "overview" ||
     value === "signups" ||
     value === "cards" ||
-    value === "active-users" ||
-    value === "revenue"
+    value === "active-users"
   ) {
     return value;
   }
@@ -242,6 +230,8 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
   if (!userId) redirect("/sign-in");
 
   const sp = await searchParams;
+  // The Revenue tab moved to dashboard v2 Monitoring > Revenue (owner 2026-11-21): old links land there.
+  if ((Array.isArray(sp.view) ? sp.view[0] : sp.view) === "revenue") redirect(`${DASHBOARD_MONITORING_URL}/revenue`);
   const view = parseView(sp.view);
   // The active-users view reads the cross-org accounts snapshot client-side
   // (getAuditAccounts), so it doesn't need the PostHog/Stripe/Clerk summary.
@@ -347,13 +337,6 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           <SignupsByChannelCard breakdown={channels} since={FIRST_TOUCH_CAPTURE_START} error={channelsError} />
         )}
         {view === "active-users" && <ActiveUsersView />}
-        {view === "revenue" && stats && (
-          <RevenueView
-            billing={stats.billing}
-            visitorFirstSeenMonths={stats.visitorFirstSeenMonths}
-            signupFirstSeenMonths={stats.signupFirstSeenMonths}
-          />
-        )}
         {view === "cards" && stats && (
           <CardsView billing={stats.billing} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
         )}

@@ -15,9 +15,42 @@
  * round trip so typing is pleasant. The server's answer always decides; nothing
  * in this file is a second source of truth for what is legal.
  *
- * Deliberately ALIAS-FREE — no `@/…` import, nothing but this file — so it
- * carries REAL unit tests rather than source-substring guards. Keep it that way.
+ * Deliberately ALIAS-FREE (zod only) so it carries REAL unit tests rather than
+ * source-substring guards. Moved from the admin Revenue tab (2026-11-21).
  */
+
+import { z } from "zod";
+
+/** One stated amount as features-service serves it (`/features/stated-monthly-amounts`). */
+export const StatedAmountSchema = z.object({
+  id: z.string(),
+  orgId: z.string(),
+  brandId: z.string(),
+  amountUsd: z.number(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  note: z.string().nullable(),
+});
+export type StatedAmount = z.infer<typeof StatedAmountSchema>;
+export const StatedAmountsSchema = z.object({ statedAmounts: z.array(StatedAmountSchema) });
+export const StatedAmountWriteSchema = z.object({ statedAmount: StatedAmountSchema });
+
+/** The brands a person can state an amount for: features-service's accounts audit, the fields read here. */
+export const RevenueAccountsSchema = z.object({
+  rows: z.array(
+    z.object({
+      orgId: z.string(),
+      ownerEmail: z.string().nullable(),
+      brandId: z.string(),
+      brandName: z.string().nullable(),
+      brandDomain: z.string().nullable(),
+      configuredDailyBudgetUsd: z.number(),
+      runningDailyBudgetUsd: z.number(),
+    }),
+  ),
+});
+export type RevenueAccounts = z.infer<typeof RevenueAccountsSchema>;
+export type RevenueAccountRow = RevenueAccounts["rows"][number];
 
 /** A date the two bounds are written in: a UTC calendar day, inclusive. */
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;

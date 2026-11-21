@@ -79,7 +79,8 @@ describe("cross-org build-in-public metrics page", () => {
 
   it("counts humans only: every visitor query drops headless scanners and internal accounts", () => {
     const visitorQueries = publicStats.split("FROM sessions").length - 1;
-    expect(visitorQueries).toBe(5);
+    // 4 since the Revenue tab moved to dashboard Monitoring (its first-seen query went with it, same rule there).
+    expect(visitorQueries).toBe(4);
     expect(publicStats.split("AND ${HUMAN_VISITOR}").length - 1).toBe(visitorQueries);
     expect(publicStats).toContain("properties.$screen_width = properties.$viewport_width");
     expect(publicStats).toContain("properties.$screen_height = properties.$viewport_height");

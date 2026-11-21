@@ -1,6 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import {
   parseFleetRevenueOutlook,
   centsToUsd,
@@ -12,7 +10,7 @@ import {
   nextCashEvent,
   windowFor,
   type FleetRevenueRow,
-} from "../src/lib/revenue-outlook";
+} from "../src/lib/monitoring/revenue-outlook";
 
 function row(p: Partial<FleetRevenueRow>): FleetRevenueRow {
   return {
@@ -133,29 +131,5 @@ describe("revenue outlook (billing fleet read)", () => {
     const o = outlook([r]);
     expect(windowFor(o, 30)?.cashCents).toBe("50");
     expect(windowFor(o, 90)).toBeNull();
-  });
-});
-
-describe("revenue page wiring", () => {
-  const view = readFileSync(join(__dirname, "../src/components/revenue-view.tsx"), "utf8");
-  const band = readFileSync(join(__dirname, "../src/components/revenue/revenue-outlook-band.tsx"), "utf8");
-
-  it("mounts the outlook band on the Revenue tab, above cash collected", () => {
-    expect(view).toContain("<RevenueOutlookBand");
-    expect(view.indexOf("<RevenueOutlookBand")).toBeLessThan(view.indexOf('title="Cash collected"'));
-  });
-
-  it("no longer claims every customer is prepaid", () => {
-    expect(view).not.toContain("credit that is bought and not yet spent");
-  });
-
-  it("renders billing's served totals, never a sum of its own", () => {
-    expect(band).not.toMatch(/\.reduce\(/);
-    expect(band).toContain("const t = data?.totals");
-    expect(band).toContain("centsToUsd(t.mrrCents)");
-  });
-
-  it("carries no em-dash in its copy", () => {
-    expect(band).not.toContain("—");
   });
 });

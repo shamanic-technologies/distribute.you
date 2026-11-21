@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { RealizedReturnSchema, type RealizedReturn } from "./realized-return";
 import { buildCreditGrantBody } from "./credit-grant-body";
-import { parseFleetRevenueOutlook, type FleetRevenueOutlook } from "./revenue-outlook";
-
-/** The gateway path of billing's fleet revenue read (api-service staff proxy). */
-const BILLING_FLEET_REVENUE_PATH = "/billing/revenue/fleet";
 import {
   TRIGGER_TASK_NAME,
   WorkflowRunGroupsResponseSchema,
@@ -4939,16 +4935,6 @@ export interface AuditAccounts {
 }
 
 /**
- * billing-service's fleet revenue read (recurring DRR/MRR/ARR, one-off prepaid
- * run-out, cash expected by week, one row per org). Staff-gated through
- * api-service; the body is billing's, parsed in lib/revenue-outlook.
- */
-export async function getBillingFleetRevenue(token?: string): Promise<FleetRevenueOutlook> {
-  const raw = await apiCall<unknown>(BILLING_FLEET_REVENUE_PATH, { token });
-  return parseFleetRevenueOutlook(raw);
-}
-
-/**
  * Fleet-wide, cross-org customer accounts audit: per-brand daily budget + true
  * active/inactive verdict + fleet financial stats (total daily budget, MRR, ARR).
  * Staff-gated platform view — served only behind the staff audit route, never a
@@ -5457,92 +5443,6 @@ export async function getFleetRevenue(token?: string): Promise<FleetRevenue> {
     `/features/audit/revenue?months=${REVENUE_MONTHS_MAX}&weeks=${REVENUE_WEEKS_MAX}`,
     { token },
   );
-}
-
-// ── Stated monthly amounts (staff-writable, features-service-owned) ──────────
-// What a HUMAN says a brand is worth per month, over a date range. This is the
-// ONE input that makes the agency half of the MRR split possible: an agency's
-// daily budget is an allocation decision, so nothing derivable from the product
-// can answer what it is worth — only a person can.
-//
-// BOTH bounds are optional and each has a meaning, not a default:
-//   startDate null = in force since that brand's FIRST DAY OF BILLED SPEND
-//   endDate   null = still running
-// Two ranges overlapping on one day for one (org, brand) are REFUSED by the
-// producer with a 409 whose reason is written for a person — surface that
-// reason verbatim, never a generic failure.
-//
-// Transparent proxy to features-service `/internal/stated-monthly-amounts`,
-// staff-gated at api-service (same auth path as getAuditAccounts).
-const STATED_AMOUNTS_PATH = "/features/stated-monthly-amounts";
-
-export interface StatedAmount {
-  id: string;
-  orgId: string;
-  brandId: string;
-  /** What a person says this brand is worth per month, USD. A stated 0 is a real answer. */
-  amountUsd: number;
-  startDate: string | null; // "YYYY-MM-DD" inclusive, or null = since the brand's first billed day
-  endDate: string | null; // "YYYY-MM-DD" inclusive, or null = still running
-  note: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface StatedAmountInput {
-  orgId: string;
-  brandId: string;
-  amountUsd: number;
-  startDate?: string | null;
-  endDate?: string | null;
-  note?: string | null;
-}
-
-/** Every stated amount, newest-relevant first as the producer orders them. */
-export async function listStatedAmounts(token?: string): Promise<StatedAmount[]> {
-  const res = await apiCall<{ statedAmounts: StatedAmount[] }>(STATED_AMOUNTS_PATH, { token });
-  return res.statedAmounts;
-}
-
-export async function createStatedAmount(input: StatedAmountInput, token?: string): Promise<StatedAmount> {
-  const res = await apiCall<{ statedAmount: StatedAmount }>(STATED_AMOUNTS_PATH, {
-    method: "POST",
-    // Spelled out rather than forwarded whole: each open bound travels as an
-    // explicit null, which is what says "since the first billed day" / "still
-    // running" instead of "I forgot to send this".
-    body: {
-      orgId: input.orgId,
-      brandId: input.brandId,
-      amountUsd: input.amountUsd,
-      startDate: input.startDate ?? null,
-      endDate: input.endDate ?? null,
-      note: input.note ?? null,
-    },
-    token,
-  });
-  return res.statedAmount;
-}
-
-/**
- * Patch one stated amount. An OMITTED key keeps its stored value; an explicit
- * `null` on a bound OPENS that end, which is a real edit — so a caller that
- * means "make this open-ended" must SEND `endDate: null`, never omit it.
- */
-export async function updateStatedAmount(
-  id: string,
-  patch: Partial<Pick<StatedAmount, "amountUsd" | "startDate" | "endDate" | "note">>,
-  token?: string,
-): Promise<StatedAmount> {
-  const res = await apiCall<{ statedAmount: StatedAmount }>(`${STATED_AMOUNTS_PATH}/${id}`, {
-    method: "PATCH",
-    body: { ...patch },
-    token,
-  });
-  return res.statedAmount;
-}
-
-export async function deleteStatedAmount(id: string, token?: string): Promise<void> {
-  await apiCall<void>(`${STATED_AMOUNTS_PATH}/${id}`, { method: "DELETE", token });
 }
 
 // ── Google CRM (staff console) ───────────────────────────────────────────────
