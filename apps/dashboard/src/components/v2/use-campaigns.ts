@@ -25,7 +25,8 @@ export interface V2Campaign {
   /** The pipe (leg x channel) it runs, by its served name (features-service `campaignName`). */
   pipe: ServedPipe;
   leg: LegDef | null;
-  offerId: string;
+  /** Null for a campaign naming no offer (DISTRY-CALL-IS-CAMPAIGN-1121): it is listed like any other. */
+  offerId: string | null;
   offerName: string | null;
   running: boolean;
   /**
@@ -74,7 +75,9 @@ export function useCampaigns(orgId: string, brandId: string) {
     () =>
       rows.flatMap((row) => {
         const c = row.campaign;
-        if (!c.offerId || !c.featureSlug) return [];
+        // A campaign naming no offer is a campaign like any other (DISTRY-CALL-IS-CAMPAIGN-1121); only a row with no
+        // channel has no pipe to name.
+        if (!c.featureSlug) return [];
         const def = acquisitionChannelForFeatureSlug(c.featureSlug, channels);
         const leg = legFor(legCatalogue, c.legKey);
         const served = campaignNameFor(legCatalogue, c.featureSlug, c.legKey);
@@ -85,8 +88,8 @@ export function useCampaigns(orgId: string, brandId: string) {
             row,
             pipe,
             leg,
-            offerId: c.offerId,
-            offerName: offerNames.get(c.offerId) ?? null,
+            offerId: c.offerId ?? null,
+            offerName: c.offerId ? (offerNames.get(c.offerId) ?? null) : null,
             running: isActiveStatus(c.status),
             paymentHold: paymentHoldKind(c),
             href: v2CampaignHref(orgId, brandId, c.id),

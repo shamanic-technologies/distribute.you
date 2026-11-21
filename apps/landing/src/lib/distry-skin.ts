@@ -14,11 +14,11 @@
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
-export const SKIN_VERSION = 14;
+export const SKIN_VERSION = 17;
 
 /** The site's mark, and Distry's, which replaces it wherever the skin is worn (owner 2026-11-17). */
 export const SITE_LOGO = "/landing/v2/assets/logo-mark.svg";
-export const DISTRY_LOGO = `${SKIN_ASSETS}/assets/distry-logo.svg`;
+export const DISTRY_LOGO = `${SKIN_ASSETS}/assets/distry-mark.webp`;
 
 /** Every use of the site's mark in a page, swapped for Distry's. */
 export function withDistryLogo(html: string): string {
@@ -43,7 +43,7 @@ export function isSkinnedStylesheet(pathname: string): boolean {
 
 /** The paper tokens: what any surface of the live site carries under the skin, at any hour. */
 const PAPER =
-  "--bg:#ffffff;--surface:#f6f8fc;--d-card:#ffffff;--text:#0b1230;--text-2:#17204a;--muted:#46507a;--muted-2:#6c76a0;" +
+  "--bg:#ffffff;--surface:#f6f8fc;--d-card:#ffffff;--text:#0b1230;--text-2:#17204a;--muted:#46507a;--muted-2:#5d678f;" +
   "--hair:#e3e8f2;--hair-2:#d3dbea;--accent:#2563eb;--accent-600:#1d4ed8;--accent-text:#1a4fc3;--accent-50:#eef3ff;--accent-100:#dbe6ff;" +
   "--secondary-50:#eef3ff;--secondary-100:#dbe6ff;--tertiary-50:#fff4dc;--tertiary-100:#ffe6b0;";
 
@@ -83,10 +83,10 @@ const SKY = `<div class="d-sky" aria-hidden="true"><div class="d-sky-layer d-sky
  */
 export const DISTRY_CHAT_URL = `https://wa.me/33680478702?text=${encodeURIComponent("Hi Distry! I have a question about distribute.you:")}`;
 
-const BUDDY = `<aside class="buddy" id="buddy"><p class="buddy-say" id="buddy-say" aria-hidden="true"></p><a class="buddy-face" href="${DISTRY_CHAT_URL}" target="_blank" rel="noopener noreferrer" aria-label="Chat with Distry"><img src="${SKIN_ASSETS}/assets/distry-logo.svg" alt="" width="76" height="76"></a></aside>`;
+const BUDDY = `<aside class="buddy" id="buddy"><p class="buddy-say" id="buddy-say" aria-hidden="true"></p><a class="buddy-face" href="${DISTRY_CHAT_URL}" target="_blank" rel="noopener noreferrer" aria-label="Chat with Distry"><img src="${SKIN_ASSETS}/assets/distry-avatar-160.webp" alt="" width="72" height="72"></a></aside>`;
 
 const HEAD = `<meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/svg+xml" href="${SKIN_ASSETS}/assets/distry-logo.svg">
+<link rel="icon" type="image/png" href="${SKIN_ASSETS}/assets/distry-mark-64.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,100&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">

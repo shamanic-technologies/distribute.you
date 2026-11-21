@@ -100,7 +100,8 @@ export type PipeSpendChart = z.infer<typeof PipeSpendChartSchema>;
 export const FunnelCampaignSpendChartsSchema = z.object({
   salesFunnelCampaignId: z.string(),
   brandId: z.string(),
-  offerId: z.string(),
+  // Null for a campaign naming no offer (DISTRY-CALL-IS-CAMPAIGN-1121).
+  offerId: z.string().nullable(),
   pricing: z.string(),
   campaign: SpendChartSchema,
   pipes: z.array(PipeSpendChartSchema),
