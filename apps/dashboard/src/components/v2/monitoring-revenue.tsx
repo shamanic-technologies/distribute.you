@@ -16,7 +16,7 @@ import {
 } from "@/lib/api";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
-import { Dash, PeriodBars, TD, TDR, TH, THR } from "@/components/v2/monitoring-charts";
+import { DailyLines, Dash, PeriodBars, TD, TDR, TH, THR } from "@/components/v2/monitoring-charts";
 import { SettingModal } from "@/components/v2/setting-modal";
 import type { AvgSeries, Grain, Part, RetentionSeries, RevenueBoard, RevenueSeries, RunRateBoard, SelfServeTable } from "@/lib/monitoring/revenue-series";
 import {
@@ -501,8 +501,31 @@ function RunRateChart({ title, s, grain, color }: { title: string; s: RevenueSer
         {title} · {s.latestUsd === null ? "no figure yet" : usd(s.latestUsd)}
         {rateNote(s, grain) ? ` · ${rateNote(s, grain)}` : ""}
       </p>
-      <SeriesBars points={s.points} color={color} format={usd} empty="No period measured yet." />
+      <RunRateLine points={s.points} color={color} title={title} />
     </div>
+  );
+}
+
+const ALL_PERIODS = [{ key: "all", label: "All", days: null }];
+
+/**
+ * A run-rate is a STOCK, drawn as ONE line like the admin tab's run-rate card (owner 2026-11-21: a
+ * move never redesigns an approved chart). Monitoring's shared line chart, each served point read on hover.
+ */
+function RunRateLine({ points, color, title }: { points: RevenueSeries["points"]; color: string; title: string }) {
+  const labels = new Map(points.map((p) => [p.key, p.label]));
+  const rows = points.map((p) => ({ day: p.key, value: p.value }));
+  return (
+    <DailyLines
+      points={rows}
+      lines={[{ key: "v", label: title, color, get: (r) => r.value }]}
+      format={usd}
+      windows={ALL_PERIODS}
+      empty="Not enough periods measured yet to draw a line."
+      label={title}
+      pointLabel={(k) => labels.get(k) ?? k}
+      tickLabel={(k) => labels.get(k) ?? k}
+    />
   );
 }
 

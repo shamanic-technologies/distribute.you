@@ -190,6 +190,14 @@ describe("wiring", () => {
     expect(body.indexOf("<SaasChartsSlot />")).toBeLessThan(body.indexOf("<OutlookSection />"));
   });
 
+  it("draws the run-rate charts as lines, like the admin tab it moved from", () => {
+    const view = read("src/components/v2/monitoring-revenue.tsx");
+    const chart = view.slice(view.indexOf("function RunRateChart("), view.indexOf("function Verdict("));
+    expect(chart).toContain("<RunRateLine ");
+    expect(chart).not.toContain("<SeriesBars");
+    expect(chart).toContain("<DailyLines");
+  });
+
   it("computes no money in the browser: the page never reduces a figure", () => {
     const view = read("src/components/v2/monitoring-revenue.tsx");
     expect(view).not.toMatch(/\.reduce\(/);
