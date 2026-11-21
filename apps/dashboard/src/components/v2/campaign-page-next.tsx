@@ -11,7 +11,7 @@ import {
   listAudiences,
   listFunnelCampaignCopies,
   listFunnelCampaignRows,
-  getSalesFunnelCaps,
+  getCampaignCaps,
   listUniboxLeads,
   type CampaignRevenueGroup,
   listBrandOffers,
@@ -32,8 +32,7 @@ import {
   volumeUnitWords,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
-  capsOfferId,
-  LIMITS_NOT_AVAILABLE,
+  campaignCapsKey,
 } from "@/lib/sales-funnel-campaigns";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
@@ -117,17 +116,11 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
   // Every part the campaign runs off its path, one line each under it (CAMPAIGN-PATH-SHOWS-AI-ANSWER-1109).
   const otherParts = row?.otherParts ?? copyRow?.otherParts;
 
-  const caps = useAuthQuery(
-    ["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId],
-    () => getSalesFunnelCaps(campaign.brandId, capsOfferId(campaign) as string, campaign.salesFunnelId),
-    // A campaign naming no offer has no served caps route yet (DISTRY-CALL-IS-CAMPAIGN-1121): never asked.
-    { ...pollOptions, enabled: capsOfferId(campaign) !== null },
-  );
-  const noCaps = capsOfferId(campaign) === null;
-  const capsSettled = noCaps || caps.data !== undefined || caps.isFetchedAfterMount;
+  const caps = useAuthQuery(campaignCapsKey(campaign), () => getCampaignCaps(campaign), pollOptions);
+  const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
   const c = caps.data ?? null;
   const [editing, setEditing] = useState(false);
-  const notFunded = !noCaps && capsSettled && funnelFunded(c) === false;
+  const notFunded = capsSettled && funnelFunded(c) === false;
 
   return (
     <>
@@ -148,11 +141,7 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
             )}
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               <FunnelCampaignStatus campaign={campaign} />
-              {noCaps ? (
-                <span className="k-chip k-fg3">{LIMITS_NOT_AVAILABLE}</span>
-              ) : (
-                <LimitChips caps={c} settled={capsSettled} failed={caps.isError && !c} onOpen={() => setEditing(true)} />
-              )}
+              <LimitChips caps={c} settled={capsSettled} failed={caps.isError && !c} onOpen={() => setEditing(true)} />
               <span className="k-chip tabular-nums">Started {startedOn(campaign.createdAt)}</span>
             </div>
           </div>
@@ -220,17 +209,11 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
                     href={withLayoutNext(v2CampaignHref(orgId, campaign.brandId, campaign.id, "targeting"))}
                   />
                 )}
-                {/* A campaign naming no offer (DISTRY-CALL-IS-CAMPAIGN-1121) has no offer card and no served limits yet. */}
+                {/* A campaign naming no offer (DISTRY-CALL-IS-CAMPAIGN-1121) has no offer card; its limits read like any other. */}
                 {campaign.offerId !== null && (
                   <OfferCard brandId={campaign.brandId} offerId={campaign.offerId} href={v2OfferHref(orgId, campaign.brandId, campaign.offerId)} />
                 )}
-                {noCaps ? (
-                  <div className="k-card">
-                    <EmptyNote>{LIMITS_NOT_AVAILABLE}.</EmptyNote>
-                  </div>
-                ) : (
-                  <LimitsCard caps={c} settled={capsSettled} failed={caps.isError && !c} onSet={() => setEditing(true)} />
-                )}
+                <LimitsCard caps={c} settled={capsSettled} failed={caps.isError && !c} onSet={() => setEditing(true)} />
               </aside>
             </div>
           </div>

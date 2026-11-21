@@ -12,11 +12,11 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
   ApiError,
-  getSalesFunnelCaps,
+  getCampaignCaps,
   listFunnelCampaignRows,
   listFunnelCampaignCopies,
   listSalesFunnelCampaigns,
-  saveSalesFunnelCaps,
+  saveCampaignCaps,
   setSalesFunnelCampaignStatus,
 } from "@/lib/api";
 import {
@@ -49,8 +49,8 @@ import {
   type FunnelOtherPart,
   orderPipesByFunnel,
   funnelRowSettled,
-  capsOfferId,
-  LIMITS_NOT_AVAILABLE,
+  campaignCapsKey,
+  type CapsTarget,
 } from "@/lib/sales-funnel-campaigns";
 import { paymentHoldKind } from "@/lib/payment-declined";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
@@ -102,14 +102,9 @@ export function useFunnelCampaigns(brandId: string, offerId: string | null, { en
   );
 }
 
-function useFunnelCaps(c: Pick<SalesFunnelCampaign, "brandId" | "offerId" | "salesFunnelId">) {
-  // A campaign naming no offer has no served caps route yet (DISTRY-CALL-IS-CAMPAIGN-1121): never asked.
-  const offerId = capsOfferId(c);
-  return useAuthQuery(
-    ["salesFunnelCaps", c.brandId, c.offerId, c.salesFunnelId],
-    () => getSalesFunnelCaps(c.brandId, offerId as string, c.salesFunnelId),
-    { ...pollOptions, enabled: offerId !== null },
-  );
+function useFunnelCaps(c: CapsTarget) {
+  // Offer or not, every campaign reads its caps (DISTRY-CALL-IS-CAMPAIGN-1121, `campaignCapsPath`).
+  return useAuthQuery(campaignCapsKey(c), () => getCampaignCaps(c), pollOptions);
 }
 
 const Chevron = () => (
@@ -137,7 +132,7 @@ export function FunnelCampaignStatus({
   onLabel?: string | null;
 }) {
   const caps = useFunnelCaps(campaign);
-  const capsSettled = capsOfferId(campaign) === null || caps.data !== undefined || caps.isFetchedAfterMount;
+  const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
   const [open, setOpen] = useState(false);
   const on = isFunnelCampaignOn(campaign);
   return (
@@ -232,8 +227,6 @@ export function FunnelCampaignModal({
   const words = capWords(type);
   const upTo = type === "reactive";
   const servedOn = isFunnelCampaignOn(campaign);
-  // A campaign naming no offer: on/off only, its limits are not served yet (DISTRY-CALL-IS-CAMPAIGN-1121).
-  const capsOffer = capsOfferId(campaign);
   const stated = caps?.maxBudget ?? null;
   const statedUsd = centsToUsd(stated?.amountCents);
   const initial = {
@@ -251,7 +244,7 @@ export function FunnelCampaignModal({
 
   const usd = parseWholeAmount(budget);
   const people = volume.trim() === "" ? null : parseWholeCount(volume);
-  const limitsDirty = capsOffer !== null && (budget !== initial.budget || budgetPer !== initial.budgetPer || volume !== initial.volume || volumePer !== initial.volumePer);
+  const limitsDirty = budget !== initial.budget || budgetPer !== initial.budgetPer || volume !== initial.volume || volumePer !== initial.volumePer;
   const statusDirty = on !== servedOn;
   // A campaign needs a max budget AND/OR a max volume (owner 2026-10-11); neither = nothing to save.
   const budgetProblem =
@@ -265,13 +258,13 @@ export function FunnelCampaignModal({
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      if (limitsDirty && capsOffer !== null) {
+      if (limitsDirty) {
         try {
-          const data = await saveSalesFunnelCaps(campaign.brandId, capsOffer, campaign.salesFunnelId, {
+          const data = await saveCampaignCaps(campaign, {
             maxBudget: usd === null ? null : { amountCents: usd * 100, period: budgetPer },
             maxVolume: people === null ? null : { count: people, period: volumePer },
           });
-          qc.setQueryData(["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId], data);
+          qc.setQueryData(campaignCapsKey(campaign), data);
         } catch (err) {
           console.error("[funnel-campaigns] limits save failed", { campaignId: campaign.id, err });
           throw new Error(err instanceof ApiError && err.status === 400 ? "These limits are not allowed." : "We could not save your limits. Try again in a moment.");
@@ -339,9 +332,6 @@ export function FunnelCampaignModal({
             <RunSwitch on={on} onChange={setOn} />
           </div>
 
-          {capsOffer === null ? (
-            <p className="k-fg3 px-4 py-4 text-[13px]">{LIMITS_NOT_AVAILABLE}.</p>
-          ) : (
           <div className="space-y-5 px-4 py-4">
             <div>
               <label htmlFor="v2-funnel-budget" className="k-label block">
@@ -390,7 +380,6 @@ export function FunnelCampaignModal({
               {volumeProblem && <p className="mt-1.5 text-[12px] leading-[18px] text-[var(--data-rose)]">{volumeProblem}</p>}
             </div>
           </div>
-          )}
 
           <div className="flex items-center gap-2 border-t border-[var(--line-subtle)] px-4 py-3">
             {failure && (
@@ -577,7 +566,6 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
   const b = caps.data?.maxBudget ?? null;
   const limit = fundingLimit(caps.data ?? null);
   const type = funnelTypeOf(caps.data ?? null);
-  const noCaps = capsOfferId(campaign) === null;
   const settledCaps = caps.data !== undefined || caps.isFetchedAfterMount;
   const v = limit?.kind === "volume" ? limit.volume : null;
   return (
@@ -589,7 +577,7 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
         </span>
         <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
           <span className="truncate">
-            {noCaps ? LIMITS_NOT_AVAILABLE : !settledCaps ? " " : fundingWords(caps.data ?? null)}
+            {!settledCaps ? " " : fundingWords(caps.data ?? null)}
           </span>
           <span className="shrink-0">
             {b && b.consumedCents !== null
@@ -706,11 +694,10 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   const tabs: V2Tab[] = visible.map((t) => ({ label: t.label, href: v2CampaignHref(orgId, campaign.brandId, campaign.id, t.key), active: t.key === tab }));
   const caps = useFunnelCaps(campaign);
   const [editing, setEditing] = useState(false);
-  const noCaps = capsOfferId(campaign) === null;
-  const capsSettled = noCaps || caps.data !== undefined || caps.isFetchedAfterMount;
+  const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
   const c = caps.data ?? null;
   // billing's verdict (owner 2026-10-11): a max budget AND/OR a max volume funds it.
-  const notFunded = !noCaps && capsSettled && funnelFunded(c) === false;
+  const notFunded = capsSettled && funnelFunded(c) === false;
   const b = c?.maxBudget ?? null;
   const v = c?.maxVolume ?? null;
   // The campaign's type picks the words (owner 2026-10-10): Proactive "Max budget", Reactive "Up to $X".
@@ -744,7 +731,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
         <>
           <CampaignPinButton brandId={campaign.brandId} campaignId={campaign.id} />
           {/* ONE button like the Campaigns table (owner 2026-11-02): green with the budget when on, "Off" when off. */}
-          <FunnelCampaignStatus campaign={campaign} onLabel={noCaps ? null : capsSettled ? funnelOnLabel(copyOf?.type === "reactive" ? "reactive" : type, c) : null} />
+          <FunnelCampaignStatus campaign={campaign} onLabel={capsSettled ? funnelOnLabel(copyOf?.type === "reactive" ? "reactive" : type, c) : null} />
         </>
       }
       width="max-w-[1280px]"
@@ -833,11 +820,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
                 </div>
               </div>
             </div>
-          {noCaps ? (
-            <div className="k-card">
-              <EmptyNote>{LIMITS_NOT_AVAILABLE}.</EmptyNote>
-            </div>
-          ) : !capsSettled ? (
+          {!capsSettled ? (
             <Shimmer className="h-[104px] w-full rounded-[12px]" />
           ) : caps.isError && !c ? (
             <div className="k-card">
@@ -921,15 +904,13 @@ export function useFunnelCapsWords(brandId: string, salesFunnelCampaignId: strin
   const { campaign, settled } = useFunnelCampaignById(brandId, salesFunnelCampaignId ?? "");
   // The key every caps reader polls (`useFunnelCaps`), so a page showing both costs one request.
   const caps = useAuthQuery(
-    ["salesFunnelCaps", campaign?.brandId, campaign?.offerId, campaign?.salesFunnelId],
-    () => getSalesFunnelCaps(campaign!.brandId, capsOfferId(campaign!) as string, campaign!.salesFunnelId),
-    // A campaign naming no offer has no served caps route yet (DISTRY-CALL-IS-CAMPAIGN-1121): never asked.
-    { ...pollOptions, enabled: !!campaign && capsOfferId(campaign) !== null },
+    campaign ? campaignCapsKey(campaign) : ["salesFunnelCaps", "none"],
+    () => getCampaignCaps(campaign!),
+    { ...pollOptions, enabled: !!campaign },
   );
   if (!salesFunnelCampaignId) return "—";
   if (!settled) return null;
   if (!campaign) return "—";
-  if (capsOfferId(campaign) === null) return LIMITS_NOT_AVAILABLE;
   if (caps.data === undefined && !caps.isFetchedAfterMount) return null;
   return fundingWords(caps.data ?? null);
 }

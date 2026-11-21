@@ -8,13 +8,13 @@ import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { Fact, OngoingDot, TableSkeleton, useRelated } from "@/components/v2/staff-catalogue-pages";
 import { useFunnelCampaigns, useStaffCatalogueObject } from "@/components/v2/staff-catalogue-data";
-import { getSalesFunnelCampaign, getSalesFunnelCaps } from "@/lib/api";
+import { getCampaignCaps, getSalesFunnelCampaign } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { featureLegId } from "@/lib/outbound-leg-key";
 import { pollOptions } from "@/lib/query-options";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
 import { v2CampaignHref, v2CatalogueHref, v2WorkflowHref } from "@/lib/v2/routes";
-import { centsToUsd, isOngoingFunnelCampaign, producerWord, type SalesFunnelCampaign, type SalesFunnelCaps } from "@/lib/sales-funnel-campaigns";
+import { campaignCapsKey, centsToUsd, isOngoingFunnelCampaign, producerWord, type SalesFunnelCampaign, type SalesFunnelCaps } from "@/lib/sales-funnel-campaigns";
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 const TD = "px-3 py-2 first:pl-4 last:pr-4";
@@ -273,12 +273,7 @@ export function StaffFunnelCampaignPage({ id }: { id: string }) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const q = useAuthQuery(["salesFunnelCampaign", id], () => getSalesFunnelCampaign(id), { ...pollOptions, enabled: !!id });
   const c = q.data;
-  const caps = useAuthQuery(
-    ["salesFunnelCaps", c?.brandId ?? null, c?.offerId ?? null, c?.salesFunnelId ?? null],
-    () => getSalesFunnelCaps(c!.brandId, c!.offerId as string, c!.salesFunnelId),
-    // A campaign naming no offer has no served caps route yet (DISTRY-CALL-IS-CAMPAIGN-1121): never asked.
-    { ...pollOptions, enabled: !!c && c.offerId !== null },
-  );
+  const caps = useAuthQuery(c ? campaignCapsKey(c) : ["salesFunnelCaps", "none"], () => getCampaignCaps(c!), { ...pollOptions, enabled: !!c });
   const funnel = useStaffCatalogueObject("sales-funnels", c?.salesFunnelId ?? null);
   const face = funnel.data?.face.svgPath ?? null;
 
