@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BRAND_PROOF_TOKEN, brandProofHtml, type BrandProof } from "../../src/lib/brand-proof";
+import { BRAND_PROOF_TOKEN, MIN_PRESS_LOGOS, MIN_WALL_LOGOS, brandProofHtml, type BrandProof } from "../../src/lib/brand-proof";
 
 const company = (name: string, extra: Partial<BrandProof["employers"][number]> = {}) => ({
   companyId: "00000000-0000-4000-8000-000000000001",
@@ -16,8 +16,8 @@ const company = (name: string, extra: Partial<BrandProof["employers"][number]> =
 const proof = (over: Partial<BrandProof> = {}): BrandProof => ({
   brandId: "00000000-0000-4000-8000-0000000000aa",
   domain: "distribute.you",
-  employers: [company("Google"), company("Bain")],
-  press: [{ ...company("TechBullion"), article: { url: "https://techbullion.com/a", title: "A", publishedAt: null } }],
+  employers: ["Google", "Bain", "EY", "Accor", "IBM", "Visa"].map((n) => company(n)),
+  press: ["TechBullion", "Forbes", "Wired"].map((n) => ({ ...company(n), article: { url: `https://${n.toLowerCase()}.com/a`, title: "A", publishedAt: null } })),
   ...over,
 });
 
@@ -43,15 +43,24 @@ describe("brand proof logos (BRAND-PROOF-LOGOS-1121)", () => {
   });
 
   it("escapes served strings and refuses non-http URLs", () => {
+    const base = proof();
     const html = brandProofHtml(
       proof({
-        employers: [company('<b>"Evil"</b>'), company("Js", { logoUrl: "javascript:alert(1)" })],
-        press: [{ ...company("P"), article: { url: "javascript:alert(1)", title: null, publishedAt: null } }],
+        employers: [...base.employers, company('<b>"Evil"</b>'), company("Js", { logoUrl: "javascript:alert(1)" })],
+        press: [...base.press, { ...company("P"), article: { url: "javascript:alert(1)", title: null, publishedAt: null } }],
       }),
     );
     expect(html).not.toContain("<b>");
     expect(html).not.toContain("javascript:");
     expect(html).toContain("&lt;b&gt;");
+  });
+
+  it("draws no wall under MIN_WALL_LOGOS and no press row under MIN_PRESS_LOGOS (one logo is not a wall)", () => {
+    const base = proof();
+    expect(brandProofHtml(proof({ employers: base.employers.slice(0, MIN_WALL_LOGOS - 1), press: [] }))).toBe("");
+    const pressOnlyShort = brandProofHtml(proof({ press: base.press.slice(0, MIN_PRESS_LOGOS - 1) }));
+    expect(pressOnlyShort).toContain('data-brand-proof="employers"');
+    expect(pressOnlyShort).not.toContain("As featured in");
   });
 
   it("the homepage carries the token once, between proof and quotes", () => {
