@@ -26,7 +26,7 @@ export function TodayTargets({ orgId, brandId }: { orgId: string; brandId: strin
   const rows = q.data ? targetsOfOffer(q.data.offerTargets, null) : [];
   // Several offers on the page: each row names its offer.
   const named = new Set(rows.map((r) => r.offerId)).size > 1;
-  const offerName = (id: string) => (named ? (offers.find((o) => o.offerId === id)?.name ?? null) : null);
+  const offerName = (id: string | null) => (named && id ? (offers.find((o) => o.offerId === id)?.name ?? null) : null);
   return (
     <section>
       <SectionTitle count={q.data ? rows.length : null}>Targets</SectionTitle>

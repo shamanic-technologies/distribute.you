@@ -67,7 +67,8 @@ const CampaignTargetRowSchema = z
   .object({
     salesFunnelCampaignId: z.string(),
     name: z.string(),
-    offerId: z.string(),
+    // Null for a campaign naming no offer (DISTRY-CALL-IS-CAMPAIGN-1121): the brand-wide view keeps it, an offer's view does not.
+    offerId: z.string().nullable(),
     target: z.object({ key: z.string(), label: z.string(), lifecycleRung: z.string().nullable() }).passthrough().nullable(),
     outcomesToDate: num,
     outcomesUnavailableReason: z.string().nullable(),
@@ -109,7 +110,7 @@ export const CampaignTargetsSchema = z
 export type CampaignTargets = z.infer<typeof CampaignTargetsSchema>;
 
 /** The entries of one offer (null = every offer of the brand), in the served order. */
-export function targetsOfOffer<T extends { offerId: string }>(rows: readonly T[], offerId: string | null): T[] {
+export function targetsOfOffer<T extends { offerId: string | null }>(rows: readonly T[], offerId: string | null): T[] {
   return offerId ? rows.filter((r) => r.offerId === offerId) : [...rows];
 }
 
