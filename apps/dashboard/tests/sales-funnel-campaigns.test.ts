@@ -323,7 +323,8 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     expect(f).toContain("<FunnelCampaignStatus campaign={campaign} onLabel={on ? onLabel : null} />");
     // The campaign page reads the same ONE button (owner 2026-11-02): no budget button beside it.
     const page = src("src/components/v2/funnel-campaigns.tsx");
-    expect(page).toContain("<FunnelCampaignStatus campaign={campaign} onLabel={capsSettled ? funnelOnLabel(");
+    // A campaign naming no offer has no served limits yet (DISTRY-CALL-IS-CAMPAIGN-1121): plain On / Off.
+    expect(page).toContain("<FunnelCampaignStatus campaign={campaign} onLabel={noCaps ? null : capsSettled ? funnelOnLabel(");
     expect(page).not.toContain("FunnelLimitsButton");
     const { funnelOnLabel } = await import("../src/lib/sales-funnel-campaigns");
     const budget = { amountCents: "8000", consumedCents: "8000", remainingCents: "0", period: "monthly", periodStart: "2026-11-01", periodEnd: null, reached: true, consumedUnavailableReason: null, consumedUnavailableDetail: null };

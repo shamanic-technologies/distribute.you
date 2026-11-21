@@ -275,8 +275,9 @@ export function StaffFunnelCampaignPage({ id }: { id: string }) {
   const c = q.data;
   const caps = useAuthQuery(
     ["salesFunnelCaps", c?.brandId ?? null, c?.offerId ?? null, c?.salesFunnelId ?? null],
-    () => getSalesFunnelCaps(c!.brandId, c!.offerId, c!.salesFunnelId),
-    { ...pollOptions, enabled: !!c },
+    () => getSalesFunnelCaps(c!.brandId, c!.offerId as string, c!.salesFunnelId),
+    // A campaign naming no offer has no served caps route yet (DISTRY-CALL-IS-CAMPAIGN-1121): never asked.
+    { ...pollOptions, enabled: !!c && c.offerId !== null },
   );
   const funnel = useStaffCatalogueObject("sales-funnels", c?.salesFunnelId ?? null);
   const face = funnel.data?.face.svgPath ?? null;
