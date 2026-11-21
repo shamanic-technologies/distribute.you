@@ -1,50 +1,36 @@
 /**
- * The END of signup (`/get-started` and "Add a brand"), owner 2026-10-16: two equal cards, both
- * ticked, each its face, served name, its brief (plain words, editable) and its own prefilled budget:
+ * The END of signup (`/get-started` and "Add a brand"), owner 2026-11-22 (ONE-CAMPAIGN-VOLUME-1122, replaces the
+ * 2026-10-16 two cards): ONE campaign aimed at meetings booked, ONE card:
  *
- *   [x] [face] <best runnable Lead Sourcing cold email -> positive reply>      [x] [face] <reactive AI reply funnel>
- *       <brief, click to edit>                                      <brief, click to edit>
- *       $ 20 / day                                                  Up to $ 10 / week
+ *   WHAT IT DOES       <one brief, prefilled by features-service, click to edit>
+ *   HOW MANY YOU WANT  [10] meetings booked  [per day | per week | per month]
+ *   ESTIMATED BUDGET   $X to $Y per week (20th to 80th percentile, served), never more than $Y per week
+ *                      First meetings around week N, then about 10 a week from week M (served)
+ *   Never spend more than $9,000 per month, all campaigns together
  *   [ Launch ]  -> then the payment wall exactly as today
  *
- * Unticking a card = that campaign is not created; at least one stays ticked to launch.
- *
- * The funnels are features-service's, runnable only, ROI first, PRICED FOR THIS OFFER (owner
- * 2026-10-10: the wall shows this offer's return, never the fleet's): `GET /v1/offers/:offerId/
- * sales-funnels?brandId=` (features v0.179.133 through the gateway, on the visitor's own org: the
- * anonymous one signed out). The launch writes billing's caps then starts the funnel campaign.
- * Nothing here computes a figure the producers serve: the picks are the first served row of
- * the right type; the text under the name is the campaign's brief (features-service prefill), never a
- * catalogue line (owner 2026-11-22: a line under the name beside the brief « n'a aucun sens »).
- *
- * Alias-free so it carries real unit tests.
+ * « Les gens ne pensent pas en 20/jour » : the visitor states a volume of the Target, never a daily spend; we split
+ * the campaign into its parts (cold email outreach, the AI that books the meeting) and the visitor never sees them.
+ * The campaign is ONE features-service funnel that runs both (Lead Sourcing -> cold email -> AI meeting booking),
+ * runnable for THIS offer (`GET /v1/offers/:offerId/sales-funnels?brandId=`); every figure is features-service's
+ * (`lib/v2/campaign-volume.ts`). Alias-free so it carries real unit tests.
  */
 import { z } from "zod";
+import { asVolumePeriod, oneCampaignPlan, type OneCampaignPlan, type VolumeEstimate, type VolumePeriod } from "./campaign-volume";
 
-/** The one channel this flow sells (cold email), and the one that books meetings on replies. */
-export const SIGNUP_PROACTIVE_CHANNEL = "sales-cold-email-outreach";
-export const SIGNUP_REACTIVE_CHANNEL = "ai-meeting-booking";
-/**
- * Where the cold email's people come from: Lead Sourcing, the generic sourcing pipe (we pick the
- * sources, never the client's own CRM contacts), owner 2026-10-20 "plus généraliste" over Apollo alone.
- */
-export const SIGNUP_SOURCING_CHANNEL = "lead-sourcing";
 /** Lead Sourcing plays that only re-serve people the brand already reached: a new client has none. */
 export const SIGNUP_EXCLUDED_SOURCING_PLAYS: ReadonlySet<string> = new Set(["lead-follow-up-due", "contacted-pure-prospects"]);
 
 /**
- * The ONE proactive funnel shape signup funds (owner 2026-10-20, "ON DEVRAIT SEULEMENT PROPOSER
- * LES POSITIVE REPLY NORMALES"): people found by Lead Sourcing -> cold email -> positive reply ->
- * paid client by the client's team. A new client has no CRM, so a funnel sourced from their
- * contacts never sends (LBVisible 2026-10-20 was funded "Warm Email Replies 2" and nothing left);
- * a meeting or website-visit outcome is another offer. Any play on the cold email pipe is allowed
- * (the email style picked sets it); features-service still ranks them, ROI first.
+ * The ONE funnel signup launches (owner 2026-11-22): people found by Lead Sourcing (we pick the sources, never the
+ * client's own contacts: a new client has none), cold email, then the AI books the meeting; any step after it (the
+ * client's own meeting attended, paid client) may follow. Any play on the cold email (the email style picked sets
+ * it); features-service still ranks them.
  */
-const COLD_POSITIVE_REPLY_FUNNEL = new RegExp(
-  `^start_to_lead_found@${SIGNUP_SOURCING_CHANNEL}(?:~([^+]+))?\\+lead_found_to_conversation@${SIGNUP_PROACTIVE_CHANNEL}(?:~[^+]+)?\\+conversation_to_paid_client$`,
-);
-export function isColdPositiveReplyFunnel(funnelId: string): boolean {
-  const m = funnelId.match(COLD_POSITIVE_REPLY_FUNNEL);
+const MEETING_CAMPAIGN_FUNNEL =
+  /^start_to_lead_found@lead-sourcing(?:~([^+]+))?\+lead_found_to_conversation@sales-cold-email-outreach(?:~[^+]+)?\+conversation_to_meeting_booked@ai-meeting-booking(?:~[^+]+)?(?:\+.+)?$/;
+export function isMeetingCampaignFunnel(funnelId: string): boolean {
+  const m = funnelId.match(MEETING_CAMPAIGN_FUNNEL);
   return !!m && !(m[1] && SIGNUP_EXCLUDED_SOURCING_PLAYS.has(m[1]));
 }
 
@@ -66,8 +52,6 @@ export type PublicSalesFunnelRow = z.infer<typeof PublicSalesFunnelRowSchema>;
 
 export const PublicSalesFunnelPageSchema = z.object({ rows: z.array(PublicSalesFunnelRowSchema) }).passthrough();
 
-/** The two producer pages the step reads (cold email, AI meeting booking), verbatim. */
-export const SignupFunnelsBodySchema = z.object({ proactive: PublicSalesFunnelPageSchema, reactive: PublicSalesFunnelPageSchema });
 
 export interface SignupFunnel {
   salesFunnelId: string;
@@ -87,48 +71,49 @@ export function firstOfType(
   fits: (funnelId: string) => boolean = () => true,
 ): SignupFunnel | null {
   const row = rows.find((r) => r.type === type && r.runnable && !r.mixed && fits(r.id));
-  return row ? { salesFunnelId: row.id, name: row.name, costUsd: row.costUsd, costPer: row.costPer, roi: row.roi, status: row.status ?? null } : null;
+  return row ? funnelOfRow(row) : null;
 }
 
-/** The two funnels the step proposes: the best proactive cold-email one, and the meeting-booking reactive one. */
-export function signupFunnelsFrom(
+function funnelOfRow(row: PublicSalesFunnelRow): SignupFunnel {
+  return { salesFunnelId: row.id, name: row.name, costUsd: row.costUsd, costPer: row.costPer, roi: row.roi, status: row.status ?? null };
+}
+
+/**
+ * The campaign's funnel: the first runnable row (producer order, ROI first) of the page that runs the whole
+ * campaign (cold email then the AI booking the meeting); null when none is runnable for this offer.
+ */
+export function signupCampaignFunnelFrom(
   body: unknown,
-  /** Which proactive funnels the email style picked allows (lib/v2/email-angles.ts `funnelFitsAngles`). */
-  proactiveFits: (funnelId: string) => boolean = () => true,
-): { proactive: SignupFunnel | null; reactive: SignupFunnel | null } {
-  const parsed = SignupFunnelsBodySchema.safeParse(body);
+  /** Which funnels the email style picked allows (lib/v2/email-angles.ts `funnelFitsAngles`). */
+  fits: (funnelId: string) => boolean = () => true,
+): SignupFunnel | null {
+  const parsed = PublicSalesFunnelPageSchema.safeParse(body);
   if (!parsed.success) {
     console.error("[signup-campaign] funnels body shape mismatch", { issues: parsed.error.issues });
     throw new Error("[signup-campaign] invalid funnels body");
   }
-  const fits = (id: string) => isColdPositiveReplyFunnel(id) && proactiveFits(id);
-  return { proactive: firstOfType(parsed.data.proactive.rows, "proactive", fits), reactive: firstOfType(parsed.data.reactive.rows, "reactive") };
+  const row = parsed.data.rows.find((r) => r.runnable && isMeetingCampaignFunnel(r.id) && fits(r.id));
+  return row ? funnelOfRow(row) : null;
 }
 
 /**
- * The picks as the snapshot keeps them (so the wall reopens after the Google round trip without a
- * read: signed in, the visitor's session is not the anonymous org the offer lives on until the claim).
+ * The pick as the snapshot keeps it (so the wall reopens after the Google round trip without a read: signed in,
+ * the visitor's session is not the anonymous org the offer lives on until the claim). A snapshot kept before the
+ * one-campaign step (two funnels) is not reopened: the step reads again.
  */
-export function parseSignupFunnels(v: unknown): { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null {
+export function parseSignupFunnel(v: unknown): SignupFunnel | null {
   if (!v || typeof v !== "object") return null;
-  const one = (x: unknown): SignupFunnel | null => {
-    if (!x || typeof x !== "object") return null;
-    const o = x as Record<string, unknown>;
-    if (typeof o.salesFunnelId !== "string" || !o.salesFunnelId || typeof o.name !== "string") return null;
-    const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : null);
-    return {
-      salesFunnelId: o.salesFunnelId,
-      name: o.name,
-      costUsd: num(o.costUsd),
-      costPer: typeof o.costPer === "string" ? o.costPer : null,
-      roi: num(o.roi),
-      status: typeof o.status === "string" ? o.status : null,
-    };
-  };
   const o = v as Record<string, unknown>;
-  // A snapshot kept before the cold-only pick (a CRM funnel) is not reopened: the step reads again.
-  const proactive = one(o.proactive);
-  return proactive && isColdPositiveReplyFunnel(proactive.salesFunnelId) ? { proactive, reactive: one(o.reactive) } : null;
+  if (typeof o.salesFunnelId !== "string" || !isMeetingCampaignFunnel(o.salesFunnelId) || typeof o.name !== "string") return null;
+  const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : null);
+  return {
+    salesFunnelId: o.salesFunnelId,
+    name: o.name,
+    costUsd: num(o.costUsd),
+    costPer: typeof o.costPer === "string" ? o.costPer : null,
+    roi: num(o.roi),
+    status: typeof o.status === "string" ? o.status : null,
+  };
 }
 
 /** A funnel still LEARNING states no figure: the product's own word "Learning" stands in (existing rule). */
@@ -155,162 +140,70 @@ export function estimatedLine(f: Pick<SignupFunnel, "costUsd" | "costPer" | "roi
   return `${label}: $${usd} ${f.costPer}${ret}`;
 }
 
-/** The periods the step offers (billing's vocabulary), with the word the select shows. */
-export const SIGNUP_PERIODS = [
-  { key: "daily", label: "day" },
-  { key: "weekly", label: "week" },
-  { key: "monthly", label: "month" },
-] as const;
-export type SignupPeriod = (typeof SIGNUP_PERIODS)[number]["key"];
-
-export function asSignupPeriod(v: unknown, fallback: SignupPeriod): SignupPeriod {
-  return SIGNUP_PERIODS.some((p) => p.key === v) ? (v as SignupPeriod) : fallback;
-}
-
-/** What the person typed, as typed (strings), so a half-typed amount survives a reload. */
+/** What the person typed, as typed (strings), so a half-typed value survives a reload. */
 export interface SignupCampaignDraft {
-  proactiveOn: boolean;
-  budget: string;
-  budgetPeriod: SignupPeriod;
-  reactiveOn: boolean;
-  reactiveBudget: string;
-  reactivePeriod: SignupPeriod;
+  /** Meetings booked wanted per period, as typed. */
+  volume: string;
+  volumePeriod: VolumePeriod;
+  /** The brief as edited; null while untouched (features-service's served prefill shows and launches). */
+  brief: string | null;
   /** "Never spend more than $X per month" as typed; null while untouched (the arm's prefill). */
   monthlyLimit: string | null;
-  /**
-   * Each campaign's brief as edited; null while untouched (features-service's served prefill shows).
-   * A new campaign is never launched without one (owner 2026-11-21, HUMAN-BRIEF-1121).
-   */
-  proactiveBrief: string | null;
-  reactiveBrief: string | null;
 }
 
-/**
- * $20 a day, no volume cap (the signup never asks one: owner 2026-10-13, "nobody will ever set
- * it here"), meetings ON at up to $10 a week (owner 2026-10-13, always ticked by default).
- */
+/** 10 meetings booked a week (owner mockup 2026-11-22). */
 export const DEFAULT_SIGNUP_DRAFT: SignupCampaignDraft = {
-  proactiveOn: true,
-  budget: "20",
-  budgetPeriod: "daily",
-  reactiveOn: true,
-  reactiveBudget: "10",
-  reactivePeriod: "weekly",
+  volume: "10",
+  volumePeriod: "week",
+  brief: null,
   monthlyLimit: null,
-  proactiveBrief: null,
-  reactiveBrief: null,
 };
 
+/** An older snapshot (two campaigns, budgets per day) keeps only what still means something: the monthly limit. */
 export function parseSignupDraft(v: unknown): SignupCampaignDraft | null {
   if (!v || typeof v !== "object") return null;
   const o = v as Record<string, unknown>;
-  const str = (x: unknown, d: string) => (typeof x === "string" ? x : d);
   return {
-    proactiveOn: typeof o.proactiveOn === "boolean" ? o.proactiveOn : DEFAULT_SIGNUP_DRAFT.proactiveOn,
-    budget: str(o.budget, DEFAULT_SIGNUP_DRAFT.budget),
-    budgetPeriod: asSignupPeriod(o.budgetPeriod, DEFAULT_SIGNUP_DRAFT.budgetPeriod),
-    reactiveOn: typeof o.reactiveOn === "boolean" ? o.reactiveOn : DEFAULT_SIGNUP_DRAFT.reactiveOn,
-    reactiveBudget: str(o.reactiveBudget, DEFAULT_SIGNUP_DRAFT.reactiveBudget),
-    reactivePeriod: asSignupPeriod(o.reactivePeriod, DEFAULT_SIGNUP_DRAFT.reactivePeriod),
+    volume: typeof o.volume === "string" ? o.volume : DEFAULT_SIGNUP_DRAFT.volume,
+    volumePeriod: asVolumePeriod(o.volumePeriod, DEFAULT_SIGNUP_DRAFT.volumePeriod),
+    brief: typeof o.brief === "string" ? o.brief : null,
     monthlyLimit: typeof o.monthlyLimit === "string" ? o.monthlyLimit : null,
-    proactiveBrief: typeof o.proactiveBrief === "string" ? o.proactiveBrief : null,
-    reactiveBrief: typeof o.reactiveBrief === "string" ? o.reactiveBrief : null,
   };
 }
 
-/** billing's caps body (cents, period); `null` maxVolume = no volume cap. */
-export interface FunnelCapsWrite {
-  maxBudget: { amountCents: number; period: SignupPeriod };
-  maxVolume: { count: number; period: SignupPeriod } | null;
-}
-
-/** One funnel campaign to launch: its id, its name (for messages), its caps and its brief. */
-export interface SignupLaunchFunnel {
-  salesFunnelId: string;
-  name: string;
-  caps: FunnelCapsWrite;
-  /** The campaign's brief, sent on create: never empty (campaign-service refuses a new campaign without one). */
-  brief: string;
-}
-
-/** The prefilled briefs features-service served for the two cards, null while not read. */
-export interface SignupBriefPrefills {
-  proactive: string | null;
-  reactive: string | null;
-}
-
-export function parseBriefPrefills(v: unknown): SignupBriefPrefills | null {
-  if (!v || typeof v !== "object") return null;
-  const o = v as Record<string, unknown>;
-  const one = (x: unknown) => (typeof x === "string" && x.trim() ? x : null);
-  return { proactive: one(o.proactive), reactive: one(o.reactive) };
-}
-
-/** The brief a card launches with: the edited text, else the served prefill; null = none yet. */
+/** The brief the campaign launches with: the edited text, else the served prefill; null = none yet. */
 export function briefToLaunch(edited: string | null, prefill: string | null): string | null {
   const t = (edited ?? prefill ?? "").trim();
   return t ? t : null;
 }
 
-/** What Launch creates: each ticked campaign, at least one of the two. */
-export interface SignupLaunchPlan {
-  proactive: SignupLaunchFunnel | null;
-  reactive: SignupLaunchFunnel | null;
+/** What Launch creates: ONE campaign (its funnel, name, Target, brief, volume and cap). */
+export interface SignupLaunchPlan extends OneCampaignPlan {
+  salesFunnelId: string;
+  name: string;
 }
 
-/** How many campaigns the plan creates (1 or 2). */
-export function launchCount(plan: SignupLaunchPlan): number {
-  return (plan.proactive ? 1 : 0) + (plan.reactive ? 1 : 0);
+/** billing's period word for a volume period. */
+export function capPeriodOf(p: VolumePeriod): "daily" | "weekly" | "monthly" {
+  return p === "day" ? "daily" : p === "week" ? "weekly" : "monthly";
 }
 
-const WHOLE = /^\d+$/;
-
-/** Whole dollars, at least $1. */
-function wholeUsd(raw: string): number | null {
-  const t = raw.trim().replace(/^\$/, "").replace(/,/g, "");
-  if (!WHOLE.test(t)) return null;
-  const n = Number(t);
-  return n >= 1 ? n : null;
-}
-
-/**
- * The plan to launch, or the one plain sentence that says what to fix. A funnel with no max
- * budget is held unfunded by billing, so each ticked card needs its budget; signup sets no
- * volume cap. A card is created when ticked AND served: a funnel not served for this offer shows
- * no card, so its default-on tick cannot block the launch. Nothing ticked = nothing to launch.
- */
-export function signupLaunchPlan(
-  draft: SignupCampaignDraft,
-  funnels: { proactive: SignupFunnel | null; reactive: SignupFunnel | null },
-  prefills: SignupBriefPrefills,
-): { plan: SignupLaunchPlan } | { problem: string } {
-  if (!funnels.proactive) return { problem: "We could not load your campaign. Try again." };
-  let proactive: SignupLaunchFunnel | null = null;
-  if (draft.proactiveOn) {
-    const budget = wholeUsd(draft.budget);
-    if (budget == null) return { problem: "Set a budget in whole dollars, $1 or more." };
-    const brief = briefToLaunch(draft.proactiveBrief, prefills.proactive);
-    if (!brief) return { problem: "Say in a few words what your campaign should do." };
-    proactive = {
-      salesFunnelId: funnels.proactive.salesFunnelId,
-      name: funnels.proactive.name,
-      caps: { maxBudget: { amountCents: budget * 100, period: draft.budgetPeriod }, maxVolume: null },
-      brief,
-    };
-  }
-  let reactive: SignupLaunchFunnel | null = null;
-  if (draft.reactiveOn && funnels.reactive) {
-    const upTo = wholeUsd(draft.reactiveBudget);
-    if (upTo == null) return { problem: "Set a budget in whole dollars, $1 or more." };
-    const brief = briefToLaunch(draft.reactiveBrief, prefills.reactive);
-    if (!brief) return { problem: "Say in a few words what your campaign should do." };
-    reactive = {
-      salesFunnelId: funnels.reactive.salesFunnelId,
-      name: funnels.reactive.name,
-      caps: { maxBudget: { amountCents: upTo * 100, period: draft.reactivePeriod }, maxVolume: null },
-      brief,
-    };
-  }
-  if (!proactive && !reactive) return { problem: "Pick at least one campaign." };
-  return { plan: { proactive, reactive } };
+/** The plan to launch, or the one plain sentence that says what to fix. */
+export function signupLaunchPlan(input: {
+  draft: SignupCampaignDraft;
+  funnel: SignupFunnel | null;
+  briefPrefill: string | null;
+  estimate: VolumeEstimate | null;
+}): { plan: SignupLaunchPlan } | { problem: string } {
+  const { draft, funnel } = input;
+  if (!funnel) return { problem: "We could not load your campaign. Try again." };
+  const r = oneCampaignPlan({
+    salesFunnelIds: [funnel.salesFunnelId],
+    brief: briefToLaunch(draft.brief, input.briefPrefill),
+    volume: draft.volume,
+    period: draft.volumePeriod,
+    estimate: input.estimate,
+  });
+  if ("problem" in r) return r;
+  return { plan: { ...r.plan, salesFunnelId: funnel.salesFunnelId, name: funnel.name } };
 }

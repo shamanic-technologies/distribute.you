@@ -3,17 +3,17 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import {
   DEFAULT_SIGNUP_DRAFT,
-  estimatedLine,
-  isColdPositiveReplyFunnel,
-  isLearning,
-  parseSignupDraft,
-  parseSignupFunnels,
-  signupFunnelsFrom,
-  signupLaunchPlan,
-  launchCount,
   briefToLaunch,
-  parseBriefPrefills,
+  capPeriodOf,
+  estimatedLine,
+  isLearning,
+  isMeetingCampaignFunnel,
+  parseSignupDraft,
+  parseSignupFunnel,
+  signupCampaignFunnelFrom,
+  signupLaunchPlan,
 } from "../src/lib/v2/signup-campaign";
+import { budgetRangeText, oneCampaignPlan, parseVolumeEstimate, timingText, type VolumeEstimate } from "../src/lib/v2/campaign-volume";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
 const PAGE = read("src/components/v2/get-started/get-started.tsx");
@@ -21,154 +21,131 @@ const LAUNCH = read("src/components/v2/get-started/launch.ts");
 const WALL = read("src/components/v2/get-started/account-card-wall.tsx");
 const KEEL = read("src/components/v2/keel.css");
 
-
-// The END of signup (owner sketch 2026-10-10): ONE campaign, its caps, then the wall.
+// The END of signup (owner 2026-11-22, ONE-CAMPAIGN-VOLUME-1122): ONE campaign aimed at meetings booked, a volume,
+// its served budget range and cap, then the wall.
 const row = (o: Record<string, unknown>) => ({ face: "/f.svg", line: "x", costUsd: null, costPer: null, roi: null, runnable: true, mixed: false, ...o });
-const LEAD = "start_to_lead_found@lead-sourcing+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
-const LEAD_2 = "start_to_lead_found@lead-sourcing~valid-catch-all+lead_found_to_conversation@sales-cold-email-outreach~valid-only+conversation_to_paid_client";
-const CRM = "start_to_lead_found@sourcing-crm-contacts~warm-never-converted+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
-const BRIEFS = { proactive: "Find HR leaders by cold email.", reactive: "Book a meeting with anyone who answers." };
-
-const PAGES = {
-  proactive: {
-    rows: [
-      row({ id: "mixed@x", name: "Mixed", type: "proactive", mixed: true, runnable: false }),
-      row({ id: LEAD, name: "Epiphany", type: "proactive", costUsd: 143.48, costPer: "per paying client", roi: 17.42, status: "estimated" }),
-      row({ id: LEAD_2, name: "Zenith", type: "proactive", costUsd: 2748.69, costPer: "per paying client", roi: 0.91 }),
-    ],
-  },
-  reactive: { rows: [row({ id: "meet@ai", name: "Motivate", type: "reactive", status: "learning" })] },
+const MEET =
+  "start_to_lead_found@lead-sourcing+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_meeting_booked@ai-meeting-booking+meeting_booked_to_meeting_attended+meeting_attended_to_paid_client";
+const COLD = "start_to_lead_found@lead-sourcing+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
+const CRM = "start_to_lead_found@sourcing-crm-contacts~warm-never-converted+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_meeting_booked@ai-meeting-booking";
+const PAGE_ROWS = {
+  rows: [
+    row({ id: COLD, name: "Epiphany", type: "proactive", roi: 17 }),
+    row({ id: CRM, name: "Warm", type: "proactive", roi: 9 }),
+    row({ id: MEET, name: "Motivate", type: "proactive", costUsd: 263, costPer: "per meeting booked", roi: 4, status: "estimated", mixed: true }),
+  ],
 };
-
-describe("Your campaign: features-service's funnels, picked as served", () => {
-  it("takes the first runnable proactive funnel (the producer ranks ROI first) and the reactive one", () => {
-    const f = signupFunnelsFrom(PAGES);
-    expect(f.proactive).toMatchObject({ salesFunnelId: LEAD, name: "Epiphany", roi: 17.42, status: "estimated" });
-    expect(f.reactive).toMatchObject({ salesFunnelId: "meet@ai", name: "Motivate" });
-    expect(signupFunnelsFrom({ proactive: { rows: [] }, reactive: { rows: [] } })).toEqual({ proactive: null, reactive: null });
-    expect(() => signupFunnelsFrom({ proactive: {} })).toThrow();
+const ESTIMATE = (volume: number, period: string, over: Partial<VolumeEstimate> = {}): VolumeEstimate =>
+  parseVolumeEstimate({
+    offerId: "o",
+    brandId: "b",
+    salesFunnelIds: [MEET],
+    target: { step: "meeting_booked", label: "Meetings booked" },
+    basis: "fleet",
+    isExpected: true,
+    unavailableReason: null,
+    perUnit: { lowUsd: 152.3, highUsd: 492.2, medianUsd: 263 },
+    volume: { volume, period },
+    budget: { period, lowUsd: 1523, highUsd: 4922, maxUsd: 4922, unavailableReason: null },
+    timing: { firstUnitsWeek: 1, steadyFromWeek: 10, steadyPerPeriod: volume, weeks: [], unavailableReason: null },
+    ...over,
   });
 
-  it("funds only Lead Sourcing -> cold email -> positive reply, even when a CRM-sourced funnel ranks first (owner 2026-10-20)", () => {
-    const meeting = "start_to_lead_found@sourcing-apollo-cold-filters+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_meeting_booked+meeting_booked_to_meeting_attended+meeting_attended_to_paid_client";
-    const followUp = "start_to_lead_found@lead-sourcing~lead-follow-up-due+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
-    const apollo = "start_to_lead_found@sourcing-apollo-cold-filters+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
-    const rows = [
-      row({ id: apollo, name: "Apollo only", type: "proactive", roi: 2.9 }),
-      row({ id: CRM, name: "Warm Email Replies 2", type: "proactive", roi: 2.64 }),
-      row({ id: followUp, name: "Follow up", type: "proactive", roi: 2.35 }),
-      row({ id: meeting, name: "Meetings", type: "proactive", roi: 2.2 }),
-      row({ id: LEAD, name: "Cold", type: "proactive", roi: 1.92 }),
-    ];
-    const f = signupFunnelsFrom({ proactive: { rows }, reactive: PAGES.reactive });
-    expect(f.proactive?.salesFunnelId).toBe(LEAD);
-    expect(signupFunnelsFrom({ proactive: { rows: rows.slice(0, 4) }, reactive: PAGES.reactive }).proactive).toBeNull();
-    expect(isColdPositiveReplyFunnel(LEAD_2)).toBe(true);
-    expect(isColdPositiveReplyFunnel(CRM)).toBe(false);
-    expect(isColdPositiveReplyFunnel(followUp)).toBe(false);
-    expect(isColdPositiveReplyFunnel(apollo)).toBe(false);
-    expect(isColdPositiveReplyFunnel(LEAD.replace("@lead-sourcing+", "@lead-sourcing~contacted-pure-prospects+"))).toBe(false);
-    // A snapshot that kept a CRM pick is not reopened (the step reads the funnels again).
-    expect(parseSignupFunnels({ proactive: { salesFunnelId: CRM, name: "Warm Email Replies 2" } })).toBeNull();
-    // The proactive page asks the Lead Sourcing funnels, so 25 CRM rows cannot push the cold one off the page.
-    expect(read("src/lib/api.ts")).toContain('page("lead-sourcing", proactivePlay)');
+describe("Your campaign: ONE funnel that runs the whole campaign, picked as served", () => {
+  it("takes the first runnable funnel that books the meeting after the cold email (served mixed or not)", () => {
+    expect(signupCampaignFunnelFrom(PAGE_ROWS)).toMatchObject({ salesFunnelId: MEET, name: "Motivate", status: "estimated" });
+    expect(signupCampaignFunnelFrom({ rows: [] })).toBeNull();
+    expect(signupCampaignFunnelFrom({ rows: [row({ id: MEET, name: "M", type: "proactive", runnable: false })] })).toBeNull();
+    expect(() => signupCampaignFunnelFrom({ nope: [] })).toThrow();
+    // One narrowed page: every word of q must appear, so the meeting funnel is never off a 25-row page.
+    const api = read("src/lib/api.ts");
+    expect(api).toContain('const q = ["start_to_lead_found@lead-sourcing", "conversation_to_meeting_booked@ai-meeting-booking"');
+    expect(api).toContain("&containsChannels=ai-meeting-booking&limit=25&q=${encodeURIComponent(q)}");
+  });
+
+  it("only Lead Sourcing -> cold email -> AI meeting booking; never the client's own contacts nor a re-serve play", () => {
+    expect(isMeetingCampaignFunnel(MEET)).toBe(true);
+    expect(isMeetingCampaignFunnel(MEET.replace("@lead-sourcing+", "@lead-sourcing~valid-catch-all+"))).toBe(true);
+    expect(isMeetingCampaignFunnel(COLD)).toBe(false);
+    expect(isMeetingCampaignFunnel(CRM)).toBe(false);
+    expect(isMeetingCampaignFunnel(MEET.replace("@lead-sourcing+", "@lead-sourcing~contacted-pure-prospects+"))).toBe(false);
+    // A snapshot from the two-card step (no meeting funnel) is not reopened: the step reads again.
+    expect(parseSignupFunnel({ salesFunnelId: COLD, name: "Epiphany" })).toBeNull();
+    expect(parseSignupFunnel(JSON.parse(JSON.stringify(signupCampaignFunnelFrom(PAGE_ROWS))))).toEqual(signupCampaignFunnelFrom(PAGE_ROWS));
   });
 
   it("states the served cost with its unit, and nothing when none is served", () => {
-    // Labelled as served, with THIS offer's return (features-service prices it on the offer's own client value).
     expect(estimatedLine({ costUsd: 143.48, costPer: "per paying client", roi: 4.25, status: "estimated" })).toBe("Estimated: $143 per paying client · 4.3x return");
-    expect(estimatedLine({ costUsd: 42.5, costPer: "per meeting booked", roi: 12.4, status: "measured" })).toBe("Measured: $42.50 per meeting booked · 12x return");
-    expect(estimatedLine({ costUsd: 42.5, costPer: "per meeting booked", roi: null, status: "estimated" })).toBe("Estimated: $42.50 per meeting booked");
     expect(estimatedLine({ costUsd: null, costPer: null, roi: null, status: "estimated" })).toBeNull();
-    // A learning funnel states no figure (the step shows the Learning chip).
     expect(estimatedLine({ costUsd: 9, costPer: "per meeting booked", roi: 3, status: "learning" })).toBeNull();
     expect(isLearning({ status: "learning" })).toBe(true);
   });
 
-  it("every new campaign launches with a brief: the edit wins over the prefill, none at all cannot launch (HUMAN-BRIEF-1121)", () => {
-    const funnels = signupFunnelsFrom(PAGES);
-    const edited = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveBrief: "  My own words.  " }, funnels, BRIEFS);
-    expect("plan" in edited && edited.plan.proactive?.brief).toBe("My own words.");
-    expect("plan" in edited && edited.plan.reactive?.brief).toBe("Book a meeting with anyone who answers.");
-    expect(signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, funnels, { proactive: null, reactive: "x" })).toEqual({ problem: "Say in a few words what your campaign should do." });
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveBrief: "   " }, funnels, { proactive: "a", reactive: null })).toHaveProperty("problem");
-    // An unticked card needs no brief.
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: false }, funnels, { proactive: "a", reactive: null })).toHaveProperty("plan");
-    expect(briefToLaunch(null, "  served ")).toBe("served");
-    expect(briefToLaunch(null, null)).toBeNull();
-    expect(parseBriefPrefills({ proactive: "a", reactive: 3 })).toEqual({ proactive: "a", reactive: null });
-    expect(parseSignupDraft({ proactiveBrief: "kept" })?.proactiveBrief).toBe("kept");
+  it("opens on 10 meetings booked a week, the brief untouched (owner mockup 2026-11-22)", () => {
+    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ volume: "10", volumePeriod: "week", brief: null, monthlyLimit: null });
+    // An older two-card snapshot keeps only the monthly limit.
+    expect(parseSignupDraft({ budget: "35", proactiveOn: false, monthlyLimit: "500" })).toEqual({ ...DEFAULT_SIGNUP_DRAFT, monthlyLimit: "500" });
+    expect(parseSignupDraft({ volume: "4", volumePeriod: "month", brief: "kept" })).toEqual({ volume: "4", volumePeriod: "month", brief: "kept", monthlyLimit: null });
   });
 
-  it("opens with both campaigns ticked: $20 a day, no volume cap, AI reply up to $10 a week (owner 2026-10-13/16)", () => {
-    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ proactiveOn: true, budget: "20", budgetPeriod: "daily", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly", monthlyLimit: null, proactiveBrief: null, reactiveBrief: null });
-  });
-
-  it("launches the max budget in cents with no volume cap, and the meeting funnel when ticked (the default)", () => {
-    const funnels = signupFunnelsFrom(PAGES);
-    const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, funnels, BRIEFS);
+  it("launches ONE campaign: the brief (edit over prefill), the volume, and the cap = the top of the served range", () => {
+    const funnel = signupCampaignFunnelFrom(PAGE_ROWS);
+    const r = signupLaunchPlan({ draft: DEFAULT_SIGNUP_DRAFT, funnel, briefPrefill: "Book HR leaders.", estimate: ESTIMATE(10, "week") });
     expect(r).toEqual({
-      plan: {
-        proactive: { salesFunnelId: LEAD, name: "Epiphany", caps: { maxBudget: { amountCents: 2000, period: "daily" }, maxVolume: null }, brief: "Find HR leaders by cold email." },
-        reactive: { salesFunnelId: "meet@ai", name: "Motivate", caps: { maxBudget: { amountCents: 1000, period: "weekly" }, maxVolume: null }, brief: "Book a meeting with anyone who answers." },
-      },
+      plan: { salesFunnelIds: [MEET], salesFunnelId: MEET, name: "Motivate", target: "meeting_booked", brief: "Book HR leaders.", volume: 10, period: "week", maxBudgetCents: 492200 },
     });
-    const off = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: false }, funnels, BRIEFS);
-    expect("plan" in off && off.plan.reactive).toBeNull();
+    const edited = signupLaunchPlan({ draft: { ...DEFAULT_SIGNUP_DRAFT, brief: "  Mine.  " }, funnel, briefPrefill: "x", estimate: ESTIMATE(10, "week") });
+    expect("plan" in edited && edited.plan.brief).toBe("Mine.");
+    expect(capPeriodOf("day")).toBe("daily");
+    expect(capPeriodOf("week")).toBe("weekly");
+    expect(capPeriodOf("month")).toBe("monthly");
   });
 
-  it("an unticked card is not created; the AI reply alone launches; nothing ticked cannot launch", () => {
-    const funnels = signupFunnelsFrom(PAGES);
-    const alone = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false, budget: "" }, funnels, BRIEFS);
-    expect("plan" in alone && alone.plan.proactive).toBeNull();
-    expect("plan" in alone && alone.plan.reactive?.salesFunnelId).toBe("meet@ai");
-    expect("plan" in alone && launchCount(alone.plan)).toBe(1);
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false, reactiveOn: false }, funnels, BRIEFS)).toEqual({ problem: "Pick at least one campaign." });
-    // The AI reply card not served + the proactive one unticked = nothing to launch.
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false }, { ...funnels, reactive: null }, BRIEFS)).toHaveProperty("problem");
-    expect(parseSignupDraft({ proactiveOn: false })?.proactiveOn).toBe(false);
-    expect(parseSignupDraft({})?.proactiveOn).toBe(true);
+  it("refuses: no brief, a broken volume, an estimate read for another volume, an unpriced one, no funnel", () => {
+    const funnel = signupCampaignFunnelFrom(PAGE_ROWS);
+    const base = { draft: DEFAULT_SIGNUP_DRAFT, funnel, briefPrefill: "b", estimate: ESTIMATE(10, "week") };
+    expect(signupLaunchPlan({ ...base, briefPrefill: null })).toEqual({ problem: "Say in a few words what your campaign should do." });
+    expect(signupLaunchPlan({ ...base, draft: { ...DEFAULT_SIGNUP_DRAFT, volume: "2.5" } })).toHaveProperty("problem");
+    expect(signupLaunchPlan({ ...base, draft: { ...DEFAULT_SIGNUP_DRAFT, volume: "0" } })).toHaveProperty("problem");
+    expect(signupLaunchPlan({ ...base, estimate: ESTIMATE(12, "week") })).toEqual({ problem: "One moment, we are pricing that volume." });
+    expect(signupLaunchPlan({ ...base, estimate: ESTIMATE(10, "month") })).toHaveProperty("problem");
+    expect(signupLaunchPlan({ ...base, estimate: ESTIMATE(10, "week", { budget: null }) })).toHaveProperty("problem");
+    expect(signupLaunchPlan({ ...base, funnel: null })).toHaveProperty("problem");
+    expect(oneCampaignPlan({ salesFunnelIds: [], brief: "b", volume: "1", period: "week", estimate: null })).toHaveProperty("problem");
+    expect(briefToLaunch(null, "  served ")).toBe("served");
   });
 
-  it("a meeting funnel not served for this offer never blocks the launch (its tick is not shown)", () => {
-    const funnels = signupFunnelsFrom(PAGES);
-    const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { ...funnels, reactive: null }, BRIEFS);
-    expect("plan" in r && r.plan.reactive).toBeNull();
+  it("words the served figures without computing one", () => {
+    const e = ESTIMATE(10, "week");
+    expect(budgetRangeText(e)).toBe("$1,523 to $4,922");
+    expect(timingText(e, 10, "week")).toBe("First meetings booked around week 1, then about 10 a week from week 10.");
+    expect(timingText(ESTIMATE(10, "week", { timing: { firstUnitsWeek: 3, steadyFromWeek: null, unavailableReason: null } }), 10, "week")).toBe("First meetings booked around week 3.");
+    expect(timingText(ESTIMATE(10, "week", { timing: null }), 10, "week")).toBeNull();
+    expect(budgetRangeText(ESTIMATE(10, "week", { budget: null }))).toBeNull();
   });
 
-  it("an older snapshot's volume is dropped and an untouched tick reads as ON", () => {
-    const d = parseSignupDraft({ budget: "35", budgetPeriod: "weekly", volume: "500", volumePeriod: "monthly" });
-    expect(d).not.toHaveProperty("volume");
-    expect(d?.reactiveOn).toBe(true);
-    expect(parseSignupDraft({ reactiveOn: false })?.reactiveOn).toBe(false);
-  });
-
-  it("refuses a missing or broken max budget (a funnel without one is held unfunded), a bad meeting budget", () => {
-    const funnels = signupFunnelsFrom(PAGES);
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, budget: "" }, funnels, BRIEFS)).toHaveProperty("problem");
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, budget: "12.5" }, funnels, BRIEFS)).toHaveProperty("problem");
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: true, reactiveBudget: "0" }, funnels, BRIEFS)).toHaveProperty("problem");
-    expect(signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { proactive: null, reactive: null }, BRIEFS)).toHaveProperty("problem");
-  });
-
-  it("reads the funnels priced for THIS offer, signed out on the anonymous session, and keeps them for the wall", () => {
+  it("reads the funnels, the brief and the estimate for THIS offer, signed out on the anonymous session, and keeps them for the wall", () => {
     const api = read("src/lib/api.ts");
     expect(api).toContain("/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}");
-    expect(api).not.toContain('fetch("/api/public/sales-funnels")');
-    expect(PAGE).toContain("saveSnapshot({ funnels: next });");
-    expect(PAGE).toContain("if (s.funnels) setFunnels(s.funnels);");
-    const f = signupFunnelsFrom(PAGES);
-    expect(parseSignupFunnels(JSON.parse(JSON.stringify(f)))).toEqual(f);
-    expect(parseSignupFunnels({ proactive: { name: "x" } })).toBeNull();
+    expect(api).toContain("/offers/${encodeURIComponent(offerId)}/target-volume-estimate?");
+    expect(PAGE).toContain("saveSnapshot({ funnel: next });");
+    expect(PAGE).toContain("saveSnapshot({ briefPrefill: next });");
+    expect(PAGE).toContain("saveSnapshot({ estimate: next });");
+    expect(PAGE).toContain("if (s.estimate) setEstimate(s.estimate);");
+    const allow = read("src/lib/anon-proxy-allowlist.ts");
+    expect(allow).toContain('segments: ["offers", ":seg", "target-volume-estimate"], queryBrand: "brandId"');
   });
-
 });
 
-describe("what we launch: caps first, then ONE funnel campaign (owner 2026-10-10)", () => {
-  it("writes billing's caps before campaign-service starts the funnel campaign", () => {
-    const fn = LAUNCH.slice(LAUNCH.indexOf("async function launchFunnel("), LAUNCH.indexOf("export async function launchFromPreview("));
-    expect(fn.indexOf("await saveSalesFunnelCaps(")).toBeGreaterThan(0);
-    expect(fn.indexOf("await saveSalesFunnelCaps(")).toBeLessThan(fn.indexOf("await startSalesFunnelCampaign("));
+describe("what we launch: ONE campaign, its caps on it (owner 2026-11-22)", () => {
+  it("one create carrying Target, brief, volume and max budget; no funnel-wide caps, no second campaign", () => {
+    const fn = LAUNCH.slice(LAUNCH.indexOf("async function launchCampaign("), LAUNCH.indexOf("export async function launchFromPreview("));
+    expect(fn).toContain("maxVolume: { count: plan.volume, period }");
+    expect(fn).toContain("maxBudget: { amountCents: plan.maxBudgetCents, period }");
+    expect(fn).toContain("target: plan.target");
+    expect(LAUNCH).not.toContain("saveSalesFunnelCaps");
+    expect(LAUNCH).not.toContain("plan.reactive");
+    expect(LAUNCH.match(/startSalesFunnelCampaign\(/g)?.length).toBe(1);
   });
 
   it("starts no pre-funnel campaign and writes no sales path, channel or per-piece budget", () => {
@@ -178,13 +155,6 @@ describe("what we launch: caps first, then ONE funnel campaign (owner 2026-10-10
     }
   });
 
-  it("starts the proactive one first and lands on it; the AI reply alone must start", () => {
-    const fn = LAUNCH.slice(LAUNCH.indexOf("export async function launchFromPreview("));
-    expect(fn.indexOf("input.plan.proactive")).toBeLessThan(fn.indexOf("input.plan.reactive"));
-    expect(fn).toContain("return firstId;");
-    expect(fn).toContain("if (!firstId) return launchFunnel(input.brandId, offerId, reactive, progress);");
-  });
-
   it("the page opens the step from the email step, checks the plan, then opens the wall", () => {
     expect(PAGE).toContain("Set up my campaign");
     const confirm = PAGE.slice(PAGE.indexOf("function confirmCampaign("), PAGE.indexOf("/** Step 6: what one client is worth"));
@@ -192,23 +162,19 @@ describe("what we launch: caps first, then ONE funnel campaign (owner 2026-10-10
     expect(PAGE).toContain("plan={launchPlan}");
   });
 
-  it("speaks no funnel, pipe, leg or sales path words to the visitor", () => {
+  it("speaks no funnel, pipe, leg or sales path words, states a volume (never a daily spend), the outcome as served", () => {
     const stage = PAGE.slice(PAGE.indexOf("function CampaignStage("), PAGE.indexOf("/** Step 6: what one client brings"));
     const words = stage.replace(/\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
-    // Every quoted string and every JSX text run the visitor can read.
     const shown = [...(words.match(/"[^"\n]*"/g) ?? []), ...(words.match(/>[^<>{}\n]+</g) ?? [])].join("\n");
-    expect(shown).toContain("Your campaigns");
     expect(shown).not.toMatch(/funnel|pipe|\bleg\b|sales path/i);
-    expect(stage).toContain('title="Your campaigns"');
-    expect(stage).not.toContain("Max volume");
-    // Two equal ticked cards (owner 2026-10-16): no extra tick, no figures paragraph.
-    expect(stage).not.toContain("Also let our AI book meetings when someone replies");
-    expect(stage).not.toContain("estimatedLine(");
-    expect(stage.match(/<CampaignChoice\b/g)?.length).toBe(2);
-    // The brief says what each campaign does: no catalogue line under the name (owner 2026-11-22: « ça n'a aucun sens »).
-    expect(stage).not.toContain("lineOf");
-    expect(stage).toContain("brief={briefToLaunch(draft.proactiveBrief, briefPrefills.proactive)}");
-    expect(stage).toContain("disabled={nothingTicked}");
+    expect(stage).toContain('title="Your campaign"');
+    for (const label of ["What it does", "How many you want", "Estimated budget", "per month, all campaigns together"]) expect(stage, label).toContain(label);
+    // The outcome is the served label, never a word typed here.
+    expect(stage).toContain("estimate.target.label.toLowerCase()");
+    expect(stage).not.toMatch(/>\s*meetings booked\s*</);
+    expect(stage).not.toContain("Max budget in dollars");
+    expect(stage).not.toContain("<CampaignChoice");
+    expect(stage).toContain("<BriefText text={briefToLaunch(draft.brief, briefPrefill)}");
   });
 });
 
@@ -381,12 +347,12 @@ describe("no new campaign leaves the dashboard without a brief (HUMAN-BRIEF-1121
   const api = readFileSync(resolve(__dirname, "../src/lib/api.ts"), "utf8");
   const start = api.slice(api.indexOf("export async function startSalesFunnelCampaign("), api.indexOf("export async function getCampaignBriefPrefill("));
   it("the one create call requires a brief, refuses an empty one, and sends it", () => {
-    expect(start).toContain("brief: string }");
+    expect(start).toContain("    brief: string;\n");
     expect(start).toContain('throw new Error("[startSalesFunnelCampaign] a new campaign needs a brief")');
-    expect(start).toContain('status: "ongoing", brief }');
+    expect(start).toContain('status: "ongoing",\n      brief,');
   });
-  it("the launch hands each funnel's brief to it, and the brief is read from features-service, never composed", () => {
-    expect(LAUNCH).toContain("startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId, brief: f.brief })");
+  it("the launch hands the campaign's brief to it, and the brief is read from features-service, never composed", () => {
+    expect(LAUNCH).toContain("    brief: plan.brief,\n");
     expect(api).toContain("/offers/${encodeURIComponent(offerId)}/campaign-brief?");
   });
   it("only api.ts POSTs a new funnel campaign", () => {

@@ -111,8 +111,9 @@ describe("the rules the page decides on", () => {
       ...snap,
       campaign: null,
       campaignDone: false,
-      funnels: null,
-      briefPrefills: null,
+      funnel: null,
+      briefPrefill: null,
+      estimate: null,
       signalsDone: false,
       lifetimeRevenueUsd: null,
       answered: false,
@@ -127,8 +128,11 @@ describe("the rules the page decides on", () => {
     // A snapshot from before the offer and audience steps starts over.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 1 }))).toBeNull();
     // The campaign step as typed survives; a period it does not know reads as the default.
-    const campaign = { budget: "35", budgetPeriod: "weekly", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "yearly" };
-    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign, campaignDone: true }))).toMatchObject({ campaign: { ...campaign, reactivePeriod: "weekly" }, campaignDone: true });
+    const campaign = { volume: "6", volumePeriod: "yearly", brief: "Mine.", monthlyLimit: null };
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign, campaignDone: true }))).toMatchObject({ campaign: { ...campaign, volumePeriod: "week" }, campaignDone: true });
+    // A step confirmed on the two-card campaign (daily budgets, no volume) is asked again (owner 2026-11-22).
+    const old = { budget: "35", budgetPeriod: "weekly", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly" };
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign: old, campaignDone: true }))).toMatchObject({ campaign: { volume: "10", volumePeriod: "week" }, campaignDone: false });
     // An older snapshot's sales path fields are dropped.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, salesPath: { steps: [], legs: [] }, campaigns: [] }))).not.toHaveProperty("salesPath");
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, offer: { name: "x" } }))?.offer).toBeNull();
@@ -355,7 +359,7 @@ describe("the surface", () => {
     expect(LAUNCH).toContain('extractBrandFields([brandId], leverFields, { mode: "suggest", urlStrategy: "landing", offerId })');
     expect(LAUNCH).toContain("saveOfferUserFields(brandId, offerId, fields)");
     // The campaign starts after the levers land (its emails are written from them).
-    expect(LAUNCH.indexOf("await levers;\n  const proactive = input.plan.proactive;\n  const firstId = proactive ? await launchFunnel(")).toBeGreaterThan(0);
+    expect(LAUNCH.indexOf("await levers;\n  return launchCampaign(")).toBeGreaterThan(0);
   });
 
   it("carries Explee's countdown and spots strips on the wall (owner-decided, copied for now)", () => {
@@ -460,7 +464,7 @@ describe("the wall", () => {
     expect(wall).not.toContain("medianReturnPerDollar");
     const page = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
     const wallTag = page.slice(page.indexOf("<AccountCardWall"), page.indexOf("onClose={() => setWallOpen(false)}", page.indexOf("<AccountCardWall")));
-    expect(wallTag).toContain("outlook={chosenFunnelOutlook(launchPlan?.proactive ? (funnels?.proactive ?? null) : null)}");
+    expect(wallTag).toContain("outlook={chosenFunnelOutlook(launchPlan ? funnel : null)}");
     // Email code, no password to type.
     expect(wall).not.toContain('type="password"');
     expect(wall).toContain('strategy: "email_code"');

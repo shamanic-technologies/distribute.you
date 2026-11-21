@@ -1,12 +1,13 @@
 /**
  * What `/get-started` does once the account exists and the credit is added: turn the
- * preview the founder just watched into ONE running campaign (owner 2026-10-10: a campaign
- * IS a sales funnel), with the caps they set at the "Your campaign" step, plus the optional
- * meeting-booking one, with no further question.
+ * preview the founder just watched into ONE running campaign aimed at meetings booked
+ * (owner 2026-11-22, ONE-CAMPAIGN-VOLUME-1122): its one brief, the volume they want per
+ * period and its max budget (the top of the served range), with no further question.
  *
- * Order per funnel: billing's caps FIRST (a funnel with no max budget is held unfunded), then
- * campaign-service starts the funnel campaign. Every write is done ONCE: a retry skips what
- * already landed, and campaign-service hands an existing funnel campaign back, never a second.
+ * ONE create: campaign-service writes the campaign's caps at billing on THAT campaign before
+ * its first run, and runs every part of its funnel under it (cold email, the AI booking the
+ * meeting). Never a second campaign, never funnel-wide caps. A retry hands the same campaign
+ * back (and writes its caps), never a second.
  */
 
 import {
@@ -14,13 +15,12 @@ import {
   launchAudiencePortfolio,
   extractBrandFields,
   saveOfferUserFields,
-  saveSalesFunnelCaps,
   startSalesFunnelCampaign,
   type UserFieldKey,
   type UserFieldValue,
 } from "@/lib/api";
 import { LEVER_QUESTIONS } from "@/lib/v2/new-org-wizard";
-import type { SignupLaunchFunnel, SignupLaunchPlan } from "@/lib/v2/signup-campaign";
+import { capPeriodOf, type SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 
 export interface LaunchInput {
   brandId: string;
@@ -30,7 +30,7 @@ export interface LaunchInput {
   offer: { offerId: string; name: string };
   /** Who the customer sells to (the ICP text): every launched audience is derived from it. */
   targetAudience: string;
-  /** The campaign set at the "Your campaign" step: the proactive funnel and, if ticked, the reactive one. */
+  /** The ONE campaign set at the "Your campaign" step. */
   plan: SignupLaunchPlan;
   /** The offer points were answered in the preview and saved on the offer already. */
   answered: boolean;
@@ -39,13 +39,11 @@ export interface LaunchInput {
 export interface LaunchProgress {
   levers: boolean;
   audiences: boolean;
-  /** Per sales funnel id: its caps written, and its funnel campaign started (with its id). */
-  caps: Record<string, boolean>;
-  started: Record<string, boolean>;
-  campaignIds: Record<string, string>;
+  /** The campaign, once started (its id). */
+  campaignId: string | null;
 }
 
-export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, caps: {}, started: {}, campaignIds: {} };
+export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, campaignId: null };
 
 /** A drafted value as clean lines; "unknown" is the read's word for nothing found. */
 function valueLinesOf(v: unknown): string[] {
@@ -80,27 +78,28 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
   if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, offerId, fields);
 }
 
-/** Caps first, then the start: both skipped on a retry once they landed. Returns the funnel campaign id. */
-async function launchFunnel(brandId: string, offerId: string, f: SignupLaunchFunnel, progress: LaunchProgress): Promise<string> {
-  if (!progress.caps[f.salesFunnelId]) {
-    await saveSalesFunnelCaps(brandId, offerId, f.salesFunnelId, f.caps);
-    progress.caps[f.salesFunnelId] = true;
-  }
-  const known = progress.campaignIds[f.salesFunnelId];
-  if (known && progress.started[f.salesFunnelId]) return known;
+/** The ONE create: brief, Target, volume and max budget in the same request. Skipped on a retry once it landed. */
+async function launchCampaign(brandId: string, offerId: string, plan: SignupLaunchPlan, progress: LaunchProgress): Promise<string> {
+  if (progress.campaignId) return progress.campaignId;
+  const period = capPeriodOf(plan.period);
   // A new campaign always carries its brief (owner 2026-11-21: « On ne devrait pas lancer de campaign sans brief »).
-  const campaign = await startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId, brief: f.brief });
-  progress.campaignIds[f.salesFunnelId] = campaign.id;
-  progress.started[f.salesFunnelId] = true;
+  const campaign = await startSalesFunnelCampaign({
+    brandId,
+    offerId,
+    salesFunnelId: plan.salesFunnelId,
+    target: plan.target,
+    brief: plan.brief,
+    maxVolume: { count: plan.volume, period },
+    maxBudget: { amountCents: plan.maxBudgetCents, period },
+  });
+  progress.campaignId = campaign.id;
   return campaign.id;
 }
 
 /**
  * Runs the launch on the offer and audience the visitor picked (no re-pick): the levers, the
- * audience portfolio, then each ticked funnel campaign: the proactive one must start or the launch
- * fails; the meeting-booking one after it is stated in the console on a refusal (it does not undo
- * the outreach that started), and must start when it is the only one. Mutates `progress` as each
- * write lands so a retry resumes. Returns the first campaign's id (where the campaign page opens).
+ * audience portfolio, then the ONE campaign (it must start or the launch fails). Mutates
+ * `progress` as each write lands so a retry resumes. Returns the campaign's id.
  */
 export async function launchFromPreview(input: LaunchInput, progress: LaunchProgress): Promise<string> {
   const { offerId } = input.offer;
@@ -129,21 +128,5 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
 
   // The emails are written from the offer points: they land before anything starts.
   await levers;
-  const proactive = input.plan.proactive;
-  const firstId = proactive ? await launchFunnel(input.brandId, offerId, proactive, progress) : null;
-  const reactive = input.plan.reactive;
-  if (!reactive) {
-    if (!firstId) throw new Error("[get-started] launch: the plan holds no campaign");
-    return firstId;
-  }
-  // Alone, the AI reply campaign is THE launch: it must start or the launch fails.
-  if (!firstId) return launchFunnel(input.brandId, offerId, reactive, progress);
-  if (!progress.started[reactive.salesFunnelId]) {
-    try {
-      await launchFunnel(input.brandId, offerId, reactive, progress);
-    } catch (err) {
-      console.error(`[get-started] launch: meeting booking ${reactive.name} did not start`, { brandId: input.brandId, offerId, err });
-    }
-  }
-  return firstId;
+  return launchCampaign(input.brandId, offerId, input.plan, progress);
 }

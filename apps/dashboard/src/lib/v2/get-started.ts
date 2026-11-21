@@ -19,14 +19,8 @@
  * written only once the questions are answered, since they are written from the answers.
  */
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
-import {
-  parseBriefPrefills,
-  parseSignupDraft,
-  parseSignupFunnels,
-  type SignupBriefPrefills,
-  type SignupCampaignDraft,
-  type SignupFunnel,
-} from "./signup-campaign";
+import { parseSignupDraft, parseSignupFunnel, type SignupCampaignDraft, type SignupFunnel } from "./signup-campaign";
+import { VolumeEstimateSchema, type VolumeEstimate } from "./campaign-volume";
 
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
@@ -439,10 +433,12 @@ export interface GetStartedSnapshot {
   campaign?: SignupCampaignDraft | null;
   /** The "Your campaign" step was confirmed (Launch clicked). */
   campaignDone?: boolean;
-  /** The funnels the step read, priced for this offer; the wall reopens on them after the Google round trip. */
-  funnels?: { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null;
-  /** The briefs features-service prefilled for those funnels, so the wall launches with them after the Google round trip. */
-  briefPrefills?: SignupBriefPrefills | null;
+  /** The campaign's funnel the step read, runnable for this offer; the wall reopens on it after the Google round trip. */
+  funnel?: SignupFunnel | null;
+  /** The brief features-service prefilled for the campaign, so the wall launches with it after the Google round trip. */
+  briefPrefill?: string | null;
+  /** The estimate read for the volume typed (its top is the campaign's cap), kept for the same reason. */
+  estimate?: VolumeEstimate | null;
   /** The signals step was confirmed (the ticked checks turned on as mentions). */
   signalsDone?: boolean;
   /** What one client is worth, whole dollars; null until answered. */
@@ -686,6 +682,11 @@ function parseAudience(v: unknown): GetStartedAudience | null {
 }
 
 /** Read a stored snapshot; anything malformed, or an older version, is null (the flow starts over). */
+function parseSnapshotEstimate(v: unknown): VolumeEstimate | null {
+  const r = VolumeEstimateSchema.safeParse(v);
+  return r.success ? r.data : null;
+}
+
 export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot | null {
   if (!raw) return null;
   let v: unknown;
@@ -714,9 +715,11 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     audience: parseAudience(s.audience),
     email: parseSnapshotEmail(s.email),
     campaign: parseSignupDraft(s.campaign),
-    campaignDone: s.campaignDone === true,
-    funnels: parseSignupFunnels(s.funnels),
-    briefPrefills: parseBriefPrefills(s.briefPrefills),
+    // A step confirmed on the two-card campaign (no volume) is asked again: the one campaign needs its volume.
+    campaignDone: s.campaignDone === true && !!s.campaign && typeof (s.campaign as Record<string, unknown>).volume === "string",
+    funnel: parseSignupFunnel(s.funnel),
+    briefPrefill: typeof s.briefPrefill === "string" && s.briefPrefill.trim() ? s.briefPrefill : null,
+    estimate: parseSnapshotEstimate(s.estimate),
     signalsDone: s.signalsDone === true,
     lifetimeRevenueUsd:
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,

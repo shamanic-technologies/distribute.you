@@ -79,7 +79,7 @@ import { requiredPhoneProblem } from "@/lib/phone-syntax";
 import type { PhoneValue } from "@/components/onboarding/phone-input";
 import { PhoneField, defaultPhoneCountry } from "./phone-field";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
-import { launchCount, type SignupLaunchPlan } from "@/lib/v2/signup-campaign";
+import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
 import { payTopup, settleTopup } from "./pay-topup";
@@ -238,7 +238,7 @@ export function AccountCardWall({
   const [secondFactor, setSecondFactor] = useState(false);
   // The org made for a returning account: the claim waits until the session is on it.
   const freshOrg = useRef<"creating" | string | null>(null);
-  const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, caps: {}, started: {}, campaignIds: {} });
+  const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS });
   // A payment the form reported: pressing the button again re-checks it, never pays twice.
   const [paid, setPaid] = useState<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
   // Stripe's embedded form reports through its provider: what it was opened for waits here.
@@ -764,7 +764,7 @@ export function AccountCardWall({
       const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("We could not finish setting up your account. Try again.");
       await session?.getToken({ skipCache: true });
-      posthog.capture("get_started_launched", { campaigns: launchCount(plan), plan: "prepaid" });
+      posthog.capture("get_started_launched", { campaigns: 1, volume: plan.volume, period: plan.period, plan: "prepaid" });
       await sendLaunchEmail().catch((e) => console.error("[get-started] launch email failed:", e));
       try {
         localStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);

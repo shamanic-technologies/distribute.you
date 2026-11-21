@@ -104,8 +104,8 @@ describe("the page's call sites", () => {
     expect(keys).not.toContain("neverGive");
   });
 
-  it("starts the proactive campaign first, then the meeting one, and skips re-drafting answered levers", () => {
-    expect(LAUNCH.indexOf("launchFunnel(input.brandId, offerId, proactive, progress)")).toBeLessThan(LAUNCH.indexOf("launchFunnel(input.brandId, offerId, reactive, progress)"));
+  it("starts the ONE campaign once the levers land, and skips re-drafting answered levers", () => {
+    expect(LAUNCH.indexOf("await levers;")).toBeLessThan(LAUNCH.indexOf("return launchCampaign(input.brandId, offerId, input.plan, progress);"));
     expect(LAUNCH).toContain("if (input.answered) progress.levers = true;");
   });
 });
