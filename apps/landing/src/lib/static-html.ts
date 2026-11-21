@@ -15,6 +15,7 @@ import { BEFORE_SEND_JS } from "@/lib/posthog-before-send";
 import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { reseedFounderCount } from "@/lib/founder-count";
+import { BRAND_PROOF_DOMAIN, BRAND_PROOF_TOKEN, brandProofHtml, type BrandProof } from "@/lib/brand-proof";
 import { INDEX_LINKS_TOKEN, displayValue, fetchIndexDetail, fetchIndexList, indexLinksHtml, isExpected, type IndexDetail } from "@/lib/fleet-indexes";
 import {
   renderShowcaseSelection,
@@ -525,6 +526,35 @@ async function withIndexLinks(html: string): Promise<string> {
   return html.replaceAll(INDEX_LINKS_TOKEN, indexLinksHtml(await fetchIndexList(INDEX_LINKS_TIMEOUT_MS)));
 }
 
+/**
+ * The "our clients have worked at" wall + "As featured in" row (BRAND-PROOF-LOGOS-1121),
+ * read from brand-service's public brand proof through the gateway. The producer judges,
+ * filters (notoriety >= 80, traffic guard) and ranks; this only draws. A failed read is
+ * logged loud and drops the section: a heading over an empty wall says nothing true.
+ */
+async function fetchBrandProof(): Promise<BrandProof | null> {
+  const apiUrl = resolvePublicApiUrl();
+  const res = await fetch(`${apiUrl}/v1/public/brand-proof?domain=${encodeURIComponent(BRAND_PROOF_DOMAIN)}`, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: 300 },
+    signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    throw new Error(`[landing] /v1/public/brand-proof failed: ${res.status}`);
+  }
+  return (await res.json()) as BrandProof;
+}
+
+async function withBrandProof(html: string): Promise<string> {
+  if (!html.includes(BRAND_PROOF_TOKEN)) return html;
+  try {
+    return html.replaceAll(BRAND_PROOF_TOKEN, brandProofHtml(await fetchBrandProof()));
+  } catch (error) {
+    console.error("[landing] brand proof logos unavailable, dropping the section", error);
+    return html.replaceAll(BRAND_PROOF_TOKEN, "");
+  }
+}
+
 async function withHotLeadStats(html: string) {
   const wantsRow = html.includes(HOT_LEAD_ROW_TOKEN);
   const wantsBand = html.includes(HOT_LEAD_BAND_TOKEN);
@@ -613,7 +643,7 @@ export async function renderedResponse(
  * for a lab prototype that must state the same figures without the analytics head.
  */
 export async function withLiveFigures(html: string): Promise<string> {
-  return withIndexLinks(await withFounderCount(await withShowcaseOutcomes(await withHotLeadStats(html))));
+  return withIndexLinks(await withFounderCount(await withShowcaseOutcomes(await withBrandProof(await withHotLeadStats(html)))));
 }
 
 async function negotiatedResponse(
