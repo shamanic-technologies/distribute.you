@@ -18,6 +18,7 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { DailyLines, Dash, PeriodBars, TD, TDR, TH, THR } from "@/components/v2/monitoring-charts";
 import { SettingModal } from "@/components/v2/setting-modal";
+import { lineDomain } from "@/lib/monitoring/line-domain";
 import type { AvgSeries, Grain, Part, RetentionSeries, RevenueBoard, RevenueSeries, RunRateBoard, SelfServeTable } from "@/lib/monitoring/revenue-series";
 import {
   centsToUsd,
@@ -509,7 +510,7 @@ function RunRateChart({ title, s, grain, color }: { title: string; s: RevenueSer
 const ALL_PERIODS = [{ key: "all", label: "All", days: null }];
 
 /**
- * A run-rate is a STOCK, drawn as ONE line like the admin tab's run-rate card (owner 2026-11-21: a
+ * A run-rate is a STOCK, drawn as ONE line on an axis fitted to its data, like the admin tab's run-rate card (owner 2026-11-21: a
  * move never redesigns an approved chart). Monitoring's shared line chart, each served point read on hover.
  */
 function RunRateLine({ points, color, title }: { points: RevenueSeries["points"]; color: string; title: string }) {
@@ -525,6 +526,7 @@ function RunRateLine({ points, color, title }: { points: RevenueSeries["points"]
       label={title}
       pointLabel={(k) => labels.get(k) ?? k}
       tickLabel={(k) => labels.get(k) ?? k}
+      axis={lineDomain}
     />
   );
 }

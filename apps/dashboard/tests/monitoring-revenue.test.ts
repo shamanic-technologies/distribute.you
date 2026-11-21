@@ -15,6 +15,7 @@ import {
 } from "../src/lib/monitoring/revenue-series";
 import { MONITORING_PAGES, parseMonitoringPath } from "../src/lib/monitoring/monitoring";
 import { SENSITIVE_QUERY_ROOTS } from "../src/lib/persist-cache";
+import { lineDomain } from "../src/lib/monitoring/line-domain";
 
 /**
  * Monitoring > Revenue, moved from the admin Revenue tab (owner 2026-11-21). The series are built on
@@ -196,6 +197,16 @@ describe("wiring", () => {
     expect(chart).toContain("<RunRateLine ");
     expect(chart).not.toContain("<SeriesBars");
     expect(chart).toContain("<DailyLines");
+    expect(chart).toContain("axis={lineDomain}");
+  });
+
+  it("fits the run-rate axis to the data, never below zero", () => {
+    const d = lineDomain([37000, 41000, 47000]);
+    expect(d.min).toBeGreaterThan(0);
+    expect(d.min).toBeLessThanOrEqual(37000);
+    expect(d.max).toBeGreaterThanOrEqual(47000);
+    expect(d.ticks[0]).toBe(d.min);
+    expect(lineDomain([0, 5]).min).toBe(0);
   });
 
   it("computes no money in the browser: the page never reduces a figure", () => {
