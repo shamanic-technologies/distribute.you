@@ -149,7 +149,7 @@ export function useOngoingCatalogue(orgId: string, brandId: string, enabled: boo
   // What actually runs: the parts of sales-funnel campaigns are pipes too.
   const { running: campaigns, settled: campaignsSettled } = useOngoingCampaigns(orgId, brandId);
   // The same reads (and keys) the ongoing campaigns already make: each running offer's paths, ticked or not.
-  const runningOfferIds = useMemo(() => [...new Set(campaigns.map((c) => c.m.offerId))].sort(), [campaigns]);
+  const runningOfferIds = useMemo(() => [...new Set(campaigns.flatMap((c) => (c.m.offerId ? [c.m.offerId] : [])))].sort(), [campaigns]);
   const salesPaths = useOfferSalesPathsOf(brandId, enabled ? runningOfferIds : []);
 
   const pipeIds = useMemo(() => ongoingPipeIds(campaigns.map((c) => c.m.row.campaign)), [campaigns]);

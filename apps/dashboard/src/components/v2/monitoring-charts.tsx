@@ -78,6 +78,7 @@ export function DailyLines<P extends { day: string }>({
   pointLabel = (d) => dayLabel(d),
   tickLabel = (d) => dayLabel(d, { month: "short", day: "numeric" }),
   flag,
+  axis,
 }: {
   points: P[];
   lines: Line<P>[];
@@ -91,6 +92,8 @@ export function DailyLines<P extends { day: string }>({
   tickLabel?: (day: string) => string;
   /** A served bad point (a day a watchdog broke): a rose dot on the first line at that point, nothing elsewhere. */
   flag?: (p: P) => boolean;
+  /** Optional Y ticks fitted to the drawn values (a run-rate line brackets its data); absent = zero-based. */
+  axis?: (values: number[]) => { ticks: number[] };
 }) {
   const [win, setWin] = useState(windows[0].key);
   const [hover, setHover] = useState<number | null>(null);
@@ -113,7 +116,7 @@ export function DailyLines<P extends { day: string }>({
   const vals = shown.flatMap((d) => lines.map((l) => l.get(d)).filter((v): v is number => v != null));
   // A series flat at zero (0 jobs overdue all day) gets a 0..1 axis: a 0..0.01 one printed "0" on every tick.
   const hi = Math.max(...vals, 0);
-  const ticks = niceTicks(Math.min(...vals, 0), hi > 0 ? hi : 1);
+  const ticks = axis ? axis(vals).ticks : niceTicks(Math.min(...vals, 0), hi > 0 ? hi : 1);
   const lo = ticks[0];
   const top = ticks[ticks.length - 1];
   const x = (i: number) => (i / (shown.length - 1)) * W;

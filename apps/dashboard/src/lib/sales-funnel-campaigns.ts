@@ -34,7 +34,9 @@ export const SalesFunnelCampaignSchema = z
   .object({
     id: z.string(),
     brandId: z.string(),
-    offerId: z.string(),
+    // DISTRY-CALL-IS-CAMPAIGN-1121 (owner 2026-11-21): a campaign is Target + start + budget + brief, the offer is
+    // optional. A campaign launched on its TARGET alone may name none: null, never a placeholder offer.
+    offerId: z.string().nullable(),
     salesFunnelId: z.string(),
     salesFunnelName: z.string(),
     status: z.string(),
@@ -96,6 +98,30 @@ export const SalesFunnelCapsSchema = z
   })
   .passthrough();
 export type SalesFunnelCaps = z.infer<typeof SalesFunnelCapsSchema>;
+
+/** The campaign fields its caps are addressed by (billing-service). */
+export type CapsTarget = { id: string; brandId: string; offerId: string | null; salesFunnelId: string };
+
+/**
+ * Where billing serves a campaign's caps (DISTRY-CALL-IS-CAMPAIGN-1121). A campaign naming an offer
+ * keeps its funnel caps under that offer (`/brands/:b/offers/:o/sales-funnels/:sf/caps`); a campaign
+ * naming NO offer reads and writes its own (`/brands/:b/sales-funnels/:sf/campaigns/:id/caps`), same
+ * body and answer. Never `/offers/null/...`.
+ */
+export function campaignCapsPath(c: CapsTarget): string {
+  const b = encodeURIComponent(c.brandId);
+  const sf = encodeURIComponent(c.salesFunnelId);
+  return c.offerId === null
+    ? `/brands/${b}/sales-funnels/${sf}/campaigns/${encodeURIComponent(c.id)}/caps`
+    : `/brands/${b}/offers/${encodeURIComponent(c.offerId)}/sales-funnels/${sf}/caps`;
+}
+
+/** The ONE query key every caps reader of a campaign polls (an offer campaign's key is unchanged). */
+export function campaignCapsKey(c: CapsTarget): readonly unknown[] {
+  return c.offerId === null
+    ? ["salesFunnelCaps", c.brandId, null, c.salesFunnelId, c.id]
+    : ["salesFunnelCaps", c.brandId, c.offerId, c.salesFunnelId];
+}
 
 /** A served cents string ("12500" or "12500.5") as dollars, for display only. Null for a non-number (logged). */
 export function centsToUsd(cents: string | null | undefined): number | null {

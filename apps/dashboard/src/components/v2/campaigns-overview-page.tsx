@@ -7,7 +7,7 @@ import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { StepMark } from "@/components/marks/step-mark";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getSalesFunnelCaps, listFunnelCampaignCopies, listFunnelCampaignRows, listOfferSalesFunnels } from "@/lib/api";
+import { getCampaignCaps, listFunnelCampaignCopies, listFunnelCampaignRows, listOfferSalesFunnels } from "@/lib/api";
 import {
   compareFunnelCampaigns,
   funnelOnLabel,
@@ -24,6 +24,7 @@ import {
   type FunnelCampaignRow,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
+  campaignCapsKey,
 } from "@/lib/sales-funnel-campaigns";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
@@ -227,14 +228,14 @@ function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
   const copyQ = useAuthQuery(["funnelCampaignCopies", brandId, "all"], () => listFunnelCampaignCopies(brandId, null), pollOptions);
   // Each row names its offer once the brand holds several.
   const { offers } = useBrandScope();
-  const offerNameOf = (id: string) => (offers.length > 1 ? (offers.find((o) => o.offerId === id)?.name ?? null) : null);
+  const offerNameOf = (id: string | null) => (id === null ? null : offers.length > 1 ? (offers.find((o) => o.offerId === id)?.name ?? null) : null);
   const rowById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r])), [rowsQ.data]);
   const copyById = useMemo(() => new Map((copyQ.data ?? []).map((r) => [r.id, r])), [copyQ.data]);
   const gate = useOrgQueryGate();
   const capsQs = useQueries({
     queries: (q.data ?? []).map((c) => ({
-      queryKey: ["salesFunnelCaps", c.brandId, c.offerId, c.salesFunnelId],
-      queryFn: () => getSalesFunnelCaps(c.brandId, c.offerId, c.salesFunnelId),
+      queryKey: campaignCapsKey(c),
+      queryFn: () => getCampaignCaps(c),
       enabled: gate,
       ...pollOptions,
     })),

@@ -51,7 +51,7 @@ export function useOngoingCampaigns(orgId: string, brandId: string) {
   const funnelCampaigns = useMemo(() => (funnelQ.data ?? []).filter(isOngoingFunnelCampaign), [funnelQ.data]);
   const legCatalogue = useLegCatalogue();
   // Each running offer's Sales path campaigns (names, order): one read per offer, the offer page's own key.
-  const runningOfferIds = useMemo(() => [...new Set(records.filter((m) => m.running).map((m) => m.offerId))].sort(), [records]);
+  const runningOfferIds = useMemo(() => [...new Set(records.flatMap((m) => (m.running && m.offerId ? [m.offerId] : [])))].sort(), [records]);
   const salesPaths = useOfferSalesPathsOf(brandId, runningOfferIds);
   const running = useMemo<OngoingCampaign[]>(() => {
     const order = new Map<string, number>();

@@ -11,7 +11,7 @@ import {
   listAudiences,
   listFunnelCampaignCopies,
   listFunnelCampaignRows,
-  getSalesFunnelCaps,
+  getCampaignCaps,
   listUniboxLeads,
   type CampaignRevenueGroup,
   listBrandOffers,
@@ -32,6 +32,7 @@ import {
   volumeUnitWords,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
+  campaignCapsKey,
 } from "@/lib/sales-funnel-campaigns";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
@@ -115,11 +116,7 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
   // Every part the campaign runs off its path, one line each under it (CAMPAIGN-PATH-SHOWS-AI-ANSWER-1109).
   const otherParts = row?.otherParts ?? copyRow?.otherParts;
 
-  const caps = useAuthQuery(
-    ["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId],
-    () => getSalesFunnelCaps(campaign.brandId, campaign.offerId, campaign.salesFunnelId),
-    pollOptions,
-  );
+  const caps = useAuthQuery(campaignCapsKey(campaign), () => getCampaignCaps(campaign), pollOptions);
   const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
   const c = caps.data ?? null;
   const [editing, setEditing] = useState(false);
@@ -164,7 +161,13 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
         </nav>
 
         {tab === "targeting" ? (
-          <CampaignAudience orgId={orgId} brandId={campaign.brandId} offerId={campaign.offerId} />
+          campaign.offerId === null ? (
+            <div className="k-card">
+              <EmptyNote>This campaign names no offer, so it has no audience of its own.</EmptyNote>
+            </div>
+          ) : (
+            <CampaignAudience orgId={orgId} brandId={campaign.brandId} offerId={campaign.offerId} />
+          )
         ) : (
           <div className="space-y-6">
             {notFunded && (
@@ -199,14 +202,17 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
 
               <aside className="space-y-3">
                 <ResultsCard row={row} rowsSettled={rowsSettled} revenue={coldEmail ? campaignById.get(coldEmail.campaignId)?.row.revenue ?? null : null} />
-                {coldEmail && (
+                {coldEmail && campaign.offerId !== null && (
                   <TargetCard
                     brandId={campaign.brandId}
                     offerId={campaign.offerId}
                     href={withLayoutNext(v2CampaignHref(orgId, campaign.brandId, campaign.id, "targeting"))}
                   />
                 )}
-                <OfferCard brandId={campaign.brandId} offerId={campaign.offerId} href={v2OfferHref(orgId, campaign.brandId, campaign.offerId)} />
+                {/* A campaign naming no offer (DISTRY-CALL-IS-CAMPAIGN-1121) has no offer card; its limits read like any other. */}
+                {campaign.offerId !== null && (
+                  <OfferCard brandId={campaign.brandId} offerId={campaign.offerId} href={v2OfferHref(orgId, campaign.brandId, campaign.offerId)} />
+                )}
                 <LimitsCard caps={c} settled={capsSettled} failed={caps.isError && !c} onSet={() => setEditing(true)} />
               </aside>
             </div>

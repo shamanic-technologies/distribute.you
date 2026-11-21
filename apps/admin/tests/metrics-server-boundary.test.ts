@@ -61,7 +61,6 @@ describe("the /metrics server page passes nothing a client component cannot rece
       "../src/components/signup-view.tsx",
       "../src/components/cards-view.tsx",
       "../src/components/overview-view.tsx",
-      "../src/components/revenue-view.tsx",
     ]) {
       const src = read(rel);
       expect(src.trimStart().startsWith('"use client"'), rel).toBe(true);

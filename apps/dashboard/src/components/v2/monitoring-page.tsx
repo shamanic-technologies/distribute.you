@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { ApiError, getStaffAbsorbedCosts, getStaffCustomerHealth, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffDistryEngines, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
-import { formatCentsAsUsd } from "@/lib/format-number";
+import { formatCentsAsUsd, formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
@@ -26,6 +26,8 @@ import { PriceRefreshTile } from "@/components/v2/price-refresh";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
+import { CurrencyDollarIcon } from "@phosphor-icons/react/dist/csr/CurrencyDollar";
+import { RevenuePage, useRevenueBoard } from "@/components/v2/monitoring-revenue";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
 import { ChatCircleIcon } from "@phosphor-icons/react/dist/csr/ChatCircle";
 import { BellRingingIcon } from "@phosphor-icons/react/dist/csr/BellRinging";
@@ -150,10 +152,11 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "scripts" | "ai" | "chat" | "alerts";
+type SectionKey = "revenue" | "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "box" | "triggers" | "tools" | "factory" | "scripts" | "ai" | "chat" | "alerts";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
+  revenue: { name: "Revenue", color: "var(--run)", Icon: CurrencyDollarIcon, sub: "What customers paid us, what they consumed, and what the fleet is worth per month" },
   cost: { name: "Cost", color: "var(--data-rose)", Icon: ReceiptIcon, sub: "What our vendors charged us" },
   ledger: { name: "Cost ledger", color: "var(--data-amber)", Icon: ScalesIcon, sub: "Whether every dollar spent lands on the outcome it produced, to the cent" },
   customers: { name: "Customers", color: "var(--data-lime)", Icon: UsersThreeIcon, sub: "How each account is doing, and what it costs us" },
@@ -188,6 +191,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "price/pricing-basis": { section: "price", title: "Pricing basis", question: "Which costs are re-billed on an average, and which at list cost?" },
   margin: { section: "margin", title: "Margin", question: "How much margin have we made since inception?" },
   "margin/pricing-comparison": { section: "margin", title: "Pricing comparison", question: "What would a client have paid, and our margin, under two price lists?" },
+  revenue: { section: "revenue", title: "Revenue", question: "How much do customers pay us, and how fast does it grow?" },
   emails: { section: "emails", title: "Sent per period", question: "How many emails have we sent since inception?" },
   "emails/inbox-providers": { section: "emails", title: "Inbox providers", question: "Do our emails land in the inbox at Google, Microsoft 365 and Outlook.com?" },
   "emails/domains": { section: "emails", title: "Domains", question: "Which domains do we send from, and how do they land?" },
@@ -325,6 +329,8 @@ export function V2Monitoring() {
           ? "Every person Distry answered with no account, read live from chat-service's stored daily series. Days are UTC."
           : meta.section === "chat"
           ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
+          : meta.section === "revenue"
+          ? "Every org pooled, since the first payment. Read live from billing, features-service and PostHog. Periods are UTC."
           : meta.section === "ledger"
           ? "Every org pooled, read live from runs-service's stored daily computation. Days are UTC."
           : meta.section === "emails" && view.page !== "emails"
@@ -346,6 +352,7 @@ export function V2Monitoring() {
         {view.page === "price/pricing-basis" && <PricingBasisView />}
         {view.page === "margin/pricing-comparison" && <PricingComparisonView />}
         {view.page === "margin" && <MarginPage />}
+        {view.page === "revenue" && <RevenuePage />}
         {view.page === "emails" && <EmailsPage />}
         {view.page === "emails/inbox-providers" && <InboxProvidersPage />}
         {view.page === "emails/domains" && (
@@ -536,6 +543,8 @@ function Hub({ base }: { base: string }) {
   const engineName = useEngineNames();
   const enginesOnWf = scripts.data?.engines ? enginesOnWorkflow(scripts.data.engines) : scripts.data ? null : undefined;
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
+  const revenue = useRevenueBoard();
+  const rb = revenue.data;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -682,8 +691,29 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={5}>Money</SectionTitle>
+      <SectionTitle count={6}>Money</SectionTitle>
       <div className="space-y-3">
+
+      <Section section="revenue" count={1}>
+        <Card
+          href={href("revenue")}
+          page="revenue"
+          error={revenue.isError && !revenue.data}
+          cells={[
+            {
+              label: "Net collected",
+              value: rb === undefined ? undefined : rb.cash.ok ? formatUsdAdaptive(rb.cash.data.netUsd) : null,
+              note: "cash, since the first payment",
+              bars: rb?.cash.ok ? rb.cash.data.series.month.points.slice(-7).map((p) => p.value) : undefined,
+            },
+            {
+              label: "Total MRR",
+              value: rb === undefined ? undefined : rb.consumed.ok && rb.consumed.data.runRate?.totalMrrUsd != null ? formatUsdAdaptive(rb.consumed.data.runRate.totalMrrUsd) : null,
+              note: "self-serve plus agency",
+            },
+          ]}
+        />
+      </Section>
 
       <Section section="cost" count={5}>
         <Card

@@ -37,12 +37,17 @@ describe("the Distry skin stays readable", () => {
     expect(skin).toContain("html.distry body > .nav { position: sticky !important; z-index: 50 !important; }");
   });
 
-  it("Distry himself is the chat button, never a disc", () => {
+  it("the chat button is the painted Distry in its gold ring (owner 2026-11-21: « c'était 1000 fois mieux avant »)", () => {
     for (const css of [skin, read("public/landing/distry/home.css")]) {
-      expect(css).not.toMatch(/\.buddy-face \{[^}]*border-radius: 50%/);
+      expect(css).toMatch(/\.buddy-face \{[^}]*border-radius: 50%[^}]*var\(--gold\)/);
     }
-    expect(read("src/lib/distry-skin.ts")).toContain('class="buddy-face"');
-    expect(read("src/lib/distry-skin.ts")).toMatch(/buddy-face"[^>]*><img src="\$\{SKIN_ASSETS\}\/assets\/distry-logo\.svg"/);
+    expect(read("src/lib/distry-skin.ts")).toMatch(/buddy-face"[^>]*><img src="\$\{SKIN_ASSETS\}\/assets\/distry-avatar-160\.webp"/);
+  });
+
+  it("dark cards and the closing box keep night inks on a light page", () => {
+    expect(skin).toContain("html.distry .cta-box :is(h1, h2, h3) { color: var(--cream) !important; }");
+    expect(skin).toMatch(/\.ag-call, \.csa-score, \.csa-own, \.dra-own, \.ln-own, \.ua-legs\) :is\(h1, h2, h3, h4\) \{ color: var\(--cream\); \}/);
+    expect(skin).not.toContain("#6c76a0");
   });
 });
 

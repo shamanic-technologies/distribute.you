@@ -12,11 +12,11 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
   ApiError,
-  getSalesFunnelCaps,
+  getCampaignCaps,
   listFunnelCampaignRows,
   listFunnelCampaignCopies,
   listSalesFunnelCampaigns,
-  saveSalesFunnelCaps,
+  saveCampaignCaps,
   setSalesFunnelCampaignStatus,
 } from "@/lib/api";
 import {
@@ -49,6 +49,8 @@ import {
   type FunnelOtherPart,
   orderPipesByFunnel,
   funnelRowSettled,
+  campaignCapsKey,
+  type CapsTarget,
 } from "@/lib/sales-funnel-campaigns";
 import { paymentHoldKind } from "@/lib/payment-declined";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
@@ -100,12 +102,9 @@ export function useFunnelCampaigns(brandId: string, offerId: string | null, { en
   );
 }
 
-function useFunnelCaps(c: Pick<SalesFunnelCampaign, "brandId" | "offerId" | "salesFunnelId">) {
-  return useAuthQuery(
-    ["salesFunnelCaps", c.brandId, c.offerId, c.salesFunnelId],
-    () => getSalesFunnelCaps(c.brandId, c.offerId, c.salesFunnelId),
-    pollOptions,
-  );
+function useFunnelCaps(c: CapsTarget) {
+  // Offer or not, every campaign reads its caps (DISTRY-CALL-IS-CAMPAIGN-1121, `campaignCapsPath`).
+  return useAuthQuery(campaignCapsKey(c), () => getCampaignCaps(c), pollOptions);
 }
 
 const Chevron = () => (
@@ -261,11 +260,11 @@ export function FunnelCampaignModal({
     mutationFn: async () => {
       if (limitsDirty) {
         try {
-          const data = await saveSalesFunnelCaps(campaign.brandId, campaign.offerId, campaign.salesFunnelId, {
+          const data = await saveCampaignCaps(campaign, {
             maxBudget: usd === null ? null : { amountCents: usd * 100, period: budgetPer },
             maxVolume: people === null ? null : { count: people, period: volumePer },
           });
-          qc.setQueryData(["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId], data);
+          qc.setQueryData(campaignCapsKey(campaign), data);
         } catch (err) {
           console.error("[funnel-campaigns] limits save failed", { campaignId: campaign.id, err });
           throw new Error(err instanceof ApiError && err.status === 400 ? "These limits are not allowed." : "We could not save your limits. Try again in a moment.");
@@ -747,7 +746,13 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
         </div>
       ) : tab === "targeting" ? (
         // A campaign sells one offer, built for one audience (AUDIENCE-PER-OFFER-1107): its text, edited on the offer.
-        <CampaignAudience orgId={orgId} brandId={campaign.brandId} offerId={campaign.offerId} />
+        campaign.offerId === null ? (
+          <div className="k-card">
+            <EmptyNote>This campaign names no offer, so it has no audience of its own.</EmptyNote>
+          </div>
+        ) : (
+          <CampaignAudience orgId={orgId} brandId={campaign.brandId} offerId={campaign.offerId} />
+        )
       ) : (
       <div className="space-y-8">
         {/* P5.1 (owner 2026-10-31): every customer's page opens on what the campaign aims at and the path it runs now. */}
@@ -899,8 +904,8 @@ export function useFunnelCapsWords(brandId: string, salesFunnelCampaignId: strin
   const { campaign, settled } = useFunnelCampaignById(brandId, salesFunnelCampaignId ?? "");
   // The key every caps reader polls (`useFunnelCaps`), so a page showing both costs one request.
   const caps = useAuthQuery(
-    ["salesFunnelCaps", campaign?.brandId, campaign?.offerId, campaign?.salesFunnelId],
-    () => getSalesFunnelCaps(campaign!.brandId, campaign!.offerId, campaign!.salesFunnelId),
+    campaign ? campaignCapsKey(campaign) : ["salesFunnelCaps", "none"],
+    () => getCampaignCaps(campaign!),
     { ...pollOptions, enabled: !!campaign },
   );
   if (!salesFunnelCampaignId) return "—";

@@ -27,6 +27,8 @@ import {
   SalesFunnelCampaignListSchema,
   SalesFunnelCampaignOneSchema,
   SalesFunnelCapsSchema,
+  campaignCapsPath,
+  type CapsTarget,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
   type SalesFunnelCapsInput,
@@ -62,6 +64,9 @@ import {
 import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { AmbiguousThreadSchema, ReplySentSchema, newestThread, replyBodyHtml, type ReplySent } from "./unibox-reply";
 import { z } from "zod";
+import type { RevenueBoard } from "./monitoring/revenue-series";
+import { parseFleetRevenueOutlook, type FleetRevenueOutlook } from "./monitoring/revenue-outlook";
+import { RevenueAccountsSchema, StatedAmountWriteSchema, StatedAmountsSchema, type RevenueAccounts, type StatedAmount, type statedAmountBody } from "./monitoring/stated-amounts";
 import { draftUnitOf, type DraftUnit, UnitReportListSchema, UnitReportResponseSchema, type UnitReportBody, type UnitReportResponse, type UnitReportRow } from "./unit-reports";
 import type { CardFacts } from "./v2/card-risk";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
@@ -2874,6 +2879,22 @@ export async function getSalesFunnelCaps(brandId: string, offerId: string, sales
   return parseStaff("getSalesFunnelCaps", SalesFunnelCapsSchema, raw);
 }
 
+/** A campaign's caps, offer or not (`campaignCapsPath`): what the funnel campaign states and consumed. */
+export async function getCampaignCaps(c: CapsTarget): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(campaignCapsPath(c));
+  return parseStaff("getCampaignCaps", SalesFunnelCapsSchema, raw);
+}
+
+/** States a campaign's two caps at once (null clears one), offer or not. Charges nothing; answers the read's shape. */
+export async function saveCampaignCaps(c: CapsTarget, caps: SalesFunnelCapsInput, token?: string): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(campaignCapsPath(c), {
+    token,
+    method: "PUT",
+    body: { maxBudget: caps.maxBudget, maxVolume: caps.maxVolume },
+  });
+  return parseStaff("saveCampaignCaps", SalesFunnelCapsSchema, raw);
+}
+
 // ─── Copilot skill tree (chat-service `/internal/skills`, owner 2026-10-09) ────────────────
 
 const SkillSummarySchema = z.object({
@@ -3153,6 +3174,55 @@ export async function getStaffEmailSendPrice(): Promise<EmailSendPrice> {
 /** The real cost per credit of each vendor subscription, per day since 2026-01-01 (costs-service, daily). */
 export async function getStaffSubscriptionCosts(): Promise<SubscriptionCosts> {
   return parseStaff("getStaffSubscriptionCosts", SubscriptionCostsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.subscriptionCosts));
+}
+
+// Monitoring > Revenue (moved from the admin Revenue tab, 2026-11-21). The board is built by the staff
+// route `/api/monitoring/revenue` (server keys: billing cash, PostHog first-seen months); the outlook,
+// the accounts list and the stated amounts are staff gateway passthroughs read like every other staff read.
+export const STAFF_REVENUE_PATHS = {
+  board: "/api/monitoring/revenue",
+  outlook: "/billing/revenue/fleet",
+  accounts: "/features/audit/accounts",
+  statedAmounts: "/features/stated-monthly-amounts",
+} as const;
+
+/** The Revenue board, every series built server-side. `fresh` re-reads past the route's one-minute memory (after a write). */
+export async function getStaffRevenueBoard(fresh = false): Promise<RevenueBoard> {
+  const res = await fetch(`${STAFF_REVENUE_PATHS.board}${fresh ? "?fresh=1" : ""}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Revenue board answered ${res.status}`);
+  return (await res.json()) as RevenueBoard;
+}
+
+/** billing-service's fleet revenue read: recurring MRR, one-off prepaid run-out, cash expected by week, per org. */
+export async function getStaffRevenueOutlook(): Promise<FleetRevenueOutlook> {
+  return parseFleetRevenueOutlook(await apiCall<unknown>(STAFF_REVENUE_PATHS.outlook));
+}
+
+/** Every brand of every org with its budgets (features-service accounts audit): who each org is, and what can be stated. */
+export async function getStaffRevenueAccounts(): Promise<RevenueAccounts> {
+  return parseStaff("getStaffRevenueAccounts", RevenueAccountsSchema, await apiCall<unknown>(STAFF_REVENUE_PATHS.accounts));
+}
+
+export async function listStaffStatedAmounts(): Promise<StatedAmount[]> {
+  return parseStaff("listStaffStatedAmounts", StatedAmountsSchema, await apiCall<unknown>(STAFF_REVENUE_PATHS.statedAmounts)).statedAmounts;
+}
+
+/** A new stated amount. A refusal (overlap 409, malformed 400) throws the ApiError whose body carries the producer's reason. */
+export async function createStaffStatedAmount(body: ReturnType<typeof statedAmountBody>): Promise<StatedAmount> {
+  return parseStaff("createStaffStatedAmount", StatedAmountWriteSchema, await apiCall<unknown>(STAFF_REVENUE_PATHS.statedAmounts, { method: "POST", body: { ...body } })).statedAmount;
+}
+
+/** An explicit null bound OPENS that end; an omitted key keeps it (PATCH). */
+export async function updateStaffStatedAmount(id: string, patch: Pick<StatedAmount, "amountUsd" | "startDate" | "endDate" | "note">): Promise<StatedAmount> {
+  return parseStaff(
+    "updateStaffStatedAmount",
+    StatedAmountWriteSchema,
+    await apiCall<unknown>(`${STAFF_REVENUE_PATHS.statedAmounts}/${encodeURIComponent(id)}`, { method: "PATCH", body: { ...patch } }),
+  ).statedAmount;
+}
+
+export async function deleteStaffStatedAmount(id: string): Promise<void> {
+  await apiCall<unknown>(`${STAFF_REVENUE_PATHS.statedAmounts}/${encodeURIComponent(id)}`, { method: "DELETE", responseType: "text" });
 }
 
 /** The cost the platform absorbs (no-campaign spend + card fees), per customer and per month since inception (billing-service). */
