@@ -16,6 +16,14 @@
 /** The page this landing speaks for: the brand whose proof the wall shows. */
 export const BRAND_PROOF_DOMAIN = "distribute.you";
 
+/**
+ * A wall only impresses once it is a wall (owner: « une liste impressionnante »,
+ * « effet wow »): one famous logo under the heading reads thin, so below these
+ * counts the list is not drawn. The producer still decides WHICH logos are famous.
+ */
+export const MIN_WALL_LOGOS = 6;
+export const MIN_PRESS_LOGOS = 3;
+
 /** One token for the whole section: no logo served, no section at all. */
 export const BRAND_PROOF_TOKEN = "<!--brand-proof-->";
 
@@ -75,8 +83,10 @@ function logoImg(c: BrandProofCompany): string {
  */
 export function brandProofHtml(proof: BrandProof | null): string {
   if (!proof) return "";
-  const employers = (proof.employers ?? []).filter(drawable);
-  const press = (proof.press ?? []).filter((p) => drawable(p) && safeUrl(p.article?.url));
+  const drawnEmployers = (proof.employers ?? []).filter(drawable);
+  const drawnPress = (proof.press ?? []).filter((p) => drawable(p) && safeUrl(p.article?.url));
+  const employers = drawnEmployers.length >= MIN_WALL_LOGOS ? drawnEmployers : [];
+  const press = drawnPress.length >= MIN_PRESS_LOGOS ? drawnPress : [];
   if (employers.length === 0 && press.length === 0) return "";
 
   const wall = employers.length
