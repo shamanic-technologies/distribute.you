@@ -222,7 +222,8 @@ export interface BarSeries<M> {
  * Bars per period, stacked by series when there are several, side by side when `grouped`.
  * A negative value (a refund month) is drawn at zero height and still read in the legend.
  * `state` marks a period the producer has not computed (a pale full-height column, never a zero bar)
- * or computed on facts since changed (its bars faded).
+ * or computed on facts since changed (its bars faded). `partial` marks a period still running (this week):
+ * its bar drawn dashed.
  */
 export function PeriodBars<M extends { period: string }>({
   periods,
@@ -234,6 +235,7 @@ export function PeriodBars<M extends { period: string }>({
   initial,
   empty,
   state,
+  partial,
 }: {
   periods: M[];
   series: BarSeries<M>[];
@@ -244,6 +246,7 @@ export function PeriodBars<M extends { period: string }>({
   initial?: M | null;
   empty: string;
   state?: (m: M) => "missing" | "stale" | null;
+  partial?: (m: M) => boolean;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   if (!periods.length) {
@@ -306,7 +309,11 @@ export function PeriodBars<M extends { period: string }>({
                 <span
                   key={s.key}
                   className={grouped ? "block min-w-0 flex-1 rounded-t-[2px]" : "block w-full first:rounded-b-[1px] last:rounded-t-[2px]"}
-                  style={{ height: Math.max(1, (v / max) * H), background: s.color }}
+                  style={
+                    partial?.(m)
+                      ? { height: Math.max(1, (v / max) * H), border: `1.5px dashed ${s.color}`, background: `color-mix(in srgb, ${s.color} 18%, transparent)` }
+                      : { height: Math.max(1, (v / max) * H), background: s.color }
+                  }
                 />
               );
             })}

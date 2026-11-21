@@ -185,6 +185,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffSubscriptionCosts",
   // Monitoring > Revenue (moved from the admin Revenue tab, 2026-11-21): fleet money, staff only, never on disk.
   "staffRevenueBoard",
+  "staffSaasCash",
   "staffRevenueOutlook",
   "staffRevenueAccounts",
   "staffStatedAmounts",
