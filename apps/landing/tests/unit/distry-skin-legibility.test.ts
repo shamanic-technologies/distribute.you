@@ -46,7 +46,7 @@ describe("the Distry skin stays readable", () => {
 
   it("dark cards and the closing box keep night inks on a light page", () => {
     expect(skin).toContain("html.distry .cta-box :is(h1, h2, h3) { color: var(--cream) !important; }");
-    expect(skin).toMatch(/\.ag-call, \.csa-score, \.csa-own, \.dra-own, \.ln-own\) :is\(h1, h2, h3, h4\) \{ color: var\(--cream\); \}/);
+    expect(skin).toMatch(/\.ag-call, \.csa-score, \.csa-own, \.dra-own, \.ln-own, \.ua-legs\) :is\(h1, h2, h3, h4\) \{ color: var\(--cream\); \}/);
     expect(skin).not.toContain("#6c76a0");
   });
 });
