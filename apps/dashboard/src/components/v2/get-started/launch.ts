@@ -88,7 +88,8 @@ async function launchFunnel(brandId: string, offerId: string, f: SignupLaunchFun
   }
   const known = progress.campaignIds[f.salesFunnelId];
   if (known && progress.started[f.salesFunnelId]) return known;
-  const campaign = await startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId });
+  // A new campaign always carries its brief (owner 2026-11-21: « On ne devrait pas lancer de campaign sans brief »).
+  const campaign = await startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId, brief: f.brief });
   progress.campaignIds[f.salesFunnelId] = campaign.id;
   progress.started[f.salesFunnelId] = true;
   return campaign.id;

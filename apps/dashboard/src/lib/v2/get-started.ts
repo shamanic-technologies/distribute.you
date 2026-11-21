@@ -19,7 +19,14 @@
  * written only once the questions are answered, since they are written from the answers.
  */
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
-import { parseSignupDraft, parseSignupFunnels, type SignupCampaignDraft, type SignupFunnel } from "./signup-campaign";
+import {
+  parseBriefPrefills,
+  parseSignupDraft,
+  parseSignupFunnels,
+  type SignupBriefPrefills,
+  type SignupCampaignDraft,
+  type SignupFunnel,
+} from "./signup-campaign";
 
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
@@ -434,6 +441,8 @@ export interface GetStartedSnapshot {
   campaignDone?: boolean;
   /** The funnels the step read, priced for this offer; the wall reopens on them after the Google round trip. */
   funnels?: { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null;
+  /** The briefs features-service prefilled for those funnels, so the wall launches with them after the Google round trip. */
+  briefPrefills?: SignupBriefPrefills | null;
   /** The signals step was confirmed (the ticked checks turned on as mentions). */
   signalsDone?: boolean;
   /** What one client is worth, whole dollars; null until answered. */
@@ -707,6 +716,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     campaign: parseSignupDraft(s.campaign),
     campaignDone: s.campaignDone === true,
     funnels: parseSignupFunnels(s.funnels),
+    briefPrefills: parseBriefPrefills(s.briefPrefills),
     signalsDone: s.signalsDone === true,
     lifetimeRevenueUsd:
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,

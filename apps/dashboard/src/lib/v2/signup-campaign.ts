@@ -176,6 +176,12 @@ export interface SignupCampaignDraft {
   reactivePeriod: SignupPeriod;
   /** "Never spend more than $X per month" as typed; null while untouched (the arm's prefill). */
   monthlyLimit: string | null;
+  /**
+   * Each campaign's brief as edited; null while untouched (features-service's served prefill shows).
+   * A new campaign is never launched without one (owner 2026-11-21, HUMAN-BRIEF-1121).
+   */
+  proactiveBrief: string | null;
+  reactiveBrief: string | null;
 }
 
 /**
@@ -190,6 +196,8 @@ export const DEFAULT_SIGNUP_DRAFT: SignupCampaignDraft = {
   reactiveBudget: "10",
   reactivePeriod: "weekly",
   monthlyLimit: null,
+  proactiveBrief: null,
+  reactiveBrief: null,
 };
 
 export function parseSignupDraft(v: unknown): SignupCampaignDraft | null {
@@ -204,6 +212,8 @@ export function parseSignupDraft(v: unknown): SignupCampaignDraft | null {
     reactiveBudget: str(o.reactiveBudget, DEFAULT_SIGNUP_DRAFT.reactiveBudget),
     reactivePeriod: asSignupPeriod(o.reactivePeriod, DEFAULT_SIGNUP_DRAFT.reactivePeriod),
     monthlyLimit: typeof o.monthlyLimit === "string" ? o.monthlyLimit : null,
+    proactiveBrief: typeof o.proactiveBrief === "string" ? o.proactiveBrief : null,
+    reactiveBrief: typeof o.reactiveBrief === "string" ? o.reactiveBrief : null,
   };
 }
 
@@ -213,11 +223,32 @@ export interface FunnelCapsWrite {
   maxVolume: { count: number; period: SignupPeriod } | null;
 }
 
-/** One funnel campaign to launch: its id, its name (for messages) and its caps. */
+/** One funnel campaign to launch: its id, its name (for messages), its caps and its brief. */
 export interface SignupLaunchFunnel {
   salesFunnelId: string;
   name: string;
   caps: FunnelCapsWrite;
+  /** The campaign's brief, sent on create: never empty (campaign-service refuses a new campaign without one). */
+  brief: string;
+}
+
+/** The prefilled briefs features-service served for the two cards, null while not read. */
+export interface SignupBriefPrefills {
+  proactive: string | null;
+  reactive: string | null;
+}
+
+export function parseBriefPrefills(v: unknown): SignupBriefPrefills | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const one = (x: unknown) => (typeof x === "string" && x.trim() ? x : null);
+  return { proactive: one(o.proactive), reactive: one(o.reactive) };
+}
+
+/** The brief a card launches with: the edited text, else the served prefill; null = none yet. */
+export function briefToLaunch(edited: string | null, prefill: string | null): string | null {
+  const t = (edited ?? prefill ?? "").trim();
+  return t ? t : null;
 }
 
 /** What Launch creates: each ticked campaign, at least one of the two. */
@@ -250,26 +281,33 @@ function wholeUsd(raw: string): number | null {
 export function signupLaunchPlan(
   draft: SignupCampaignDraft,
   funnels: { proactive: SignupFunnel | null; reactive: SignupFunnel | null },
+  prefills: SignupBriefPrefills,
 ): { plan: SignupLaunchPlan } | { problem: string } {
   if (!funnels.proactive) return { problem: "We could not load your campaign. Try again." };
   let proactive: SignupLaunchFunnel | null = null;
   if (draft.proactiveOn) {
     const budget = wholeUsd(draft.budget);
     if (budget == null) return { problem: "Set a budget in whole dollars, $1 or more." };
+    const brief = briefToLaunch(draft.proactiveBrief, prefills.proactive);
+    if (!brief) return { problem: "Say in a few words what your campaign should do." };
     proactive = {
       salesFunnelId: funnels.proactive.salesFunnelId,
       name: funnels.proactive.name,
       caps: { maxBudget: { amountCents: budget * 100, period: draft.budgetPeriod }, maxVolume: null },
+      brief,
     };
   }
   let reactive: SignupLaunchFunnel | null = null;
   if (draft.reactiveOn && funnels.reactive) {
     const upTo = wholeUsd(draft.reactiveBudget);
     if (upTo == null) return { problem: "Set a budget in whole dollars, $1 or more." };
+    const brief = briefToLaunch(draft.reactiveBrief, prefills.reactive);
+    if (!brief) return { problem: "Say in a few words what your campaign should do." };
     reactive = {
       salesFunnelId: funnels.reactive.salesFunnelId,
       name: funnels.reactive.name,
       caps: { maxBudget: { amountCents: upTo * 100, period: draft.reactivePeriod }, maxVolume: null },
+      brief,
     };
   }
   if (!proactive && !reactive) return { problem: "Pick at least one campaign." };

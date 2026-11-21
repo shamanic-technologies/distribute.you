@@ -112,6 +112,7 @@ describe("the rules the page decides on", () => {
       campaign: null,
       campaignDone: false,
       funnels: null,
+      briefPrefills: null,
       signalsDone: false,
       lifetimeRevenueUsd: null,
       answered: false,
