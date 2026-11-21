@@ -150,7 +150,7 @@ describe("what the dashboard writes", () => {
   it("the get-started launch writes no leg key at all: it starts a sales funnel by its id (owner 2026-10-10)", () => {
     const src = readFileSync(join(__dirname, "..", "src", "components", "v2", "get-started", "launch.ts"), "utf8");
     expect(src).not.toContain("legKey");
-    expect(src).toContain("startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId })");
+    expect(src).toContain("startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId, brief: f.brief })");
   });
 
 });

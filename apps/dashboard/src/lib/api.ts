@@ -8645,17 +8645,38 @@ export async function saveSalesFunnelCaps(
  * caps are written FIRST (`saveSalesFunnelCaps`).
  */
 export async function startSalesFunnelCampaign(
-  input: { brandId: string; offerId: string; salesFunnelId: string },
+  /** `brief` is required: a new campaign is never created without one (HUMAN-BRIEF-1121); a hand-back keeps its own. */
+  input: { brandId: string; offerId: string; salesFunnelId: string; brief: string },
   token?: string,
 ): Promise<SalesFunnelCampaign> {
+  const brief = input.brief.trim();
+  if (!brief) throw new Error("[startSalesFunnelCampaign] a new campaign needs a brief");
   const raw = await apiCall<unknown>(`/sales-funnel-campaigns`, {
     token,
     method: "POST",
-    body: { brandId: input.brandId, offerId: input.offerId, salesFunnelId: input.salesFunnelId, status: "ongoing" },
+    body: { brandId: input.brandId, offerId: input.offerId, salesFunnelId: input.salesFunnelId, status: "ongoing", brief },
     headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": input.brandId },
   });
   return parseStaff("startSalesFunnelCampaign", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
 }
+
+/**
+ * The brief features-service prefills for a campaign ABOUT to be launched (HUMAN-BRIEF-1121, owner 2026-11-21:
+ * « un résumé de sa campaign en langage naturel, court concis, clair »): one short plain sentence per funnel,
+ * shown editable on the signup's campaign step and sent as the new campaign's `brief`. Never composed here.
+ * Signed out it rides the anonymous session like `getSignupFunnelPages`.
+ */
+export async function getCampaignBriefPrefill(brandId: string, offerId: string, salesFunnelId: string): Promise<string> {
+  const qs = new URLSearchParams({ brandId, offerId, salesFunnelId });
+  const raw = await apiCall<unknown>(`/features/campaign-brief-prefill?${qs.toString()}`, { headers: { "x-brand-id": brandId } });
+  const parsed = CampaignBriefPrefillSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getCampaignBriefPrefill] shape mismatch", { issues: parsed.error.issues, brandId, offerId, salesFunnelId });
+    throw new Error("[getCampaignBriefPrefill] invalid brief prefill body");
+  }
+  return parsed.data.brief;
+}
+const CampaignBriefPrefillSchema = z.object({ brief: z.string().trim().min(1) }).passthrough();
 
 /**
  * The funnels the signup's campaign step proposes, PRICED FOR THIS OFFER (features-service through

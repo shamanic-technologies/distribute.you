@@ -44,6 +44,7 @@ import {
   getAudienceCompanies,
   getPublicCatalogueSignedOut,
   getQualificationPreview,
+  getCampaignBriefPrefill,
   getSignupFunnelPages,
   listAudiences,
   listOfferQualificationCriteria,
@@ -80,8 +81,10 @@ import {
   SIGNUP_PERIODS,
   SIGNUP_PROACTIVE_CHANNEL,
   SIGNUP_REACTIVE_CHANNEL,
+  briefToLaunch,
   signupFunnelsFrom,
   signupLaunchPlan,
+  type SignupBriefPrefills,
   type SignupCampaignDraft,
   type SignupFunnel,
   type SignupPeriod,
@@ -394,6 +397,10 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // one on cold email, the meeting-booking one), and the caps as typed.
   const [funnels, setFunnels] = useState<{ proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null>(null);
   const [funnelsState, setFunnelsState] = useState<"idle" | "loading" | "failed">("idle");
+  // Each card's brief, prefilled by features-service in plain words before the campaign exists
+  // (owner 2026-11-21, HUMAN-BRIEF-1121): what the launch sends unless the visitor edits it.
+  const [briefPrefills, setBriefPrefills] = useState<SignupBriefPrefills>({ proactive: null, reactive: null });
+  const [briefsState, setBriefsState] = useState<"idle" | "loading" | "failed">("idle");
   // "Set up my campaign" pressed while a step before it is still running (the 100
   // companies): the stage would walk straight back to that step, so the press is held
   // here, the button says so, and the campaign opens the moment the step settles.
@@ -527,6 +534,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         setFunnels(next);
         saveSnapshot({ funnels: next });
         setFunnelsState("idle");
+        void loadBriefPrefills(id, offerId, next);
         return;
       } catch (e) {
         console.error(`[get-started] funnels read failed (attempt ${i + 1}):`, e);
@@ -534,6 +542,26 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       }
     }
     setFunnelsState("failed");
+  }
+  /** The prefilled brief of each card shown, read once its funnel is known; asked again on a failure, then stated. */
+  async function loadBriefPrefills(id: string, offerId: string, picked: { proactive: SignupFunnel | null; reactive: SignupFunnel | null }) {
+    setBriefsState("loading");
+    for (let i = 0; i < 3; i += 1) {
+      try {
+        const [proactive, reactive] = await Promise.all(
+          [picked.proactive, picked.reactive].map((f) => (f ? getCampaignBriefPrefill(id, offerId, f.salesFunnelId) : Promise.resolve(null))),
+        );
+        const next = { proactive, reactive };
+        setBriefPrefills(next);
+        saveSnapshot({ briefPrefills: next });
+        setBriefsState("idle");
+        return;
+      } catch (e) {
+        console.error(`[get-started] brief prefill read failed (attempt ${i + 1}):`, e);
+        if (i < 2) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+      }
+    }
+    setBriefsState("failed");
   }
   // Signed out the read rides the anonymous session; signed in (back from Google, before the claim)
   // the offer is not the session's yet: the snapshot's picks stand in.
@@ -577,6 +605,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     if (s.email) setRestoredEmail(s.email);
     if (s.campaign) setCampaignDraft(s.campaign);
     if (s.funnels) setFunnels(s.funnels);
+    if (s.briefPrefills) setBriefPrefills(s.briefPrefills);
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
     if (s.signalsDone) signalsSaved.current = Promise.resolve();
@@ -968,7 +997,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
 
   /** Launch: the caps are checked here, written at the launch (after the card), then the wall. */
   function confirmCampaign() {
-    const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null });
+    const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null }, briefPrefills);
     if ("problem" in r) {
       setAnswerError(r.problem);
       return;
@@ -1787,9 +1816,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     };
   }, [org, started, brandId, walkOffer]);
   const launchPlan = useMemo(() => {
-    const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null });
+    const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null }, briefPrefills);
     return "plan" in r ? r.plan : null;
-  }, [campaignDraft, funnels]);
+  }, [campaignDraft, funnels, briefPrefills]);
   const canLaunch = readyForCampaign && steps.campaign === "done" && !!launchPlan;
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
@@ -1940,6 +1969,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           lineOf={(slug) => channelLines.get(slug) ?? null}
           draft={campaignDraft}
           onChange={changeCampaign}
+          briefPrefills={briefPrefills}
+          briefsLoading={briefsState === "loading"}
           limitPrefillUsd={org ? null : DEFAULT_MONTHLY_LIMIT_USD}
           error={steps.campaign === "choose" ? answerError : null}
           onRetry={() => brandId && offer && void loadFunnels(brandId, offer.offerId)}
@@ -2996,11 +3027,18 @@ function CampaignChoice({
   label,
   disabled,
   delay,
+  brief,
+  briefLoading,
+  onBrief,
 }: {
   on: boolean;
   onToggle: () => void;
   name: string;
   line: string | null;
+  /** The campaign's brief as it launches (edited, else the served prefill); null while none. */
+  brief: string | null;
+  briefLoading: boolean;
+  onBrief: (text: string) => void;
   prefix: string;
   value: string;
   period: SignupPeriod;
@@ -3024,6 +3062,7 @@ function CampaignChoice({
           <span aria-hidden className="h-6 w-6 shrink-0 rounded-full border border-[var(--line-strong)]" />
         )}
       </button>
+      {on && <BriefText text={brief} loading={briefLoading} disabled={disabled} onSave={onBrief} />}
       {on && (
         <span className="flex items-baseline gap-1.5 whitespace-nowrap">
           <span className="k-fg2 text-[16px]">{prefix}</span>
@@ -3058,6 +3097,83 @@ function CampaignChoice({
 }
 
 /**
+ * A card's brief (owner 2026-11-21, HUMAN-BRIEF-1121: « Prefill un résumé de sa campaign en langage
+ * naturel, court concis, clair. Qu'il peut cliquer pour éditer »): it reads as text, a click opens it
+ * in its own box, blur or Enter keeps it, Shift+Enter is a new line, Esc drops. Kept in the draft and
+ * sent as the campaign's brief at the launch; nothing is saved to a server here.
+ */
+function BriefText({
+  text,
+  loading,
+  disabled,
+  onSave,
+}: {
+  text: string | null;
+  loading: boolean;
+  disabled: boolean;
+  onSave: (text: string) => void;
+}) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const dropped = useRef(false);
+  const box = "w-full rounded-[8px] px-2 py-1.5 text-left text-[14px] leading-5 whitespace-pre-wrap";
+  if (editing !== null) {
+    return (
+      <textarea
+        autoFocus
+        aria-label="Campaign brief"
+        value={editing}
+        rows={3}
+        maxLength={2000}
+        onChange={(e) => setEditing(e.target.value)}
+        onBlur={() => {
+          const next = editing.trim();
+          setEditing(null);
+          if (dropped.current) {
+            dropped.current = false;
+            return;
+          }
+          if (next && next !== text) onSave(next);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            dropped.current = true;
+            e.currentTarget.blur();
+          }
+        }}
+        className={`k-input ${box} resize-y`}
+        // keel.css is unlayered: the box's padding, height and font ride inline so the field opens in the text's own box.
+        style={{ font: "inherit", fontSize: 14, lineHeight: "20px", padding: "6px 8px", height: "auto" }}
+      />
+    );
+  }
+  if (!text && loading) return <Shimmer className="h-10 w-full" />;
+  return (
+    <div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label="Edit the campaign brief"
+      aria-disabled={disabled}
+      onClick={() => !disabled && setEditing(text ?? "")}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          setEditing(text ?? "");
+        }
+      }}
+      className={`${box} ${disabled ? "" : "k-hover cursor-text"}`}
+    >
+      {/* No prefill came back: the visitor writes it (a new campaign never launches without one). */}
+      {text ? <span className="k-fg">{text}</span> : <span className="k-fg4">Say in a few words what this campaign should do.</span>}
+    </div>
+  );
+}
+
+/**
  * The END of signup (owner 2026-10-16): two equal cards, both ticked, the best proactive campaign
  * features-service runs for cold email and the reactive one that answers replies, each with its own
  * prefilled budget (no volume: owner 2026-10-13). Nothing else to read. Launch opens the wall.
@@ -3070,6 +3186,8 @@ export function CampaignStage({
   lineOf,
   draft,
   onChange,
+  briefPrefills,
+  briefsLoading,
   limitPrefillUsd = null,
   error,
   onRetry,
@@ -3083,6 +3201,9 @@ export function CampaignStage({
   lineOf: (channelSlug: string) => string | null;
   draft: SignupCampaignDraft;
   onChange: (next: SignupCampaignDraft) => void;
+  /** Each card's brief as features-service prefilled it; the draft's edit wins. */
+  briefPrefills: SignupBriefPrefills;
+  briefsLoading: boolean;
   /** The "Never spend more than" line's prefill; null = no line (the signed-in walk). */
   limitPrefillUsd?: number | null;
   error: string | null;
@@ -3134,6 +3255,9 @@ export function CampaignStage({
               label="Max budget in dollars"
               disabled={done}
               delay={0}
+              brief={briefToLaunch(draft.proactiveBrief, briefPrefills.proactive)}
+              briefLoading={briefsLoading}
+              onBrief={(t) => set({ proactiveBrief: t })}
             />
             {meet && (
               <CampaignChoice
@@ -3149,6 +3273,9 @@ export function CampaignStage({
                 label="AI reply budget in dollars"
                 disabled={done}
                 delay={1}
+                brief={briefToLaunch(draft.reactiveBrief, briefPrefills.reactive)}
+                briefLoading={briefsLoading}
+                onBrief={(t) => set({ reactiveBrief: t })}
               />
             )}
           </div>

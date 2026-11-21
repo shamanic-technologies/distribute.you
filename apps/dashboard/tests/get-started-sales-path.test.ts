@@ -11,6 +11,8 @@ import {
   signupFunnelsFrom,
   signupLaunchPlan,
   launchCount,
+  briefToLaunch,
+  parseBriefPrefills,
 } from "../src/lib/v2/signup-campaign";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
@@ -25,6 +27,8 @@ const row = (o: Record<string, unknown>) => ({ face: "/f.svg", line: "x", costUs
 const LEAD = "start_to_lead_found@lead-sourcing+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
 const LEAD_2 = "start_to_lead_found@lead-sourcing~valid-catch-all+lead_found_to_conversation@sales-cold-email-outreach~valid-only+conversation_to_paid_client";
 const CRM = "start_to_lead_found@sourcing-crm-contacts~warm-never-converted+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
+const BRIEFS = { proactive: "Find HR leaders by cold email.", reactive: "Book a meeting with anyone who answers." };
+
 const PAGES = {
   proactive: {
     rows: [
@@ -81,39 +85,54 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
     expect(isLearning({ status: "learning" })).toBe(true);
   });
 
+  it("every new campaign launches with a brief: the edit wins over the prefill, none at all cannot launch (HUMAN-BRIEF-1121)", () => {
+    const funnels = signupFunnelsFrom(PAGES);
+    const edited = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveBrief: "  My own words.  " }, funnels, BRIEFS);
+    expect("plan" in edited && edited.plan.proactive?.brief).toBe("My own words.");
+    expect("plan" in edited && edited.plan.reactive?.brief).toBe("Book a meeting with anyone who answers.");
+    expect(signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, funnels, { proactive: null, reactive: "x" })).toEqual({ problem: "Say in a few words what your campaign should do." });
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveBrief: "   " }, funnels, { proactive: "a", reactive: null })).toHaveProperty("problem");
+    // An unticked card needs no brief.
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: false }, funnels, { proactive: "a", reactive: null })).toHaveProperty("plan");
+    expect(briefToLaunch(null, "  served ")).toBe("served");
+    expect(briefToLaunch(null, null)).toBeNull();
+    expect(parseBriefPrefills({ proactive: "a", reactive: 3 })).toEqual({ proactive: "a", reactive: null });
+    expect(parseSignupDraft({ proactiveBrief: "kept" })?.proactiveBrief).toBe("kept");
+  });
+
   it("opens with both campaigns ticked: $20 a day, no volume cap, AI reply up to $10 a week (owner 2026-10-13/16)", () => {
-    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ proactiveOn: true, budget: "20", budgetPeriod: "daily", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly", monthlyLimit: null });
+    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ proactiveOn: true, budget: "20", budgetPeriod: "daily", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly", monthlyLimit: null, proactiveBrief: null, reactiveBrief: null });
   });
 
   it("launches the max budget in cents with no volume cap, and the meeting funnel when ticked (the default)", () => {
     const funnels = signupFunnelsFrom(PAGES);
-    const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, funnels);
+    const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, funnels, BRIEFS);
     expect(r).toEqual({
       plan: {
-        proactive: { salesFunnelId: LEAD, name: "Epiphany", caps: { maxBudget: { amountCents: 2000, period: "daily" }, maxVolume: null } },
-        reactive: { salesFunnelId: "meet@ai", name: "Motivate", caps: { maxBudget: { amountCents: 1000, period: "weekly" }, maxVolume: null } },
+        proactive: { salesFunnelId: LEAD, name: "Epiphany", caps: { maxBudget: { amountCents: 2000, period: "daily" }, maxVolume: null }, brief: "Find HR leaders by cold email." },
+        reactive: { salesFunnelId: "meet@ai", name: "Motivate", caps: { maxBudget: { amountCents: 1000, period: "weekly" }, maxVolume: null }, brief: "Book a meeting with anyone who answers." },
       },
     });
-    const off = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: false }, funnels);
+    const off = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: false }, funnels, BRIEFS);
     expect("plan" in off && off.plan.reactive).toBeNull();
   });
 
   it("an unticked card is not created; the AI reply alone launches; nothing ticked cannot launch", () => {
     const funnels = signupFunnelsFrom(PAGES);
-    const alone = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false, budget: "" }, funnels);
+    const alone = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false, budget: "" }, funnels, BRIEFS);
     expect("plan" in alone && alone.plan.proactive).toBeNull();
     expect("plan" in alone && alone.plan.reactive?.salesFunnelId).toBe("meet@ai");
     expect("plan" in alone && launchCount(alone.plan)).toBe(1);
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false, reactiveOn: false }, funnels)).toEqual({ problem: "Pick at least one campaign." });
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false, reactiveOn: false }, funnels, BRIEFS)).toEqual({ problem: "Pick at least one campaign." });
     // The AI reply card not served + the proactive one unticked = nothing to launch.
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false }, { ...funnels, reactive: null })).toHaveProperty("problem");
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false }, { ...funnels, reactive: null }, BRIEFS)).toHaveProperty("problem");
     expect(parseSignupDraft({ proactiveOn: false })?.proactiveOn).toBe(false);
     expect(parseSignupDraft({})?.proactiveOn).toBe(true);
   });
 
   it("a meeting funnel not served for this offer never blocks the launch (its tick is not shown)", () => {
     const funnels = signupFunnelsFrom(PAGES);
-    const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { ...funnels, reactive: null });
+    const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { ...funnels, reactive: null }, BRIEFS);
     expect("plan" in r && r.plan.reactive).toBeNull();
   });
 
@@ -126,10 +145,10 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
 
   it("refuses a missing or broken max budget (a funnel without one is held unfunded), a bad meeting budget", () => {
     const funnels = signupFunnelsFrom(PAGES);
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, budget: "" }, funnels)).toHaveProperty("problem");
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, budget: "12.5" }, funnels)).toHaveProperty("problem");
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: true, reactiveBudget: "0" }, funnels)).toHaveProperty("problem");
-    expect(signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { proactive: null, reactive: null })).toHaveProperty("problem");
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, budget: "" }, funnels, BRIEFS)).toHaveProperty("problem");
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, budget: "12.5" }, funnels, BRIEFS)).toHaveProperty("problem");
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: true, reactiveBudget: "0" }, funnels, BRIEFS)).toHaveProperty("problem");
+    expect(signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { proactive: null, reactive: null }, BRIEFS)).toHaveProperty("problem");
   });
 
   it("reads the funnels priced for THIS offer, signed out on the anonymous session, and keeps them for the wall", () => {
