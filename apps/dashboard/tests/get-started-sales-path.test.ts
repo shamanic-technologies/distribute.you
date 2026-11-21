@@ -375,3 +375,22 @@ describe("step descriptions and the instant audience size", () => {
     expect(PAGE).toContain("for (const a of audienceProposals) if (!(a.name in counts)) failed[a.name] = true;");
   });
 });
+
+describe("no new campaign leaves the dashboard without a brief (HUMAN-BRIEF-1121, owner 2026-11-21)", () => {
+  const api = readFileSync(resolve(__dirname, "../src/lib/api.ts"), "utf8");
+  const start = api.slice(api.indexOf("export async function startSalesFunnelCampaign("), api.indexOf("export async function getCampaignBriefPrefill("));
+  it("the one create call requires a brief, refuses an empty one, and sends it", () => {
+    expect(start).toContain("brief: string }");
+    expect(start).toContain('throw new Error("[startSalesFunnelCampaign] a new campaign needs a brief")');
+    expect(start).toContain('status: "ongoing", brief }');
+  });
+  it("the launch hands each funnel's brief to it, and the brief is read from features-service, never composed", () => {
+    expect(LAUNCH).toContain("startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId, brief: f.brief })");
+    expect(api).toContain("/offers/${encodeURIComponent(offerId)}/campaign-brief?");
+  });
+  it("only api.ts POSTs a new funnel campaign", () => {
+    const { execSync } = require("child_process") as typeof import("child_process");
+    const hits = execSync(`grep -rl "sales-funnel-campaigns\\\`, {" ${resolve(__dirname, "../src")} || true`, { encoding: "utf8" }).trim().split("\n").filter(Boolean);
+    expect(hits.map((h) => h.replace(/.*\/src\//, "src/"))).toEqual(["src/lib/api.ts"]);
+  });
+});

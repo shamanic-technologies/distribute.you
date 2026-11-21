@@ -8667,8 +8667,12 @@ export async function startSalesFunnelCampaign(
  * Signed out it rides the anonymous session like `getSignupFunnelPages`.
  */
 export async function getCampaignBriefPrefill(brandId: string, offerId: string, salesFunnelId: string): Promise<string> {
-  const qs = new URLSearchParams({ brandId, offerId, salesFunnelId });
-  const raw = await apiCall<unknown>(`/features/campaign-brief-prefill?${qs.toString()}`, { headers: { "x-brand-id": brandId } });
+  // features-service `GET /offers/:offerId/campaign-brief` through the gateway (same inputs answer the same stored text;
+  // the first call writes it, ~2-6 s). The brand rides the QUERY (anonymous allowlist binds it to the session).
+  const qs = new URLSearchParams({ brandId, salesFunnelId });
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/campaign-brief?${qs.toString()}`, {
+    headers: { "x-brand-id": brandId },
+  });
   const parsed = CampaignBriefPrefillSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[getCampaignBriefPrefill] shape mismatch", { issues: parsed.error.issues, brandId, offerId, salesFunnelId });

@@ -152,7 +152,10 @@ describe("the file itself", () => {
       // The reviewed email CHECK of one row of the 100 companies (step 5 of
       // /get-started): it reveals and verifies an address on this anonymous org and
       // returns only its masked domain. Nothing is sent.
-      .replaceAll('"email-check"', "");
+      .replaceAll('"email-check"', "")
+      // The reviewed brief PREFILL of the last step (HUMAN-BRIEF-1121): a read of a short text
+      // written for the cards shown. It creates, starts and sends nothing.
+      .replaceAll('"campaign-brief"', "");
     for (const banned of ["campaign", "lead", "instantly", "billing", "credit", "stripe", "email"]) {
       expect(rules.toLowerCase(), banned).not.toContain(banned);
     }
