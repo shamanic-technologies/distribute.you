@@ -24,6 +24,7 @@ import {
   type FunnelCampaignRow,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
+  capsOfferId,
 } from "@/lib/sales-funnel-campaigns";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
@@ -227,20 +228,21 @@ function CampaignList({ orgId, brandId }: { orgId: string; brandId: string }) {
   const copyQ = useAuthQuery(["funnelCampaignCopies", brandId, "all"], () => listFunnelCampaignCopies(brandId, null), pollOptions);
   // Each row names its offer once the brand holds several.
   const { offers } = useBrandScope();
-  const offerNameOf = (id: string) => (offers.length > 1 ? (offers.find((o) => o.offerId === id)?.name ?? null) : null);
+  const offerNameOf = (id: string | null) => (id === null ? null : offers.length > 1 ? (offers.find((o) => o.offerId === id)?.name ?? null) : null);
   const rowById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r])), [rowsQ.data]);
   const copyById = useMemo(() => new Map((copyQ.data ?? []).map((r) => [r.id, r])), [copyQ.data]);
   const gate = useOrgQueryGate();
   const capsQs = useQueries({
     queries: (q.data ?? []).map((c) => ({
       queryKey: ["salesFunnelCaps", c.brandId, c.offerId, c.salesFunnelId],
-      queryFn: () => getSalesFunnelCaps(c.brandId, c.offerId, c.salesFunnelId),
-      enabled: gate,
+      queryFn: () => getSalesFunnelCaps(c.brandId, capsOfferId(c) as string, c.salesFunnelId),
+      // A campaign naming no offer has no served caps route yet (DISTRY-CALL-IS-CAMPAIGN-1121): never asked.
+      enabled: gate && capsOfferId(c) !== null,
       ...pollOptions,
     })),
   });
   const capsById = new Map((q.data ?? []).map((c, i) => [c.id, capsQs[i]?.data ?? null]));
-  const capsSettledById = new Map((q.data ?? []).map((c, i) => [c.id, capsQs[i]?.data !== undefined || capsQs[i]?.isError === true]));
+  const capsSettledById = new Map((q.data ?? []).map((c, i) => [c.id, capsOfferId(c) === null || capsQs[i]?.data !== undefined || capsQs[i]?.isError === true]));
   const capsStamp = capsQs.map((x) => x.dataUpdatedAt).join(",");
 
   const [view, setView] = useState<"running" | "past">("running");

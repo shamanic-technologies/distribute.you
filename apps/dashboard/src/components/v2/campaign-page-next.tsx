@@ -32,6 +32,8 @@ import {
   volumeUnitWords,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
+  capsOfferId,
+  LIMITS_NOT_AVAILABLE,
 } from "@/lib/sales-funnel-campaigns";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
@@ -117,13 +119,15 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
 
   const caps = useAuthQuery(
     ["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId],
-    () => getSalesFunnelCaps(campaign.brandId, campaign.offerId, campaign.salesFunnelId),
-    pollOptions,
+    () => getSalesFunnelCaps(campaign.brandId, capsOfferId(campaign) as string, campaign.salesFunnelId),
+    // A campaign naming no offer has no served caps route yet (DISTRY-CALL-IS-CAMPAIGN-1121): never asked.
+    { ...pollOptions, enabled: capsOfferId(campaign) !== null },
   );
-  const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
+  const noCaps = capsOfferId(campaign) === null;
+  const capsSettled = noCaps || caps.data !== undefined || caps.isFetchedAfterMount;
   const c = caps.data ?? null;
   const [editing, setEditing] = useState(false);
-  const notFunded = capsSettled && funnelFunded(c) === false;
+  const notFunded = !noCaps && capsSettled && funnelFunded(c) === false;
 
   return (
     <>
@@ -144,7 +148,11 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
             )}
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               <FunnelCampaignStatus campaign={campaign} />
-              <LimitChips caps={c} settled={capsSettled} failed={caps.isError && !c} onOpen={() => setEditing(true)} />
+              {noCaps ? (
+                <span className="k-chip k-fg3">{LIMITS_NOT_AVAILABLE}</span>
+              ) : (
+                <LimitChips caps={c} settled={capsSettled} failed={caps.isError && !c} onOpen={() => setEditing(true)} />
+              )}
               <span className="k-chip tabular-nums">Started {startedOn(campaign.createdAt)}</span>
             </div>
           </div>
@@ -164,7 +172,13 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
         </nav>
 
         {tab === "targeting" ? (
-          <CampaignAudience orgId={orgId} brandId={campaign.brandId} offerId={campaign.offerId} />
+          campaign.offerId === null ? (
+            <div className="k-card">
+              <EmptyNote>This campaign names no offer, so it has no audience of its own.</EmptyNote>
+            </div>
+          ) : (
+            <CampaignAudience orgId={orgId} brandId={campaign.brandId} offerId={campaign.offerId} />
+          )
         ) : (
           <div className="space-y-6">
             {notFunded && (
@@ -199,15 +213,24 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
 
               <aside className="space-y-3">
                 <ResultsCard row={row} rowsSettled={rowsSettled} revenue={coldEmail ? campaignById.get(coldEmail.campaignId)?.row.revenue ?? null : null} />
-                {coldEmail && (
+                {coldEmail && campaign.offerId !== null && (
                   <TargetCard
                     brandId={campaign.brandId}
                     offerId={campaign.offerId}
                     href={withLayoutNext(v2CampaignHref(orgId, campaign.brandId, campaign.id, "targeting"))}
                   />
                 )}
-                <OfferCard brandId={campaign.brandId} offerId={campaign.offerId} href={v2OfferHref(orgId, campaign.brandId, campaign.offerId)} />
-                <LimitsCard caps={c} settled={capsSettled} failed={caps.isError && !c} onSet={() => setEditing(true)} />
+                {/* A campaign naming no offer (DISTRY-CALL-IS-CAMPAIGN-1121) has no offer card and no served limits yet. */}
+                {campaign.offerId !== null && (
+                  <OfferCard brandId={campaign.brandId} offerId={campaign.offerId} href={v2OfferHref(orgId, campaign.brandId, campaign.offerId)} />
+                )}
+                {noCaps ? (
+                  <div className="k-card">
+                    <EmptyNote>{LIMITS_NOT_AVAILABLE}.</EmptyNote>
+                  </div>
+                ) : (
+                  <LimitsCard caps={c} settled={capsSettled} failed={caps.isError && !c} onSet={() => setEditing(true)} />
+                )}
               </aside>
             </div>
           </div>

@@ -34,7 +34,9 @@ export const SalesFunnelCampaignSchema = z
   .object({
     id: z.string(),
     brandId: z.string(),
-    offerId: z.string(),
+    // DISTRY-CALL-IS-CAMPAIGN-1121 (owner 2026-11-21): a campaign is Target + start + budget + brief, the offer is
+    // optional. A campaign launched on its TARGET alone may name none: null, never a placeholder offer.
+    offerId: z.string().nullable(),
     salesFunnelId: z.string(),
     salesFunnelName: z.string(),
     status: z.string(),
@@ -96,6 +98,18 @@ export const SalesFunnelCapsSchema = z
   })
   .passthrough();
 export type SalesFunnelCaps = z.infer<typeof SalesFunnelCapsSchema>;
+
+/**
+ * DISTRY-CALL-IS-CAMPAIGN-1121: billing serves a campaign's caps under its offer
+ * (`/brands/:b/offers/:o/sales-funnels/:id/caps`). A campaign naming NO offer has no served caps route yet,
+ * so its caps are never asked (never `/offers/null/...`): the offer it reads under, else null = not available yet.
+ */
+export function capsOfferId(campaign: { offerId: string | null }): string | null {
+  return campaign.offerId;
+}
+
+/** What a campaign naming no offer shows where its limits go, until billing serves them. */
+export const LIMITS_NOT_AVAILABLE = "Limits not available yet";
 
 /** A served cents string ("12500" or "12500.5") as dollars, for display only. Null for a non-number (logged). */
 export function centsToUsd(cents: string | null | undefined): number | null {
