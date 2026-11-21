@@ -63,8 +63,8 @@ html.distry {
 @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
 /* ---------- Distry, walking beside you ---------- */
 .buddy { position: fixed; z-index: 40; right: 18px; bottom: 18px; display: flex; align-items: flex-end; gap: 10px; pointer-events: none; }
-.buddy-face { width: 76px; height: 76px; flex: none; filter: drop-shadow(0 10px 18px rgba(11, 18, 48, 0.35)); animation: bob 4.6s ease-in-out infinite; }
-.buddy-face img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.buddy-face { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex: none; box-shadow: 0 0 0 3px var(--gold), 0 0 40px rgba(246, 198, 103, 0.55), 0 14px 30px rgba(3, 6, 24, 0.45); animation: bob 4.6s ease-in-out infinite; }
+.buddy-face img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(1.18); }
 .buddy.is-excited .buddy-face { animation: hop 0.6s var(--ease) infinite; }
 @keyframes hop { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-16px) scale(1.06); } 70% { transform: translateY(0) scale(0.97, 1.03); } }
 .buddy-say { max-width: 240px; padding: 10px 14px; margin-bottom: 18px; border-radius: 18px 18px 4px 18px; background: var(--paper); color: var(--ink); font-size: 0.92rem; font-weight: 500; line-height: 1.35; box-shadow: 0 12px 30px rgba(3, 6, 24, 0.35); opacity: 0; transform: translateY(8px) scale(0.94); transform-origin: bottom right; transition: opacity 0.4s ease, transform 0.5s var(--ease); }
@@ -141,9 +141,9 @@ html.distry .nav-menu-panel, html.distry .nav-drop-in { --bg: #fffdf6; --d-card:
 
 /* the closing box and the footer live in the morning */
 html.distry .cta-box { background: var(--paper) !important; color: var(--ink); border: 0; box-shadow: 0 0 0 1px var(--paper-line) inset, 0 30px 70px rgba(37, 99, 235, 0.16); border-radius: 26px; }
-html.distry .cta-box h2 { color: var(--ink); }
-html.distry .cta-box .lead, html.distry .cta-box .fine { color: var(--ink-soft); }
-html.distry .cta-box .accent { color: var(--blue); }
+html.distry .cta-box :is(h1, h2, h3) { color: var(--cream) !important; }
+html.distry .cta-box :is(p, .lead, .fine) { color: #c9d1ef; }
+html.distry .cta-box :is(.accent, .why) { color: var(--gold) !important; }
 html.distry .cta-box .launch-field { background: #fff; border-color: var(--paper-line); }
 html.distry .cta-box .launch-field input { color: var(--ink); }
 html.distry footer { color: var(--ink); padding-bottom: 110px; }
@@ -269,8 +269,8 @@ html.distry main :is(.text-gray-400, .text-gray-500) { color: #5d678f !important
 /* Distry IS the way to talk to us: the floating WhatsApp button goes, the avatar is the button. */
 html.distry a[aria-label="Chat with us on WhatsApp"] { display: none !important; }
 html.distry .buddy-face { display: block; pointer-events: auto; cursor: pointer; }
-html.distry .buddy-face:hover { filter: drop-shadow(0 0 16px rgba(37, 99, 235, 0.55)) drop-shadow(0 10px 18px rgba(11, 18, 48, 0.35)); }
-html.distry .buddy-face:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; border-radius: 12px; }
+html.distry .buddy-face:hover { box-shadow: 0 0 0 3px var(--gold), 0 0 56px rgba(246, 198, 103, 0.8), 0 14px 30px rgba(3, 6, 24, 0.45); }
+html.distry .buddy-face:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
 
 /* The chat preview on the product pages: a clean, channel-neutral conversation in Distry's
    colours (owner: the green WhatsApp phone "ne fait pas propre ni moderne"). */
@@ -285,7 +285,7 @@ html.distry .wa-msg { box-shadow: none; }
 html.distry .wa-row.in .wa-msg { background: #ffffff; color: #0b1230; border: 1px solid #e3e8f2; border-radius: 14px 14px 14px 4px; }
 html.distry .wa-row.out .wa-msg { background: #2563eb; color: #ffffff; border-radius: 14px 14px 4px 14px; }
 html.distry .wa-msg.booked { background: #eef3ff; color: #1a4fc3; border-color: #dbe6ff; }
-html.distry .wa-day { background: #ffffff; color: #6c76a0; box-shadow: none; border: 1px solid #e3e8f2; }
+html.distry .wa-day { background: #ffffff; color: #5d678f; box-shadow: none; border: 1px solid #e3e8f2; }
 html.distry .wa-dots { background: #ffffff; border: 1px solid #e3e8f2; }
 
 /* ---------- the chat panel (a click on Distry) ---------- */
@@ -303,7 +303,7 @@ html.distry .wa-dots { background: #ffffff; border: 1px solid #e3e8f2; }
 .dc-them { align-self: flex-start; background: #ffffff; border: 1px solid #e3e8f2; border-radius: 16px 16px 16px 5px; }
 .dc-me { align-self: flex-end; background: #2563eb; color: #ffffff; border-radius: 16px 16px 5px 16px; }
 .dc-msg a { color: inherit; text-decoration: underline; }
-.dc-typing { color: #6c76a0; animation: dc-pulse 1.1s ease-in-out infinite; }
+.dc-typing { color: #5d678f; animation: dc-pulse 1.1s ease-in-out infinite; }
 @keyframes dc-pulse { 50% { opacity: 0.35; } }
 .dc-choices { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 6px; max-width: 92%; }
 .dc-choices button { min-height: 40px; padding: 8px 14px; border: 1px solid #2563eb; border-radius: 16px; background: #ffffff; color: #1a4fc3; font: 600 14px/1.25 inherit; text-align: left; cursor: pointer; }
@@ -323,3 +323,35 @@ html.distry .wa-dots { background: #ffffff; border: 1px solid #e3e8f2; }
 .dc, .dc-top b, .dc-them, .dc-form input { color: #0b1230; }
 .dc-top b { margin: 0; }
 .dc-me { color: #ffffff; }
+
+/* ---------- Every word readable (owner 2026-11-21: « encore pb de contraste ») ----------
+   Measured on every lab page from the rendered pixels (text against what is really behind it),
+   desktop and phone. Each rule below is one family of pages the measure caught. */
+/* the live page's own dark cards inside a light band keep their night inks: the day rule
+   (ink on every heading) out-ranked them and their titles vanished */
+html.distry :is(.ag-call, .csa-score, .csa-own, .dra-own, .ln-own) :is(h1, h2, h3, h4) { color: var(--cream); }
+html.distry .ag-call p.why { color: var(--gold); }
+/* a white header inside a dark chat mock writes in ink */
+html.distry .wa-top :is(b, strong) { color: #0b1230 !important; }
+html.distry .wa-meta { color: rgba(233, 237, 239, 0.72); }
+/* the index badge and the chart's scale are white chips: ink on them */
+html.distry .ix-badge { color: #0b1230; }
+html.distry .ix-grid span { color: #46507a; }
+/* the brand kit's cards are paper on the light page */
+html.distry .bp-sec, html.distry :is(.bp-card, .bp-sw, .bp-tf) { --panel: #ffffff; --line: #e3e8f2; --faint: #5d678f; --muted: #46507a; color: #0b1230; }
+/* the docs read on the light page (their inks are Tailwind greys made for white) */
+html.distry main:not(.dy-page) { background: #f6f8fc !important; }
+html.distry h3[class*="text-[11px]"] { color: #5d678f !important; }
+/* the Distry mark, in the agency orbit, is big enough to be seen */
+html.distry .ag-core img { width: 58px; height: 58px; border-radius: 0; }
+@media (max-width: 900px) { html.distry .ag-core img { width: 40px; height: 40px; } }
+/* React pages: their muted grey reads on the night header, and stays ink-grey on paper */
+html.distry .dy-page { --dy-muted: #aab5e0; }
+html.distry .dy-page section > div, html.distry .dy-page article { --dy-muted: #5d678f; }
+html.distry .dy-page section > div .dy-title { color: var(--ink) !important; }
+/* the brand kit's do / don't lists sit on the light page */
+html.distry .bp-sec :is(h3, li) { color: #0b1230; }
+html.distry .bp-sec li { color: #46507a; }
+/* the docs menu links read on the light page */
+html.distry main:not(.dy-page) a[class*="text-gray-500"], html.distry main:not(.dy-page) a[class*="text-[#5e5e66]"] { color: #46507a !important; }
+
