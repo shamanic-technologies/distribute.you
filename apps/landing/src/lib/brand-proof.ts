@@ -6,9 +6,8 @@
  * clients worked, plus the outlets that published our expert quotes, showing
  * ONLY famous logos (« logos connus, qui font un effet wow »), ranked by fame.
  * Both lists are produced by two Engines (« Client past employer found »,
- * « Press feature found ») and judged by brand-service: Jev notoriety score
- * >= 80, traffic guard, best first, at most 24. This module ranks, filters and
- * counts NOTHING: it draws what the producer served, in the producer's order.
+ * « Press feature found ») and ranked by brand-service (Jev notoriety, then
+ * traffic). This module ranks NOTHING: it draws in the producer's order.
  *
  * Alias-free on purpose so it carries real unit tests.
  */
@@ -17,12 +16,13 @@
 export const BRAND_PROOF_DOMAIN = "distribute.you";
 
 /**
- * A wall only impresses once it is a wall (owner: « une liste impressionnante »,
- * « effet wow »): one famous logo under the heading reads thin, so below these
- * counts the list is not drawn. The producer still decides WHICH logos are famous.
+ * Owner 2026-11-21: no fame threshold, « affiche le top 24 c'est tout » for the wall,
+ * and the top 3 outlets « quel que soit le score » for the press row. The producer's
+ * ranking (notoriety, then traffic) decides the order; the landing cuts the press row
+ * to its first 3.
  */
-export const MIN_WALL_LOGOS = 6;
-export const MIN_PRESS_LOGOS = 3;
+export const BRAND_PROOF_WALL_LIMIT = 24;
+export const BRAND_PROOF_PRESS_LIMIT = 3;
 
 /** One token for the whole section: no logo served, no section at all. */
 export const BRAND_PROOF_TOKEN = "<!--brand-proof-->";
@@ -83,10 +83,10 @@ function logoImg(c: BrandProofCompany): string {
  */
 export function brandProofHtml(proof: BrandProof | null): string {
   if (!proof) return "";
-  const drawnEmployers = (proof.employers ?? []).filter(drawable);
-  const drawnPress = (proof.press ?? []).filter((p) => drawable(p) && safeUrl(p.article?.url));
-  const employers = drawnEmployers.length >= MIN_WALL_LOGOS ? drawnEmployers : [];
-  const press = drawnPress.length >= MIN_PRESS_LOGOS ? drawnPress : [];
+  const employers = (proof.employers ?? []).filter(drawable).slice(0, BRAND_PROOF_WALL_LIMIT);
+  const press = (proof.press ?? [])
+    .filter((p) => drawable(p) && safeUrl(p.article?.url))
+    .slice(0, BRAND_PROOF_PRESS_LIMIT);
   if (employers.length === 0 && press.length === 0) return "";
 
   const wall = employers.length

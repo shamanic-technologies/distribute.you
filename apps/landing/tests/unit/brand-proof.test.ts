@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BRAND_PROOF_TOKEN, MIN_PRESS_LOGOS, MIN_WALL_LOGOS, brandProofHtml, type BrandProof } from "../../src/lib/brand-proof";
+import { BRAND_PROOF_PRESS_LIMIT, BRAND_PROOF_TOKEN, BRAND_PROOF_WALL_LIMIT, brandProofHtml, type BrandProof } from "../../src/lib/brand-proof";
 
 const company = (name: string, extra: Partial<BrandProof["employers"][number]> = {}) => ({
   companyId: "00000000-0000-4000-8000-000000000001",
@@ -55,12 +55,16 @@ describe("brand proof logos (BRAND-PROOF-LOGOS-1121)", () => {
     expect(html).toContain("&lt;b&gt;");
   });
 
-  it("draws no wall under MIN_WALL_LOGOS and no press row under MIN_PRESS_LOGOS (one logo is not a wall)", () => {
-    const base = proof();
-    expect(brandProofHtml(proof({ employers: base.employers.slice(0, MIN_WALL_LOGOS - 1), press: [] }))).toBe("");
-    const pressOnlyShort = brandProofHtml(proof({ press: base.press.slice(0, MIN_PRESS_LOGOS - 1) }));
-    expect(pressOnlyShort).toContain('data-brand-proof="employers"');
-    expect(pressOnlyShort).not.toContain("As featured in");
+  it("draws the top 24 employers and the top 3 outlets, whatever the score (owner 2026-11-21)", () => {
+    const many = Array.from({ length: 30 }, (_, i) => company(`Co${i}`, { notorietyScore: 1 }));
+    const outlets = Array.from({ length: 6 }, (_, i) => ({ ...company(`Out${i}`, { notorietyScore: 2 }), article: { url: `https://o${i}.com/a`, title: null, publishedAt: null } }));
+    const html = brandProofHtml(proof({ employers: many, press: outlets }));
+    expect((html.match(/<li>/g) ?? []).length).toBe(BRAND_PROOF_WALL_LIMIT + BRAND_PROOF_PRESS_LIMIT);
+    expect(html).toContain("Co0");
+    expect(html).not.toContain("Co24");
+    expect(html).toContain("Out2");
+    expect(html).not.toContain("Out3");
+    expect(brandProofHtml(proof({ employers: [company("Solo", { notorietyScore: 3 })], press: [] }))).toContain("Solo");
   });
 
   it("the homepage carries the token once, between proof and quotes", () => {
@@ -72,7 +76,9 @@ describe("brand proof logos (BRAND-PROOF-LOGOS-1121)", () => {
 
   it("static-html resolves the token through the gateway's public brand proof", () => {
     const src = readFileSync(join(__dirname, "../../src/lib/static-html.ts"), "utf8");
-    expect(src).toContain("/v1/public/brand-proof?domain=");
+    expect(src).toContain("/v1/public/brand-proof?${query}");
+    expect(src).toContain("domain=${encodeURIComponent(BRAND_PROOF_DOMAIN)}");
+    expect(src).toContain("&minScore=0&minMonthlyTraffic=0&limit=${BRAND_PROOF_WALL_LIMIT}");
     expect(src).toContain("await withBrandProof(");
   });
 });
