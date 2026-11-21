@@ -178,17 +178,18 @@ describe("Distry's mark replaces the site's", () => {
   it("swaps every use of the site logo on a static page", () => {
     const out = applyDistrySkin('<html><head></head><body><section><img src="/landing/v2/assets/logo-mark.svg"></section><footer><img src="/landing/v2/assets/logo-mark.svg"></footer></body></html>', "/ai-sdr");
     expect(out).not.toContain("/landing/v2/assets/logo-mark.svg");
-    expect(out.match(/\/landing\/distry\/assets\/distry-logo\.svg/g)!.length).toBeGreaterThanOrEqual(3);
+    expect(out.match(/\/landing\/distry\/assets\/distry-mark\.webp/g)!.length).toBeGreaterThanOrEqual(2);
+    expect(out).toContain("/landing/distry/assets/distry-mark-64.png");
     expect(withDistryLogo("x")).toBe("x");
   });
 
   it("hands the logo to the script on a page React hydrates", () => {
     const out = applyDistrySkin('<html><head></head><body><main></main><script>self.__next_f=[]</script></body></html>', "/blog");
-    expect(out).toContain('"logo":"/landing/distry/assets/distry-logo.svg"');
+    expect(out).toContain('"logo":"/landing/distry/assets/distry-mark.webp"');
   });
 
   it("ships the logo, and the home wears it", () => {
-    expect(existsSync(path.resolve(__dirname, "../../public/landing/distry/assets/distry-logo.svg"))).toBe(true);
+    expect(existsSync(path.resolve(__dirname, "../../public/landing/distry/assets/distry-mark.webp"))).toBe(true);
     const route = readFileSync(path.resolve(__dirname, "../../src/app/internal-prototype/[slug]/[[...path]]/route.ts"), "utf8");
     expect(route).toContain("withDistryLogo(await withLiveFigures(");
   });
