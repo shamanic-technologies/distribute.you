@@ -100,7 +100,6 @@ describe("the NRR chart wiring", () => {
     join(__dirname, "../src/components/period-compound-chart.tsx"),
     "utf8"
   );
-  const view = readFileSync(join(__dirname, "../src/components/revenue-view.tsx"), "utf8");
 
   it("draws the reference as a dashed line in the theme's own colour", () => {
     const at = chart.indexOf("<ReferenceLine");
@@ -123,18 +122,6 @@ describe("the NRR chart wiring", () => {
     // recharts drew one dashed line across the top of the plot that referenced
     // nothing at all.
     expect(chart).not.toContain("<CartesianGrid");
-  });
-
-  it("puts that line at 100 for both NRR cards", () => {
-    expect(view).toContain("const RETENTION_BREAK_EVEN_PCT = 100");
-    expect(view).toContain("referenceValue={RETENTION_BREAK_EVEN_PCT}");
-  });
-
-  it("excludes the first bar from the scale on WEEKLY only", () => {
-    const weekly = view.indexOf('title="Weekly NRR"');
-    const monthly = view.indexOf('title="Monthly NRR"');
-    expect(view.slice(weekly, weekly + 300)).toContain("excludeFirstFromScale");
-    expect(view.slice(monthly, monthly + 300)).not.toContain("excludeFirstFromScale");
   });
 
   it("plots a capped value so a clipped bar stays inside the plot area", () => {

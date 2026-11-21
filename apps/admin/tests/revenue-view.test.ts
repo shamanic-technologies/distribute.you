@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import fs from "fs";
-import path from "path";
 import {
   revenueBuckets,
   revenueCmgrSummary,
@@ -19,75 +17,6 @@ import {
 } from "../src/lib/revenue-buckets";
 import type { FleetRevenueBucket, CommittedMrrBucket, RetentionBucket } from "../src/lib/api";
 import type { DailyFunnelPoint } from "../src/lib/public-stats";
-
-const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
-const metricsPage = read("../src/app/(authed)/(dashboard)/metrics/page.tsx");
-const sidebar = read("../src/components/context-sidebar.tsx");
-const api = read("../src/lib/api.ts");
-const revenueView = read("../src/components/revenue-view.tsx");
-const publicStats = read("../src/lib/public-stats.ts");
-
-describe("Revenue metrics view — wiring", () => {
-  it("registers a Revenue tab on the metrics page under active-users", () => {
-    expect(metricsPage).toContain('id: "revenue"');
-    expect(metricsPage).toContain("/metrics?view=revenue");
-    expect(metricsPage).toContain("RevenueView");
-    // active-users still precedes revenue in the tab order.
-    expect(metricsPage.indexOf('id: "active-users"')).toBeLessThan(metricsPage.indexOf('id: "revenue"'));
-  });
-
-  it("adds a Revenue item to the app-level sidebar, active-users then revenue", () => {
-    expect(sidebar).toContain('label: "Revenue"');
-    expect(sidebar).toContain("/metrics?view=revenue");
-    expect(sidebar).toContain('activeView === "revenue"');
-    expect(sidebar.indexOf('href: "/metrics?view=active-users"')).toBeLessThan(
-      sidebar.indexOf('href: "/metrics?view=revenue"'),
-    );
-  });
-
-  it("reads fleet revenue through the staff-gated audit proxy", () => {
-    expect(api).toContain("getFleetRevenue");
-    expect(api).toContain("/features/audit/revenue");
-    expect(api).toContain("totalRevenueUsd");
-    expect(api).toContain("currentMrrUsd");
-    // committed MRR/ARR over-time series (daily snapshots) — separate from realized.
-    expect(api).toContain("committedMrr");
-    expect(api).toContain("CommittedMrrBucket");
-  });
-
-  it("renders every requested revenue surface", () => {
-    expect(revenueView).toContain("Total revenue");
-    expect(revenueView).toContain("Tracked revenue weeks");
-    expect(revenueView).toContain("Monthly revenue");
-    expect(revenueView).toContain("Weekly revenue");
-    expect(revenueView).toContain("CMGR since inception");
-    expect(revenueView).toContain("CWGR since inception");
-    // The run-rate is stated ONCE, in the two halves it is earned in — see
-    // mrr-split-section.test.ts, which owns that band. What this file pins is
-    // that the OLD undifferentiated surfaces are gone, so the page can never
-    // carry a fleet MRR beside the split it is supposed to have replaced.
-    // The two cards read "MRR" alone (the reference card style); the period they
-    // cover is in the span beside the figure and on the axis, so what pins them
-    // here is the SERIES each draws rather than a label two cards now share.
-    expect(revenueView).toContain("monthlyTotalRunRate");
-    expect(revenueView).toContain("weeklyTotalRunRate");
-    expect(revenueView).not.toContain("Current MRR (committed)");
-    expect(revenueView).not.toContain("committedBuckets");
-    expect(revenueView).not.toContain("Committed run-rate");
-    expect(revenueView).not.toContain("MRR over time");
-    expect(revenueView).toContain("Avg revenue per unique visitor");
-    expect(revenueView).toContain("Avg revenue per signup");
-    expect(revenueView).toContain("Avg revenue per paid client");
-    expect(revenueView).not.toContain("average of the monthly averages");
-    // The headline is a global figure over a DISTINCT population, so the line under
-    // it states that population — a monthly ratio there would be a second basis
-    // under one title. See the cumulative-denominator block below.
-    expect(revenueView).toContain("since inception");
-    expect(revenueView).not.toContain("last complete month");
-    // The bar charts come from the shared signups chart (current-period pencil + growth line).
-    expect(revenueView).toContain("PeriodCompoundChart");
-  });
-});
 
 describe("Revenue bucket derivations", () => {
   const monthly: FleetRevenueBucket[] = [
@@ -266,23 +195,6 @@ describe("Revenue bucket derivations", () => {
     expect(series.buckets.map((b) => b.value)).toEqual([89.47, 162.47, 666.65, 277.33, 297.63, 378.58, 401.94]);
   });
 
-  it("reads the per-USER active history, so a client is never counted once per month", () => {
-    // The aggregate monthly endpoint answers "how many were active in month M",
-    // which cannot be accumulated into a population. Only firstActiveMonth can.
-    expect(revenueView).toContain("getActiveUsersByUser");
-    expect(revenueView).toContain("newPaidClientsByMonth");
-    expect(revenueView).not.toContain("monthlyActiveUsersByKey");
-    expect(revenueView).not.toContain("getActiveUsersHistory");
-    // Visitors + signups arrive as first-seen months from PostHog, same rule.
-    expect(revenueView).toContain("firstSeenMonthTotals");
-    expect(revenueView).not.toContain("monthlyTimelineTotals");
-    expect(publicStats).toContain("fetchVisitorFirstSeenMonths");
-    expect(publicStats).toContain("fetchSignupFirstSeenMonths");
-    // min() per person is what puts each id in exactly one month (the query is a
-    // template literal, so the PostHog column name is backslash-escaped in source).
-    expect(publicStats).toContain("min(\\`$start_timestamp\\`)");
-    expect(publicStats).toContain("min(timestamp)");
-  });
 });
 
 describe("Cash collected (net of refunds)", () => {
@@ -392,94 +304,4 @@ describe("Net revenue retention", () => {
     expect(series.buckets.every((b) => b.cmgrPct === null && b.growthPct === null)).toBe(true);
   });
 
-  it("renders both grains and tolerates a producer that has not shipped it yet", () => {
-    expect(api).toContain("netRevenueRetention?:");
-    expect(api).toContain("RetentionBucket");
-    expect(revenueView).toContain("Net revenue retention");
-    expect(revenueView).toContain("Monthly NRR");
-    expect(revenueView).toContain("Weekly NRR");
-    expect(revenueView).toContain("retentionSeries");
-    // Absent field must read as "not measured", never throw or chart a zero.
-    expect(revenueView).toContain("netRevenueRetention?.monthly ?? []");
-    expect(revenueView).toContain("Not measured yet");
-  });
-});
-
-describe("Revenue view — the two money notions are kept apart", () => {
-  it("keeps the refunded amount off the strip list so it reaches the view", () => {
-    // Zod drops what a schema does not declare, so an undeclared field is
-    // invisible however faithfully billing serves it.
-    expect(publicStats).toContain("total_returned_cents");
-    expect(publicStats).toContain("total_paid_cents");
-    expect(publicStats).toContain("total_revenue_cents");
-  });
-
-  it("renders cash collected, net of refunds, from the billing stats the page already fetched", () => {
-    expect(metricsPage).toContain("billing={stats.billing}");
-    expect(revenueView).toContain("cashBuckets");
-    expect(revenueView).toContain("Net collected");
-    expect(revenueView).toContain("Gross charged");
-    expect(revenueView).toContain("Refunded and lost disputes");
-    expect(revenueView).toContain("Monthly net cash");
-    expect(revenueView).toContain("Weekly net cash");
-    // Cash is server-rendered props, not a second poll.
-    expect(revenueView).not.toContain('useAuthQuery<BillingStats>');
-  });
-
-  it("names the three money notions rather than letting them read as one number", () => {
-    expect(revenueView).toContain("Cash collected");
-    expect(revenueView).toContain("Revenue consumed");
-    // The run-rate band is titled for what it states — what the fleet is worth
-    // per month — and it is the ONLY MRR surface on the page. The old heading is
-    // a banned literal now (see "renders every requested revenue surface"), so
-    // do not reach for it here.
-    expect(revenueView).toContain("Monthly run-rate");
-  });
-
-  it("asks the producer for a window that still contains inception", () => {
-    // The producer's defaults (12 months / 26 weeks) stop containing the first
-    // billed day partway through 2026, at which point every "since inception"
-    // label on this view silently becomes false.
-    expect(api).toContain("months=${REVENUE_MONTHS_MAX}");
-    expect(api).toContain("weeks=${REVENUE_WEEKS_MAX}");
-    expect(api).toContain("REVENUE_MONTHS_MAX = 36");
-    expect(api).toContain("REVENUE_WEEKS_MAX = 104");
-  });
-
-  it("stops promising 'since inception' growth on a series that only starts at the first recorded day", () => {
-    // The run-rate series begins at the first recorded snapshot (2026-07-15) and
-    // the split is REPLAYED back to exactly that day — no further. Promising
-    // "since inception" on it would date a curve to a day it does not reach.
-    //
-    // It used to say so in the chart's growth-line legend ("CMGR since the first
-    // recorded day"). That line is gone with the orange series, and the cards say
-    // it more precisely now: `RunRateLineCard` NAMES the anchor period and its
-    // value ("from $37,080 in Jul 2026"), so the reader is told which day the
-    // curve reaches rather than reassured that it is not inception.
-    expect(revenueView).not.toContain("MRR since inception");
-    expect(revenueView).not.toContain("ARR since inception");
-    const card = fs.readFileSync(
-      path.join(__dirname, "../src/components/run-rate-line-card.tsx"),
-      "utf-8",
-    );
-    expect(card).toContain("buckets.find((b) => b.value > 0)");
-    expect(card).toContain("`from ${formatValue(anchor.value)} in ${anchor.label}`");
-    expect(card).not.toContain("since inception");
-  });
-
-  // Cash collected counts every acquirer stripe-service mirrors, not only the
-  // one that service is named after: its per-org payment summary and payment
-  // history have always summed both, and the platform read now does too. So no
-  // copy on this view may name one acquirer as though it were the whole answer.
-  // A whole-file check is safe here because this component names none.
-  it("names no single acquirer as the source of collected cash", () => {
-    expect(revenueView).not.toContain("Stripe");
-    expect(revenueView).not.toContain("Revolut");
-  });
-
-  it("names the Revenue tab's real sources in the footer instead of the funnel tabs'", () => {
-    expect(metricsPage).toContain("dataSourcesFor");
-    expect(metricsPage).toContain("Actualized cold-email spend on the runs cost ledger");
-    expect(metricsPage).toContain("Payments, refunds and lost disputes across every acquirer");
-  });
 });

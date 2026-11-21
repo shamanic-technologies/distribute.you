@@ -7,7 +7,7 @@ import {
   statedAmountErrorMessage,
   termLabel,
   type StatedAmountDraft,
-} from "@/lib/stated-amount-write";
+} from "../src/lib/monitoring/stated-amounts";
 
 function draft(over: Partial<StatedAmountDraft> = {}): StatedAmountDraft {
   return {

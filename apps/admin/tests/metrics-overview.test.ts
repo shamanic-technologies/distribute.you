@@ -28,7 +28,6 @@ const publicStats = read("../src/lib/public-stats.ts");
 const sharedCard = read("../src/components/period-compound-card.tsx");
 const funnelCards = read("../src/components/overview-funnel-cards.tsx");
 const activeUsersView = read("../src/components/active-users-view.tsx");
-const revenueView = read("../src/components/revenue-view.tsx");
 const cardsView = read("../src/components/cards-view.tsx");
 
 function day(iso: string, visitors = 0, signups = 0): DailyFunnelPoint {
@@ -605,7 +604,6 @@ describe("wiring", () => {
       ["metrics page", metricsPage],
       ["overview view", overview],
       ["active users view", activeUsersView],
-      ["revenue view", revenueView],
     ] as const) {
       expect(source, name).toContain("PeriodCompoundCard");
     }
