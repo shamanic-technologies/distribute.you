@@ -88,7 +88,8 @@ describe("the homepage is keyed for the reseed and the reseed is called", () => 
   it("drops nothing and blanks nothing when the read fails", () => {
     const at = STATIC_HTML.indexOf("async function withFounderCount(");
     expect(at).toBeGreaterThan(-1);
-    const body = STATIC_HTML.slice(at, STATIC_HTML.indexOf("async function withHotLeadStats("));
+    // Bounded to the next declaration: withBrandProof (below it) legitimately renders "" for an absent section.
+    const body = STATIC_HTML.slice(at, STATIC_HTML.indexOf("const INDEX_LINKS_TIMEOUT_MS"));
     expect(body).toContain("return html;");
     expect(body).toContain("console.error");
     expect(body).not.toContain('""');
