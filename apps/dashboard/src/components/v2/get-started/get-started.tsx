@@ -25,7 +25,7 @@
  * brand lands in that org and the walk ends on its credit step (`OrgLaunch`).
  */
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import posthog from "posthog-js";
@@ -3115,14 +3115,30 @@ function BriefText({
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const dropped = useRef(false);
-  const box = "w-full rounded-[8px] px-2 py-1.5 text-left text-[14px] leading-5 whitespace-pre-wrap";
+  // The field opens at the height the text read at, and grows as it is typed (no jump on click).
+  const readHeight = useRef(0);
+  const field = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = field.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(readHeight.current, el.scrollHeight + 2)}px`;
+  }, [editing]);
+  const open = (el: HTMLElement) => {
+    readHeight.current = el.offsetHeight;
+    setEditing(text ?? "");
+  };
+  // Read and edit share ONE box (the field's own surface and ring), so the text reads as editable.
+  const box = "w-full rounded-[8px] px-2.5 py-2 text-left text-[14px] leading-5 whitespace-pre-wrap";
+  const surface = { background: "var(--bg-raised)", boxShadow: "inset 0 0 0 1px var(--line)" };
   if (editing !== null) {
     return (
       <textarea
+        ref={field}
         autoFocus
         aria-label="Campaign brief"
         value={editing}
-        rows={3}
+        rows={1}
         maxLength={2000}
         onChange={(e) => setEditing(e.target.value)}
         onBlur={() => {
@@ -3147,7 +3163,7 @@ function BriefText({
         }}
         className={`k-input ${box} resize-y`}
         // keel.css is unlayered: the box's padding, height and font ride inline so the field opens in the text's own box.
-        style={{ font: "inherit", fontSize: 14, lineHeight: "20px", padding: "6px 8px", height: "auto" }}
+        style={{ font: "inherit", fontSize: 14, lineHeight: "20px", padding: "8px 10px" }}
       />
     );
   }
@@ -3158,14 +3174,15 @@ function BriefText({
       tabIndex={disabled ? -1 : 0}
       aria-label="Edit the campaign brief"
       aria-disabled={disabled}
-      onClick={() => !disabled && setEditing(text ?? "")}
+      onClick={(e) => !disabled && open(e.currentTarget)}
       onKeyDown={(e) => {
         if (!disabled && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
-          setEditing(text ?? "");
+          open(e.currentTarget);
         }
       }}
-      className={`${box} ${disabled ? "" : "k-hover cursor-text"}`}
+      className={`${box} ${disabled ? "" : "cursor-text"}`}
+      style={surface}
     >
       {/* No prefill came back: the visitor writes it (a new campaign never launches without one). */}
       {text ? <span className="k-fg">{text}</span> : <span className="k-fg4">Say in a few words what this campaign should do.</span>}
