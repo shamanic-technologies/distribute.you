@@ -1,9 +1,9 @@
 /**
  * The END of signup (`/get-started` and "Add a brand"), owner 2026-10-16: two equal cards, both
- * ticked, each its face, served name, served one line and its own prefilled budget:
+ * ticked, each its face, served name, its brief (plain words, editable) and its own prefilled budget:
  *
  *   [x] [face] <best runnable Lead Sourcing cold email -> positive reply>      [x] [face] <reactive AI reply funnel>
- *       <served one line>                                           <served one line>
+ *       <brief, click to edit>                                      <brief, click to edit>
  *       $ 20 / day                                                  Up to $ 10 / week
  *   [ Launch ]  -> then the payment wall exactly as today
  *
@@ -14,7 +14,8 @@
  * sales-funnels?brandId=` (features v0.179.133 through the gateway, on the visitor's own org: the
  * anonymous one signed out). The launch writes billing's caps then starts the funnel campaign.
  * Nothing here computes a figure the producers serve: the picks are the first served row of
- * the right type, the line under the name is the channel's own served short description.
+ * the right type; the text under the name is the campaign's brief (features-service prefill), never a
+ * catalogue line (owner 2026-11-22: a line under the name beside the brief « n'a aucun sens »).
  *
  * Alias-free so it carries real unit tests.
  */
