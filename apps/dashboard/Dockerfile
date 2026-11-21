@@ -43,6 +43,10 @@ ENV HOSTNAME=0.0.0.0
 
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 
+# A font for sharp's SVG-to-PNG (the SaaS revenue charts sent to Telegram,
+# /api/cron/saas-cash-telegram): alpine ships none, so chart text rendered as nothing.
+RUN apk add --no-cache fontconfig font-dejavu
+
 # The standalone output keeps the workspace layout, so the server lives at
 # apps/dashboard/server.js and expects static/ and public/ beside it.
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/dashboard/.next/standalone ./
