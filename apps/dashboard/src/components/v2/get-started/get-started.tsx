@@ -42,7 +42,6 @@ import {
   extractBrandFields,
   getBrand,
   getAudienceCompanies,
-  getPublicCatalogueSignedOut,
   getQualificationPreview,
   getCampaignBriefPrefill,
   getSignupFunnelPages,
@@ -79,8 +78,6 @@ import { PhoneField, defaultPhoneCountry } from "./phone-field";
 import {
   DEFAULT_SIGNUP_DRAFT,
   SIGNUP_PERIODS,
-  SIGNUP_PROACTIVE_CHANNEL,
-  SIGNUP_REACTIVE_CHANNEL,
   briefToLaunch,
   signupFunnelsFrom,
   signupLaunchPlan,
@@ -316,8 +313,6 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [facts, setFacts] = useState<string[]>([]);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [steps, setSteps] = useState<Record<GetStartedStepKey, StepState>>(() => initialSteps());
-  // Each channel's own one-line description (public catalogue): the line under the campaign's name.
-  const [channelLines, setChannelLines] = useState<Map<string, string>>(new Map());
   const [wallOpen, setWallOpen] = useState(false);
   const [wallNote, setWallNote] = useState<string | null>(null);
 
@@ -507,14 +502,6 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     resumePreparing(snap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
-
-  // Each channel's one-line description, off the public catalogue: no session needed. A failed
-  // read leaves the campaign without its line (logged), never a line of our own.
-  useEffect(() => {
-    getPublicCatalogueSignedOut()
-      .then((cat) => setChannelLines(new Map(cat.channels.flatMap((c) => (c.shortDescription ? [[c.slug, c.shortDescription] as const] : [])))))
-      .catch((e) => console.error("[get-started] catalogue read failed:", e));
-  }, []);
 
   // The funnels the campaign step proposes (features-service, runnable only), PRICED FOR THIS OFFER
   // (owner 2026-10-10: its own client value, never the fleet's). Read once the preview is answered
@@ -1966,7 +1953,6 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           funnels={funnels}
           failed={funnelsState === "failed"}
           loading={funnelsState === "loading"}
-          lineOf={(slug) => channelLines.get(slug) ?? null}
           draft={campaignDraft}
           onChange={changeCampaign}
           briefPrefills={briefPrefills}
@@ -3011,14 +2997,13 @@ function OfferStage({
 
 /**
  * One campaign the visitor ticks (owner 2026-10-16: "ces cases avec logo, nom et description et un
- * budget prérempli"): face, served name, served one line, and its own budget in big figures. Ticked
+ * budget prérempli"): face, served name, its brief, and its own budget in big figures. Ticked
  * = the k-card-on fill + check; unticked, the budget hides and the campaign is not created.
  */
 function CampaignChoice({
   on,
   onToggle,
   name,
-  line,
   prefix,
   value,
   period,
@@ -3034,7 +3019,6 @@ function CampaignChoice({
   on: boolean;
   onToggle: () => void;
   name: string;
-  line: string | null;
   /** The campaign's brief as it launches (edited, else the served prefill); null while none. */
   brief: string | null;
   briefLoading: boolean;
@@ -3050,11 +3034,10 @@ function CampaignChoice({
 }) {
   return (
     <div className={`gs-in k-card flex flex-col gap-4 p-5 transition-[box-shadow,background-color] duration-150 ${on ? "k-card-on" : ""}`} style={stagger(delay, 80)}>
-      <button type="button" aria-pressed={on} disabled={disabled} onClick={onToggle} className="flex items-start gap-3 text-left">
+      <button type="button" aria-pressed={on} disabled={disabled} onClick={onToggle} className="flex items-center gap-3 text-left">
         <FunnelFace name={name} size={48} />
         <span className="min-w-0 flex-1">
           <span className={`block text-[20px] font-semibold leading-7 ${on ? "k-fg" : "k-fg3"}`}>{name}</span>
-          {line && <span className="k-fg2 mt-0.5 block text-[13px] leading-5">{line}</span>}
         </span>
         {on ? (
           <span aria-hidden className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[12px] text-white">✓</span>
@@ -3200,7 +3183,6 @@ export function CampaignStage({
   funnels,
   failed,
   loading,
-  lineOf,
   draft,
   onChange,
   briefPrefills,
@@ -3214,8 +3196,6 @@ export function CampaignStage({
   funnels: { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null;
   failed: boolean;
   loading: boolean;
-  /** A channel's own one-line description (public catalogue), or null. */
-  lineOf: (channelSlug: string) => string | null;
   draft: SignupCampaignDraft;
   onChange: (next: SignupCampaignDraft) => void;
   /** Each card's brief as features-service prefilled it; the draft's edit wins. */
@@ -3263,7 +3243,6 @@ export function CampaignStage({
               on={draft.proactiveOn}
               onToggle={() => set({ proactiveOn: !draft.proactiveOn })}
               name={main.name}
-              line={lineOf(SIGNUP_PROACTIVE_CHANNEL)}
               prefix="$"
               value={draft.budget}
               period={draft.budgetPeriod}
@@ -3281,7 +3260,6 @@ export function CampaignStage({
                 on={draft.reactiveOn}
                 onToggle={() => set({ reactiveOn: !draft.reactiveOn })}
                 name={meet.name}
-                line={lineOf(SIGNUP_REACTIVE_CHANNEL)}
                 prefix="Up to $"
                 value={draft.reactiveBudget}
                 period={draft.reactivePeriod}

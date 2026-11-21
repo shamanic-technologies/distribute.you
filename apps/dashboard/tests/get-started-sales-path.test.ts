@@ -205,8 +205,9 @@ describe("what we launch: caps first, then ONE funnel campaign (owner 2026-10-10
     expect(stage).not.toContain("Also let our AI book meetings when someone replies");
     expect(stage).not.toContain("estimatedLine(");
     expect(stage.match(/<CampaignChoice\b/g)?.length).toBe(2);
-    expect(stage).toContain("line={lineOf(SIGNUP_PROACTIVE_CHANNEL)}");
-    expect(stage).toContain("line={lineOf(SIGNUP_REACTIVE_CHANNEL)}");
+    // The brief says what each campaign does: no catalogue line under the name (owner 2026-11-22: « ça n'a aucun sens »).
+    expect(stage).not.toContain("lineOf");
+    expect(stage).toContain("brief={briefToLaunch(draft.proactiveBrief, briefPrefills.proactive)}");
     expect(stage).toContain("disabled={nothingTicked}");
   });
 });
