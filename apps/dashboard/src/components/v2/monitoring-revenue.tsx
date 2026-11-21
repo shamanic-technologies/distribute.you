@@ -9,6 +9,7 @@ import {
   createStaffStatedAmount,
   deleteStaffStatedAmount,
   getStaffRevenueAccounts,
+  getStaffSaasCash,
   getStaffRevenueBoard,
   getStaffRevenueOutlook,
   listStaffStatedAmounts,
@@ -19,6 +20,7 @@ import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components
 import { DailyLines, Dash, PeriodBars, TD, TDR, TH, THR } from "@/components/v2/monitoring-charts";
 import { SettingModal } from "@/components/v2/setting-modal";
 import { lineDomain } from "@/lib/monitoring/line-domain";
+import type { SaasCash, SaasCashFigures } from "@/lib/saas-cash";
 import type { AvgSeries, Grain, Part, RetentionSeries, RevenueBoard, RevenueSeries, RunRateBoard, SelfServeTable } from "@/lib/monitoring/revenue-series";
 import {
   centsToUsd,
@@ -155,7 +157,7 @@ export function RevenuePage() {
   const failedPart = { ok: false as const, error: board.error?.message ?? "unknown error" };
   return (
     <div className="space-y-10">
-      <SaasChartsSlot />
+      <SaasCashSection />
       <OutlookSection />
       <CashSection cash={boardFailed ? failedPart : part("cash")} />
       <ConsumedSection consumed={boardFailed ? failedPart : part("consumed")} />
@@ -166,19 +168,77 @@ export function RevenuePage() {
 }
 
 /**
- * RESERVED SLOT (owner 2026-11-21): two SaaS charts another session adds here, at the TOP of the page:
- * weekly bars and the running total of cash collected. Headline = gross without agency, then net
- * without agency and gross with agency below. Not built in this ship; replace this component whole.
+ * SaaS cash collected (owner 2026-11-21, SAAS-CASH-1121), at the TOP of the page: gross without agency
+ * is the headline, net without agency and gross with agency in smaller text below. Weekly bars since
+ * inception (this week dashed) and the running total, one point per day (the segment into today dashed).
+ * Every figure and every running total is features-service's (`/v1/features/audit/saas-cash`); the
+ * same figures go to the owner's 07:00 Telegram (`/api/cron/saas-cash-telegram`).
  */
-function SaasChartsSlot() {
+function SaasCashSection() {
+  const q = useAuthQuery(["staffSaasCash"], getStaffSaasCash, { ...slowServerReadOptions, retry: false });
+  const c = q.data;
   return (
-    <section id="saas-charts-slot" aria-label="SaaS charts, coming next">
-      <SectionTitle>SaaS cash collected</SectionTitle>
-      <div className="k-card-dashed px-4 py-8 text-center">
-        <p className="k-fg2 text-[13px]">Weekly bars and the running total of cash collected land here next.</p>
-        <p className="k-fg3 mt-1 text-[12px]">Gross without agency first, then net without agency and gross with agency.</p>
-      </div>
+    <section id="saas-cash">
+      <SectionTitle right={c ? <span>features-service, as of {shortDay(c.asOf)}</span> : undefined}>SaaS cash collected</SectionTitle>
+      {q.isError && !c ? <Failed what="SaaS cash collected" error={q.error?.message ?? "unknown error"} /> : !c ? <ShimmerCard /> : <SaasCash c={c} />}
     </section>
+  );
+}
+
+function SaasCashTile({ label, f }: { label: string; f: SaasCashFigures }) {
+  return (
+    <StatTile label={label} note="gross, agency excluded">
+      <Figure value={usd(f.saasGrossUsd)} />
+      <p className="k-fg3 mt-1 text-[12px] tabular-nums">
+        Net {usd(f.saasNetUsd)} · With agency {usd(f.withAgencyGrossUsd)}
+      </p>
+    </StatTile>
+  );
+}
+
+export function SaasCash({ c }: { c: SaasCash }) {
+  const weeks = c.weeks.map((w) => ({ period: w.weekStart, value: w.saasGrossUsd, net: w.saasNetUsd, withAgency: w.withAgencyGrossUsd, current: w.isCurrent }));
+  // The served running total split in two lines: solid up to the last full day, dashed from it into today.
+  const days = c.days.map((d, i) => {
+    const intoToday = d.isCurrent || c.days[i + 1]?.isCurrent === true;
+    return { day: d.day, value: d.cumulative.saasGrossUsd, net: d.cumulative.saasNetUsd, withAgency: d.cumulative.withAgencyGrossUsd, current: d.isCurrent, intoToday };
+  });
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <SaasCashTile label="Since inception" f={c.totals.sinceInception} />
+        <SaasCashTile label="This week" f={c.totals.thisWeek} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div>
+          <p className="k-label mb-2">Per week, gross without agency</p>
+          <PeriodBars
+            periods={weeks}
+            series={[{ key: "gross", label: "Gross", color: "var(--accent)", get: (m) => m.value }]}
+            format={usd}
+            label={(p, short) => (short ? shortDay(p) : `Week of ${shortDay(p)}`)}
+            caption={(m) => `net ${usd(m.net)}, with agency ${usd(m.withAgency)}${m.current ? ", still running" : ""}`}
+            partial={(m) => m.current}
+            empty="No SaaS cash collected yet."
+          />
+        </div>
+        <div>
+          <p className="k-label mb-2">Since inception, gross without agency</p>
+          <DailyLines
+            points={days}
+            lines={[
+              { key: "gross", label: "Closed days", color: "var(--accent)", get: (p) => (p.current ? null : p.value) },
+              { key: "today", label: "Today so far", color: "var(--accent)", dashed: true, get: (p) => (p.intoToday ? p.value : null) },
+            ]}
+            caption={(p) => `net ${usd(p.net)}, with agency ${usd(p.withAgency)}`}
+            format={(v) => usd(v)}
+            windows={[{ key: "all", label: "All", days: null }, { key: "90", label: "90 days", days: 90 }]}
+            empty="No SaaS cash collected yet."
+            label="SaaS cash collected since inception"
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 

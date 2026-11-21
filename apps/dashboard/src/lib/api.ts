@@ -64,6 +64,7 @@ import {
 import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { AmbiguousThreadSchema, ReplySentSchema, newestThread, replyBodyHtml, type ReplySent } from "./unibox-reply";
 import { z } from "zod";
+import { SaasCashSchema, type SaasCash } from "./saas-cash";
 import type { RevenueBoard } from "./monitoring/revenue-series";
 import { parseFleetRevenueOutlook, type FleetRevenueOutlook } from "./monitoring/revenue-outlook";
 import { RevenueAccountsSchema, StatedAmountWriteSchema, StatedAmountsSchema, type RevenueAccounts, type StatedAmount, type statedAmountBody } from "./monitoring/stated-amounts";
@@ -3191,6 +3192,14 @@ export async function getStaffRevenueBoard(fresh = false): Promise<RevenueBoard>
   const res = await fetch(`${STAFF_REVENUE_PATHS.board}${fresh ? "?fresh=1" : ""}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Revenue board answered ${res.status}`);
   return (await res.json()) as RevenueBoard;
+}
+
+/**
+ * SaaS cash collected (features-service `/internal/stats/saas-cash`, staff gateway): weekly bars and the
+ * daily running total since inception, gross without agency first, then net and gross with agency.
+ */
+export async function getStaffSaasCash(): Promise<SaasCash> {
+  return parseStaff("getStaffSaasCash", SaasCashSchema, await apiCall<unknown>("/features/audit/saas-cash"));
 }
 
 /** billing-service's fleet revenue read: recurring MRR, one-off prepaid run-out, cash expected by week, per org. */

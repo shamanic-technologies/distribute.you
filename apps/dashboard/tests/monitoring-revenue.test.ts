@@ -184,11 +184,20 @@ describe("wiring", () => {
     }
   });
 
-  it("keeps the reserved slot for the SaaS charts at the top of the page", () => {
+  it("opens on SaaS cash collected: gross without agency first, net and with agency below, served figures only", () => {
     const view = read("src/components/v2/monitoring-revenue.tsx");
     const body = view.slice(view.indexOf("export function RevenuePage("));
-    expect(body.indexOf("<SaasChartsSlot />")).toBeGreaterThan(-1);
-    expect(body.indexOf("<SaasChartsSlot />")).toBeLessThan(body.indexOf("<OutlookSection />"));
+    expect(body.indexOf("<SaasCashSection />")).toBeGreaterThan(-1);
+    expect(body.indexOf("<SaasCashSection />")).toBeLessThan(body.indexOf("<OutlookSection />"));
+    const tile = view.slice(view.indexOf("function SaasCashTile("), view.indexOf("function SaasCash({"));
+    expect(tile.indexOf("f.saasGrossUsd")).toBeLessThan(tile.indexOf("f.saasNetUsd"));
+    expect(tile.indexOf("f.saasNetUsd")).toBeLessThan(tile.indexOf("f.withAgencyGrossUsd"));
+    const charts = view.slice(view.indexOf("function SaasCash({"), view.indexOf("// ─── Where the SaaS money stands today"));
+    expect(charts).toContain("partial={(m) => m.current}");
+    expect(charts).toContain("dashed: true");
+    expect(charts).toContain("d.cumulative.saasGrossUsd");
+    expect(charts).not.toContain("reduce(");
+    expect(SENSITIVE_QUERY_ROOTS.has("staffSaasCash")).toBe(true);
   });
 
   it("draws the run-rate charts as lines, like the admin tab it moved from", () => {
