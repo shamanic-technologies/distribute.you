@@ -15,7 +15,7 @@ import { BEFORE_SEND_JS } from "@/lib/posthog-before-send";
 import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { reseedFounderCount } from "@/lib/founder-count";
-import { BRAND_PROOF_DOMAIN, BRAND_PROOF_TOKEN, brandProofHtml, type BrandProof } from "@/lib/brand-proof";
+import { BRAND_PROOF_DOMAIN, BRAND_PROOF_TOKEN, BRAND_PROOF_WALL_LIMIT, brandProofHtml, type BrandProof } from "@/lib/brand-proof";
 import { INDEX_LINKS_TOKEN, displayValue, fetchIndexDetail, fetchIndexList, indexLinksHtml, isExpected, type IndexDetail } from "@/lib/fleet-indexes";
 import {
   renderShowcaseSelection,
@@ -528,13 +528,16 @@ async function withIndexLinks(html: string): Promise<string> {
 
 /**
  * The "our clients have worked at" wall + "As featured in" row (BRAND-PROOF-LOGOS-1121),
- * read from brand-service's public brand proof through the gateway. The producer judges,
- * filters (notoriety >= 80, traffic guard) and ranks; this only draws. A failed read is
+ * read from brand-service's public brand proof through the gateway. Owner 2026-11-21: no
+ * fame threshold, « affiche le top 24 c'est tout » for the wall and the top 3 outlets
+ * whatever their score: so the ask lifts the producer's score and traffic floors and keeps
+ * its ranking. The producer judges and ranks; this only asks and draws. A failed read is
  * logged loud and drops the section: a heading over an empty wall says nothing true.
  */
-async function fetchBrandProof(): Promise<BrandProof | null> {
+async function fetchBrandProof(): Promise<BrandProof> {
   const apiUrl = resolvePublicApiUrl();
-  const res = await fetch(`${apiUrl}/v1/public/brand-proof?domain=${encodeURIComponent(BRAND_PROOF_DOMAIN)}`, {
+  const query = `domain=${encodeURIComponent(BRAND_PROOF_DOMAIN)}&minScore=0&minMonthlyTraffic=0&limit=${BRAND_PROOF_WALL_LIMIT}`;
+  const res = await fetch(`${apiUrl}/v1/public/brand-proof?${query}`, {
     headers: { Accept: "application/json" },
     next: { revalidate: 300 },
     signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS),
