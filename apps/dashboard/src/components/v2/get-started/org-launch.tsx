@@ -48,7 +48,7 @@ import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccount } from "@/lib/sales-rep-default";
 import { v2Href } from "@/lib/v2/routes";
 import { isAtCostOffer, matchNote, topupCta, type GetStartedOffer } from "@/lib/v2/get-started";
-import { launchCount, type SignupLaunchPlan } from "@/lib/v2/signup-campaign";
+import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
@@ -104,7 +104,7 @@ export function OrgLaunch({
   const knownCard = useRef<CardFacts | null>(null);
   const cardSaved = useRef<(() => void) | null>(null);
   // "Try again" replays the launch: every write that landed on an earlier attempt is skipped.
-  const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, caps: {}, started: {}, campaignIds: {} });
+  const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -351,7 +351,7 @@ export function OrgLaunch({
       } catch (e) {
         console.error("[brand-walk] snapshot clear failed:", e);
       }
-      posthog.capture("brand_walk_launched", { org_id: orgId, brand_id: brandId, campaigns: launchCount(plan) });
+      posthog.capture("brand_walk_launched", { org_id: orgId, brand_id: brandId, campaigns: 1, volume: plan.volume, period: plan.period });
       await sendLaunchEmail().catch((e) => console.error("[brand-walk] launch email failed:", e));
       setApiActiveOrgOverride(null);
       pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });

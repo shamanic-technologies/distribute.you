@@ -88,6 +88,9 @@ const RULES: Rule[] = [
   // HUMAN-BRIEF-1121; an LLM write billed to this anonymous org, stored). Read only; the brand
   // rides the QUERY, bound to the session below.
   { method: "GET", segments: ["offers", ":seg", "campaign-brief"], queryBrand: "brandId" },
+  // What the wanted volume costs (a range) and when it lands (features-service, owner 2026-11-22).
+  // Read only; the brand rides the QUERY, bound to the session below.
+  { method: "GET", segments: ["offers", ":seg", "target-volume-estimate"], queryBrand: "brandId" },
   // The sales path steps (steps, legs, leg rates, ranked paths, channels, ticked paths) are
   // GONE (owner 2026-10-10): the signed-out session reads and writes none of them. The last
   // step only READS (the funnels above); its writes wait for the account and the card.

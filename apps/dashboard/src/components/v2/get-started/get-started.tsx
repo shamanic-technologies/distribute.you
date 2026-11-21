@@ -44,6 +44,7 @@ import {
   getAudienceCompanies,
   getQualificationPreview,
   getCampaignBriefPrefill,
+  getTargetVolumeEstimate,
   getSignupFunnelPages,
   listAudiences,
   listOfferQualificationCriteria,
@@ -77,16 +78,24 @@ import type { PhoneValue } from "@/components/onboarding/phone-input";
 import { PhoneField, defaultPhoneCountry } from "./phone-field";
 import {
   DEFAULT_SIGNUP_DRAFT,
-  SIGNUP_PERIODS,
   briefToLaunch,
-  signupFunnelsFrom,
+  signupCampaignFunnelFrom,
   signupLaunchPlan,
-  type SignupBriefPrefills,
   type SignupCampaignDraft,
   type SignupFunnel,
-  type SignupPeriod,
 } from "@/lib/v2/signup-campaign";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
+import {
+  SIGNUP_TARGET,
+  VOLUME_PERIODS,
+  budgetRangeText,
+  parseVolumeEstimate,
+  timingText,
+  wholeUsdText,
+  wholeVolume,
+  type VolumeEstimate,
+  type VolumePeriod,
+} from "@/lib/v2/campaign-volume";
 import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
@@ -390,12 +399,17 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [valueInput, setValueInput] = useState("");
   // The END (owner sketch 2026-10-10): the funnels features-service proposes (the best proactive
   // one on cold email, the meeting-booking one), and the caps as typed.
-  const [funnels, setFunnels] = useState<{ proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null>(null);
+  // ONE-CAMPAIGN-VOLUME-1122 (owner 2026-11-22): the ONE funnel that runs the whole campaign (cold email, then the AI
+  // booking the meeting); null = not read yet, or none runnable for this offer (`funnelsState` says which).
+  const [funnel, setFunnel] = useState<SignupFunnel | null>(null);
   const [funnelsState, setFunnelsState] = useState<"idle" | "loading" | "failed">("idle");
-  // Each card's brief, prefilled by features-service in plain words before the campaign exists
-  // (owner 2026-11-21, HUMAN-BRIEF-1121): what the launch sends unless the visitor edits it.
-  const [briefPrefills, setBriefPrefills] = useState<SignupBriefPrefills>({ proactive: null, reactive: null });
+  // The campaign's ONE brief, prefilled by features-service in plain words before the campaign exists
+  // (HUMAN-BRIEF-1121): what the launch sends unless the visitor edits it.
+  const [briefPrefill, setBriefPrefill] = useState<string | null>(null);
   const [briefsState, setBriefsState] = useState<"idle" | "loading" | "failed">("idle");
+  // What the volume typed costs (a range) and when it lands, features-service's, read for THAT volume.
+  const [estimate, setEstimate] = useState<VolumeEstimate | null>(null);
+  const [estimateState, setEstimateState] = useState<"idle" | "loading" | "failed">("idle");
   // "Set up my campaign" pressed while a step before it is still running (the 100
   // companies): the stage would walk straight back to that step, so the press is held
   // here, the button says so, and the campaign opens the moment the step settles.
@@ -514,14 +528,14 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     const strategy = styleStrategy;
     for (let i = 0; i < attempts; i += 1) {
       try {
-        const next = signupFunnelsFrom(
+        const next = signupCampaignFunnelFrom(
           await getSignupFunnelPages(id, offerId, strategy ? `${ANGLE_CHANNEL}~${strategy}` : null),
           (funnelId) => funnelFitsAngles(funnelId, strategy),
         );
-        setFunnels(next);
-        saveSnapshot({ funnels: next });
+        setFunnel(next);
+        saveSnapshot({ funnel: next });
         setFunnelsState("idle");
-        void loadBriefPrefills(id, offerId, next);
+        if (next) void loadBriefPrefill(id, offerId, next);
         return;
       } catch (e) {
         console.error(`[get-started] funnels read failed (attempt ${i + 1}):`, e);
@@ -530,17 +544,14 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     }
     setFunnelsState("failed");
   }
-  /** The prefilled brief of each card shown, read once its funnel is known; asked again on a failure, then stated. */
-  async function loadBriefPrefills(id: string, offerId: string, picked: { proactive: SignupFunnel | null; reactive: SignupFunnel | null }) {
+  /** The campaign's prefilled brief, read once its funnel is known; asked again on a failure, then stated. */
+  async function loadBriefPrefill(id: string, offerId: string, picked: SignupFunnel) {
     setBriefsState("loading");
     for (let i = 0; i < 3; i += 1) {
       try {
-        const [proactive, reactive] = await Promise.all(
-          [picked.proactive, picked.reactive].map((f) => (f ? getCampaignBriefPrefill(id, offerId, f.salesFunnelId) : Promise.resolve(null))),
-        );
-        const next = { proactive, reactive };
-        setBriefPrefills(next);
-        saveSnapshot({ briefPrefills: next });
+        const next = await getCampaignBriefPrefill(id, offerId, { salesFunnelIds: [picked.salesFunnelId], target: SIGNUP_TARGET });
+        setBriefPrefill(next);
+        saveSnapshot({ briefPrefill: next });
         setBriefsState("idle");
         return;
       } catch (e) {
@@ -558,6 +569,41 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     void loadFunnels(brandId, offer.offerId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandId, offer?.offerId, answered, canReadFunnels, styleStrategy]);
+
+  // The estimate for the volume typed, asked again (debounced) on each change: the range moves as the visitor types,
+  // the last answer stays on screen meanwhile. An answer for an older volume is dropped.
+  const wantedVolume = wholeVolume(campaignDraft.volume);
+  const wantedPeriod = campaignDraft.volumePeriod;
+  useEffect(() => {
+    if (!brandId || !offer || !funnel || !canReadFunnels || wantedVolume == null) return;
+    let live = true;
+    const t = setTimeout(() => {
+      setEstimateState("loading");
+      getTargetVolumeEstimate(brandId, offer.offerId, {
+        salesFunnelIds: [funnel.salesFunnelId],
+        target: SIGNUP_TARGET,
+        volume: wantedVolume,
+        period: wantedPeriod,
+      })
+        .then((raw) => {
+          if (!live) return;
+          const next = parseVolumeEstimate(raw);
+          setEstimate(next);
+          saveSnapshot({ estimate: next });
+          setEstimateState("idle");
+        })
+        .catch((e) => {
+          if (!live) return;
+          console.error("[get-started] volume estimate read failed:", e);
+          setEstimateState("failed");
+        });
+    }, 300);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId, offer?.offerId, funnel?.salesFunnelId, canReadFunnels, wantedVolume, wantedPeriod]);
 
   // A website carried from a link starts the walk at once, like Explee's hero.
   useEffect(() => {
@@ -591,8 +637,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     setAudience(s.audience);
     if (s.email) setRestoredEmail(s.email);
     if (s.campaign) setCampaignDraft(s.campaign);
-    if (s.funnels) setFunnels(s.funnels);
-    if (s.briefPrefills) setBriefPrefills(s.briefPrefills);
+    if (s.funnel) setFunnel(s.funnel);
+    if (s.briefPrefill) setBriefPrefill(s.briefPrefill);
+    if (s.estimate) setEstimate(s.estimate);
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
     if (s.signalsDone) signalsSaved.current = Promise.resolve();
@@ -683,7 +730,6 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
    * and on their Unibox thread, through the PostHog connector). The dashboard walk
    * ("Add a brand") is not a visitor's walk: nothing sent from there.
    */
-  const periodWord = (p: SignupPeriod) => SIGNUP_PERIODS.find((x) => x.key === p)?.label ?? p;
 
   function stepDone(step: string, values: Record<string, string | number | boolean | null>) {
     if (org) return;
@@ -984,7 +1030,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
 
   /** Launch: the caps are checked here, written at the launch (after the card), then the wall. */
   function confirmCampaign() {
-    const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null }, briefPrefills);
+    const r = signupLaunchPlan({ draft: campaignDraft, funnel, briefPrefill, estimate });
     if ("problem" in r) {
       setAnswerError(r.problem);
       return;
@@ -1000,11 +1046,11 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     setAnswerError(null);
     setStep("campaign", "done");
     saveSnapshot({ campaign: campaignDraft, campaignDone: true });
-    posthog.capture("get_started_campaign_set", { funnel: r.plan.proactive?.name ?? null, meetings: !!r.plan.reactive });
+    posthog.capture("get_started_campaign_set", { funnel: r.plan.name, volume: r.plan.volume, period: r.plan.period });
     stepDone("campaign", {
-      campaign: r.plan.proactive?.name ?? "off",
-      budget: r.plan.proactive ? `$${campaignDraft.budget} per ${periodWord(campaignDraft.budgetPeriod)}` : "off",
-      meeting_booking: r.plan.reactive ? `up to $${campaignDraft.reactiveBudget} per ${periodWord(campaignDraft.reactivePeriod)}` : "off",
+      campaign: r.plan.name,
+      volume: `${r.plan.volume} per ${r.plan.period}`,
+      max_budget: `${wholeUsdText(r.plan.maxBudgetCents / 100)} per ${r.plan.period}`,
       monthly_limit: campaignDraft.monthlyLimit,
     });
     setWallNote(null);
@@ -1803,9 +1849,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     };
   }, [org, started, brandId, walkOffer]);
   const launchPlan = useMemo(() => {
-    const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null }, briefPrefills);
+    const r = signupLaunchPlan({ draft: campaignDraft, funnel, briefPrefill, estimate });
     return "plan" in r ? r.plan : null;
-  }, [campaignDraft, funnels, briefPrefills]);
+  }, [campaignDraft, funnel, briefPrefill, estimate]);
   const canLaunch = readyForCampaign && steps.campaign === "done" && !!launchPlan;
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
@@ -1899,10 +1945,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     written: writtenCount,
     campaignLine:
       steps.campaign === "done" && launchPlan
-        ? [launchPlan.proactive, launchPlan.reactive]
-            .filter((f) => f != null)
-            .map((f) => `${f.name}, $${f.caps.maxBudget.amountCents / 100} a ${SIGNUP_PERIODS.find((p) => p.key === f.caps.maxBudget.period)?.label ?? "day"}`)
-            .join(" + ")
+        ? `${launchPlan.volume} ${(estimate?.target.label ?? launchPlan.name).toLowerCase()} a ${launchPlan.period}`
         : null,
     lifetimeRevenue: valueInput,
     signalCount: steps.signals === "done" ? signals.filter((c) => signalTicks.has(c.id)).length : null,
@@ -1950,13 +1993,15 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       return (
         <CampaignStage
           state={steps.campaign}
-          funnels={funnels}
+          funnel={funnel}
           failed={funnelsState === "failed"}
           loading={funnelsState === "loading"}
           draft={campaignDraft}
           onChange={changeCampaign}
-          briefPrefills={briefPrefills}
+          briefPrefill={briefPrefill}
           briefsLoading={briefsState === "loading"}
+          estimate={estimate}
+          estimateFailed={estimateState === "failed"}
           limitPrefillUsd={org ? null : DEFAULT_MONTHLY_LIMIT_USD}
           error={steps.campaign === "choose" ? answerError : null}
           onRetry={() => brandId && offer && void loadFunnels(brandId, offer.offerId)}
@@ -2175,7 +2220,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           email={(exampleShown ? examples[exampleShown] : undefined) ?? Object.values(examples)[0] ?? restoredEmail}
           plan={launchPlan}
           monthlyLimit={campaignDraft.monthlyLimit}
-          outlook={chosenFunnelOutlook(launchPlan?.proactive ? (funnels?.proactive ?? null) : null)}
+          outlook={chosenFunnelOutlook(launchPlan ? funnel : null)}
           answered={answered}
           walkAtCost={walkAtCost}
           onClose={() => setWallOpen(false)}
@@ -2996,90 +3041,6 @@ function OfferStage({
 }
 
 /**
- * One campaign the visitor ticks (owner 2026-10-16: "ces cases avec logo, nom et description et un
- * budget prérempli"): face, served name, its brief, and its own budget in big figures. Ticked
- * = the k-card-on fill + check; unticked, the budget hides and the campaign is not created.
- */
-function CampaignChoice({
-  on,
-  onToggle,
-  name,
-  prefix,
-  value,
-  period,
-  onValue,
-  onPeriod,
-  label,
-  disabled,
-  delay,
-  brief,
-  briefLoading,
-  onBrief,
-}: {
-  on: boolean;
-  onToggle: () => void;
-  name: string;
-  /** The campaign's brief as it launches (edited, else the served prefill); null while none. */
-  brief: string | null;
-  briefLoading: boolean;
-  onBrief: (text: string) => void;
-  prefix: string;
-  value: string;
-  period: SignupPeriod;
-  onValue: (v: string) => void;
-  onPeriod: (p: SignupPeriod) => void;
-  label: string;
-  disabled: boolean;
-  delay: number;
-}) {
-  return (
-    <div className={`gs-in k-card flex flex-col gap-4 p-5 transition-[box-shadow,background-color] duration-150 ${on ? "k-card-on" : ""}`} style={stagger(delay, 80)}>
-      <button type="button" aria-pressed={on} disabled={disabled} onClick={onToggle} className="flex items-center gap-3 text-left">
-        <FunnelFace name={name} size={48} />
-        <span className="min-w-0 flex-1">
-          <span className={`block text-[20px] font-semibold leading-7 ${on ? "k-fg" : "k-fg3"}`}>{name}</span>
-        </span>
-        {on ? (
-          <span aria-hidden className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[12px] text-white">✓</span>
-        ) : (
-          <span aria-hidden className="h-6 w-6 shrink-0 rounded-full border border-[var(--line-strong)]" />
-        )}
-      </button>
-      {on && <BriefText text={brief} loading={briefLoading} disabled={disabled} onSave={onBrief} />}
-      {on && (
-        <span className="flex items-baseline gap-1.5 whitespace-nowrap">
-          <span className="k-fg2 text-[16px]">{prefix}</span>
-          <input
-            className="k-input tabular-nums"
-            style={{ font: "inherit", fontSize: 28, fontWeight: 600, height: 48, width: 80, padding: "0 10px", textAlign: "right", borderRadius: 10 }}
-            inputMode="numeric"
-            value={value}
-            disabled={disabled}
-            aria-label={label}
-            onChange={(e) => onValue(e.target.value)}
-          />
-          <span className="k-fg2 text-[16px]">/</span>
-          <select
-            className="k-input w-auto pr-6"
-            style={{ font: "inherit", fontSize: 16, height: 36, paddingLeft: 8 }}
-            value={period}
-            disabled={disabled}
-            aria-label={`${label}: period`}
-            onChange={(e) => onPeriod(e.target.value as SignupPeriod)}
-          >
-            {SIGNUP_PERIODS.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </span>
-      )}
-    </div>
-  );
-}
-
-/**
  * A card's brief (owner 2026-11-21, HUMAN-BRIEF-1121: « Prefill un résumé de sa campaign en langage
  * naturel, court concis, clair. Qu'il peut cliquer pour éditer »): it reads as text, a click opens it
  * in its own box, blur or Enter keeps it, Shift+Enter is a new line, Esc drops. Kept in the draft and
@@ -3112,7 +3073,7 @@ function BriefText({
     setEditing(text ?? "");
   };
   // Read and edit share ONE box (the field's own surface and ring), so the text reads as editable.
-  const box = "w-full rounded-[8px] px-2.5 py-2 text-left text-[14px] leading-5 whitespace-pre-wrap";
+  const box = "w-full rounded-[12px] px-[18px] py-[14px] text-left text-[19px] leading-[30px] whitespace-pre-wrap";
   const surface = { background: "var(--bg-raised)", boxShadow: "inset 0 0 0 1px var(--line)" };
   if (editing !== null) {
     return (
@@ -3146,7 +3107,7 @@ function BriefText({
         }}
         className={`k-input ${box} resize-y`}
         // keel.css is unlayered: the box's padding, height and font ride inline so the field opens in the text's own box.
-        style={{ font: "inherit", fontSize: 14, lineHeight: "20px", padding: "8px 10px" }}
+        style={{ font: "inherit", fontSize: 19, lineHeight: "30px", padding: "14px 18px", borderRadius: 12 }}
       />
     );
   }
@@ -3173,34 +3134,48 @@ function BriefText({
   );
 }
 
+/** Where the estimate's figures come from, in the visitor's words (the served `basis`). */
+function basisWords(e: VolumeEstimate): string | null {
+  if (e.basis === "measured") return "Based on your own meetings so far";
+  if (e.basis === "fleet") return "Based on what other brands pay for theirs";
+  if (e.basis === "stated" || e.basis === "default") return "Based on our starting assumptions";
+  return null;
+}
+
 /**
- * The END of signup (owner 2026-10-16): two equal cards, both ticked, the best proactive campaign
- * features-service runs for cold email and the reactive one that answers replies, each with its own
- * prefilled budget (no volume: owner 2026-10-13). Nothing else to read. Launch opens the wall.
+ * The END of signup (owner 2026-11-22, ONE-CAMPAIGN-VOLUME-1122; replaces the 2026-10-16 two cards): ONE campaign,
+ * its ONE brief, the volume of the Target the visitor wants per period, the budget range that volume costs and the
+ * campaign's cap (its top), when the first ones land, then the monthly limit. Big and airy (owner: « trop petit trop
+ * resserré pas assez respirant »). Every figure is features-service's; Launch opens the wall.
  */
 export function CampaignStage({
   state,
-  funnels,
+  funnel,
   failed,
   loading,
   draft,
   onChange,
-  briefPrefills,
+  briefPrefill,
   briefsLoading,
+  estimate,
+  estimateFailed,
   limitPrefillUsd = null,
   error,
   onRetry,
   onLaunch,
 }: {
   state: StepState;
-  funnels: { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null;
+  funnel: SignupFunnel | null;
   failed: boolean;
   loading: boolean;
   draft: SignupCampaignDraft;
   onChange: (next: SignupCampaignDraft) => void;
-  /** Each card's brief as features-service prefilled it; the draft's edit wins. */
-  briefPrefills: SignupBriefPrefills;
+  /** The brief as features-service prefilled it; the draft's edit wins. */
+  briefPrefill: string | null;
   briefsLoading: boolean;
+  /** The served estimate (the last one read); its volume may trail the typed one for a moment. */
+  estimate: VolumeEstimate | null;
+  estimateFailed: boolean;
   /** The "Never spend more than" line's prefill; null = no line (the signed-in walk). */
   limitPrefillUsd?: number | null;
   error: string | null;
@@ -3209,27 +3184,31 @@ export function CampaignStage({
 }) {
   const arm = useContext(GsArmContext);
   const done = state === "done";
-  const main = funnels?.proactive ?? null;
-  const meet = funnels?.reactive ?? null;
   const set = (patch: Partial<SignupCampaignDraft>) => onChange({ ...draft, ...patch });
-  const nothingTicked = !draft.proactiveOn && !(meet && draft.reactiveOn);
+  const volume = wholeVolume(draft.volume);
+  const current = estimate && volume != null && estimate.volume?.volume === volume && estimate.volume?.period === draft.volumePeriod;
+  const range = estimate ? budgetRangeText(estimate) : null;
+  const max = estimate?.budget?.maxUsd ?? null;
+  const timing = estimate && volume != null ? timingText(estimate, volume, draft.volumePeriod) : null;
+  const basis = estimate ? basisWords(estimate) : null;
+  const surface = { background: "var(--bg-raised)", boxShadow: "inset 0 0 0 1px var(--line)" };
   return (
     <StepCard
       index={walkStepNumber("campaign", arm) ?? stepIndex("campaign") + 1}
-      title="Your campaigns"
+      title="Your campaign"
       state={state}
       meta={<StateWord state={state} />}
       footer={
-        main && !done ? (
-          <button type="button" className="k-btn-accent k-cta gs-glow justify-center px-8" onClick={onLaunch} disabled={nothingTicked}>
+        funnel && !done ? (
+          <button type="button" className="k-btn-accent k-cta gs-glow justify-center" style={{ paddingLeft: 48, paddingRight: 48 }} onClick={onLaunch}>
             Launch
           </button>
         ) : null
       }
     >
-      {state === "waiting" || (loading && !main) ? (
+      {state === "waiting" || (loading && !funnel) ? (
         <OptionSkeleton />
-      ) : !main ? (
+      ) : !funnel ? (
         <div className="flex flex-wrap items-center gap-3">
           <p className="k-fg2 text-[13px]">{failed ? "We could not load your campaign just now." : "No campaign can run right now."}</p>
           <button type="button" className="k-btn h-8 px-3" onClick={onRetry}>
@@ -3237,60 +3216,93 @@ export function CampaignStage({
           </button>
         </div>
       ) : (
-        <div className="mt-2 grid grid-cols-[minmax(0,1fr)] gap-5">
-          <div className={`grid grid-cols-[minmax(0,1fr)] gap-3 ${meet ? "sm:grid-cols-2" : ""}`}>
-            <CampaignChoice
-              on={draft.proactiveOn}
-              onToggle={() => set({ proactiveOn: !draft.proactiveOn })}
-              name={main.name}
-              prefix="$"
-              value={draft.budget}
-              period={draft.budgetPeriod}
-              onValue={(v) => set({ budget: v })}
-              onPeriod={(p) => set({ budgetPeriod: p })}
-              label="Max budget in dollars"
-              disabled={done}
-              delay={0}
-              brief={briefToLaunch(draft.proactiveBrief, briefPrefills.proactive)}
-              briefLoading={briefsLoading}
-              onBrief={(t) => set({ proactiveBrief: t })}
-            />
-            {meet && (
-              <CampaignChoice
-                on={draft.reactiveOn}
-                onToggle={() => set({ reactiveOn: !draft.reactiveOn })}
-                name={meet.name}
-                prefix="Up to $"
-                value={draft.reactiveBudget}
-                period={draft.reactivePeriod}
-                onValue={(v) => set({ reactiveBudget: v })}
-                onPeriod={(p) => set({ reactivePeriod: p })}
-                label="AI reply budget in dollars"
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-10 py-4 sm:px-4">
+          <div>
+            <p className="k-label">What it does</p>
+            <div className="mt-3">
+              <BriefText text={briefToLaunch(draft.brief, briefPrefill)} loading={briefsLoading} disabled={done} onSave={(t) => set({ brief: t })} />
+            </div>
+          </div>
+
+          <div>
+            <p className="k-label">How many you want</p>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              <input
+                className="k-input tabular-nums"
+                style={{ font: "inherit", fontSize: 48, fontWeight: 600, height: 80, width: 132, padding: "0 16px", textAlign: "right", borderRadius: 14 }}
+                inputMode="numeric"
+                value={draft.volume}
                 disabled={done}
-                delay={1}
-                brief={briefToLaunch(draft.reactiveBrief, briefPrefills.reactive)}
-                briefLoading={briefsLoading}
-                onBrief={(t) => set({ reactiveBrief: t })}
+                aria-label="How many you want"
+                onChange={(e) => set({ volume: e.target.value })}
               />
+              {estimate ? (
+                <span className="k-fg text-[28px] font-medium leading-9">{estimate.target.label.toLowerCase()}</span>
+              ) : (
+                <Shimmer className="h-8 w-48" />
+              )}
+              <span className="inline-flex gap-1 rounded-[12px] p-1" style={surface} role="radiogroup" aria-label="Per">
+                {VOLUME_PERIODS.map((p: VolumePeriod) => (
+                  <button
+                    key={p}
+                    type="button"
+                    role="radio"
+                    aria-checked={p === draft.volumePeriod}
+                    disabled={done}
+                    onClick={() => set({ volumePeriod: p })}
+                    className={`h-10 rounded-[9px] px-4 text-[16px] font-medium transition-[background-color,color] duration-150 ${p === draft.volumePeriod ? "k-selected k-fg" : "k-fg3 k-hover"}`}
+                  >
+                    per {p}
+                  </button>
+                ))}
+              </span>
+            </div>
+          </div>
+
+          <div className="k-inset rounded-[14px] p-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <span className="flex items-center gap-2">
+                <span className="k-label">Estimated budget</span>
+                {estimate?.isExpected && <span className="k-chip">Expected</span>}
+              </span>
+              {basis && <span className="k-fg3 text-[13px]">{basis}</span>}
+            </div>
+            {range ? (
+              <div className={current ? "" : "opacity-60 transition-opacity duration-150"}>
+                <p className="k-fg mt-3 text-[32px] font-semibold leading-10 tabular-nums">
+                  {range} <span className="k-fg2 text-[18px] font-normal">per {draft.volumePeriod}</span>
+                </p>
+                {max != null && (
+                  <p className="k-fg2 mt-4 text-[15px]">
+                    Your campaign never spends more than <span className="k-fg font-medium">{wholeUsdText(max)} per {draft.volumePeriod}</span>.
+                  </p>
+                )}
+                {timing && <p className="k-fg2 mt-2 text-[15px]">{timing}</p>}
+              </div>
+            ) : estimateFailed || (estimate && !range) ? (
+              <p className="k-fg2 mt-3 text-[15px]">We could not price this campaign just now.</p>
+            ) : (
+              <Shimmer className="mt-3 h-10 w-64" />
             )}
           </div>
+
           {limitPrefillUsd != null && (
-            <label className="flex flex-wrap items-center gap-1.5 text-[13px]">
+            <label className="flex flex-wrap items-center gap-2.5 text-[16px]">
               <span className="k-fg">Never spend more than</span>
               <span className="k-fg2">$</span>
               <input
-                className="k-input w-24 text-right tabular-nums"
-                style={{ font: "inherit", paddingRight: 8 }}
+                className="k-input text-right tabular-nums"
+                style={{ font: "inherit", fontSize: 16, width: 120, height: 40, paddingRight: 12, borderRadius: 10 }}
                 inputMode="numeric"
                 value={draft.monthlyLimit ?? limitPrefillUsd.toLocaleString("en-US")}
                 disabled={done}
                 aria-label="Monthly spend limit in dollars"
                 onChange={(e) => set({ monthlyLimit: e.target.value })}
               />
-              <span className="k-fg">per month</span>
+              <span className="k-fg">per month, all campaigns together</span>
             </label>
           )}
-          {error && <p className="text-[12px] text-[var(--data-rose)]">{error}</p>}
+          {error && <p className="text-[13px] text-[var(--data-rose)]">{error}</p>}
         </div>
       )}
     </StepCard>

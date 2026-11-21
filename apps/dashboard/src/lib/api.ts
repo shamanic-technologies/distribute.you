@@ -8637,16 +8637,28 @@ export async function saveSalesFunnelCaps(
   return parseStaff("saveSalesFunnelCaps", SalesFunnelCapsSchema, raw);
 }
 
+/** billing's period words for a campaign's caps (campaign-service `CampaignCapPeriod`). */
+export type CampaignCapPeriod = "one_off" | "daily" | "weekly" | "monthly";
+
 /**
- * Launch a sales funnel as ONE campaign, started (campaign-service `POST /sales-funnel-campaigns`
- * through the gateway). A campaign that exists for (brand x offer x funnel) is handed back, started,
- * never created twice, so a retry is safe. Meets the payment hold like every start (409
- * `payment_declined` / `no_payment_method`); a funnel with no max budget is held unfunded, so its
- * caps are written FIRST (`saveSalesFunnelCaps`).
+ * Launch a sales funnel as ONE campaign, started (campaign-service `POST /sales-funnel-campaigns` through the
+ * gateway). A campaign that exists for (brand x offer x funnel) is handed back, started, never created twice, so a
+ * retry is safe (a 502 `billing_unavailable` is retried the same way: the hand-back writes the caps). Meets the
+ * payment hold like every start (409 `payment_declined` / `no_payment_method`). ONE-CAMPAIGN-VOLUME-1122: the
+ * campaign's own caps ride the create (its volume of the Target per period, its max budget per period), written at
+ * billing on THIS campaign by campaign-service before its first run; the funnel's parts run under it.
  */
 export async function startSalesFunnelCampaign(
   /** `brief` is required: a new campaign is never created without one (HUMAN-BRIEF-1121); a hand-back keeps its own. */
-  input: { brandId: string; offerId: string; salesFunnelId: string; brief: string },
+  input: {
+    brandId: string;
+    offerId: string;
+    salesFunnelId: string;
+    brief: string;
+    target?: string;
+    maxVolume?: { count: number; period: CampaignCapPeriod };
+    maxBudget?: { amountCents: number; period: CampaignCapPeriod };
+  },
   token?: string,
 ): Promise<SalesFunnelCampaign> {
   const brief = input.brief.trim();
@@ -8654,7 +8666,16 @@ export async function startSalesFunnelCampaign(
   const raw = await apiCall<unknown>(`/sales-funnel-campaigns`, {
     token,
     method: "POST",
-    body: { brandId: input.brandId, offerId: input.offerId, salesFunnelId: input.salesFunnelId, status: "ongoing", brief },
+    body: {
+      brandId: input.brandId,
+      offerId: input.offerId,
+      salesFunnelId: input.salesFunnelId,
+      status: "ongoing",
+      brief,
+      ...(input.target ? { target: input.target } : {}),
+      ...(input.maxVolume ? { maxVolume: input.maxVolume } : {}),
+      ...(input.maxBudget ? { maxBudget: input.maxBudget } : {}),
+    },
     headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": input.brandId },
   });
   return parseStaff("startSalesFunnelCampaign", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
@@ -8662,23 +8683,52 @@ export async function startSalesFunnelCampaign(
 
 /**
  * The brief features-service prefills for a campaign ABOUT to be launched (HUMAN-BRIEF-1121, owner 2026-11-21:
- * « un résumé de sa campaign en langage naturel, court concis, clair »): one short plain sentence per funnel,
- * shown editable on the signup's campaign step and sent as the new campaign's `brief`. Never composed here.
- * Signed out it rides the anonymous session like `getSignupFunnelPages`.
+ * « un résumé de sa campaign en langage naturel, court concis, clair »): ONE short text for the whole campaign
+ * (ONE-CAMPAIGN-VOLUME-1122: the union of its funnels' work, aimed at its Target), shown editable on the signup's
+ * campaign step and sent as the new campaign's `brief`. Never composed here. Signed out it rides the anonymous
+ * session like `getSignupFunnelPages`.
  */
-export async function getCampaignBriefPrefill(brandId: string, offerId: string, salesFunnelId: string): Promise<string> {
+export async function getCampaignBriefPrefill(
+  brandId: string,
+  offerId: string,
+  campaign: { salesFunnelIds: string[]; target: string },
+): Promise<string> {
   // features-service `GET /offers/:offerId/campaign-brief` through the gateway (same inputs answer the same stored text;
   // the first call writes it, ~2-6 s). The brand rides the QUERY (anonymous allowlist binds it to the session).
-  const qs = new URLSearchParams({ brandId, salesFunnelId });
+  const qs = new URLSearchParams({ brandId, salesFunnelIds: campaign.salesFunnelIds.join(","), target: campaign.target });
   const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/campaign-brief?${qs.toString()}`, {
     headers: { "x-brand-id": brandId },
   });
   const parsed = CampaignBriefPrefillSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[getCampaignBriefPrefill] shape mismatch", { issues: parsed.error.issues, brandId, offerId, salesFunnelId });
+    console.error("[getCampaignBriefPrefill] shape mismatch", { issues: parsed.error.issues, brandId, offerId, campaign });
     throw new Error("[getCampaignBriefPrefill] invalid brief prefill body");
   }
   return parsed.data.brief;
+}
+
+/**
+ * What a wanted volume of the Target costs and when it lands (features-service `GET /offers/:offerId/
+ * target-volume-estimate` through the gateway, ONE-CAMPAIGN-VOLUME-1122): the budget range per period (20th to 80th
+ * percentile), the campaign's max budget (its top), the week of the first outcomes and of the steady pace, the basis.
+ * Asked again for each volume typed (the producer applies the volume on a cached cell). Signed out it rides the
+ * anonymous session (brand bound by its query).
+ */
+export async function getTargetVolumeEstimate(
+  brandId: string,
+  offerId: string,
+  ask: { salesFunnelIds: string[]; target: string; volume: number; period: "day" | "week" | "month" },
+): Promise<unknown> {
+  const qs = new URLSearchParams({
+    brandId,
+    salesFunnelIds: ask.salesFunnelIds.join(","),
+    target: ask.target,
+    volume: String(ask.volume),
+    period: ask.period,
+  });
+  return apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/target-volume-estimate?${qs.toString()}`, {
+    headers: { "x-brand-id": brandId },
+  });
 }
 const CampaignBriefPrefillSchema = z.object({ brief: z.string().trim().min(1) }).passthrough();
 
