@@ -28,14 +28,12 @@ const MEET =
   "start_to_lead_found@lead-sourcing+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_meeting_booked@ai-meeting-booking+meeting_booked_to_meeting_attended+meeting_attended_to_paid_client";
 const COLD = "start_to_lead_found@lead-sourcing+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
 const CRM = "start_to_lead_found@sourcing-crm-contacts~warm-never-converted+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_meeting_booked@ai-meeting-booking";
-const PAGES = {
-  proactive: { rows: [row({ id: COLD, name: "Epiphany", type: "proactive", roi: 17 })] },
-  reactive: {
-    rows: [
-      row({ id: CRM, name: "Warm", type: "proactive", roi: 9 }),
-      row({ id: MEET, name: "Motivate", type: "proactive", costUsd: 263, costPer: "per meeting booked", roi: 4, status: "estimated" }),
-    ],
-  },
+const PAGE_ROWS = {
+  rows: [
+    row({ id: COLD, name: "Epiphany", type: "proactive", roi: 17 }),
+    row({ id: CRM, name: "Warm", type: "proactive", roi: 9 }),
+    row({ id: MEET, name: "Motivate", type: "proactive", costUsd: 263, costPer: "per meeting booked", roi: 4, status: "estimated", mixed: true }),
+  ],
 };
 const ESTIMATE = (volume: number, period: string, over: Partial<VolumeEstimate> = {}): VolumeEstimate =>
   parseVolumeEstimate({
@@ -54,11 +52,15 @@ const ESTIMATE = (volume: number, period: string, over: Partial<VolumeEstimate> 
   });
 
 describe("Your campaign: ONE funnel that runs the whole campaign, picked as served", () => {
-  it("takes the first runnable funnel that books the meeting after the cold email, on either page", () => {
-    expect(signupCampaignFunnelFrom(PAGES)).toMatchObject({ salesFunnelId: MEET, name: "Motivate", status: "estimated" });
-    expect(signupCampaignFunnelFrom({ proactive: { rows: [] }, reactive: { rows: [] } })).toBeNull();
-    expect(signupCampaignFunnelFrom({ ...PAGES, reactive: { rows: [row({ id: MEET, name: "M", type: "proactive", runnable: false })] } })).toBeNull();
-    expect(() => signupCampaignFunnelFrom({ proactive: {} })).toThrow();
+  it("takes the first runnable funnel that books the meeting after the cold email (served mixed or not)", () => {
+    expect(signupCampaignFunnelFrom(PAGE_ROWS)).toMatchObject({ salesFunnelId: MEET, name: "Motivate", status: "estimated" });
+    expect(signupCampaignFunnelFrom({ rows: [] })).toBeNull();
+    expect(signupCampaignFunnelFrom({ rows: [row({ id: MEET, name: "M", type: "proactive", runnable: false })] })).toBeNull();
+    expect(() => signupCampaignFunnelFrom({ nope: [] })).toThrow();
+    // One narrowed page: every word of q must appear, so the meeting funnel is never off a 25-row page.
+    const api = read("src/lib/api.ts");
+    expect(api).toContain('const q = ["start_to_lead_found@lead-sourcing", "conversation_to_meeting_booked@ai-meeting-booking"');
+    expect(api).toContain("&containsChannels=ai-meeting-booking&limit=25&q=${encodeURIComponent(q)}");
   });
 
   it("only Lead Sourcing -> cold email -> AI meeting booking; never the client's own contacts nor a re-serve play", () => {
@@ -69,7 +71,7 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     expect(isMeetingCampaignFunnel(MEET.replace("@lead-sourcing+", "@lead-sourcing~contacted-pure-prospects+"))).toBe(false);
     // A snapshot from the two-card step (no meeting funnel) is not reopened: the step reads again.
     expect(parseSignupFunnel({ salesFunnelId: COLD, name: "Epiphany" })).toBeNull();
-    expect(parseSignupFunnel(JSON.parse(JSON.stringify(signupCampaignFunnelFrom(PAGES))))).toEqual(signupCampaignFunnelFrom(PAGES));
+    expect(parseSignupFunnel(JSON.parse(JSON.stringify(signupCampaignFunnelFrom(PAGE_ROWS))))).toEqual(signupCampaignFunnelFrom(PAGE_ROWS));
   });
 
   it("states the served cost with its unit, and nothing when none is served", () => {
@@ -87,7 +89,7 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
   });
 
   it("launches ONE campaign: the brief (edit over prefill), the volume, and the cap = the top of the served range", () => {
-    const funnel = signupCampaignFunnelFrom(PAGES);
+    const funnel = signupCampaignFunnelFrom(PAGE_ROWS);
     const r = signupLaunchPlan({ draft: DEFAULT_SIGNUP_DRAFT, funnel, briefPrefill: "Book HR leaders.", estimate: ESTIMATE(10, "week") });
     expect(r).toEqual({
       plan: { salesFunnelIds: [MEET], salesFunnelId: MEET, name: "Motivate", target: "meeting_booked", brief: "Book HR leaders.", volume: 10, period: "week", maxBudgetCents: 492200 },
@@ -100,7 +102,7 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
   });
 
   it("refuses: no brief, a broken volume, an estimate read for another volume, an unpriced one, no funnel", () => {
-    const funnel = signupCampaignFunnelFrom(PAGES);
+    const funnel = signupCampaignFunnelFrom(PAGE_ROWS);
     const base = { draft: DEFAULT_SIGNUP_DRAFT, funnel, briefPrefill: "b", estimate: ESTIMATE(10, "week") };
     expect(signupLaunchPlan({ ...base, briefPrefill: null })).toEqual({ problem: "Say in a few words what your campaign should do." });
     expect(signupLaunchPlan({ ...base, draft: { ...DEFAULT_SIGNUP_DRAFT, volume: "2.5" } })).toHaveProperty("problem");

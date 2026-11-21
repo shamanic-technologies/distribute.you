@@ -45,7 +45,7 @@ import {
   getQualificationPreview,
   getCampaignBriefPrefill,
   getTargetVolumeEstimate,
-  getSignupFunnelPages,
+  getSignupFunnelPage,
   listAudiences,
   listOfferQualificationCriteria,
   listBrandOffers,
@@ -529,7 +529,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     for (let i = 0; i < attempts; i += 1) {
       try {
         const next = signupCampaignFunnelFrom(
-          await getSignupFunnelPages(id, offerId, strategy ? `${ANGLE_CHANNEL}~${strategy}` : null),
+          await getSignupFunnelPage(id, offerId, strategy ? `${ANGLE_CHANNEL}~${strategy}` : null),
           (funnelId) => funnelFitsAngles(funnelId, strategy),
         );
         setFunnel(next);

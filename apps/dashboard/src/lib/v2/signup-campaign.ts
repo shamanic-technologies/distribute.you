@@ -52,8 +52,6 @@ export type PublicSalesFunnelRow = z.infer<typeof PublicSalesFunnelRowSchema>;
 
 export const PublicSalesFunnelPageSchema = z.object({ rows: z.array(PublicSalesFunnelRowSchema) }).passthrough();
 
-/** The two producer pages the step reads (Lead Sourcing, AI meeting booking), verbatim. */
-export const SignupFunnelsBodySchema = z.object({ proactive: PublicSalesFunnelPageSchema, reactive: PublicSalesFunnelPageSchema });
 
 export interface SignupFunnel {
   salesFunnelId: string;
@@ -81,7 +79,7 @@ function funnelOfRow(row: PublicSalesFunnelRow): SignupFunnel {
 }
 
 /**
- * The campaign's funnel: the first runnable row (producer order, ROI first) on either page that runs the whole
+ * The campaign's funnel: the first runnable row (producer order, ROI first) of the page that runs the whole
  * campaign (cold email then the AI booking the meeting); null when none is runnable for this offer.
  */
 export function signupCampaignFunnelFrom(
@@ -89,13 +87,12 @@ export function signupCampaignFunnelFrom(
   /** Which funnels the email style picked allows (lib/v2/email-angles.ts `funnelFitsAngles`). */
   fits: (funnelId: string) => boolean = () => true,
 ): SignupFunnel | null {
-  const parsed = SignupFunnelsBodySchema.safeParse(body);
+  const parsed = PublicSalesFunnelPageSchema.safeParse(body);
   if (!parsed.success) {
     console.error("[signup-campaign] funnels body shape mismatch", { issues: parsed.error.issues });
     throw new Error("[signup-campaign] invalid funnels body");
   }
-  const rows = [...parsed.data.proactive.rows, ...parsed.data.reactive.rows];
-  const row = rows.find((r) => r.runnable && isMeetingCampaignFunnel(r.id) && fits(r.id));
+  const row = parsed.data.rows.find((r) => r.runnable && isMeetingCampaignFunnel(r.id) && fits(r.id));
   return row ? funnelOfRow(row) : null;
 }
 

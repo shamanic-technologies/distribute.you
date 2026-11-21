@@ -8686,7 +8686,7 @@ export async function startSalesFunnelCampaign(
  * « un résumé de sa campaign en langage naturel, court concis, clair »): ONE short text for the whole campaign
  * (ONE-CAMPAIGN-VOLUME-1122: the union of its funnels' work, aimed at its Target), shown editable on the signup's
  * campaign step and sent as the new campaign's `brief`. Never composed here. Signed out it rides the anonymous
- * session like `getSignupFunnelPages`.
+ * session like `getSignupFunnelPage`.
  */
 export async function getCampaignBriefPrefill(
   brandId: string,
@@ -8733,25 +8733,22 @@ export async function getTargetVolumeEstimate(
 const CampaignBriefPrefillSchema = z.object({ brief: z.string().trim().min(1) }).passthrough();
 
 /**
- * The funnels the signup's campaign step proposes, PRICED FOR THIS OFFER (features-service through
- * `GET /v1/offers/:offerId/sales-funnels`, runnable only, ROI first): the Lead Sourcing page and the
- * AI-meeting-booking page, verbatim. Signed out it rides the anonymous session (`/api/anon/v1`,
- * brand bound by its query); from the dashboard walk, the org it names.
+ * The funnel the signup's ONE campaign runs, PRICED FOR THIS OFFER (features-service through
+ * `GET /v1/offers/:offerId/sales-funnels`, runnable only, ROI first): one page narrowed to the funnels that find
+ * people by Lead Sourcing and book the meeting with the AI (`q` = every word must appear, so 188 meeting rows
+ * cannot push it off a 25-row page), verbatim. Signed out it rides the anonymous session (`/api/anon/v1`, brand
+ * bound by its query); from the dashboard walk, the org it names.
  */
-export async function getSignupFunnelPages(
+export async function getSignupFunnelPage(
   brandId: string,
   offerId: string,
   /** A cold email play to search for (`sales-cold-email-outreach~<strategy>`), from the email style picked. */
-  proactivePlay: string | null = null,
-): Promise<{ proactive: unknown; reactive: unknown }> {
-  const page = (channel: string, q: string | null = null) =>
-    apiCall<unknown>(
-      `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=${encodeURIComponent(channel)}&limit=25${q ? `&q=${encodeURIComponent(q)}` : ""}`,
-    );
-  // The proactive page asks the Lead Sourcing funnels (signup funds only Lead Sourcing -> cold email
-  // -> positive reply, lib/v2/signup-campaign.ts): asked by cold email, 25 rows of CRM funnels hid it.
-  const [proactive, reactive] = await Promise.all([page("lead-sourcing", proactivePlay), page("ai-meeting-booking")]);
-  return { proactive, reactive };
+  coldEmailPlay: string | null = null,
+): Promise<unknown> {
+  const q = ["start_to_lead_found@lead-sourcing", "conversation_to_meeting_booked@ai-meeting-booking", ...(coldEmailPlay ? [coldEmailPlay] : [])].join(" ");
+  return apiCall<unknown>(
+    `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=ai-meeting-booking&limit=25&q=${encodeURIComponent(q)}`,
+  );
 }
 
 /**
