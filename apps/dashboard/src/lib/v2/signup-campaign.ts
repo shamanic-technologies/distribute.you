@@ -93,7 +93,16 @@ export function signupCampaignFunnelFrom(
     throw new Error("[signup-campaign] invalid funnels body");
   }
   const row = parsed.data.rows.find((r) => r.runnable && isMeetingCampaignFunnel(r.id) && fits(r.id));
-  return row ? funnelOfRow(row) : null;
+  if (!row) {
+    // A visitor with no campaign to launch is a producer gap (GS-STEP11-NO-CAMPAIGN-1122): say why, loud.
+    const body = parsed.data as Record<string, unknown>;
+    console.error("[signup-campaign] no runnable meetings-booked funnel for this offer", {
+      rows: parsed.data.rows.length,
+      setAsideByStep: body.setAsideByStep ?? null,
+    });
+    return null;
+  }
+  return funnelOfRow(row);
 }
 
 /**
