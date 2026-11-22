@@ -25,7 +25,7 @@ export function SkillsView() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
     <>
-      <SectionTitle count={list.data?.length ?? null} right={<span className="hidden sm:inline">Click a title to rename it, a line to edit its text; drag a line to move it</span>}>
+      <SectionTitle count={list.data?.length ?? null} right={<span className="hidden sm:inline">+ adds under a skill, the bin deletes it, the grip drags it</span>}>
         Skills
       </SectionTitle>
       <SkillTree
