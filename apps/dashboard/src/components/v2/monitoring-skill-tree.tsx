@@ -7,7 +7,6 @@ import {
   applySkillMove,
   buildSkillTree,
   dropZoneAt,
-  initiallyOpen,
   isSelfOrDescendant,
   planSkillDrop,
   type DropZone,
@@ -19,8 +18,6 @@ import {
 } from "@/lib/monitoring/skills-tree";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { CaretRightIcon } from "@phosphor-icons/react/dist/csr/CaretRight";
-import { FolderIcon } from "@phosphor-icons/react/dist/csr/Folder";
-import { FolderOpenIcon } from "@phosphor-icons/react/dist/csr/FolderOpen";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
@@ -170,9 +167,9 @@ export function SkillTree({
       setMoveError(err instanceof ApiError && (err.status === 400 || err.status === 409) ? "Not moved: a skill cannot go under its own branch, and the root stays on top." : "Not moved. Try again in a moment.");
     }
   };
-  // Folders start open on the first answer only; after that, what the reader opened stays.
+  // Every branch opens on the first answer (nothing hidden); after that, what the reader closed stays closed.
   useEffect(() => {
-    if (tree && open === null) setOpen(initiallyOpen(tree));
+    if (tree && open === null) setOpen(new Set(list.data?.map((sk) => sk.slug)));
   }, [tree, open]);
   const rows = tree && open ? visibleSkillRows(tree, open) : undefined;
   const toggle = (slug: string) =>
@@ -321,7 +318,8 @@ function SkillLine({
   };
 }) {
   const { skill, depth, hasChildren, childCount } = row;
-  const Icon = hasChildren ? (isOpen ? FolderOpenIcon : FolderIcon) : FileTextIcon;
+  // Every skill is a page (its own text); a page with pages under it shows a caret, never a folder (owner 2026-11-22).
+  const Icon = FileTextIcon;
   const zoneOf = (e: React.DragEvent<HTMLDivElement>) => {
     const box = e.currentTarget.getBoundingClientRect();
     return dropZoneAt(e.clientY - box.top, box.height);
@@ -388,7 +386,7 @@ function SkillLine({
         ) : (
           <span className="inline-block w-6 shrink-0" />
         )}
-        <Icon size={16} weight="duotone" className="mt-0.5 shrink-0" style={{ color: hasChildren ? "var(--data-amber)" : "var(--fg-3)" }} />
+        <Icon size={16} weight="duotone" className="mt-0.5 shrink-0" style={{ color: "var(--fg-3)" }} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <InlineText

@@ -2965,7 +2965,6 @@ export async function deleteStaffSkill(slug: string): Promise<StaffSkill> {
 const DistryDefinitionSchema = z.object({
   systemPrompt: z.string(),
   enabledTools: z.array(z.string()),
-  skillSlugs: z.array(z.string()).nullable(),
   provider: z.string(),
   model: z.string(),
   effort: z.string().nullable(),
