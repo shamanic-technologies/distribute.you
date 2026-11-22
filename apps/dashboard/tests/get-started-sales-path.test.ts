@@ -81,8 +81,8 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     expect(isLearning({ status: "learning" })).toBe(true);
   });
 
-  it("opens on 10 meetings booked a week, the brief untouched (owner mockup 2026-11-22)", () => {
-    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ volume: "10", volumePeriod: "week", brief: null, monthlyLimit: null });
+  it("opens on 2 meetings booked a week, the brief untouched (owner 2026-11-22)", () => {
+    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ volume: "2", volumePeriod: "week", brief: null, monthlyLimit: null });
     // An older two-card snapshot keeps only the monthly limit.
     expect(parseSignupDraft({ budget: "35", proactiveOn: false, monthlyLimit: "500" })).toEqual({ ...DEFAULT_SIGNUP_DRAFT, monthlyLimit: "500" });
     expect(parseSignupDraft({ volume: "4", volumePeriod: "month", brief: "kept" })).toEqual({ volume: "4", volumePeriod: "month", brief: "kept", monthlyLimit: null });
@@ -90,11 +90,12 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
 
   it("launches ONE campaign: the brief (edit over prefill), the volume, and the cap = the top of the served range", () => {
     const funnel = signupCampaignFunnelFrom(PAGE_ROWS);
-    const r = signupLaunchPlan({ draft: DEFAULT_SIGNUP_DRAFT, funnel, briefPrefill: "Book HR leaders.", estimate: ESTIMATE(10, "week") });
+    const TEN = { ...DEFAULT_SIGNUP_DRAFT, volume: "10" };
+    const r = signupLaunchPlan({ draft: TEN, funnel, briefPrefill: "Book HR leaders.", estimate: ESTIMATE(10, "week") });
     expect(r).toEqual({
       plan: { salesFunnelIds: [MEET], salesFunnelId: MEET, name: "Motivate", target: "meeting_booked", brief: "Book HR leaders.", volume: 10, period: "week", maxBudgetCents: 492200 },
     });
-    const edited = signupLaunchPlan({ draft: { ...DEFAULT_SIGNUP_DRAFT, brief: "  Mine.  " }, funnel, briefPrefill: "x", estimate: ESTIMATE(10, "week") });
+    const edited = signupLaunchPlan({ draft: { ...TEN, brief: "  Mine.  " }, funnel, briefPrefill: "x", estimate: ESTIMATE(10, "week") });
     expect("plan" in edited && edited.plan.brief).toBe("Mine.");
     expect(capPeriodOf("day")).toBe("daily");
     expect(capPeriodOf("week")).toBe("weekly");
@@ -103,7 +104,7 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
 
   it("refuses: no brief, a broken volume, an estimate read for another volume, an unpriced one, no funnel", () => {
     const funnel = signupCampaignFunnelFrom(PAGE_ROWS);
-    const base = { draft: DEFAULT_SIGNUP_DRAFT, funnel, briefPrefill: "b", estimate: ESTIMATE(10, "week") };
+    const base = { draft: { ...DEFAULT_SIGNUP_DRAFT, volume: "10" }, funnel, briefPrefill: "b", estimate: ESTIMATE(10, "week") };
     expect(signupLaunchPlan({ ...base, briefPrefill: null })).toEqual({ problem: "Say in a few words what your campaign should do." });
     expect(signupLaunchPlan({ ...base, draft: { ...DEFAULT_SIGNUP_DRAFT, volume: "2.5" } })).toHaveProperty("problem");
     expect(signupLaunchPlan({ ...base, draft: { ...DEFAULT_SIGNUP_DRAFT, volume: "0" } })).toHaveProperty("problem");
