@@ -2941,6 +2941,25 @@ export async function writeStaffSkill(
   return { skill: parsed.skill, created: parsed.created };
 }
 
+/**
+ * Drag and drop (SKILL-TREE-EDIT-1122): the skill goes under `parentSlug` at `position`, the 0-based place
+ * among that parent's OTHER sub-skills. chat-service renumbers the siblings and refuses a cycle or the root.
+ */
+export async function moveStaffSkill(slug: string, move: { parentSlug: string; position: number }) {
+  const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}/move`, { method: "POST", body: move });
+  return parseStaff(
+    "moveStaffSkill",
+    z.object({ skill: SkillSchema, siblings: z.array(z.object({ slug: z.string(), position: z.number() })) }),
+    raw,
+  );
+}
+
+/** Off the tree, history kept (a PUT brings it back). chat-service refuses 409 while it has sub-skills, or for a skill every chat reads. */
+export async function deleteStaffSkill(slug: string): Promise<StaffSkill> {
+  const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}`, { method: "DELETE", body: {} });
+  return parseStaff("deleteStaffSkill", z.object({ skill: SkillSchema, versionsKept: z.number() }), raw).skill;
+}
+
 // --- Distry (DISTRY-PRINCIPAL-1119): the AI principal's definition, versions, and the Engines it can call ---
 
 const DistryDefinitionSchema = z.object({

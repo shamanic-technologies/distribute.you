@@ -116,6 +116,7 @@ export function DistryView() {
                 onToggle={toggleSkill}
                 onAll={() => save({ skillSlugs: current?.skillSlugs === null ? c.skills.map((s) => s.slug) : null })}
                 onOpen={(slug) => setOpen({ kind: "skill", slug })}
+                onDeleted={(slug) => setOpen((cur) => (cur?.kind === "skill" && cur.slug === slug ? null : cur))}
               />
             ) : (
               <Lines />
@@ -325,11 +326,26 @@ function ToolsList({ config, isOn, onToggle, onOpen }: { config: DistryConfig; i
 }
 
 /** The SAME tree editor as Monitoring > Chat > Skills (SKILL-TREE-EDIT-1122), with Distry's checkbox on each line. */
-function SkillsList({ config, isOn, onToggle, onAll, onOpen }: { config: DistryConfig; isOn: (s: string) => boolean; onToggle: (s: string) => void; onAll: () => void; onOpen: (s: string) => void }) {
+function SkillsList({
+  config,
+  isOn,
+  onToggle,
+  onAll,
+  onOpen,
+  onDeleted,
+}: {
+  config: DistryConfig;
+  isOn: (s: string) => boolean;
+  onToggle: (s: string) => void;
+  onAll: () => void;
+  onOpen: (s: string) => void;
+  onDeleted: (s: string) => void;
+}) {
   const all = config.current.skillSlugs === null;
   return (
     <SkillTree
       onOpen={onOpen}
+      onDeleted={onDeleted}
       dimmed={(slug) => !isOn(slug)}
       head={
         <label className="k-row flex cursor-pointer items-start gap-3 px-4 py-2.5">

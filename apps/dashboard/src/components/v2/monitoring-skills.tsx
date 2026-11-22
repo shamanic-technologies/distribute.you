@@ -25,12 +25,13 @@ export function SkillsView() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
     <>
-      <SectionTitle count={list.data?.length ?? null} right={<span className="hidden sm:inline">Click a title to rename it, a line to edit its text, + to add one under it</span>}>
+      <SectionTitle count={list.data?.length ?? null} right={<span className="hidden sm:inline">Click a title to rename it, a line to edit its text; drag a line to move it</span>}>
         Skills
       </SectionTitle>
       <SkillTree
         selected={selected}
         onOpen={setSelected}
+        onDeleted={(slug) => setSelected((cur) => (cur === slug ? null : cur))}
         head={
           <div className="flex items-center gap-3 px-4 py-2.5">
             <span className="k-label flex-1">Skill</span>
