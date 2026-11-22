@@ -720,7 +720,7 @@ export type MonitoringView =
   | { view: "entity"; kind: "account" | "mailbox" | "domain"; key: string }
   | { view: "test"; testId: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "cost/email-sources", "ledger/coverage", "ledger/check", "ledger/reconciliation", "customers/accounts", "customers/absorbed", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "revenue", "emails", "emails/inbox-providers", "emails/domains", "emails/mailboxes", "emails/accounts", "emails/placement-tests", "emails/warmup", "emails/queued", "emails/capacity", "emails/blocklists", "emails/threads", "emails/rules", "whatsapp/lines", "whatsapp/sophie", "security/advisories", "box/load", "box/watchdogs", "box/page-speed", "triggers/reports", "triggers/waiting", "triggers/firing", "triggers/unsent", "triggers/awaiting", "tools/intake", "factory/plan", "factory/following", "scripts/engines", "scripts/campaigns", "ai/credit", "ai/schema", "ai/scripts", "chat/skills", "chat/distry", "chat/distry-spend", "alerts/raised"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "cost/email-sources", "ledger/coverage", "ledger/check", "ledger/reconciliation", "customers/accounts", "customers/absorbed", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "revenue", "emails", "emails/inbox-providers", "emails/domains", "emails/mailboxes", "emails/accounts", "emails/placement-tests", "emails/warmup", "emails/queued", "emails/capacity", "emails/blocklists", "emails/threads", "emails/rules", "whatsapp/lines", "whatsapp/sophie", "security/advisories", "box/load", "box/watchdogs", "box/page-speed", "triggers/reports", "triggers/waiting", "triggers/firing", "triggers/unsent", "triggers/awaiting", "tools/intake", "factory/plan", "factory/following", "scripts/engines", "scripts/campaigns", "ai/credit", "ai/schema", "ai/scripts", "chat/distry", "chat/distry-spend", "alerts/raised"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 /** Retired URLs (owner 2026-10-01): links already shared keep landing on the page that absorbed them. */
@@ -728,6 +728,8 @@ export const MONITORING_MOVED: Record<string, MonitoringPage> = {
   "price/current": "price/billed",
   "price/history": "price/billed",
   "price/email-sending": "cost/email-sending",
+  // Owner 2026-11-22: every skill is edited on the Distry page; Chat > Skills is deleted.
+  "chat/skills": "chat/distry",
 };
 
 const ENTITY_OF_SEGMENT: Record<string, "account" | "mailbox" | "domain"> = { accounts: "account", mailboxes: "mailbox", domains: "domain" };

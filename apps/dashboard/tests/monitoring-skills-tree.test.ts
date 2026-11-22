@@ -65,14 +65,18 @@ describe("skill tree editing (SKILL-TREE-EDIT-1122)", () => {
   });
 });
 
-describe("one shared tree editor on both pages", () => {
-  it("draws the tree on Skills and Distry through SkillTree, never a second copy", async () => {
+describe("the skill tree lives on the Distry page", () => {
+  it("draws the tree on Distry with no tick box, the old Skills URL lands there", async () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
-    expect(read("components/v2/monitoring-skills.tsx")).toContain("<SkillTree");
-    expect(read("components/v2/monitoring-distry.tsx")).toContain("<SkillTree");
-    expect(read("components/v2/monitoring-distry.tsx")).not.toContain("depthOf");
+    // Owner 2026-11-22: the skills live on the Distry page only, every skill read (no pick-list, no tick box).
+    const distry = read("components/v2/monitoring-distry.tsx");
+    expect(distry).toContain("<SkillTree");
+    expect(distry).not.toContain("skillSlugs");
+    expect(distry).not.toContain("Every skill");
+    expect(read("lib/monitoring/monitoring.ts")).toContain('"chat/skills": "chat/distry"');
+    expect(read("components/v2/monitoring-page.tsx")).not.toContain("SkillsView");
     const tree = read("components/v2/monitoring-skill-tree.tsx");
     expect(tree).toContain("writeStaffSkill(slug, { content: current.content, ...change })");
     expect(tree).toContain("Add a skill under");

@@ -8,6 +8,7 @@ import {
   getStaffDistryEngines,
   getStaffDistryModels,
   getStaffDistryVersions,
+  getStaffSkills,
   restoreStaffDistryVersion,
   saveStaffDistryConfig,
   type DistryConfig,
@@ -37,7 +38,7 @@ type Engine = DistryEngines["engines"][number];
 type Open = { kind: "tool"; name: string } | { kind: "skill"; slug: string } | { kind: "engine"; outcome: string } | { kind: "version"; version: number } | { kind: "model" } | null;
 
 function definitionOf(v: DistryVersion): DistryDefinition {
-  return { systemPrompt: v.systemPrompt, enabledTools: v.enabledTools, skillSlugs: v.skillSlugs, provider: v.provider, model: v.model, effort: v.effort };
+  return { systemPrompt: v.systemPrompt, enabledTools: v.enabledTools, provider: v.provider, model: v.model, effort: v.effort };
 }
 
 export function DistryView() {
@@ -68,6 +69,8 @@ export function DistryView() {
   }
 
   const c = config.data;
+  // Distry reads every live skill (chat-service v0.63.208): the count is the tree's.
+  const skillCount = useAuthQuery(["staffSkills"], getStaffSkills, { staleTime: 30_000, retry: false }).data?.length;
   const current = c?.current;
   const save = (change: Partial<DistryDefinition>) => {
     if (!current) return;
@@ -79,15 +82,6 @@ export function DistryView() {
     if (!current) return;
     save({ enabledTools: toolOn(name) ? current.enabledTools.filter((t) => t !== name) : [...current.enabledTools, name] });
   };
-  const skillOn = (slug: string) => (current ? current.skillSlugs === null || current.skillSlugs.includes(slug) : false);
-  const toggleSkill = (slug: string) => {
-    if (!c || !current) return;
-    const picked = new Set(current.skillSlugs ?? c.skills.map((s) => s.slug));
-    if (picked.has(slug)) picked.delete(slug);
-    else picked.add(slug);
-    save({ skillSlugs: [...picked] });
-  };
-
   if (config.isError) {
     console.error("[dashboard] distry: config read failed", config.error);
     return (
@@ -99,7 +93,7 @@ export function DistryView() {
 
   return (
     <div className="space-y-8">
-      <Strip config={c} engines={engines.data} saving={saving} />
+      <Strip config={c} engines={engines.data} saving={saving} skillCount={skillCount} />
       {refusal && <p className="text-[13px] text-[var(--data-rose)]">{refusal}</p>}
       <div className="grid items-start gap-8 lg:grid-cols-2">
         <div className="min-w-0 space-y-8">
@@ -109,19 +103,12 @@ export function DistryView() {
           <Block title="Model" sub="The model Distry thinks with, and how long it thinks. Click to change it.">
             {current ? <ModelRow version={current} onOpen={() => setOpen({ kind: "model" })} /> : <Lines />}
           </Block>
-          <Block title="Skills" count={c ? (current?.skillSlugs === null ? c.skills.length : current?.skillSlugs.length) : undefined} sub="What Distry reads before it acts. Click a title to rename it, a line to edit its text. + adds a skill under it, the bin deletes it, the grip on the left drags it.">
-            {c ? (
-              <SkillsList
-                config={c}
-                isOn={skillOn}
-                onToggle={toggleSkill}
-                onAll={() => save({ skillSlugs: current?.skillSlugs === null ? c.skills.map((s) => s.slug) : null })}
-                onOpen={(slug) => setOpen({ kind: "skill", slug })}
-                onDeleted={(slug) => setOpen((cur) => (cur?.kind === "skill" && cur.slug === slug ? null : cur))}
-              />
-            ) : (
-              <Lines />
-            )}
+          <Block title="Skills" count={skillCount} sub="Distry reads every skill in this tree. Click a title to rename it, a line to edit its text. + adds a skill under it, the bin deletes it, the grip drags it.">
+            <SkillTree
+              selected={open?.kind === "skill" ? open.slug : null}
+              onOpen={(slug) => setOpen({ kind: "skill", slug })}
+              onDeleted={(slug) => setOpen((cur) => (cur?.kind === "skill" && cur.slug === slug ? null : cur))}
+            />
           </Block>
           <Block title="Versions" count={versions.data?.length} sub="Every save is a version. Click one to read it whole.">
             <VersionsTable versions={versions} currentVersion={current?.version} onOpen={(version) => setOpen({ kind: "version", version })} />
@@ -138,19 +125,7 @@ export function DistryView() {
       </div>
 
       {open?.kind === "skill" && (
-        <SkillPanel
-          slug={open.slug}
-          onClose={() => setOpen(null)}
-          extra={
-            <Switch
-              on={skillOn(open.slug)}
-              onToggle={() => toggleSkill(open.slug)}
-              label="Read by Distry"
-              disabled={saving || current?.skillSlugs === null}
-              note={current?.skillSlugs === null ? "Distry reads every skill. Untick « Every skill » to pick." : undefined}
-            />
-          }
-        />
+        <SkillPanel slug={open.slug} onClose={() => setOpen(null)} />
       )}
       {open?.kind === "tool" && c && <ToolPanel tool={c.availableTools.find((t) => t.name === open.name)} on={toolOn(open.name)} onToggle={() => toggleTool(open.name)} saving={saving} onClose={() => setOpen(null)} />}
       {open?.kind === "model" && c && (
@@ -176,11 +151,11 @@ export function DistryView() {
   );
 }
 
-function Strip({ config, engines, saving }: { config: DistryConfig | undefined; engines: { callable: number; total: number } | undefined; saving: boolean }) {
+function Strip({ config, engines, saving, skillCount }: { config: DistryConfig | undefined; engines: { callable: number; total: number } | undefined; saving: boolean; skillCount: number | undefined }) {
   const cells: { label: string; value: string | null; note: string }[] = [
     { label: "Version", value: config ? `v${config.current.version}` : null, note: config ? (saving ? "Saving…" : `${who(config.current.editedBy)}, ${timeAgo(config.current.createdAt)}`) : "" },
     { label: "Tools on", value: config ? `${config.current.enabledTools.length} of ${config.availableTools.length}` : null, note: "Engines count as one" },
-    { label: "Skills read", value: config ? (config.current.skillSlugs === null ? "All" : `${config.current.skillSlugs.length} of ${config.skills.length}`) : null, note: "with every skill under them" },
+    { label: "Skills", value: skillCount === undefined ? null : String(skillCount), note: "Distry reads every one" },
     { label: "Engines callable", value: engines ? `${engines.callable} of ${engines.total}` : null, note: "from the live catalogue" },
   ];
   return (
@@ -323,51 +298,6 @@ function ToolsList({ config, isOn, onToggle, onOpen }: { config: DistryConfig; i
         </div>
       )}
     </div>
-  );
-}
-
-/** The SAME tree editor as Monitoring > Chat > Skills (SKILL-TREE-EDIT-1122), with Distry's checkbox on each line. */
-function SkillsList({
-  config,
-  isOn,
-  onToggle,
-  onAll,
-  onOpen,
-  onDeleted,
-}: {
-  config: DistryConfig;
-  isOn: (s: string) => boolean;
-  onToggle: (s: string) => void;
-  onAll: () => void;
-  onOpen: (s: string) => void;
-  onDeleted: (s: string) => void;
-}) {
-  const all = config.current.skillSlugs === null;
-  return (
-    <SkillTree
-      onOpen={onOpen}
-      onDeleted={onDeleted}
-      dimmed={(slug) => !isOn(slug)}
-      head={
-        <label className="k-row flex cursor-pointer items-start gap-3 px-4 py-2.5">
-          <input type="checkbox" checked={all} onChange={onAll} className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
-          <span className="min-w-0 flex-1">
-            <span className="text-[13px]">Every skill</span>
-            <span className="k-fg3 block text-[12px]">New skills are read too. Index and client-comms are always read.</span>
-          </span>
-        </label>
-      }
-      leading={(s) => (
-        <input
-          type="checkbox"
-          aria-label={`${s.title}: ${isOn(s.slug) ? "on" : "off"}`}
-          checked={isOn(s.slug)}
-          onClick={(e) => e.stopPropagation()}
-          onChange={() => onToggle(s.slug)}
-          className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
-        />
-      )}
-    />
   );
 }
 
@@ -833,7 +763,6 @@ function VersionPanel({
   onRestore: () => void;
   onClose: () => void;
 }) {
-  const skillTitle = (slug: string) => config?.skills.find((s) => s.slug === slug)?.title ?? slug;
   return (
     <Panel label={`Distry · version ${version?.version ?? ""}`} onClose={onClose}>
       {!version ? (
@@ -861,7 +790,6 @@ function VersionPanel({
             rows={[
               ["Model", `${version.provider} · ${version.model}${version.effort ? ` · ${thinkingWords(version.effort)}` : ""}`],
               ["Tools", `${version.enabledTools.length} on`],
-              ["Skills", version.skillSlugs === null ? "Every skill" : version.skillSlugs.map(skillTitle).join(", ")],
             ]}
           />
           <h3 className="k-label mt-6 mb-2">Tools</h3>
