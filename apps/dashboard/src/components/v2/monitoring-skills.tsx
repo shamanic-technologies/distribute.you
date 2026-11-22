@@ -20,7 +20,16 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: string } | { kind: "empty" } | { kind: "failed" };
 
 /** `tools` = what a text may mention (Distry's served list); a chip opens what it names through `onOpen`. */
-export function SkillPanel({ slug, onClose, onOpen, tools }: { slug: string; onClose: () => void; onOpen: (o: SkillsOpen) => void; tools: string[] | undefined }) {
+/** ← in a panel header: back to the panel this one was opened from. */
+export function BackButton({ onBack }: { onBack: () => void }) {
+  return (
+    <button type="button" aria-label="Back to the previous panel" title="Back" onClick={onBack} className="k-btn-ghost inline-flex h-6 w-6 shrink-0 items-center justify-center" style={{ padding: 0 }}>
+      ←
+    </button>
+  );
+}
+
+export function SkillPanel({ slug, onClose, onBack, onOpen, tools }: { slug: string; onClose: () => void; onBack?: () => void; onOpen: (o: SkillsOpen) => void; tools: string[] | undefined }) {
   const queryClient = useQueryClient();
   const writes = useSkillWrites();
   const names = useMentionables(tools);
@@ -107,7 +116,17 @@ export function SkillPanel({ slug, onClose, onOpen, tools }: { slug: string; onC
   return createPortal(
     <aside role="dialog" aria-label={skill ? `${skill.title} skill` : "Skill"} className="k-popover fixed inset-y-2 right-2 z-[80] flex w-[min(720px,calc(100vw-16px))] flex-col overflow-hidden">
       <div className="k-line-subtle flex h-11 shrink-0 items-center justify-between gap-3 border-b px-4">
-        <span className="k-label truncate">Skill · {slug}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {onBack && (
+            <BackButton
+              onBack={async () => {
+                if (timer.current && draftRef.current !== null) await flush(draftRef.current);
+                onBack();
+              }}
+            />
+          )}
+          <span className="k-label truncate">Skill · {slug}</span>
+        </span>
         <div className="flex items-center gap-3">
           {status && (
             <span className={`text-[12px] ${save.kind === "failed" || save.kind === "empty" ? "text-[var(--data-rose)]" : "k-fg3"}`} aria-live="polite">

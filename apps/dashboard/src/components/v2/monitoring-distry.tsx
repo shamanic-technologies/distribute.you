@@ -20,6 +20,7 @@ import {
 import { SkillPanel } from "@/components/v2/monitoring-skills";
 import { SkillsBlock, useMentionables, useSkillTree, type SkillsOpen } from "@/components/v2/monitoring-skill-tree";
 import { MarkdownEditor } from "@/components/v2/monitoring-skill-editor";
+import { BackButton } from "@/components/v2/monitoring-skills";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { timeAgo } from "@/lib/friendly-datetime";
 
@@ -50,6 +51,27 @@ export function DistryView() {
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [open, setOpen] = useState<Open>(null);
+  // Panels opened FROM a panel (a mention chip, "Mentioned by") stack up; ← walks back one at a time
+  // (owner 2026-11-22). Opening from the page itself, or closing, starts a fresh trail.
+  const [trail, setTrail] = useState<Exclude<Open, null>[]>([]);
+  const fromPanel = useRef(false);
+  useEffect(() => {
+    if (!fromPanel.current) setTrail([]);
+    fromPanel.current = false;
+  }, [open]);
+  const openFromPanel = (o: SkillsOpen) => {
+    fromPanel.current = true;
+    if (open) setTrail((t) => [...t, open]);
+    setOpen(o);
+  };
+  const goBack =
+    trail.length > 0
+      ? () => {
+          fromPanel.current = true;
+          setOpen(trail[trail.length - 1]);
+          setTrail((t) => t.slice(0, -1));
+        }
+      : undefined;
 
   async function write(run: () => Promise<DistryVersion>) {
     setSaving(true);
@@ -119,11 +141,11 @@ export function DistryView() {
         </div>
       </div>
 
-      {open?.kind === "skill" && <SkillPanel slug={open.slug} onClose={() => setOpen(null)} onOpen={openFromSkills} tools={c?.mentionableTools} />}
+      {open?.kind === "skill" && <SkillPanel key={open.slug} slug={open.slug} onClose={() => setOpen(null)} onBack={goBack} onOpen={openFromPanel} tools={c?.mentionableTools} />}
       {open?.kind === "prompt" && current && (
-        <PromptPanel key={current.version} value={current.systemPrompt} tools={c?.mentionableTools} saving={saving} onSave={(systemPrompt) => save({ systemPrompt })} onOpen={openFromSkills} onClose={() => setOpen(null)} />
+        <PromptPanel key={current.version} value={current.systemPrompt} tools={c?.mentionableTools} saving={saving} onSave={(systemPrompt) => save({ systemPrompt })} onOpen={openFromPanel} onBack={goBack} onClose={() => setOpen(null)} />
       )}
-      {open?.kind === "tool" && c && <ToolPanel tool={c.availableTools.find((t) => t.name === open.name)} on={toolOn(open.name)} onToggle={() => toggleTool(open.name)} saving={saving} onClose={() => setOpen(null)} />}
+      {open?.kind === "tool" && c && <ToolPanel tool={c.availableTools.find((t) => t.name === open.name)} on={toolOn(open.name)} onToggle={() => toggleTool(open.name)} saving={saving} onBack={goBack} onClose={() => setOpen(null)} />}
       {open?.kind === "model" && c && (
         <Panel label="Distry · model" wide onClose={() => setOpen(null)}>
           <h2 className="text-[18px] font-medium leading-6">Model</h2>
@@ -200,6 +222,7 @@ function PromptPanel({
   onSave,
   onOpen,
   onClose,
+  onBack,
 }: {
   value: string;
   tools: string[] | undefined;
@@ -207,6 +230,7 @@ function PromptPanel({
   onSave: (v: string) => void;
   onOpen: (o: SkillsOpen) => void;
   onClose: () => void;
+  onBack?: () => void;
 }) {
   const names = useMentionables(tools);
   const edited = useRef(false);
@@ -221,7 +245,7 @@ function PromptPanel({
     [value],
   );
   return (
-    <Panel label="Distry · Prompt" wide onClose={onClose}>
+    <Panel label="Distry · Prompt" wide onClose={onClose} onBack={onBack}>
       <h2 className="text-[18px] font-medium leading-6">Prompt</h2>
       <p className="k-fg3 mt-1 mb-4 text-[12px]">{saving ? "Saving…" : "Read on every message. Edit it as you read it; type @ to mention a skill or a tool. Leaving the text saves a new version."}</p>
       <div className="k-inset rounded-[10px] px-4 py-3 shadow-[inset_0_0_0_1px_var(--line-subtle)] focus-within:shadow-[inset_0_0_0_1px_var(--accent)]">
@@ -621,7 +645,7 @@ function VersionsTable({ versions, currentVersion, onOpen }: { versions: { data?
 
 // ─── Right panels ───────────────────────────────────────────────────────────
 
-function Panel({ label, onClose, children, wide = false }: { label: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+function Panel({ label, onClose, onBack, children, wide = false }: { label: string; onClose: () => void; onBack?: () => void; children: React.ReactNode; wide?: boolean }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => setHost(document.getElementById("v2-portal")), []);
   useEffect(() => {
@@ -635,7 +659,10 @@ function Panel({ label, onClose, children, wide = false }: { label: string; onCl
   return createPortal(
     <aside role="dialog" aria-label={label} className={`k-popover fixed inset-y-2 right-2 z-[80] flex flex-col overflow-hidden ${wide ? "w-[min(920px,calc(100vw-16px))]" : "w-[min(640px,calc(100vw-16px))]"}`}>
       <div className="k-line-subtle flex h-11 shrink-0 items-center justify-between gap-3 border-b px-4">
-        <span className="k-label truncate">{label}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {onBack && <BackButton onBack={onBack} />}
+          <span className="k-label truncate">{label}</span>
+        </span>
         <button type="button" aria-label="Close" onClick={onClose} className="k-btn-ghost inline-flex h-6 w-6 items-center justify-center">
           ×
         </button>
@@ -671,9 +698,23 @@ function Facts({ rows }: { rows: [string, React.ReactNode][] }) {
   );
 }
 
-function ToolPanel({ tool, on, onToggle, saving, onClose }: { tool: DistryConfig["availableTools"][number] | undefined; on: boolean; onToggle: () => void; saving: boolean; onClose: () => void }) {
+function ToolPanel({
+  tool,
+  on,
+  onToggle,
+  saving,
+  onClose,
+  onBack,
+}: {
+  tool: DistryConfig["availableTools"][number] | undefined;
+  on: boolean;
+  onToggle: () => void;
+  saving: boolean;
+  onClose: () => void;
+  onBack?: () => void;
+}) {
   return (
-    <Panel label={`Tool · ${tool?.name ?? ""}`} onClose={onClose}>
+    <Panel label={`Tool · ${tool?.name ?? ""}`} onClose={onClose} onBack={onBack}>
       {!tool ? (
         <EmptyNote>This tool is no longer served.</EmptyNote>
       ) : (
