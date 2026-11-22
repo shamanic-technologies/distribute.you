@@ -65,6 +65,9 @@ describe("campaign step with no runnable funnel (saasdocs.online)", () => {
     const at = api.indexOf("export async function getSignupFunnelPage(");
     const fn = api.slice(at, api.indexOf("export async function listOfferSalesFunnels(", at));
     expect(fn).toContain("&target=${encodeURIComponent(target)}");
+    // With the Target 456 funnels answer: the query names the cold email leg and asks runnable ones only.
+    expect(fn).toContain('"lead_found_to_conversation@sales-cold-email-outreach"');
+    expect(fn).toContain("&runnable=true&");
     const src = readFileSync(resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
     expect(src).toContain("await getSignupFunnelPage(id, offerId, SIGNUP_TARGET,");
   });

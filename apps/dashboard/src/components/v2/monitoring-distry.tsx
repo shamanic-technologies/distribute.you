@@ -475,6 +475,9 @@ function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: strin
                         <span className="k-fg3 block truncate text-[12px]" title={why ?? m.thinking}>
                           {m.provider} · {why ?? m.thinking}
                         </span>
+                        {m.availability && !m.availability.runsNow && m.availability.reason && (
+                          <span className="block text-[12px] text-[var(--data-rose)]">{m.availability.reason}</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {m.price.inputPer1mUsd == null ? dash : `${usd(m.price.inputPer1mUsd)} · ${usd(m.price.outputPer1mUsd)}`}

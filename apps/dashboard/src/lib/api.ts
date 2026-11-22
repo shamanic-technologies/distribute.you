@@ -3062,6 +3062,8 @@ const DistryModelsSchema = z.object({
         }),
       ),
       intelligencePerDollar: z.object({ value: z.number().nullable(), basis: z.string().nullable(), reason: z.string().nullable() }),
+      // DISTRY-ALL-MODELS-1122 (chat-service v0.63.205): can Distry run this model right now, and why not (vendor out of credit, org limit).
+      availability: z.object({ runsNow: z.boolean(), reason: z.string().nullable() }).optional(),
     }),
   ),
 });
@@ -8780,9 +8782,16 @@ export async function getSignupFunnelPage(
   /** A cold email play to search for (`sales-cold-email-outreach~<strategy>`), from the email style picked. */
   coldEmailPlay: string | null = null,
 ): Promise<unknown> {
-  const q = ["start_to_lead_found@lead-sourcing", "conversation_to_meeting_booked@ai-meeting-booking", ...(coldEmailPlay ? [coldEmailPlay] : [])].join(" ");
+  // Every leg the campaign runs is named (GS-STEP11-NO-CAMPAIGN-1122): with the Target, 456 funnels answer and a
+  // 25-row page of cold calls and Instagram held no cold email one.
+  const q = [
+    "start_to_lead_found@lead-sourcing",
+    "lead_found_to_conversation@sales-cold-email-outreach",
+    "conversation_to_meeting_booked@ai-meeting-booking",
+    ...(coldEmailPlay ? [coldEmailPlay] : []),
+  ].join(" ");
   return apiCall<unknown>(
-    `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=ai-meeting-booking&limit=25&target=${encodeURIComponent(target)}&q=${encodeURIComponent(q)}`,
+    `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=ai-meeting-booking&runnable=true&limit=25&target=${encodeURIComponent(target)}&q=${encodeURIComponent(q)}`,
   );
 }
 
