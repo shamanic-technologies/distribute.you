@@ -3059,8 +3059,12 @@ const DistryModelsSchema = z.object({
           indexCostPerTaskUsd: z.number().nullable(),
           intelligencePerDollar: z.number().nullable(),
           isDistrysThinking: z.boolean(),
+          // DISTRY-THINKING-1122: what "Use" saves as `effort` (any provider), whether Distry can run it, and why not.
+          distry: z.object({ level: z.string().nullable(), canRun: z.boolean(), reason: z.string().nullable() }),
         }),
       ),
+      // Every thinking level Distry can run this model at with tools (empty = the model's default only).
+      thinkingLevels: z.array(z.string()),
       intelligencePerDollar: z.object({ value: z.number().nullable(), basis: z.string().nullable(), reason: z.string().nullable() }),
       // DISTRY-ALL-MODELS-1122 (chat-service v0.63.205): can Distry run this model right now, and why not (vendor out of credit, org limit).
       availability: z.object({ runsNow: z.boolean(), reason: z.string().nullable() }).optional(),
