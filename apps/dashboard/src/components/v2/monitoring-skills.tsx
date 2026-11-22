@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { getStaffSkill, saveStaffSkill, type StaffSkill } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { InlineText, MentionText, MentionTextarea, useMentionables, useSkillTree, useSkillWrites, type SkillsOpen } from "@/components/v2/monitoring-skill-tree";
+import { InlineText, useMentionables, useSkillTree, useSkillWrites, type SkillsOpen } from "@/components/v2/monitoring-skill-tree";
+import { MarkdownEditor } from "@/components/v2/monitoring-skill-editor";
 
 /**
  * The skill panel of Monitoring > Chat > Distry (the one home of the skills since 2026-11-22):
@@ -28,20 +29,21 @@ export function SkillPanel({ slug, onClose, onOpen, tools }: { slug: string; onC
   const titleOf = (x: string) => tree.data?.skills.find((s) => s.slug === x)?.title ?? x;
   const q = useAuthQuery(["staffSkill", slug], () => getStaffSkill(slug), { staleTime: 0, retry: false });
   const skill = q.data;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaved = useRef<string | null>(null);
-  const draftRef = useRef("");
-  draftRef.current = draft;
+  const draftRef = useRef<string | null>(null);
 
   // Opening another skill starts from its served text.
   useEffect(() => {
-    setEditing(false);
     setSave({ kind: "idle" });
     lastSaved.current = null;
+    draftRef.current = null;
   }, [slug]);
+  // The served text is the baseline: only a real edit saves (the editor's own markdown may differ in spacing).
+  useEffect(() => {
+    if (skill && lastSaved.current === null) lastSaved.current = skill.content;
+  }, [skill]);
 
   const flush = useCallback(
     async (text: string) => {
@@ -67,33 +69,22 @@ export function SkillPanel({ slug, onClose, onOpen, tools }: { slug: string; onC
     [slug, queryClient],
   );
 
-  const startEditing = () => {
-    if (!skill) return;
-    setDraft(skill.content);
-    lastSaved.current = skill.content;
-    setEditing(true);
-  };
-  const stopEditing = useCallback(async () => {
-    await flush(draft);
-    setEditing(false);
-  }, [draft, flush]);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (editing) void stopEditing();
-      else onClose();
+      if (draftRef.current !== null && timer.current) void flush(draftRef.current);
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [editing, stopEditing, onClose]);
+  }, [flush, onClose]);
 
   // Leaving the panel mid-typing still saves what was typed.
   const flushRef = useRef(flush);
   flushRef.current = flush;
   useEffect(
     () => () => {
-      if (timer.current) void flushRef.current(draftRef.current);
+      if (timer.current && draftRef.current !== null) void flushRef.current(draftRef.current);
     },
     [],
   );
@@ -127,7 +118,7 @@ export function SkillPanel({ slug, onClose, onOpen, tools }: { slug: string; onC
             type="button"
             aria-label="Close"
             onClick={async () => {
-              if (editing) await flush(draft);
+              if (timer.current && draftRef.current !== null) await flush(draftRef.current);
               onClose();
             }}
             className="k-btn-ghost inline-flex h-6 w-6 items-center justify-center"
@@ -178,38 +169,24 @@ export function SkillPanel({ slug, onClose, onOpen, tools }: { slug: string; onC
               )}
             </div>
           )}
-          <div className="mt-4 flex min-h-0 flex-1">
-            {editing ? (
-              <MentionTextarea
-                autoFocus
-                value={draft}
-                names={names}
-                onChange={(text) => {
-                  setDraft(text);
-                  if (timer.current) clearTimeout(timer.current);
-                  timer.current = setTimeout(() => void flush(text), SAVE_AFTER_MS);
-                }}
-                onBlur={() => void stopEditing()}
-                onEscape={() => void stopEditing()}
-                className="k-inset k-mono min-h-0 w-full flex-1 resize-none rounded-[10px] p-3 text-[13px] leading-[20px] outline-none shadow-[inset_0_0_0_1px_var(--accent)]"
-              />
-            ) : (
-              // A div, never a <button>: a button centers its text vertically in the tall box (owner 2026-11-19).
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={startEditing}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") startEditing();
-                }}
-                title="Click to edit"
-                className="k-inset min-h-0 w-full flex-1 cursor-text overflow-y-auto rounded-[10px] px-4 py-3 text-left shadow-[inset_0_0_0_1px_var(--line-subtle)] hover:shadow-[inset_0_0_0_1px_var(--line)]"
-              >
-                <MentionText text={skill.content} names={names} onOpen={onOpen} />
-                <p className="k-fg3 mt-3 text-[12px]">Click the text to edit it. Type @ to mention a skill or a tool.</p>
-              </div>
-            )}
+          <div className="k-inset mt-4 min-h-0 flex-1 overflow-y-auto rounded-[10px] px-4 py-3 shadow-[inset_0_0_0_1px_var(--line-subtle)] focus-within:shadow-[inset_0_0_0_1px_var(--accent)]">
+            <MarkdownEditor
+              key={slug}
+              ariaLabel={`${skill.title}: text`}
+              value={skill.content}
+              mentionables={names}
+              onChange={(text) => {
+                draftRef.current = text;
+                if (timer.current) clearTimeout(timer.current);
+                timer.current = setTimeout(() => void flush(text), SAVE_AFTER_MS);
+              }}
+              onBlur={(text) => {
+                if (draftRef.current !== null) void flush(text);
+              }}
+              onOpenMention={(kind, ref) => onOpen(kind === "skill" ? { kind: "skill", slug: ref } : { kind: "tool", name: ref })}
+            />
           </div>
+          <p className="k-fg3 mt-2 text-[12px]">Edit the text as you read it. Type @ to mention a skill or a tool. It saves while you type.</p>
         </div>
       )}
     </aside>,

@@ -18,7 +18,8 @@ import {
   type DistryVersion,
 } from "@/lib/api";
 import { SkillPanel } from "@/components/v2/monitoring-skills";
-import { MentionText, MentionTextarea, SkillsBlock, useMentionables, useSkillTree, type SkillsOpen } from "@/components/v2/monitoring-skill-tree";
+import { SkillsBlock, useMentionables, useSkillTree, type SkillsOpen } from "@/components/v2/monitoring-skill-tree";
+import { MarkdownEditor } from "@/components/v2/monitoring-skill-editor";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { timeAgo } from "@/lib/friendly-datetime";
 
@@ -208,45 +209,37 @@ function PromptPanel({
   onClose: () => void;
 }) {
   const names = useMentionables(tools);
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(value);
-  const leave = () => {
-    setEditing(false);
-    if (text.trim() && text !== value) onSave(text);
-    else setText(value);
-  };
+  const edited = useRef(false);
+  const latest = useRef(value);
+  // Closing the panel (×, Esc) unmounts the editor without a blur: still save what was typed.
+  const saveRef = useRef(onSave);
+  saveRef.current = onSave;
+  useEffect(
+    () => () => {
+      if (edited.current && latest.current.trim() && latest.current !== value) saveRef.current(latest.current);
+    },
+    [value],
+  );
   return (
     <Panel label="Distry · Prompt" wide onClose={onClose}>
       <h2 className="text-[18px] font-medium leading-6">Prompt</h2>
-      <p className="k-fg3 mt-1 mb-4 text-[12px]">{saving ? "Saving…" : "Read on every message. Type @ to mention a skill or a tool: Distry reads a skill when a text mentions it."}</p>
-      <div className="flex h-[calc(100vh-170px)] min-h-0 flex-col">
-        {editing ? (
-          <MentionTextarea
-            autoFocus
-            value={text}
-            names={names}
-            onChange={setText}
-            onBlur={leave}
-            onEscape={() => {
-              setText(value);
-              setEditing(false);
-            }}
-            className="k-inset k-mono min-h-0 w-full flex-1 resize-none rounded-[10px] p-3 text-[13px] leading-[20px] outline-none shadow-[inset_0_0_0_1px_var(--accent)]"
-          />
-        ) : (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setEditing(true)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") setEditing(true);
-            }}
-            title="Click to edit"
-            className="k-inset min-h-0 w-full flex-1 cursor-text overflow-y-auto rounded-[10px] px-4 py-3 text-left shadow-[inset_0_0_0_1px_var(--line-subtle)] hover:shadow-[inset_0_0_0_1px_var(--line)]"
-          >
-            <MentionText text={value} names={names} onOpen={onOpen} />
-          </div>
-        )}
+      <p className="k-fg3 mt-1 mb-4 text-[12px]">{saving ? "Saving…" : "Read on every message. Edit it as you read it; type @ to mention a skill or a tool. Leaving the text saves a new version."}</p>
+      <div className="k-inset rounded-[10px] px-4 py-3 shadow-[inset_0_0_0_1px_var(--line-subtle)] focus-within:shadow-[inset_0_0_0_1px_var(--accent)]">
+        <MarkdownEditor
+          ariaLabel="Distry's Prompt"
+          value={value}
+          mentionables={names}
+          onBlur={(text) => {
+            // Every save is a Distry version: save on leaving the text, and only a real change.
+            if (text.trim() && text !== value && edited.current) onSave(text);
+            edited.current = false;
+          }}
+          onChange={(text) => {
+            edited.current = true;
+            latest.current = text;
+          }}
+          onOpenMention={(kind, ref) => onOpen(kind === "skill" ? { kind: "skill", slug: ref } : { kind: "tool", name: ref })}
+        />
       </div>
     </Panel>
   );
