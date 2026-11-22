@@ -9,7 +9,6 @@ import {
   getStaffDistryEngines,
   getStaffDistryModels,
   getStaffDistryVersions,
-  getStaffSkills,
   restoreStaffDistryVersion,
   saveStaffDistryConfig,
   type DistryConfig,
@@ -19,7 +18,7 @@ import {
   type DistryVersion,
 } from "@/lib/api";
 import { SkillPanel } from "@/components/v2/monitoring-skills";
-import { SkillTree } from "@/components/v2/monitoring-skill-tree";
+import { MentionText, MentionTextarea, SkillsBlock, useMentionables, useSkillTree, type SkillsOpen } from "@/components/v2/monitoring-skill-tree";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { timeAgo } from "@/lib/friendly-datetime";
 
@@ -36,7 +35,7 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 const who = (editedBy: string) => (editedBy === "seed" ? "From the code" : editedBy);
 
 type Engine = DistryEngines["engines"][number];
-type Open = { kind: "tool"; name: string } | { kind: "skill"; slug: string } | { kind: "engine"; outcome: string } | { kind: "version"; version: number } | { kind: "model" } | null;
+type Open = { kind: "prompt" } | { kind: "tool"; name: string } | { kind: "skill"; slug: string } | { kind: "engine"; outcome: string } | { kind: "version"; version: number } | { kind: "model" } | null;
 
 function definitionOf(v: DistryVersion): DistryDefinition {
   return { systemPrompt: v.systemPrompt, enabledTools: v.enabledTools, provider: v.provider, model: v.model, effort: v.effort };
@@ -69,9 +68,10 @@ export function DistryView() {
     }
   }
 
+  const openFromSkills = (o: SkillsOpen) => setOpen(o);
   const c = config.data;
   // Distry reads every live skill (chat-service v0.63.208): the count is the tree's.
-  const skillCount = useAuthQuery(["staffSkills"], getStaffSkills, { staleTime: 30_000, retry: false }).data?.length;
+  const skillCount = useSkillTree().data?.skills.length;
   const current = c?.current;
   const save = (change: Partial<DistryDefinition>) => {
     if (!current) return;
@@ -98,18 +98,11 @@ export function DistryView() {
       {refusal && <p className="text-[13px] text-[var(--data-rose)]">{refusal}</p>}
       <div className="grid items-start gap-8 lg:grid-cols-2">
         <div className="min-w-0 space-y-8">
-          <Block title="Prompt" sub="Who Distry is and how it acts. Click the text to edit it.">
-            {current ? <PromptEditor key={current.version} value={current.systemPrompt} onSave={(systemPrompt) => save({ systemPrompt })} /> : <Lines />}
-          </Block>
           <Block title="Model" sub="The model Distry thinks with, and how long it thinks. Click to change it.">
             {current ? <ModelRow version={current} onOpen={() => setOpen({ kind: "model" })} /> : <Lines />}
           </Block>
-          <Block title="Skills" count={skillCount} sub="Distry reads every skill in this tree. Click a title to rename it, a line to edit its text. + adds a skill under it, the bin deletes it, the grip drags it.">
-            <SkillTree
-              selected={open?.kind === "skill" ? open.slug : null}
-              onOpen={(slug) => setOpen({ kind: "skill", slug })}
-              onDeleted={(slug) => setOpen((cur) => (cur?.kind === "skill" && cur.slug === slug ? null : cur))}
-            />
+          <Block title="Prompt and skills" count={skillCount} sub="The Prompt is read on every message; a skill is read when a text mentions it with @. Click one to read and edit it.">
+            <SkillsBlock selected={open?.kind === "prompt" || open?.kind === "skill" ? open : null} onOpen={openFromSkills} />
           </Block>
           <Block title="Versions" count={versions.data?.length} sub="Every save is a version. Click one to read it whole.">
             <VersionsTable versions={versions} currentVersion={current?.version} onOpen={(version) => setOpen({ kind: "version", version })} />
@@ -125,8 +118,9 @@ export function DistryView() {
         </div>
       </div>
 
-      {open?.kind === "skill" && (
-        <SkillPanel slug={open.slug} onClose={() => setOpen(null)} />
+      {open?.kind === "skill" && <SkillPanel slug={open.slug} onClose={() => setOpen(null)} onOpen={openFromSkills} tools={c?.mentionableTools} />}
+      {open?.kind === "prompt" && current && (
+        <PromptPanel key={current.version} value={current.systemPrompt} tools={c?.mentionableTools} saving={saving} onSave={(systemPrompt) => save({ systemPrompt })} onOpen={openFromSkills} onClose={() => setOpen(null)} />
       )}
       {open?.kind === "tool" && c && <ToolPanel tool={c.availableTools.find((t) => t.name === open.name)} on={toolOn(open.name)} onToggle={() => toggleTool(open.name)} saving={saving} onClose={() => setOpen(null)} />}
       {open?.kind === "model" && c && (
@@ -197,47 +191,64 @@ function Lines() {
 }
 
 /** Reads as text; a click turns it into one field; leaving it saves a new version, Esc drops the edit. */
-function PromptEditor({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+/** The Prompt, read on every message: formatted with its @mention chips, a click edits it, leaving saves a new version. */
+function PromptPanel({
+  value,
+  tools,
+  saving,
+  onSave,
+  onOpen,
+  onClose,
+}: {
+  value: string;
+  tools: string[] | undefined;
+  saving: boolean;
+  onSave: (v: string) => void;
+  onOpen: (o: SkillsOpen) => void;
+  onClose: () => void;
+}) {
+  const names = useMentionables(tools);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    if (editing) ref.current?.focus();
-  }, [editing]);
   const leave = () => {
     setEditing(false);
     if (text.trim() && text !== value) onSave(text);
     else setText(value);
   };
-  return editing ? (
-    <textarea
-      ref={ref}
-      value={text}
-      spellCheck={false}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={leave}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          setText(value);
-          setEditing(false);
-        }
-      }}
-      className="k-inset block h-[420px] w-full resize-y rounded-[12px] p-4 text-[13px] leading-5 outline-none shadow-[inset_0_0_0_1px_var(--accent)]"
-      style={{ font: "inherit" }}
-    />
-  ) : (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => setEditing(true)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") setEditing(true);
-      }}
-      title="Click to edit"
-      className="k-card block max-h-[420px] w-full cursor-text overflow-y-auto p-4 text-left text-[13px] leading-5 whitespace-pre-wrap"
-    >
-      {value}
-    </div>
+  return (
+    <Panel label="Distry · Prompt" wide onClose={onClose}>
+      <h2 className="text-[18px] font-medium leading-6">Prompt</h2>
+      <p className="k-fg3 mt-1 mb-4 text-[12px]">{saving ? "Saving…" : "Read on every message. Type @ to mention a skill or a tool: Distry reads a skill when a text mentions it."}</p>
+      <div className="flex h-[calc(100vh-170px)] min-h-0 flex-col">
+        {editing ? (
+          <MentionTextarea
+            autoFocus
+            value={text}
+            names={names}
+            onChange={setText}
+            onBlur={leave}
+            onEscape={() => {
+              setText(value);
+              setEditing(false);
+            }}
+            className="k-inset k-mono min-h-0 w-full flex-1 resize-none rounded-[10px] p-3 text-[13px] leading-[20px] outline-none shadow-[inset_0_0_0_1px_var(--accent)]"
+          />
+        ) : (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setEditing(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") setEditing(true);
+            }}
+            title="Click to edit"
+            className="k-inset min-h-0 w-full flex-1 cursor-text overflow-y-auto rounded-[10px] px-4 py-3 text-left shadow-[inset_0_0_0_1px_var(--line-subtle)] hover:shadow-[inset_0_0_0_1px_var(--line)]"
+          >
+            <MentionText text={value} names={names} onOpen={onOpen} />
+          </div>
+        )}
+      </div>
+    </Panel>
   );
 }
 

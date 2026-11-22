@@ -195,8 +195,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffBasisSummary",
   "staffRealCostSeries",
   "staffPriceComparison",
-  // Staff Monitoring > Chat > Skills (the Copilot skill tree, edited live).
-  "staffSkills",
+  // Staff Monitoring > Chat > Distry skills: the tree with its @mention links, and one skill.
+  "staffSkillTree",
   "staffSkill",
   // Staff Monitoring > Chat > Distry (its definition, versions, and the Engines it can call).
   "staffDistryConfig",

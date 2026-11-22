@@ -2898,6 +2898,15 @@ export async function saveCampaignCaps(c: CapsTarget, caps: SalesFunnelCapsInput
 
 // ─── Copilot skill tree (chat-service `/internal/skills`, owner 2026-10-09) ────────────────
 
+// DISTRY-SKILL-MENTIONS-1122: chat-service serves every link (`@skill:` / `@tool:` tokens in the text);
+// optional until chat-service v0.63.209+ is live everywhere.
+const SkillMentionSchema = z.object({ kind: z.enum(["skill", "tool"]), ref: z.string(), known: z.boolean() });
+const SkillLinksShape = {
+  mentions: z.array(SkillMentionSchema).optional(),
+  mentionedBy: z.object({ prompt: z.boolean(), skills: z.array(z.string()) }).optional(),
+  neverMentioned: z.boolean().optional(),
+  reachable: z.boolean().optional(),
+};
 const SkillSummarySchema = z.object({
   slug: z.string(),
   parentSlug: z.string().nullable(),
@@ -2907,14 +2916,22 @@ const SkillSummarySchema = z.object({
   version: z.number(),
   updatedBy: z.string(),
   updatedAt: z.string(),
+  ...SkillLinksShape,
 });
 const SkillSchema = SkillSummarySchema.extend({ content: z.string(), createdAt: z.string() });
 export type StaffSkill = z.infer<typeof SkillSchema>;
-const SkillListSchema = z.object({ skills: z.array(SkillSummarySchema) });
+const SkillListSchema = z.object({ skills: z.array(SkillSummarySchema), prompt: z.object({ mentions: z.array(SkillMentionSchema) }).optional() });
+export type StaffSkillTree = { skills: z.infer<typeof SkillSummarySchema>[]; promptMentions: z.infer<typeof SkillMentionSchema>[] | null };
 const SkillWriteSchema = z.object({ skill: SkillSchema, created: z.boolean(), versionAdded: z.boolean() });
 
 export async function getStaffSkills(): Promise<z.infer<typeof SkillSummarySchema>[]> {
-  return parseStaff("getStaffSkills", SkillListSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.skills)).skills;
+  return (await getStaffSkillTree()).skills;
+}
+
+/** The skills with their links, and what Distry's Prompt mentions (null until chat-service serves it). */
+export async function getStaffSkillTree(): Promise<StaffSkillTree> {
+  const parsed = parseStaff("getStaffSkillTree", SkillListSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.skills));
+  return { skills: parsed.skills, promptMentions: parsed.prompt?.mentions ?? null };
 }
 
 export async function getStaffSkill(slug: string): Promise<StaffSkill> {
@@ -2934,27 +2951,14 @@ export async function saveStaffSkill(slug: string, content: string): Promise<Sta
  */
 export async function writeStaffSkill(
   slug: string,
-  body: { content: string; title?: string; description?: string; parentSlug?: string; position?: number },
+  body: { content: string; title?: string; description?: string },
 ): Promise<{ skill: StaffSkill; created: boolean }> {
   const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}`, { method: "PUT", body });
   const parsed = parseStaff("writeStaffSkill", SkillWriteSchema, raw);
   return { skill: parsed.skill, created: parsed.created };
 }
 
-/**
- * Drag and drop (SKILL-TREE-EDIT-1122): the skill goes under `parentSlug` at `position`, the 0-based place
- * among that parent's OTHER sub-skills. chat-service renumbers the siblings and refuses a cycle or the root.
- */
-export async function moveStaffSkill(slug: string, move: { parentSlug: string; position: number }) {
-  const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}/move`, { method: "POST", body: move });
-  return parseStaff(
-    "moveStaffSkill",
-    z.object({ skill: SkillSchema, siblings: z.array(z.object({ slug: z.string(), position: z.number() })) }),
-    raw,
-  );
-}
-
-/** Off the tree, history kept (a PUT brings it back). chat-service refuses 409 while it has sub-skills, or for a skill every chat reads. */
+/** Deleted, history kept (a PUT brings it back). Texts that mention it keep the mention, which then leads nowhere. */
 export async function deleteStaffSkill(slug: string): Promise<StaffSkill> {
   const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}`, { method: "DELETE", body: {} });
   return parseStaff("deleteStaffSkill", z.object({ skill: SkillSchema, versionsKept: z.number() }), raw).skill;
@@ -2983,7 +2987,9 @@ const DistryConfigSchema = z.object({
   code: DistryDefinitionSchema,
   codeDiffers: z.boolean(),
   availableTools: z.array(z.object({ name: z.string(), description: z.string(), staffOnly: z.boolean() })),
-  skills: z.array(z.object({ slug: z.string(), parentSlug: z.string().nullable(), title: z.string(), description: z.string() })),
+  skills: z.array(z.object({ slug: z.string(), parentSlug: z.string().nullable(), title: z.string(), description: z.string(), ...SkillLinksShape })),
+  promptMentions: z.array(SkillMentionSchema).optional(),
+  mentionableTools: z.array(z.string()).optional(),
   models: z.record(z.string(), z.array(z.string())),
   efforts: z.array(z.string()),
 });

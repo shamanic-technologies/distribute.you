@@ -72,58 +72,84 @@ describe("the skill tree lives on the Distry page", () => {
     const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
     // Owner 2026-11-22: the skills live on the Distry page only, every skill read (no pick-list, no tick box).
     const distry = read("components/v2/monitoring-distry.tsx");
-    expect(distry).toContain("<SkillTree");
+    expect(distry).toContain("<SkillsBlock");
     expect(distry).not.toContain("skillSlugs");
     expect(distry).not.toContain("Every skill");
     expect(read("lib/monitoring/monitoring.ts")).toContain('"chat/skills": "chat/distry"');
     expect(read("components/v2/monitoring-page.tsx")).not.toContain("SkillsView");
     const tree = read("components/v2/monitoring-skill-tree.tsx");
     expect(tree).toContain("writeStaffSkill(slug, { content: current.content, ...change })");
-    expect(tree).toContain("Add a skill under");
+    // "Add a skill" only (owner: never a sub-skill), and the Not mentioned tag in the three views.
+    expect(tree).toContain("+ Add a skill");
+    expect(tree).not.toContain("sub-skill\"");
+    expect(tree.match(/<NotMentioned \/>/g)?.length).toBe(2);
+    expect(tree).toContain('fill="var(--data-amber)">\n                  Not mentioned');
   });
 });
 
-describe("drag and drop (SKILL-TREE-EDIT-1122)", () => {
-  // index > [campaigns > [budgets, briefs], comms, billing]
-  const flat = [
-    s("index", null, 0),
-    s("campaigns", "index", 0),
-    s("comms", "index", 1),
-    s("billing", "index", 2),
-    s("budgets", "campaigns", 0),
-    s("briefs", "campaigns", 1),
+
+describe("the tree is who mentions whom (DISTRY-SKILL-MENTIONS-1122)", () => {
+  const m = (ref: string, kind: "skill" | "tool" = "skill", known = true) => ({ kind, ref, known });
+  const k = (slug: string, mentions: ReturnType<typeof m>[], over: Record<string, unknown> = {}) => ({
+    ...s(slug, null),
+    mentions,
+    mentionedBy: { prompt: false, skills: [] },
+    neverMentioned: false,
+    reachable: true,
+    ...over,
+  });
+  // Prompt -> money, campaigns ; campaigns -> budgets, money ; budgets -> campaigns (a loop) ; orphan ; lost <-> lost2
+  const skills = [
+    k("money", [m("run_operation", "tool")]),
+    k("campaigns", [m("budgets"), m("money"), m("gone", "skill", false)]),
+    k("budgets", [m("campaigns")]),
+    k("orphan", [m("lost")], { neverMentioned: true, reachable: false }),
+    k("lost", [m("lost2")], { reachable: false }),
+    k("lost2", [m("lost")], { reachable: false }),
   ];
+  const prompt = [m("money"), m("campaigns")];
 
-  it("reads the pointer: top quarter above, bottom quarter below, middle inside", async () => {
-    const { dropZoneAt } = await import("../src/lib/monitoring/skills-tree");
-    expect(dropZoneAt(5, 60)).toBe("before");
-    expect(dropZoneAt(30, 60)).toBe("inside");
-    expect(dropZoneAt(55, 60)).toBe("after");
+  it("draws the Prompt on top and each text's skills in text order, skipping tools and dead mentions", async () => {
+    const { mentionTreeRows, allTreeKeys } = await import("../src/lib/monitoring/skills-tree");
+    const rows = mentionTreeRows(skills, prompt, allTreeKeys(skills, prompt));
+    expect(rows.map((r) => [r.slug, r.depth, r.repeat])).toEqual([
+      [null, 0, false],
+      ["money", 1, false],
+      ["campaigns", 1, false],
+      ["budgets", 2, false],
+      ["campaigns", 3, true],
+      ["money", 2, false],
+    ]);
   });
 
-  it("asks the place among the parent's OTHER sub-skills", async () => {
-    const { planSkillDrop } = await import("../src/lib/monitoring/skills-tree");
-    expect(planSkillDrop(flat, "billing", "campaigns", "before")).toEqual({ parentSlug: "index", position: 0 });
-    expect(planSkillDrop(flat, "campaigns", "billing", "after")).toEqual({ parentSlug: "index", position: 2 });
-    expect(planSkillDrop(flat, "billing", "campaigns", "inside")).toEqual({ parentSlug: "campaigns", position: 2 });
-    expect(planSkillDrop(flat, "billing", "budgets", "after")).toEqual({ parentSlug: "campaigns", position: 1 });
+  it("only shows the children of open lines", async () => {
+    const { mentionTreeRows } = await import("../src/lib/monitoring/skills-tree");
+    expect(mentionTreeRows(skills, prompt, new Set()).map((r) => r.slug)).toEqual([null]);
+    expect(mentionTreeRows(skills, prompt, new Set(["prompt"])).map((r) => r.slug)).toEqual([null, "money", "campaigns"]);
   });
 
-  it("refuses a cycle, the root, a drop beside the root and a drop that changes nothing", async () => {
-    const { planSkillDrop } = await import("../src/lib/monitoring/skills-tree");
-    expect(planSkillDrop(flat, "campaigns", "budgets", "inside")).toBeNull();
-    expect(planSkillDrop(flat, "campaigns", "campaigns", "inside")).toBeNull();
-    expect(planSkillDrop(flat, "index", "billing", "inside")).toBeNull();
-    expect(planSkillDrop(flat, "billing", "index", "before")).toBeNull();
-    expect(planSkillDrop(flat, "comms", "campaigns", "after")).toBeNull();
-    expect(planSkillDrop(flat, "comms", "billing", "before")).toBeNull();
+  it("lists what Distry never reaches: never-mentioned first, then an unreached loop nothing enters", async () => {
+    const { unreachedRows, allTreeKeys } = await import("../src/lib/monitoring/skills-tree");
+    const rows = unreachedRows(skills, allTreeKeys(skills, prompt));
+    expect(rows.map((r) => [r.slug, r.depth, r.repeat])).toEqual([
+      ["orphan", 0, false],
+      ["lost", 1, false],
+      ["lost2", 2, false],
+      ["lost", 3, true],
+    ]);
   });
 
-  it("moves the tree at once, places renumbered under both parents", async () => {
-    const { applySkillMove, buildSkillTree } = await import("../src/lib/monitoring/skills-tree");
-    const moved = applySkillMove(flat, "campaigns", "billing", 0);
-    const tree = buildSkillTree(moved);
-    expect(tree[0].children.map((n) => [n.skill.slug, n.skill.position])).toEqual([["comms", 0], ["billing", 1]]);
-    expect(tree[0].children[1].children.map((n) => n.skill.slug)).toEqual(["campaigns"]);
+  it("splits a text into words and mention chips, and finds the @word being typed", async () => {
+    const { splitMentions, mentionQueryAt } = await import("../src/lib/monitoring/skills-tree");
+    expect(splitMentions("Read @skill:money then call @tool:run_operation.")).toEqual([
+      { text: "Read " },
+      { mention: { kind: "skill", ref: "money" } },
+      { text: " then call " },
+      { mention: { kind: "tool", ref: "run_operation" } },
+      { text: "." },
+    ]);
+    expect(mentionQueryAt("see @mon", 8)).toEqual({ start: 4, query: "mon" });
+    expect(mentionQueryAt("mail@x", 6)).toBeNull();
+    expect(mentionQueryAt("@", 1)).toEqual({ start: 0, query: "" });
   });
 });

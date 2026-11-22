@@ -104,74 +104,114 @@ export function nextChildPosition(skills: readonly SkillSummary[], parentSlug: s
   return max + 1;
 }
 
-/** Where a dragged line lands on another: above it, inside it (last child), or below it. */
-export type DropZone = "before" | "inside" | "after";
-
-/** The zone under the pointer: the top and bottom quarter of a line insert beside it, the middle drops inside. */
-export function dropZoneAt(offsetY: number, height: number): DropZone {
-  if (offsetY < height / 4) return "before";
-  if (offsetY > (height * 3) / 4) return "after";
-  return "inside";
+/**
+ * DISTRY-SKILL-MENTIONS-1122: skills are linked by `@skill:<slug>` / `@tool:<name>` written in their
+ * text. chat-service serves every link (mentions in text order, who mentions it, never-mentioned,
+ * reachable); this module only LAYS them out, it never parses a text for links.
+ */
+export interface SkillMention {
+  kind: "skill" | "tool";
+  ref: string;
+  known: boolean;
 }
 
-/** True when `slug` is `ancestor` itself or sits anywhere under it. */
-export function isSelfOrDescendant(skills: readonly SkillSummary[], slug: string, ancestor: string): boolean {
-  const parent = new Map(skills.map((s) => [s.slug, s.parentSlug]));
-  for (let cur: string | null | undefined = slug, guard = 0; cur && guard < 100; cur = parent.get(cur), guard++) {
-    if (cur === ancestor) return true;
-  }
-  return false;
+export interface SkillLinks {
+  mentions: SkillMention[];
+  mentionedBy: { prompt: boolean; skills: string[] };
+  neverMentioned: boolean;
+  reachable: boolean;
+}
+
+export type LinkedSkill = SkillSummary & Partial<SkillLinks>;
+
+/** One line of the mention tree. `repeat` = already drawn above it on this branch (a loop: not expanded again). */
+export interface MentionRow {
+  key: string;
+  slug: string | null; // null = the Prompt
+  depth: number;
+  childCount: number;
+  repeat: boolean;
+}
+
+const skillChildren = (mentions: readonly SkillMention[] | undefined, live: ReadonlyMap<string, LinkedSkill>) =>
+  (mentions ?? []).filter((m) => m.kind === "skill" && m.known && live.has(m.ref)).map((m) => m.ref);
+
+/**
+ * The tree as Distry reaches it: the Prompt on top, under each text the skills it mentions in text
+ * order. A skill mentioned twice is drawn under both; a loop stops at its second visit (`repeat`).
+ * `open` holds the keys of expanded lines (a key is the path, so the same skill opens per place).
+ */
+export function mentionTreeRows(skills: readonly LinkedSkill[], promptMentions: readonly SkillMention[], open: ReadonlySet<string>): MentionRow[] {
+  const live = new Map(skills.map((s) => [s.slug, s]));
+  const rows: MentionRow[] = [];
+  const walk = (slug: string, key: string, depth: number, onBranch: ReadonlySet<string>) => {
+    const repeat = onBranch.has(slug);
+    const kids = repeat ? [] : skillChildren(live.get(slug)?.mentions, live);
+    rows.push({ key, slug, depth, childCount: kids.length, repeat });
+    if (repeat || !open.has(key)) return;
+    const next = new Set(onBranch).add(slug);
+    for (const k of kids) walk(k, `${key}/${k}`, depth + 1, next);
+  };
+  const top = skillChildren(promptMentions, live);
+  rows.push({ key: "prompt", slug: null, depth: 0, childCount: top.length, repeat: false });
+  if (open.has("prompt")) for (const k of top) walk(k, `prompt/${k}`, 1, new Set());
+  return rows;
 }
 
 /**
- * What a drop asks chat-service's move (SKILL-TREE-EDIT-1122): the new parent and the 0-based place
- * among that parent's OTHER sub-skills (the dragged one left out, as the move reads it). `null` = the
- * drop is refused here: onto itself or under its own branch (a cycle), beside the root (the root has
- * no parent), or a drop that changes nothing.
+ * Skills Distry never reaches, drawn under the tree: first those nothing mentions (tagged
+ * "Not mentioned"), then any other unreached one not already under them (a loop nothing enters).
  */
-export function planSkillDrop(
-  skills: readonly SkillSummary[],
-  dragged: string,
-  target: string,
-  zone: DropZone,
-): { parentSlug: string; position: number } | null {
-  const bySlug = new Map(skills.map((s) => [s.slug, s]));
-  const moving = bySlug.get(dragged);
-  const onto = bySlug.get(target);
-  if (!moving || !onto || moving.parentSlug === null) return null;
-  if (isSelfOrDescendant(skills, target, dragged)) return null;
-  const parentSlug = zone === "inside" ? onto.slug : onto.parentSlug;
-  if (parentSlug === null) return null;
-  const siblings = skills
-    .filter((s) => s.parentSlug === parentSlug && s.slug !== dragged)
-    .sort((a, b) => a.position - b.position || a.slug.localeCompare(b.slug));
-  const at = siblings.findIndex((s) => s.slug === onto.slug);
-  const position = zone === "inside" ? siblings.length : zone === "before" ? at : at + 1;
-  // The place it already holds: nothing to move.
-  const current = skills
-    .filter((s) => s.parentSlug === moving.parentSlug)
-    .sort((a, b) => a.position - b.position || a.slug.localeCompare(b.slug))
-    .findIndex((s) => s.slug === dragged);
-  if (parentSlug === moving.parentSlug && position === current) return null;
-  return { parentSlug, position };
+export function unreachedRows(skills: readonly LinkedSkill[], open: ReadonlySet<string>): MentionRow[] {
+  const live = new Map(skills.map((s) => [s.slug, s]));
+  const rows: MentionRow[] = [];
+  const drawn = new Set<string>();
+  const walk = (slug: string, key: string, depth: number, onBranch: ReadonlySet<string>) => {
+    const repeat = onBranch.has(slug);
+    const kids = repeat ? [] : skillChildren(live.get(slug)?.mentions, live).filter((k) => live.get(k)?.reachable === false);
+    drawn.add(slug);
+    rows.push({ key, slug, depth, childCount: kids.length, repeat });
+    if (repeat || !open.has(key)) return;
+    const next = new Set(onBranch).add(slug);
+    for (const k of kids) walk(k, `${key}/${k}`, depth + 1, next);
+  };
+  const unreached = skills.filter((s) => s.reachable === false);
+  for (const s of unreached.filter((x) => x.neverMentioned)) walk(s.slug, `unreached/${s.slug}`, 0, new Set());
+  for (const s of unreached) if (!drawn.has(s.slug)) walk(s.slug, `unreached/${s.slug}`, 0, new Set());
+  return rows;
 }
 
-/** The list as the move leaves it, before chat-service answers: the skill under its new parent, places renumbered. */
-export function applySkillMove<T extends SkillSummary>(skills: readonly T[], dragged: string, parentSlug: string, position: number): T[] {
-  const moving = skills.find((s) => s.slug === dragged);
-  if (!moving) return [...skills];
-  const order = (parent: string | null) =>
-    skills
-      .filter((s) => s.parentSlug === parent && s.slug !== dragged)
-      .sort((a, b) => a.position - b.position || a.slug.localeCompare(b.slug))
-      .map((s) => s.slug);
-  const target = order(parentSlug);
-  target.splice(Math.min(position, target.length), 0, dragged);
-  const places = new Map(target.map((slug, i) => [slug, i]));
-  if (moving.parentSlug !== parentSlug) order(moving.parentSlug).forEach((slug, i) => places.set(slug, i));
-  return skills.map((s) => {
-    const p = places.get(s.slug);
-    if (p === undefined) return s;
-    return { ...s, position: p, parentSlug: s.slug === dragged ? parentSlug : s.parentSlug };
-  });
+/** Every line key of a tree, to open everything on first load. */
+export function allTreeKeys(skills: readonly LinkedSkill[], promptMentions: readonly SkillMention[]): Set<string> {
+  const keys = new Set<string>(["prompt"]);
+  let size = -1;
+  // Open level by level until no new line appears (bounded: a loop stops at its second visit).
+  while (keys.size !== size) {
+    size = keys.size;
+    for (const r of [...mentionTreeRows(skills, promptMentions, keys), ...unreachedRows(skills, keys)]) if (r.childCount > 0) keys.add(r.key);
+  }
+  return keys;
+}
+
+/** The text with each `@skill:<slug>` / `@tool:<name>` token split out, for chips (chat-service writes the tokens). */
+export type TextPiece = { text: string } | { mention: { kind: "skill" | "tool"; ref: string } };
+const TOKEN = /@(skill|tool):([A-Za-z0-9_-]+)/g;
+export function splitMentions(text: string): TextPiece[] {
+  const out: TextPiece[] = [];
+  let last = 0;
+  for (const m of text.matchAll(TOKEN)) {
+    if (m.index! > last) out.push({ text: text.slice(last, m.index) });
+    out.push({ mention: { kind: m[1] as "skill" | "tool", ref: m[2] } });
+    last = m.index! + m[0].length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last) });
+  return out;
+}
+
+/** The `@word` being typed right before the caret, if any: what the autocomplete filters on. */
+export function mentionQueryAt(text: string, caret: number): { start: number; query: string } | null {
+  const before = text.slice(0, caret);
+  const m = /(^|[\s(])@([A-Za-z0-9_-]*)$/.exec(before);
+  if (!m) return null;
+  return { start: caret - m[2].length - 1, query: m[2] };
 }

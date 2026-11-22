@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { getStaffSkill, saveStaffSkill, type StaffSkill } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { InlineText, useSkillWrites } from "@/components/v2/monitoring-skill-tree";
+import { InlineText, MentionText, MentionTextarea, useMentionables, useSkillTree, useSkillWrites, type SkillsOpen } from "@/components/v2/monitoring-skill-tree";
 
 /**
  * The skill panel of Monitoring > Chat > Distry (the one home of the skills since 2026-11-22):
@@ -18,9 +18,14 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: string } | { kind: "empty" } | { kind: "failed" };
 
-export function SkillPanel({ slug, onClose }: { slug: string; onClose: () => void }) {
+/** `tools` = what a text may mention (Distry's served list); a chip opens what it names through `onOpen`. */
+export function SkillPanel({ slug, onClose, onOpen, tools }: { slug: string; onClose: () => void; onOpen: (o: SkillsOpen) => void; tools: string[] | undefined }) {
   const queryClient = useQueryClient();
   const writes = useSkillWrites();
+  const names = useMentionables(tools);
+  const tree = useSkillTree();
+  const links = tree.data?.skills.find((s) => s.slug === slug);
+  const titleOf = (x: string) => tree.data?.skills.find((s) => s.slug === x)?.title ?? x;
   const q = useAuthQuery(["staffSkill", slug], () => getStaffSkill(slug), { staleTime: 0, retry: false });
   const skill = q.data;
   const [editing, setEditing] = useState(false);
@@ -28,7 +33,6 @@ export function SkillPanel({ slug, onClose }: { slug: string; onClose: () => voi
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaved = useRef<string | null>(null);
-  const field = useRef<HTMLTextAreaElement | null>(null);
   const draftRef = useRef("");
   draftRef.current = draft;
 
@@ -54,7 +58,7 @@ export function SkillPanel({ slug, onClose }: { slug: string; onClose: () => voi
         lastSaved.current = text;
         queryClient.setQueryData(["staffSkill", slug], saved);
         setSave({ kind: "saved", at: saved.updatedAt });
-        await queryClient.invalidateQueries({ queryKey: ["staffSkills"] });
+        await queryClient.invalidateQueries({ queryKey: ["staffSkillTree"] });
       } catch (err) {
         console.error("[dashboard] skills: save failed", { slug, err });
         setSave({ kind: "failed" });
@@ -69,10 +73,6 @@ export function SkillPanel({ slug, onClose }: { slug: string; onClose: () => voi
     lastSaved.current = skill.content;
     setEditing(true);
   };
-  useEffect(() => {
-    if (editing) field.current?.focus();
-  }, [editing]);
-
   const stopEditing = useCallback(async () => {
     await flush(draft);
     setEditing(false);
@@ -155,19 +155,42 @@ export function SkillPanel({ slug, onClose }: { slug: string; onClose: () => voi
           <p className="k-mono k-fg3 mt-2 text-[12px]">
             Version {skill.version} · {editByLine(skill.updatedBy)} · {when(skill.updatedAt)}
           </p>
+          {links?.mentionedBy && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+              <span className="k-label">Mentioned by</span>
+              {links.neverMentioned ? (
+                <span className="k-chip" style={{ color: "var(--data-amber)" }}>
+                  Not mentioned: Distry never reads it
+                </span>
+              ) : (
+                <>
+                  {links.mentionedBy.prompt && (
+                    <button type="button" className="k-chip" onClick={() => onOpen({ kind: "prompt" })}>
+                      Prompt
+                    </button>
+                  )}
+                  {links.mentionedBy.skills.map((x) => (
+                    <button key={x} type="button" className="k-chip" onClick={() => onOpen({ kind: "skill", slug: x })}>
+                      {titleOf(x)}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
           <div className="mt-4 flex min-h-0 flex-1">
             {editing ? (
-              <textarea
-                ref={field}
+              <MentionTextarea
+                autoFocus
                 value={draft}
-                spellCheck={false}
-                onChange={(e) => {
-                  const text = e.target.value;
+                names={names}
+                onChange={(text) => {
                   setDraft(text);
                   if (timer.current) clearTimeout(timer.current);
                   timer.current = setTimeout(() => void flush(text), SAVE_AFTER_MS);
                 }}
                 onBlur={() => void stopEditing()}
+                onEscape={() => void stopEditing()}
                 className="k-inset k-mono min-h-0 w-full flex-1 resize-none rounded-[10px] p-3 text-[13px] leading-[20px] outline-none shadow-[inset_0_0_0_1px_var(--accent)]"
               />
             ) : (
@@ -180,9 +203,10 @@ export function SkillPanel({ slug, onClose }: { slug: string; onClose: () => voi
                   if (e.key === "Enter") startEditing();
                 }}
                 title="Click to edit"
-                className="k-inset k-mono min-h-0 w-full flex-1 cursor-text overflow-y-auto whitespace-pre-wrap rounded-[10px] p-3 text-left text-[13px] leading-[20px] shadow-[inset_0_0_0_1px_var(--line-subtle)] hover:shadow-[inset_0_0_0_1px_var(--line)]"
+                className="k-inset min-h-0 w-full flex-1 cursor-text overflow-y-auto rounded-[10px] px-4 py-3 text-left shadow-[inset_0_0_0_1px_var(--line-subtle)] hover:shadow-[inset_0_0_0_1px_var(--line)]"
               >
-                {skill.content}
+                <MentionText text={skill.content} names={names} onOpen={onOpen} />
+                <p className="k-fg3 mt-3 text-[12px]">Click the text to edit it. Type @ to mention a skill or a tool.</p>
               </div>
             )}
           </div>
