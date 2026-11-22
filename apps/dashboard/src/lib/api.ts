@@ -8756,12 +8756,14 @@ const CampaignBriefPrefillSchema = z.object({ brief: z.string().trim().min(1) })
 export async function getSignupFunnelPage(
   brandId: string,
   offerId: string,
+  /** The campaign's Target (catalogue step key): features-service checks the offer's steps only BEFORE it. */
+  target: string,
   /** A cold email play to search for (`sales-cold-email-outreach~<strategy>`), from the email style picked. */
   coldEmailPlay: string | null = null,
 ): Promise<unknown> {
   const q = ["start_to_lead_found@lead-sourcing", "conversation_to_meeting_booked@ai-meeting-booking", ...(coldEmailPlay ? [coldEmailPlay] : [])].join(" ");
   return apiCall<unknown>(
-    `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=ai-meeting-booking&limit=25&q=${encodeURIComponent(q)}`,
+    `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=ai-meeting-booking&limit=25&target=${encodeURIComponent(target)}&q=${encodeURIComponent(q)}`,
   );
 }
 

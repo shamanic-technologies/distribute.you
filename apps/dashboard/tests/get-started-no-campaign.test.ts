@@ -59,4 +59,13 @@ describe("campaign step with no runnable funnel (saasdocs.online)", () => {
     // The step itself stays, with its plain sentence and Try again: never hidden, never a reassurance.
     expect(src).toContain('"No campaign can run right now."');
   });
+
+  it("asks the funnels for the campaign's Target, so an offer with no meeting step still gets one", () => {
+    const api = readFileSync(resolve(__dirname, "../src/lib/api.ts"), "utf8");
+    const at = api.indexOf("export async function getSignupFunnelPage(");
+    const fn = api.slice(at, api.indexOf("export async function listOfferSalesFunnels(", at));
+    expect(fn).toContain("&target=${encodeURIComponent(target)}");
+    const src = readFileSync(resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
+    expect(src).toContain("await getSignupFunnelPage(id, offerId, SIGNUP_TARGET,");
+  });
 });
