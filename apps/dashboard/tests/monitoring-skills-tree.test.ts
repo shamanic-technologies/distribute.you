@@ -139,3 +139,18 @@ describe("the tree is who mentions whom (DISTRY-SKILL-MENTIONS-1122)", () => {
     ]);
   });
 });
+
+describe("mention chips and the panel trail (owner 2026-11-22)", () => {
+  it("draws a skill and a tool mention apart, and walks back through panels opened from a panel", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
+    const css = read("components/v2/keel.css");
+    expect(css).toContain('.v2-root .k-prose .k-mention[data-kind="tool"]::before');
+    expect(css).toContain("background: var(--accent-soft);");
+    const view = read("components/v2/monitoring-distry.tsx");
+    expect(view).toContain("onOpen={openFromPanel} onBack={goBack}");
+    expect(view).toContain("onBack={goBack} onOpen={openFromPanel}");
+    expect(read("components/v2/monitoring-skills.tsx")).toContain('aria-label="Back to the previous panel"');
+  });
+});
