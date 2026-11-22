@@ -214,6 +214,79 @@ html.gs-vt::view-transition-new(*) { animation: gs-vt-in 560ms cubic-bezier(.23,
 @keyframes gs-vt-in { 0%, 40% { opacity: 0; } 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { html.gs-vt::view-transition-group(*), html.gs-vt::view-transition-old(*), html.gs-vt::view-transition-new(*) { animation: none; } }
 
+/* Distry's Prompt and skills edited as they read (monitoring-skill-editor.tsx, owner 2026-11-22). */
+.v2-root .k-prose {
+  font-size: 13px;
+  line-height: 21px;
+  color: var(--fg-1);
+}
+.v2-root .k-prose > * + * {
+  margin-top: 8px;
+}
+.v2-root .k-prose h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 14px;
+}
+.v2-root .k-prose h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 14px;
+}
+.v2-root .k-prose h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 12px;
+}
+.v2-root .k-prose > :first-child {
+  margin-top: 0;
+}
+.v2-root .k-prose ul {
+  list-style: disc;
+  padding-left: 20px;
+}
+.v2-root .k-prose ol {
+  list-style: decimal;
+  padding-left: 20px;
+}
+.v2-root .k-prose li + li {
+  margin-top: 2px;
+}
+.v2-root .k-prose li p {
+  margin: 0;
+}
+.v2-root .k-prose code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  background: var(--line-subtle);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.v2-root .k-prose pre {
+  background: var(--bg-inset);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+.v2-root .k-prose pre code {
+  background: none;
+  padding: 0;
+}
+.v2-root .k-prose blockquote {
+  padding-left: 12px;
+  color: var(--fg-2);
+  box-shadow: inset 1px 0 0 var(--line);
+}
+.v2-root .k-prose .k-mention {
+  cursor: pointer;
+  margin: 0 1px;
+  vertical-align: baseline;
+}
+.v2-root .k-prose .k-mention[data-kind="tool"] {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+
 /*
  * ─── v1 components inside v2 (`.v2-embed`) ───────────────────────────────────
  * The Setup and account pages embed v1's OWN business components (the forms, the

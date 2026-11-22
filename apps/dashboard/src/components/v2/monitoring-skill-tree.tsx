@@ -1,29 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { ApiError, deleteStaffSkill, getStaffSkill, getStaffSkillTree, writeStaffSkill, type StaffSkill, type StaffSkillTree } from "@/lib/api";
 import {
   allTreeKeys,
   editedByLabel,
-  mentionQueryAt,
   mentionTreeRows,
   slugForNewSkill,
-  splitMentions,
   unreachedRows,
   type LinkedSkill,
   type MentionRow,
   type SkillMention,
 } from "@/lib/monitoring/skills-tree";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
+import type { Mentionable } from "@/components/v2/monitoring-skill-editor";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { CaretRightIcon } from "@phosphor-icons/react/dist/csr/CaretRight";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
 import { ChatCircleTextIcon } from "@phosphor-icons/react/dist/csr/ChatCircleText";
-import { WrenchIcon } from "@phosphor-icons/react/dist/csr/Wrench";
 
 /**
  * Distry's skills (DISTRY-SKILL-MENTIONS-1122, owner 2026-11-22), the one home of the skills: the
@@ -601,191 +597,15 @@ function NewSkillCard({ onCreate, onCancel }: { onCreate: (title: string, descri
 
 // ─── Text with mentions ──────────────────────────────────────────────────────────────────
 
-/** Names for chips and the `@` menu: every live skill, and the tools a text may mention. */
-export function useMentionables(tools: string[] | undefined) {
+/** What a text may mention (skills by title, tools by name): the `@` menu and the chips' names. */
+export function useMentionables(tools: string[] | undefined): Mentionable[] {
   const q = useSkillTree();
-  return useMemo(() => ({ skills: (q.data?.skills ?? []).map((s) => ({ slug: s.slug, title: s.title })), tools: tools ?? [] }), [q.data, tools]);
-}
-
-type Mentionables = ReturnType<typeof useMentionables>;
-
-/** A text read as formatted markdown, each `@skill:` / `@tool:` token a chip that opens what it names. */
-export function MentionText({ text, names, onOpen }: { text: string; names: Mentionables; onOpen: (o: SkillsOpen) => void }) {
-  const title = (slug: string) => names.skills.find((s) => s.slug === slug)?.title;
-  // Each token becomes a link the renderer turns into a chip (react-markdown keeps the `#` href).
-  const md = splitMentions(text)
-    .map((p) => ("text" in p ? p.text : `[${(p.mention.kind === "skill" ? (title(p.mention.ref) ?? p.mention.ref) : p.mention.ref).replace(/[[\]]/g, "")}](#mention-${p.mention.kind}-${p.mention.ref})`))
-    .join("");
-  return (
-    <div className="mention-text text-[13px] leading-[21px]">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h1: ({ children }) => <h3 className="mt-3 mb-1.5 text-[16px] font-semibold first:mt-0">{children}</h3>,
-          h2: ({ children }) => <h4 className="mt-3 mb-1 text-[14px] font-semibold first:mt-0">{children}</h4>,
-          h3: ({ children }) => <h5 className="mt-2.5 mb-1 text-[13px] font-semibold first:mt-0">{children}</h5>,
-          p: ({ children }) => <p className="mb-2">{children}</p>,
-          ul: ({ children }) => <ul className="mb-2 ml-5 list-disc space-y-0.5">{children}</ul>,
-          ol: ({ children }) => <ol className="mb-2 ml-5 list-decimal space-y-0.5">{children}</ol>,
-          code: ({ children }) => <code className="k-mono rounded-[4px] bg-[var(--line-subtle)] px-1 text-[12px]">{children}</code>,
-          a: ({ href, children }) => {
-            const m = /^#mention-(skill|tool)-(.+)$/.exec(href ?? "");
-            if (!m) return <a href={href} className="text-[var(--accent)] underline">{children}</a>;
-            const kind = m[1] as "skill" | "tool";
-            const ref = m[2];
-            const known = kind === "tool" ? names.tools.includes(ref) : !!title(ref);
-            return (
-              <MentionChip
-                kind={kind}
-                label={children}
-                dead={!known}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (known) onOpen(kind === "skill" ? { kind: "skill", slug: ref } : { kind: "tool", name: ref });
-                }}
-              />
-            );
-          },
-        }}
-      >
-        {md}
-      </ReactMarkdown>
-    </div>
-  );
-}
-
-function MentionChip({ kind, label, dead, onClick }: { kind: "skill" | "tool"; label: ReactNode; dead: boolean; onClick: (e: React.MouseEvent) => void }) {
-  const Icon = kind === "skill" ? FileTextIcon : WrenchIcon;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={dead ? "This mention leads nowhere: the skill was deleted or the tool does not exist" : kind === "skill" ? "Open this skill" : "Open this tool"}
-      className={`k-chip mx-0.5 inline-flex items-center gap-1 align-baseline ${dead ? "line-through opacity-60" : ""} ${kind === "tool" ? "k-mono" : ""}`}
-    >
-      <Icon size={11} weight="duotone" />
-      {label}
-    </button>
-  );
-}
-
-/**
- * The text's field: typing `@` opens a menu of skills and tools filtered as you type; Enter, Tab or a
- * click writes the token (`@skill:<slug>` / `@tool:<name>`), Esc closes the menu.
- */
-export function MentionTextarea({
-  value,
-  onChange,
-  onBlur,
-  onEscape,
-  names,
-  className,
-  autoFocus,
-}: {
-  value: string;
-  onChange: (text: string) => void;
-  onBlur: () => void;
-  onEscape: () => void;
-  names: Mentionables;
-  className: string;
-  autoFocus?: boolean;
-}) {
-  const ref = useRef<HTMLTextAreaElement | null>(null);
-  const [query, setQuery] = useState<{ start: number; query: string } | null>(null);
-  const [cursor, setCursor] = useState(0);
-  useEffect(() => {
-    if (autoFocus) ref.current?.focus();
-  }, [autoFocus]);
-  const n = query?.query.toLowerCase() ?? "";
-  const options = query
-    ? [
-        ...names.skills.filter((s) => s.title.toLowerCase().includes(n) || s.slug.includes(n)).map((s) => ({ kind: "skill" as const, ref: s.slug, label: s.title })),
-        ...names.tools.filter((t) => t.toLowerCase().includes(n)).map((t) => ({ kind: "tool" as const, ref: t, label: t })),
-      ].slice(0, 8)
-    : [];
-  const sync = () => {
-    const el = ref.current;
-    if (!el) return;
-    const q = mentionQueryAt(el.value, el.selectionStart ?? 0);
-    setQuery(q);
-    if (!q) setCursor(0);
-  };
-  const pick = (o: { kind: "skill" | "tool"; ref: string }) => {
-    const el = ref.current;
-    if (!el || !query) return;
-    const caret = el.selectionStart ?? 0;
-    const token = `@${o.kind}:${o.ref} `;
-    const next = value.slice(0, query.start) + token + value.slice(caret);
-    onChange(next);
-    setQuery(null);
-    const at = query.start + token.length;
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(at, at);
-    });
-  };
-  return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      <textarea
-        ref={ref}
-        value={value}
-        spellCheck={false}
-        onChange={(e) => {
-          onChange(e.target.value);
-          requestAnimationFrame(sync);
-        }}
-        onClick={sync}
-        onKeyUp={(e) => {
-          if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) sync();
-        }}
-        onKeyDown={(e) => {
-          if (options.length > 0) {
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              setCursor((c) => (c + 1) % options.length);
-              return;
-            }
-            if (e.key === "ArrowUp") {
-              e.preventDefault();
-              setCursor((c) => (c - 1 + options.length) % options.length);
-              return;
-            }
-            if (e.key === "Enter" || e.key === "Tab") {
-              e.preventDefault();
-              pick(options[Math.min(cursor, options.length - 1)]);
-              return;
-            }
-          }
-          if (e.key === "Escape") {
-            e.stopPropagation();
-            if (query) setQuery(null);
-            else onEscape();
-          }
-        }}
-        onBlur={onBlur}
-        className={className}
-      />
-      {options.length > 0 && (
-        <div role="listbox" aria-label="Mention a skill or a tool" className="k-popover absolute right-3 bottom-3 left-3 z-10 max-h-64 overflow-y-auto p-1">
-          {options.map((o, i) => (
-            <div
-              key={`${o.kind}:${o.ref}`}
-              role="option"
-              aria-selected={i === cursor}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                pick(o);
-              }}
-              className={`flex cursor-pointer items-center gap-2 rounded-[6px] px-2.5 py-1.5 text-[13px] ${i === cursor ? "k-selected" : "k-row"}`}
-            >
-              {o.kind === "skill" ? <FileTextIcon size={14} weight="duotone" className="k-fg3" /> : <WrenchIcon size={14} weight="duotone" className="k-fg3" />}
-              <span className={`truncate ${o.kind === "tool" ? "k-mono" : ""}`}>{o.label}</span>
-              <span className="k-fg3 ml-auto text-[11px]">{o.kind === "skill" ? "Skill" : "Tool"}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+  return useMemo(
+    () => [
+      ...(q.data?.skills ?? []).map((s) => ({ kind: "skill" as const, ref: s.slug, label: s.title })),
+      ...(tools ?? []).map((t) => ({ kind: "tool" as const, ref: t, label: t })),
+    ],
+    [q.data, tools],
   );
 }
 

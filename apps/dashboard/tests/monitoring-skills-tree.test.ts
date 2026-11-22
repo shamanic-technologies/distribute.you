@@ -109,7 +109,7 @@ describe("the tree is who mentions whom (DISTRY-SKILL-MENTIONS-1122)", () => {
   ];
   const prompt = [m("money"), m("campaigns")];
 
-  it("draws the Prompt on top and each text's skills in text order, skipping tools and dead mentions", async () => {
+  it("draws the Prompt on top; a skill unfolds once, at its first place, and only shows elsewhere", async () => {
     const { mentionTreeRows, allTreeKeys } = await import("../src/lib/monitoring/skills-tree");
     const rows = mentionTreeRows(skills, prompt, allTreeKeys(skills, prompt));
     expect(rows.map((r) => [r.slug, r.depth, r.repeat])).toEqual([
@@ -118,7 +118,7 @@ describe("the tree is who mentions whom (DISTRY-SKILL-MENTIONS-1122)", () => {
       ["campaigns", 1, false],
       ["budgets", 2, false],
       ["campaigns", 3, true],
-      ["money", 2, false],
+      ["money", 2, true],
     ]);
   });
 
@@ -137,19 +137,5 @@ describe("the tree is who mentions whom (DISTRY-SKILL-MENTIONS-1122)", () => {
       ["lost2", 2, false],
       ["lost", 3, true],
     ]);
-  });
-
-  it("splits a text into words and mention chips, and finds the @word being typed", async () => {
-    const { splitMentions, mentionQueryAt } = await import("../src/lib/monitoring/skills-tree");
-    expect(splitMentions("Read @skill:money then call @tool:run_operation.")).toEqual([
-      { text: "Read " },
-      { mention: { kind: "skill", ref: "money" } },
-      { text: " then call " },
-      { mention: { kind: "tool", ref: "run_operation" } },
-      { text: "." },
-    ]);
-    expect(mentionQueryAt("see @mon", 8)).toEqual({ start: 4, query: "mon" });
-    expect(mentionQueryAt("mail@x", 6)).toBeNull();
-    expect(mentionQueryAt("@", 1)).toEqual({ start: 0, query: "" });
   });
 });
