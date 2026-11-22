@@ -259,17 +259,12 @@ describe("Add credits survives a reload (owner 2026-10-10)", () => {
 });
 
 describe("Create a campaign button (owner 2026-10-11)", () => {
-  it("the Campaigns Create box asks the Copilot with the typed text, else Create a campaign, then clears", () => {
-    // Owner 2026-10-15: Enter or Create opens the panel, posts the text as the user's message, sends it.
+  it("the Campaigns page has no Create box and no Suggested funnels, staff mode included (owner 2026-11-22)", () => {
     const page = src("src/components/v2/campaigns-overview-page.tsx");
-    expect(page).toContain('CREATE_CAMPAIGN_ASK = "Create a campaign"');
-    // Owner 2026-10-22: the Create box is staff-gated again.
-    expect(page).toContain("{staffMode && <CreateBox />}");
-    expect(page).not.toMatch(/^\s*<CreateBox \/>$/m);
-    expect(page).toContain("copilot.ask(text.trim() || CREATE_CAMPAIGN_ASK);\n          setText(\"\");");
-    expect(page).toContain('if (e.key === "Enter" && !e.shiftKey) {');
-    expect(page).toContain("e.currentTarget.form?.requestSubmit();");
-    // The panel stays mounted while hidden, so the queued text is sent even if it was closed.
+    expect(page).not.toContain("<CreateBox");
+    expect(page).not.toContain("<Suggested");
+    expect(page).not.toContain("Describe the campaign you want");
+    // The panel stays mounted while hidden, so a queued text is sent even if it was closed.
     expect(src("src/components/v2/copilot-panel.tsx")).toContain('inert={!open}');
     const chat = src("src/components/v2/copilot-chat.tsx");
     expect(chat).toContain('if (!askedText || phase !== "ready" || busy) return;');
