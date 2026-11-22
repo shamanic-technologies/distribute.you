@@ -3,58 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { getStaffSkill, getStaffSkills, saveStaffSkill, type StaffSkill } from "@/lib/api";
-import { editedByLabel } from "@/lib/monitoring/skills-tree";
-import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
-import { InlineText, SkillTree, useSkillWrites } from "@/components/v2/monitoring-skill-tree";
+import { getStaffSkill, saveStaffSkill, type StaffSkill } from "@/lib/api";
+import { EmptyNote, Shimmer } from "@/components/v2/ui";
+import { InlineText, useSkillWrites } from "@/components/v2/monitoring-skill-tree";
 
 /**
- * Monitoring > Chat > Skills (staff, owner 2026-10-09): the Copilot's skill tree, served by
- * chat-service, drawn and edited by the shared `SkillTree` (SKILL-TREE-EDIT-1122, the same editor
- * as Monitoring > Distry). A line opens the skill in a panel on the right; a click in its text
- * turns it into one big field that saves itself while you type; its title and description are
- * renamed in the panel header too. chat-service folds
- * saves by the same person within 10 minutes into one version, so autosave never floods history.
+ * The skill panel of Monitoring > Chat > Distry (the one home of the skills since 2026-11-22):
+ * title and description renamed in its header, the text one big field that saves itself while you
+ * type. chat-service folds saves by the same person within 10 minutes into one version.
  */
 
 const SAVE_AFTER_MS = 800;
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-export function SkillsView() {
-  const list = useAuthQuery(["staffSkills"], getStaffSkills, { staleTime: 30_000, retry: false });
-  const [selected, setSelected] = useState<string | null>(null);
-  return (
-    <>
-      <SectionTitle count={list.data?.length ?? null} right={<span className="hidden sm:inline">+ adds under a skill, the bin deletes it, the grip drags it</span>}>
-        Skills
-      </SectionTitle>
-      <SkillTree
-        selected={selected}
-        onOpen={setSelected}
-        onDeleted={(slug) => setSelected((cur) => (cur === slug ? null : cur))}
-        head={
-          <div className="flex items-center gap-3 px-4 py-2.5">
-            <span className="k-label flex-1">Skill</span>
-            <span className="k-label hidden w-[220px] md:block">Edited by</span>
-            <span className="k-label w-[140px]">Updated</span>
-          </div>
-        }
-        trailing={(skill) => (
-          <>
-            <span className="k-fg2 hidden w-[220px] shrink-0 truncate text-[13px] md:block">{editedByLabel(skill.updatedBy)}</span>
-            <span className="k-mono k-fg2 w-[140px] shrink-0 text-[12px]">{when(skill.updatedAt)}</span>
-          </>
-        )}
-      />
-      {selected && <SkillPanel slug={selected} onClose={() => setSelected(null)} />}
-    </>
-  );
-}
-
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: string } | { kind: "empty" } | { kind: "failed" };
 
-/** Also opened from Monitoring > Distry, which puts its "Read by Distry" switch in `extra`. */
-export function SkillPanel({ slug, onClose, extra }: { slug: string; onClose: () => void; extra?: React.ReactNode }) {
+export function SkillPanel({ slug, onClose }: { slug: string; onClose: () => void }) {
   const queryClient = useQueryClient();
   const writes = useSkillWrites();
   const q = useAuthQuery(["staffSkill", slug], () => getStaffSkill(slug), { staleTime: 0, retry: false });
@@ -191,7 +155,6 @@ export function SkillPanel({ slug, onClose, extra }: { slug: string; onClose: ()
           <p className="k-mono k-fg3 mt-2 text-[12px]">
             Version {skill.version} · {editByLine(skill.updatedBy)} · {when(skill.updatedAt)}
           </p>
-          {extra && <div className="mt-3">{extra}</div>}
           <div className="mt-4 flex min-h-0 flex-1">
             {editing ? (
               <textarea
