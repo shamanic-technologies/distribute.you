@@ -529,7 +529,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     for (let i = 0; i < attempts; i += 1) {
       try {
         const next = signupCampaignFunnelFrom(
-          await getSignupFunnelPage(id, offerId, strategy ? `${ANGLE_CHANNEL}~${strategy}` : null),
+          await getSignupFunnelPage(id, offerId, SIGNUP_TARGET, strategy ? `${ANGLE_CHANNEL}~${strategy}` : null),
           (funnelId) => funnelFitsAngles(funnelId, strategy),
         );
         setFunnel(next);
