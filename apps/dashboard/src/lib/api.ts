@@ -3043,6 +3043,8 @@ const DistryModelsSchema = z.object({
         }),
       ),
       intelligencePerDollar: z.object({ value: z.number().nullable(), basis: z.string().nullable(), reason: z.string().nullable() }),
+      // DISTRY-ALL-MODELS-1122 (chat-service v0.63.205): can Distry run this model right now, and why not (vendor out of credit, org limit).
+      availability: z.object({ runsNow: z.boolean(), reason: z.string().nullable() }).optional(),
     }),
   ),
 });
