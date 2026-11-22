@@ -151,9 +151,9 @@ export interface SignupCampaignDraft {
   monthlyLimit: string | null;
 }
 
-/** 10 meetings booked a week (owner mockup 2026-11-22). */
+/** 2 meetings booked a week (owner 2026-11-22: « go with your reco »; 10 a week priced past the $9,000 monthly limit). */
 export const DEFAULT_SIGNUP_DRAFT: SignupCampaignDraft = {
-  volume: "10",
+  volume: "2",
   volumePeriod: "week",
   brief: null,
   monthlyLimit: null,
