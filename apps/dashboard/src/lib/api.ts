@@ -2927,6 +2927,20 @@ export async function saveStaffSkill(slug: string, content: string): Promise<Sta
   return parseStaff("saveStaffSkill", SkillWriteSchema, raw).skill;
 }
 
+/**
+ * Create a skill, or change its title / description (SKILL-TREE-EDIT-1122). chat-service's write
+ * takes the full body on every PUT (`content` required), so a rename sends the served text back
+ * unchanged; a create needs title, description and an existing parent.
+ */
+export async function writeStaffSkill(
+  slug: string,
+  body: { content: string; title?: string; description?: string; parentSlug?: string; position?: number },
+): Promise<{ skill: StaffSkill; created: boolean }> {
+  const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}`, { method: "PUT", body });
+  const parsed = parseStaff("writeStaffSkill", SkillWriteSchema, raw);
+  return { skill: parsed.skill, created: parsed.created };
+}
+
 // --- Distry (DISTRY-PRINCIPAL-1119): the AI principal's definition, versions, and the Engines it can call ---
 
 const DistryDefinitionSchema = z.object({

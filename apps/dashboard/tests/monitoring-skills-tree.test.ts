@@ -47,3 +47,34 @@ describe("skills tree", () => {
     expect(editedByLabel("kevin@distribute.you")).toBe("kevin@distribute.you");
   });
 });
+
+describe("skill tree editing (SKILL-TREE-EDIT-1122)", () => {
+  it("names a new skill from its title, unique among the served slugs", async () => {
+    const { slugForNewSkill } = await import("../src/lib/monitoring/skills-tree");
+    expect(slugForNewSkill("Cold email: follow-ups", new Set())).toBe("cold-email-follow-ups");
+    expect(slugForNewSkill("Réponses", new Set(["reponses"]))).toBe("reponses-2");
+    expect(slugForNewSkill("Réponses", new Set(["reponses", "reponses-2"]))).toBe("reponses-3");
+    expect(slugForNewSkill("!!!", new Set())).toBeNull();
+  });
+
+  it("puts a new child last under its parent", async () => {
+    const { nextChildPosition } = await import("../src/lib/monitoring/skills-tree");
+    const flat = [s("index", null), s("a", "index", 3), s("b", "index", 7), s("c", "a", 1)];
+    expect(nextChildPosition(flat, "index")).toBe(8);
+    expect(nextChildPosition(flat, "c")).toBe(0);
+  });
+});
+
+describe("one shared tree editor on both pages", () => {
+  it("draws the tree on Skills and Distry through SkillTree, never a second copy", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
+    expect(read("components/v2/monitoring-skills.tsx")).toContain("<SkillTree");
+    expect(read("components/v2/monitoring-distry.tsx")).toContain("<SkillTree");
+    expect(read("components/v2/monitoring-distry.tsx")).not.toContain("depthOf");
+    const tree = read("components/v2/monitoring-skill-tree.tsx");
+    expect(tree).toContain("writeStaffSkill(slug, { content: current.content, ...change })");
+    expect(tree).toContain("Add a skill under");
+  });
+});
