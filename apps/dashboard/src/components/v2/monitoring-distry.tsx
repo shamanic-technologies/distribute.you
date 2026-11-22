@@ -1,5 +1,6 @@
 "use client";
 
+import { DistryFallbackOrder, thinkingWords } from "./distry-fallback-order";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -320,13 +321,6 @@ function ModelRow({ version, onOpen }: { version: DistryVersion; onOpen: () => v
   );
 }
 
-/** A thinking level in words: null = the model's default, `none` = reasoning off, else the served level capitalised. */
-function thinkingWords(level: string | null): string {
-  if (level === null) return "Model default";
-  if (level === "none") return "Reasoning off";
-  return level.charAt(0).toUpperCase() + level.slice(1);
-}
-
 function ModelPicker({ config, onSave }: { config: DistryConfig; onSave: (change: Partial<DistryDefinition>) => void }) {
   const { provider, model, effort } = config.current;
   // The levels come from the models panel (same query key as the table below): every level Distry can run
@@ -393,6 +387,7 @@ function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: strin
           {d.refresh.state === "ok" && d.readAt ? `${d.indexName}, read ${timeAgo(d.readAt)}.` : d.refresh.sentence}
         </p>
       )}
+      {d?.fallbackOrder && <DistryFallbackOrder nextFallback={d.nextFallback ?? null} order={d.fallbackOrder} />}
       <div className="k-card overflow-hidden">
         <table className="w-full table-fixed text-[13px]">
           <thead>
