@@ -59,8 +59,8 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     expect(() => signupCampaignFunnelFrom({ nope: [] })).toThrow();
     // One narrowed page: every word of q must appear, so the meeting funnel is never off a 25-row page.
     const api = read("src/lib/api.ts");
-    expect(api).toContain('const q = ["start_to_lead_found@lead-sourcing", "conversation_to_meeting_booked@ai-meeting-booking"');
-    expect(api).toContain("&containsChannels=ai-meeting-booking&limit=25&target=${encodeURIComponent(target)}&q=${encodeURIComponent(q)}");
+    expect(api).toContain('"start_to_lead_found@lead-sourcing",\n    "lead_found_to_conversation@sales-cold-email-outreach",\n    "conversation_to_meeting_booked@ai-meeting-booking",');
+    expect(api).toContain("&containsChannels=ai-meeting-booking&runnable=true&limit=25&target=${encodeURIComponent(target)}&q=${encodeURIComponent(q)}");
   });
 
   it("only Lead Sourcing -> cold email -> AI meeting booking; never the client's own contacts nor a re-serve play", () => {
