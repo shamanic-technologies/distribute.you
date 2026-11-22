@@ -3070,6 +3070,22 @@ const DistryModelsSchema = z.object({
       availability: z.object({ runsNow: z.boolean(), reason: z.string().nullable() }).optional(),
     }),
   ),
+  // DISTRY-THINKING-1122 (chat-service #903): where a Distry turn goes when its model cannot serve, in the
+  // served order (best intelligence per dollar first, unscored last), and the first of it in words.
+  fallbackOrder: z
+    .array(
+      z.object({
+        provider: z.string(),
+        model: z.string(),
+        modelId: z.string(),
+        displayName: z.string(),
+        level: z.string().nullable(),
+        score: z.number().nullable(),
+        intelligencePerDollar: z.number().nullable(),
+      }),
+    )
+    .optional(),
+  nextFallback: z.string().nullable().optional(),
 });
 export type DistryModels = z.infer<typeof DistryModelsSchema>;
 

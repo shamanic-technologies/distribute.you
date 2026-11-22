@@ -77,8 +77,11 @@ describe("Monitoring > Distry: thinking level for every provider", () => {
   });
 
   it("names `none` as Reasoning off and null as Model default", () => {
-    expect(view).toContain('if (level === "none") return "Reasoning off";');
-    expect(view).toContain('if (level === null) return "Model default";');
+    // The helper moved beside the fallback order (DISTRY-THINKING-1122), shared by the picker and the order.
+    const words = read("components/v2/distry-fallback-order.tsx");
+    expect(words).toContain('if (level === "none") return "Reasoning off";');
+    expect(words).toContain('if (level === null) return "Model default";');
+    expect(view).toContain('import { DistryFallbackOrder, thinkingWords } from "./distry-fallback-order";');
   });
 
   it("reads thinkingLevels and each variant's distry verdict from chat-service", () => {
