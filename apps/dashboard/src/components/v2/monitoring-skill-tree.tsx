@@ -363,7 +363,7 @@ function SkillLine({
         />
       )}
       {drag.draggable ? (
-        <span aria-hidden title="Drag to move" className="k-fg4 -ml-3 mt-0.5 w-3 shrink-0 cursor-grab opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <span aria-hidden title="Drag to move" className="k-fg4 -ml-3 mt-0.5 w-3 shrink-0 cursor-grab opacity-40 transition-opacity duration-150 group-hover:opacity-100">
           <DotsSixVerticalIcon size={14} weight="bold" />
         </span>
       ) : (
@@ -417,7 +417,7 @@ function SkillLine({
           e.stopPropagation();
           onAdd();
         }}
-        className="k-btn-ghost mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100"
+        className="k-btn-ghost mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center opacity-40 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100"
         style={{ padding: 0 }}
       >
         <PlusIcon size={14} weight="bold" />
@@ -666,7 +666,7 @@ function DeleteButton({ title, hasChildren, onDelete }: { title: string; hasChil
         onClick={(e) => void click(e)}
         onBlur={() => setAsking(false)}
         className={`k-btn-ghost inline-flex h-6 shrink-0 items-center justify-center gap-1 transition-opacity duration-150 ${
-          asking || error ? "opacity-100" : "w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+          asking || error ? "opacity-100" : "w-6 opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
         }`}
         style={{ padding: asking ? "0 8px" : 0, color: asking ? "var(--data-rose)" : undefined }}
       >

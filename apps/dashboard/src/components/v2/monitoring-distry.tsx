@@ -108,7 +108,7 @@ export function DistryView() {
           <Block title="Model" sub="The model Distry thinks with, and how long it thinks. Click to change it.">
             {current ? <ModelRow version={current} onOpen={() => setOpen({ kind: "model" })} /> : <Lines />}
           </Block>
-          <Block title="Skills" count={c ? (current?.skillSlugs === null ? c.skills.length : current?.skillSlugs.length) : undefined} sub="What Distry reads before it acts. Click one to read and edit its text.">
+          <Block title="Skills" count={c ? (current?.skillSlugs === null ? c.skills.length : current?.skillSlugs.length) : undefined} sub="What Distry reads before it acts. Click a title to rename it, a line to edit its text. + adds a skill under it, the bin deletes it, the grip on the left drags it.">
             {c ? (
               <SkillsList
                 config={c}
