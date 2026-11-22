@@ -1,20 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { getStaffSkill, getStaffSkills, saveStaffSkill, type StaffSkill } from "@/lib/api";
-import { buildSkillTree, editedByLabel, initiallyOpen, visibleSkillRows, type SkillRow } from "@/lib/monitoring/skills-tree";
+import { editedByLabel } from "@/lib/monitoring/skills-tree";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
-import { CaretRightIcon } from "@phosphor-icons/react/dist/csr/CaretRight";
-import { FolderIcon } from "@phosphor-icons/react/dist/csr/Folder";
-import { FolderOpenIcon } from "@phosphor-icons/react/dist/csr/FolderOpen";
-import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
+import { InlineText, SkillTree, useSkillWrites } from "@/components/v2/monitoring-skill-tree";
 
 /**
  * Monitoring > Chat > Skills (staff, owner 2026-10-09): the Copilot's skill tree, served by
- * chat-service. Folders open and close; a line opens the skill in a panel on the right; a click
- * in its text turns it into one big field that saves itself while you type. chat-service folds
+ * chat-service, drawn and edited by the shared `SkillTree` (SKILL-TREE-EDIT-1122, the same editor
+ * as Monitoring > Distry). A line opens the skill in a panel on the right; a click in its text
+ * turns it into one big field that saves itself while you type; its title and description are
+ * renamed in the panel header too. chat-service folds
  * saves by the same person within 10 minutes into one version, so autosave never floods history.
  */
 
@@ -23,107 +22,31 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 
 export function SkillsView() {
   const list = useAuthQuery(["staffSkills"], getStaffSkills, { staleTime: 30_000, retry: false });
-  const tree = useMemo(() => (list.data ? buildSkillTree(list.data) : undefined), [list.data]);
-  const [open, setOpen] = useState<Set<string> | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  // Folders start open on the first answer only; after that, what the reader opened stays.
-  useEffect(() => {
-    if (tree && open === null) setOpen(initiallyOpen(tree));
-  }, [tree, open]);
-  const rows = tree && open ? visibleSkillRows(tree, open) : undefined;
-  const toggle = (slug: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev ?? []);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
-
-  if (list.isError) {
-    console.error("[dashboard] skills: list failed", list.error);
-    return (
-      <div className="k-card">
-        <EmptyNote>Could not read the skills from production.</EmptyNote>
-      </div>
-    );
-  }
-
   return (
     <>
-      <SectionTitle count={list.data?.length ?? null} right={<span className="hidden sm:inline">Click a skill to read and edit it</span>}>
+      <SectionTitle count={list.data?.length ?? null} right={<span className="hidden sm:inline">Click a title to rename it, a line to edit its text, + to add one under it</span>}>
         Skills
       </SectionTitle>
-      <div className="k-card overflow-hidden">
-        <div className="k-scroll overflow-x-auto">
-          <table className="w-full table-fixed text-[13px]">
-            <thead>
-              <tr className="k-line-subtle border-b text-left">
-                <th className="k-label px-3 py-2.5 first:pl-4">Skill</th>
-                <th className="k-label hidden w-[220px] px-3 py-2.5 md:table-cell">Edited by</th>
-                <th className="k-label w-[140px] px-3 py-2.5 last:pr-4">Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows === undefined
-                ? [0, 1, 2, 3, 4].map((i) => (
-                    <tr key={i} className="h-10">
-                      <td colSpan={3} className="px-4">
-                        <Shimmer className="h-4 w-full" />
-                      </td>
-                    </tr>
-                  ))
-                : rows.map((r) => (
-                    <SkillLine
-                      key={r.skill.slug}
-                      row={r}
-                      isOpen={open?.has(r.skill.slug) ?? false}
-                      selected={selected === r.skill.slug}
-                      onToggle={() => toggle(r.skill.slug)}
-                      onSelect={() => setSelected(r.skill.slug)}
-                    />
-                  ))}
-            </tbody>
-          </table>
-        </div>
-        {rows && rows.length === 0 && <EmptyNote>No skill yet.</EmptyNote>}
-      </div>
+      <SkillTree
+        selected={selected}
+        onOpen={setSelected}
+        head={
+          <div className="flex items-center gap-3 px-4 py-2.5">
+            <span className="k-label flex-1">Skill</span>
+            <span className="k-label hidden w-[220px] md:block">Edited by</span>
+            <span className="k-label w-[140px]">Updated</span>
+          </div>
+        }
+        trailing={(skill) => (
+          <>
+            <span className="k-fg2 hidden w-[220px] shrink-0 truncate text-[13px] md:block">{editedByLabel(skill.updatedBy)}</span>
+            <span className="k-mono k-fg2 w-[140px] shrink-0 text-[12px]">{when(skill.updatedAt)}</span>
+          </>
+        )}
+      />
       {selected && <SkillPanel slug={selected} onClose={() => setSelected(null)} />}
     </>
-  );
-}
-
-function SkillLine({ row, isOpen, selected, onToggle, onSelect }: { row: SkillRow; isOpen: boolean; selected: boolean; onToggle: () => void; onSelect: () => void }) {
-  const { skill, depth, hasChildren, childCount } = row;
-  const Icon = hasChildren ? (isOpen ? FolderOpenIcon : FolderIcon) : FileTextIcon;
-  return (
-    <tr className={`k-row k-line-subtle h-10 cursor-pointer border-b last:border-b-0 ${selected ? "k-selected" : ""}`} onClick={onSelect}>
-      <td className="px-3 py-2 first:pl-4">
-        <div className="flex min-w-0 items-center gap-1.5" style={{ paddingLeft: depth * 20 }}>
-          {hasChildren ? (
-            <button
-              type="button"
-              aria-label={isOpen ? `Close ${skill.title}` : `Open ${skill.title}`}
-              aria-expanded={isOpen}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle();
-              }}
-              className="k-btn-ghost inline-flex shrink-0 items-center justify-center" style={{ width: 24, height: 20, padding: 0 }}
-            >
-              <CaretRightIcon size={12} weight="bold" className={`transition-transform duration-150 ${isOpen ? "rotate-90" : ""}`} />
-            </button>
-          ) : (
-            <span className="inline-block w-6 shrink-0" />
-          )}
-          <Icon size={16} weight="duotone" className="shrink-0" style={{ color: hasChildren ? "var(--data-amber)" : "var(--fg-3)" }} />
-          <span className="truncate font-medium">{skill.title}</span>
-          {hasChildren && <span className="k-fg3 shrink-0 tabular-nums">{childCount}</span>}
-          <span className="k-fg3 hidden min-w-0 truncate text-[12px] lg:inline">{skill.description}</span>
-        </div>
-      </td>
-      <td className="k-fg2 hidden truncate px-3 py-2 md:table-cell">{editedByLabel(skill.updatedBy)}</td>
-      <td className="k-mono k-fg2 px-3 py-2 text-[12px] last:pr-4">{when(skill.updatedAt)}</td>
-    </tr>
   );
 }
 
@@ -132,6 +55,7 @@ type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: st
 /** Also opened from Monitoring > Distry, which puts its "Read by Distry" switch in `extra`. */
 export function SkillPanel({ slug, onClose, extra }: { slug: string; onClose: () => void; extra?: React.ReactNode }) {
   const queryClient = useQueryClient();
+  const writes = useSkillWrites();
   const q = useAuthQuery(["staffSkill", slug], () => getStaffSkill(slug), { staleTime: 0, retry: false });
   const skill = q.data;
   const [editing, setEditing] = useState(false);
@@ -257,8 +181,12 @@ export function SkillPanel({ slug, onClose, extra }: { slug: string; onClose: ()
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col p-4">
-          <h2 className="text-[18px] font-medium leading-6">{skill.title}</h2>
-          <p className="k-fg2 mt-1 text-[13px]">{skill.description}</p>
+          <h2 className="text-[18px] font-medium leading-6">
+            <InlineText label="Skill title" value={skill.title} max={200} onSave={(title) => writes.rename(slug, { title })} />
+          </h2>
+          <div className="k-fg2 mt-1 text-[13px]">
+            <InlineText label="Skill description" value={skill.description} max={500} onSave={(description) => writes.rename(slug, { description })} />
+          </div>
           <p className="k-mono k-fg3 mt-2 text-[12px]">
             Version {skill.version} · {editByLine(skill.updatedBy)} · {when(skill.updatedAt)}
           </p>

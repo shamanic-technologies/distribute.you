@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
@@ -17,6 +17,7 @@ import {
   type DistryVersion,
 } from "@/lib/api";
 import { SkillPanel } from "@/components/v2/monitoring-skills";
+import { SkillTree } from "@/components/v2/monitoring-skill-tree";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { timeAgo } from "@/lib/friendly-datetime";
 
@@ -263,7 +264,7 @@ function PromptEditor({ value, onSave }: { value: string; onSave: (v: string) =>
 }
 
 /** A row whose box toggles in place and whose label opens the detail panel. */
-function ToggleRow({ on, onToggle, onOpen, label, sub, chip, depth = 0 }: { on: boolean; onToggle: () => void; onOpen: () => void; label: string; sub?: string; chip?: string; depth?: number }) {
+function ToggleRow({ on, onToggle, onOpen, label, sub, chip }: { on: boolean; onToggle: () => void; onOpen: () => void; label: string; sub?: string; chip?: string }) {
   return (
     <div
       role="button"
@@ -273,7 +274,6 @@ function ToggleRow({ on, onToggle, onOpen, label, sub, chip, depth = 0 }: { on: 
         if (e.key === "Enter") onOpen();
       }}
       className="k-row flex cursor-pointer items-start gap-3 px-4 py-2.5"
-      style={{ paddingLeft: 16 + depth * 20 }}
     >
       <input
         type="checkbox"
@@ -324,29 +324,33 @@ function ToolsList({ config, isOn, onToggle, onOpen }: { config: DistryConfig; i
   );
 }
 
+/** The SAME tree editor as Monitoring > Chat > Skills (SKILL-TREE-EDIT-1122), with Distry's checkbox on each line. */
 function SkillsList({ config, isOn, onToggle, onAll, onOpen }: { config: DistryConfig; isOn: (s: string) => boolean; onToggle: (s: string) => void; onAll: () => void; onOpen: (s: string) => void }) {
   const all = config.current.skillSlugs === null;
-  const depthOf = useMemo(() => {
-    const parent = new Map(config.skills.map((s) => [s.slug, s.parentSlug]));
-    return (slug: string) => {
-      let d = 0;
-      for (let p = parent.get(slug); p; p = parent.get(p)) d++;
-      return d;
-    };
-  }, [config.skills]);
   return (
-    <div className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-      <label className="k-row flex cursor-pointer items-start gap-3 px-4 py-2.5">
-        <input type="checkbox" checked={all} onChange={onAll} className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
-        <span className="min-w-0 flex-1">
-          <span className="text-[13px]">Every skill</span>
-          <span className="k-fg3 block text-[12px]">New skills are read too. Index and client-comms are always read.</span>
-        </span>
-      </label>
-      {config.skills.map((s) => (
-        <ToggleRow key={s.slug} on={isOn(s.slug)} onToggle={() => onToggle(s.slug)} onOpen={() => onOpen(s.slug)} label={s.title} sub={s.description} depth={depthOf(s.slug)} />
-      ))}
-    </div>
+    <SkillTree
+      onOpen={onOpen}
+      dimmed={(slug) => !isOn(slug)}
+      head={
+        <label className="k-row flex cursor-pointer items-start gap-3 px-4 py-2.5">
+          <input type="checkbox" checked={all} onChange={onAll} className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+          <span className="min-w-0 flex-1">
+            <span className="text-[13px]">Every skill</span>
+            <span className="k-fg3 block text-[12px]">New skills are read too. Index and client-comms are always read.</span>
+          </span>
+        </label>
+      }
+      leading={(s) => (
+        <input
+          type="checkbox"
+          aria-label={`${s.title}: ${isOn(s.slug) ? "on" : "off"}`}
+          checked={isOn(s.slug)}
+          onClick={(e) => e.stopPropagation()}
+          onChange={() => onToggle(s.slug)}
+          className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
+        />
+      )}
+    />
   );
 }
 

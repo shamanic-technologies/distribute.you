@@ -74,3 +74,32 @@ export function initiallyOpen(tree: SkillNode[]): Set<string> {
 export function editedByLabel(updatedBy: string): string {
   return updatedBy === "seed" ? "Seeded" : updatedBy;
 }
+
+/** chat-service's slug rule: lowercase letters, digits and single hyphens. */
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * The slug a NEW skill is created under, from the title typed (SKILL-TREE-EDIT-1122). The slug is
+ * the skill's id in chat-service's URL, chosen by whoever creates it; a taken one gets `-2`, `-3`…
+ * `null` when the title holds no letter or digit (nothing to name it by).
+ */
+export function slugForNewSkill(title: string, taken: ReadonlySet<string>): string | null {
+  const base = title
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+  if (!SLUG_RE.test(base)) return null;
+  if (!taken.has(base)) return base;
+  for (let i = 2; ; i++) if (!taken.has(`${base}-${i}`)) return `${base}-${i}`;
+}
+
+/** A new child goes LAST under its parent: one past the highest sibling position. */
+export function nextChildPosition(skills: readonly SkillSummary[], parentSlug: string): number {
+  let max = -1;
+  for (const s of skills) if (s.parentSlug === parentSlug && s.position > max) max = s.position;
+  return max + 1;
+}
