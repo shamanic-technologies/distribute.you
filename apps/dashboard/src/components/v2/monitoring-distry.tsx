@@ -55,7 +55,8 @@ export function DistryView() {
     try {
       const saved = await run();
       qc.setQueryData<DistryConfig>(["staffDistryConfig"], (prev) => (prev ? { ...prev, current: saved } : prev));
-      await Promise.all([qc.refetchQueries({ queryKey: ["staffDistryConfig"] }), qc.refetchQueries({ queryKey: ["staffDistryVersions"] })]);
+      // The models table reads its Live tag from the served panel: refetch it too, or Live stays on the old model.
+      await Promise.all([qc.refetchQueries({ queryKey: ["staffDistryConfig"] }), qc.refetchQueries({ queryKey: ["staffDistryVersions"] }), qc.refetchQueries({ queryKey: ["staffDistryModels"] })]);
     } catch (err) {
       const status = (err as { status?: number }).status;
       console.error("[dashboard] distry: save refused", err);
