@@ -1835,6 +1835,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // The campaign step opens once the preview is complete (offer, audience, answers); its Launch
   // opens the wall on the plan it checked.
   const readyForCampaign = started && !!brandId && !!offer && !!audience && answered;
+  // The top banner says « Your campaign is ready to launch »: only once the campaign step HAS a campaign
+  // (GS-STEP11-NO-CAMPAIGN-1122: it read ready above « No campaign can run right now. »).
+  const campaignBannerShown = readyForCampaign && !!funnel;
   useEffect(() => {
     // Once the brand exists: before that the signed-out session may not be minted yet (401).
     if (org || !started || !brandId || walkOffer !== null) return;
@@ -2105,7 +2108,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   return (
     <div className="k-canvas min-h-[100dvh] lg:flex lg:h-[100dvh] lg:flex-col">
       {orgBar}
-      {readyForCampaign && (
+      {campaignBannerShown && (
         <div className="gs-down sticky top-0 z-20 border-b border-[var(--line-subtle)] bg-[var(--bg-raised)] lg:static">
           <div className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
             <span className="gs-pop hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[16px]" style={{ animationDelay: "200ms" }} aria-hidden="true">
