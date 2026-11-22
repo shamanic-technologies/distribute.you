@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
-import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { StepMark } from "@/components/marks/step-mark";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getCampaignCaps, listFunnelCampaignCopies, listFunnelCampaignRows, listOfferSalesFunnels } from "@/lib/api";
+import { getCampaignCaps, listFunnelCampaignCopies, listFunnelCampaignRows } from "@/lib/api";
 import {
   compareFunnelCampaigns,
   funnelOnLabel,
@@ -42,19 +41,14 @@ import { v2CampaignHref } from "@/lib/v2/routes";
 import { CampaignPinButton } from "@/components/v2/outcome-pins";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useBrandScope } from "@/components/v2/brand-scope";
-import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelOtherPartLines, FunnelPathLine, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
-import { EmptyNote, MarkLines, SectionTitle, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
+import { EmptyNote, MarkLines, ShareBar, Shimmer, TopBar } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
-
-/** What the Create box sends to the Copilot when nothing is typed, as if typed and sent. */
-export const CREATE_CAMPAIGN_ASK = "Create a campaign";
 
 /**
  * Campaigns > Overview (owner 2026-10-15, after Frontrunner's Agents page, GA for everyone): a title
- * with "N running", a Create box (staff mode only) that hands the request to the Copilot (typed text, sent as if typed;
- * empty = "Create a campaign"), up to three sales funnels this offer does not run yet (staff mode
- * only: their read is a staff-only gateway route), then the offer's funnel campaigns as a clean list,
+ * with "N running", then the offer's funnel campaigns as a clean list (no Create box, no Suggested
+ * funnels, staff mode included: owner 2026-11-22),
  * Running / Past, with search, a type filter and a sort over the rows already loaded. A campaign IS a
  * sales funnel (face, name, one status, its limits); no pipe rows, no leg arrows (owner 2026-10-10).
  * Every figure is served; the browser only filters and orders what it holds.
@@ -73,9 +67,8 @@ function useKeepCampaignPreview(): boolean {
 export function CampaignsOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   // Every campaign of the brand, every offer (owner 2026-11-07, AUDIENCE-PER-OFFER-1107); each row names its offer.
-  const { offers, settled, soleOfferId, campaignOfferIds } = useBrandScope();
-  // Create and Suggested are staff previews (owner decisions: Suggested as before 2026-10-17, Create 2026-10-22).
-  const { staffMode } = useStaffMode();
+  const { offers, settled, campaignOfferIds } = useBrandScope();
+  // No Create box and no Suggested funnels, staff mode included (owner 2026-11-22).
   const q = useFunnelCampaigns(brandId, null, { enabled: offers.length > 0 });
   const listSettled = q.data !== undefined || q.isFetchedAfterMount;
   const running = (q.data ?? []).filter(isOngoingFunnelCampaign).length;
@@ -106,9 +99,6 @@ export function CampaignsOverviewPage() {
           </div>
         ) : (
           <div className="space-y-10">
-            {staffMode && <CreateBox />}
-            {/* Fitted to ONE offer's steps: shown while the brand's campaigns sell one offer. */}
-            {staffMode && soleOfferId && <Suggested brandId={brandId} offerId={soleOfferId} campaigns={q.data ?? null} />}
             <CampaignList orgId={orgId} brandId={brandId} />
             {(campaignOfferIds ?? []).map((id) => (
               <UnconvertedRunningCampaigns key={id} orgId={orgId} brandId={brandId} offerId={id} />
@@ -117,100 +107,6 @@ export function CampaignsOverviewPage() {
         )}
       </div>
     </>
-  );
-}
-
-// ─── Create: the request goes to the Copilot, as typed ──────────────────────────────────
-
-function CreateBox() {
-  const copilot = useCopilotDock();
-  const [text, setText] = useState("");
-  if (!copilot.available) return null;
-  return (
-    <section>
-      <SectionTitle>Create</SectionTitle>
-      <form
-        aria-label="Create a campaign" className="k-card flex flex-col gap-3 p-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          // Opens the panel and queues the text; the chat sends it as the user's message once loaded and idle.
-          copilot.ask(text.trim() || CREATE_CAMPAIGN_ASK);
-          setText("");
-        }}
-      >
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              e.currentTarget.form?.requestSubmit();
-            }
-          }}
-          rows={2}
-          placeholder="Describe the campaign you want"
-          aria-label="Describe the campaign you want"
-          className="min-h-[52px] w-full resize-none bg-transparent px-1 text-[14px] leading-[22px] outline-none placeholder:text-[var(--fg-3)]"
-        />
-        <div className="flex justify-end">
-          <button type="submit" className="k-btn-accent gap-1.5">
-            <PlusIcon size={14} weight="bold" />
-            Create
-          </button>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-// ─── Suggested: sales funnels fitted to this offer, not run yet ─────────────────────────
-
-/**
- * features-service's sales funnels FITTED TO THIS OFFER (`listOfferSalesFunnels`: only funnels
- * built on the offer's own steps, priced with its stated lifetime revenue), minus the funnels the
- * offer already runs, drafts left out, in the producer's order: no browser sort. No per-funnel
- * return is shown (ROI-CONSISTENCY-1103).
- */
-function Suggested({ brandId, offerId, campaigns }: { brandId: string; offerId: string; campaigns: SalesFunnelCampaign[] | null }) {
-  const dock = useCopilotDock();
-  const list = useAuthQuery(["offerFittedFunnels", brandId, offerId], () => listOfferSalesFunnels(brandId, offerId), pollOptions);
-  const settled = list.data !== undefined || list.isFetchedAfterMount;
-  const picks = useMemo(() => {
-    if (!campaigns || !list.data) return null;
-    const runs = new Set(campaigns.map((c) => c.salesFunnelId));
-    return list.data.rows.filter((r) => !r.draft && !runs.has(r.id)).slice(0, 3);
-  }, [campaigns, list.data]);
-  if (list.isError && list.data === undefined) console.error("[v2] offer sales funnels unreadable", { offerId, error: list.error?.message });
-  if (settled && (list.isError || (picks && picks.length === 0))) return null;
-  return (
-    <section>
-      <SectionTitle>Suggested for you</SectionTitle>
-      {!picks ? (
-        <div className="grid gap-3 md:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <Shimmer key={i} className="h-[148px] rounded-[12px]" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-3">
-          {picks.map((f) => (
-            <div key={f.id} className="k-card flex min-w-0 flex-col p-4">
-              <MarkLines mark={(px) => <FunnelFace name={f.name} size={px} />}>
-                <span className="block truncate text-[14px] font-medium">{f.name}</span>
-              </MarkLines>
-              <p className="k-fg2 mt-3 line-clamp-2 min-h-[40px] text-[13px] leading-5">{f.line}</p>
-              {dock.available && (
-                <div className="mt-3 flex justify-end">
-                  <button type="button" className="k-btn" onClick={() => dock.ask(`${CREATE_CAMPAIGN_ASK} ${f.name}`)}>
-                    Start
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
   );
 }
 

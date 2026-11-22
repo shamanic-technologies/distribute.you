@@ -248,28 +248,11 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
     expect(statedVolume("proactive", { count: 5, period: "daily", unit: "outcomes_produced" })).toBe("Max 5 results/day");
   });
 
-  it("Suggested cards read the funnels FITTED TO THE OFFER, in the producer's order, no per-funnel return (owner 2026-10-17, ROI-CONSISTENCY-1103)", () => {
-    const overview = src("src/components/v2/campaigns-overview-page.tsx");
-    const suggested = overview.slice(overview.indexOf("function Suggested("), overview.indexOf("function CampaignList("));
-    // The cross-org catalogue proposed direct-purchase funnels at a $2,500 fleet median to a
-    // signup-then-pay offer stating $500: only the per-offer read fits the offer's own steps.
-    expect(suggested).toContain("listOfferSalesFunnels(brandId, offerId)");
-    expect(overview).not.toContain("useStaffCatalogueList");
-    // A suggested funnel states no return of its own (ROI-CONSISTENCY-1103).
-    expect(suggested).not.toContain("RoiLabel");
-    expect(suggested).not.toContain("f.roi");
-    expect(suggested).not.toContain("across clients");
-    // features-service orders the funnels: a browser sort would drop that order.
-    expect(suggested).not.toContain(".sort(");
-    const api = src("src/lib/api.ts");
-    expect(api).toContain("`/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&runnable=true&limit=25`");
-  });
-
   it("the Campaigns page lists ONLY funnel campaigns, staff mode included (no pipe table, owner 2026-10-11)", () => {
     const overview = src("src/components/v2/campaigns-overview-page.tsx");
     expect(overview).not.toContain("StaffPipeCampaigns");
-    // Staff mode adds ONLY the Suggested funnels, never a pipe table.
-    expect(overview).toContain("{staffMode && soleOfferId && <Suggested brandId={brandId} offerId={soleOfferId} campaigns={q.data ?? null} />}");
+    // Staff mode adds nothing: no Suggested funnels (owner 2026-11-22), never a pipe table.
+    expect(overview).not.toContain("<Suggested");
     // Until campaign-service has converted it, a RUNNING old-style campaign stays in view, and only it.
     expect(overview).toContain("<UnconvertedRunningCampaigns key={id} orgId={orgId} brandId={brandId} offerId={id} />");
     expect(overview).toContain("if (running.size === 0) return null;");
