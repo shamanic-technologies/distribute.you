@@ -42,7 +42,7 @@ describe("email style picks (owner 2026-10-17)", () => {
 
   it("the walk reads the funnels for the picked style, and asks each example in that style", () => {
     const flow = readFileSync(join(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
-    expect(flow).toContain("getSignupFunnelPage(id, offerId, strategy ? `${ANGLE_CHANNEL}~${strategy}` : null)");
+    expect(flow).toContain("getSignupFunnelPage(id, offerId, SIGNUP_TARGET, strategy ? `${ANGLE_CHANNEL}~${strategy}` : null)");
     expect(flow).toContain("(funnelId) => funnelFitsAngles(funnelId, strategy)");
     expect(flow).toContain("}, [brandId, offer?.offerId, answered, canReadFunnels, styleStrategy]);");
     const ex = flow.slice(flow.indexOf("async function writeExample("), flow.indexOf("// ── The stage"));
