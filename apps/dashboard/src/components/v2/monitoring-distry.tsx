@@ -158,7 +158,7 @@ export function DistryView() {
           <h2 className="text-[18px] font-medium leading-6">Model</h2>
           <p className="k-fg3 mt-1 mb-4 text-[12px]">A change is saved as a new version, live from Distry&apos;s next turn.</p>
           <ModelPicker config={c} onSave={save} />
-          <ModelsTable saving={saving} onUse={(provider, model, effort) => save({ provider, model, effort: provider === "anthropic" ? effort : null })} />
+          <ModelsTable saving={saving} onUse={(provider, model, effort) => save({ provider, model, effort })} />
         </Panel>
       )}
       {open?.kind === "engine" && <EnginePanel engine={engines.data?.engines.find((e) => e.outcome === open.outcome)} onClose={() => setOpen(null)} />}
@@ -381,7 +381,7 @@ function ModelRow({ version, onOpen }: { version: DistryVersion; onOpen: () => v
       </span>
       <span className="min-w-0">
         <span className="k-label block">Thinking</span>
-        <span className="text-[13px]">{version.effort ?? "Model default"}</span>
+        <span className="text-[13px]">{thinkingWords(version.effort)}</span>
       </span>
       <span className="k-fg3 ml-auto text-[16px]" aria-hidden>
         ›
@@ -390,15 +390,27 @@ function ModelRow({ version, onOpen }: { version: DistryVersion; onOpen: () => v
   );
 }
 
+/** A thinking level in words: null = the model's default, `none` = reasoning off, else the served level capitalised. */
+function thinkingWords(level: string | null): string {
+  if (level === null) return "Model default";
+  if (level === "none") return "Reasoning off";
+  return level.charAt(0).toUpperCase() + level.slice(1);
+}
+
 function ModelPicker({ config, onSave }: { config: DistryConfig; onSave: (change: Partial<DistryDefinition>) => void }) {
   const { provider, model, effort } = config.current;
+  // The levels come from the models panel (same query key as the table below): every level Distry can run
+  // the picked model at with tools, any provider (DISTRY-THINKING-1122). Empty = the model's default only.
+  const panel = useAuthQuery(["staffDistryModels"], getStaffDistryModels, READ);
+  const levelsOf = (p: string, m: string) => panel.data?.models.find((r) => r.provider === p && (r.names.includes(m) || r.modelId === m))?.thinkingLevels ?? [];
+  const levels = levelsOf(provider, model);
   return (
     <div className="k-card grid gap-4 p-4 sm:grid-cols-3">
       <Field label="Provider">
         <select
           className="k-input w-full"
           value={provider}
-          onChange={(e) => onSave({ provider: e.target.value, model: config.models[e.target.value]?.[0] ?? model, effort: e.target.value === "anthropic" ? effort : null })}
+          onChange={(e) => onSave({ provider: e.target.value, model: config.models[e.target.value]?.[0] ?? model, effort: null })}
         >
           {Object.keys(config.models).map((p) => (
             <option key={p}>{p}</option>
@@ -406,17 +418,25 @@ function ModelPicker({ config, onSave }: { config: DistryConfig; onSave: (change
         </select>
       </Field>
       <Field label="Model">
-        <select className="k-input w-full" value={model} onChange={(e) => onSave({ model: e.target.value })}>
+        <select
+          className="k-input w-full"
+          value={model}
+          onChange={(e) => onSave({ model: e.target.value, effort: effort !== null && levelsOf(provider, e.target.value).includes(effort) ? effort : null })}
+        >
           {(config.models[provider] ?? [model]).map((m) => (
             <option key={m}>{m}</option>
           ))}
         </select>
       </Field>
       <Field label="Thinking">
-        <select className="k-input w-full" value={effort ?? ""} disabled={provider !== "anthropic"} onChange={(e) => onSave({ effort: e.target.value || null })}>
-          <option value="">Model default</option>
-          {config.efforts.map((x) => (
-            <option key={x}>{x}</option>
+        <select className="k-input w-full" value={effort ?? ""} disabled={levels.length === 0} onChange={(e) => onSave({ effort: e.target.value || null })}>
+          <option value="">{thinkingWords(null)}</option>
+          {/* A saved level the panel does not list (still loading) stays shown, never silently read as the default. */}
+          {effort !== null && !levels.includes(effort) && <option value={effort}>{thinkingWords(effort)}</option>}
+          {levels.map((x) => (
+            <option key={x} value={x}>
+              {thinkingWords(x)}
+            </option>
           ))}
         </select>
       </Field>
@@ -505,6 +525,7 @@ function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: strin
                         <td className="k-fg2 py-1.5 pr-3 pl-8 text-[12px]">
                           {v.variantLabel ?? v.aaName}
                           {v.isDistrysThinking && <span className="k-fg3"> · Distry&apos;s thinking</span>}
+                          {!v.distry.canRun && v.distry.reason && <span className="k-fg3 block text-[12px]">{v.distry.reason}</span>}
                         </td>
                         <td className="px-3 py-1.5" />
                         <td className="px-3 py-1.5 text-right text-[12px] tabular-nums">{v.score ?? dash}</td>
@@ -513,11 +534,11 @@ function ModelsTable({ onUse, saving }: { onUse: (provider: string, model: strin
                         <td className="px-3 py-1.5 text-right last:pr-4">
                           {live ? (
                             <span className="k-chip">Live</span>
-                          ) : (
-                            <button type="button" className="k-btn-ghost" disabled={saving} onClick={() => onUse(m.provider, modelName, v.effort)}>
+                          ) : v.distry.canRun ? (
+                            <button type="button" className="k-btn-ghost" disabled={saving} onClick={() => onUse(m.provider, modelName, v.distry.level)}>
                               Use
                             </button>
-                          )}
+                          ) : null}
                         </td>
                       </tr>
                     );
@@ -838,7 +859,7 @@ function VersionPanel({
           {version.note && <p className="mt-3 text-[13px]">{version.note}</p>}
           <Facts
             rows={[
-              ["Model", `${version.provider} · ${version.model}${version.effort ? ` · ${version.effort}` : ""}`],
+              ["Model", `${version.provider} · ${version.model}${version.effort ? ` · ${thinkingWords(version.effort)}` : ""}`],
               ["Tools", `${version.enabledTools.length} on`],
               ["Skills", version.skillSlugs === null ? "Every skill" : version.skillSlugs.map(skillTitle).join(", ")],
             ]}

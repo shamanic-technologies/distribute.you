@@ -647,8 +647,11 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  *
  * "13": `staffDistryModels` rows gained the REQUIRED `thinking` + `variants` (Distry model panel,
  * thinking levels, DISTRY-MODELS-1119). An older snapshot read `.map` off undefined.
+ *
+ * "14": `staffDistryModels` rows gained the REQUIRED `thinkingLevels` and each variant its REQUIRED
+ * `distry` (DISTRY-THINKING-1122). An older snapshot read `.includes` off undefined.
  */
-const PERSIST_CACHE_VERSION = "13";
+const PERSIST_CACHE_VERSION = "14";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;

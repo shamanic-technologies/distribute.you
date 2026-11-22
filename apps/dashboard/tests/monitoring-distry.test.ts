@@ -46,3 +46,43 @@ describe("Monitoring > Distry", () => {
     expect(read("components/v2/monitoring-skills.tsx")).toContain("export function SkillPanel(");
   });
 });
+
+// DISTRY-THINKING-1122: the owner clicked "Use" on GPT-6.1 Terra at Medium and Distry was saved at the
+// model's default, because only Anthropic sent a level. Every provider now saves the served level.
+describe("Monitoring > Distry: thinking level for every provider", () => {
+  const tableAt = view.indexOf("function ModelsTable(");
+  const table = view.slice(tableAt, view.indexOf("\n}\n", tableAt));
+  const pickerAt = view.indexOf("function ModelPicker(");
+  const picker = view.slice(pickerAt, view.indexOf("\n}\n", pickerAt));
+
+  it("Use on a variant saves the served level, whatever the provider", () => {
+    expect(table).toContain("onUse(m.provider, modelName, v.distry.level)");
+    expect(view).toContain("save({ provider, model, effort })");
+    expect(view).not.toContain('provider === "anthropic" ? effort : null');
+  });
+
+  it("a variant Distry cannot run shows its served reason and no Use button", () => {
+    expect(table).toContain("v.distry.canRun ? (");
+    expect(table).toContain("{!v.distry.canRun && v.distry.reason && <span");
+    expect(table).toContain(") : null}");
+  });
+
+  it("the Thinking dropdown lists the model's served levels, for every provider", () => {
+    expect(picker).toContain("thinkingLevels");
+    expect(picker).toContain("disabled={levels.length === 0}");
+    expect(picker).not.toContain('provider !== "anthropic"');
+    expect(picker).not.toContain("config.efforts");
+    // Switching provider resets the level to the model's default.
+    expect(picker).toContain("model: config.models[e.target.value]?.[0] ?? model, effort: null");
+  });
+
+  it("names `none` as Reasoning off and null as Model default", () => {
+    expect(view).toContain('if (level === "none") return "Reasoning off";');
+    expect(view).toContain('if (level === null) return "Model default";');
+  });
+
+  it("reads thinkingLevels and each variant's distry verdict from chat-service", () => {
+    expect(api).toContain("thinkingLevels: z.array(z.string())");
+    expect(api).toContain("distry: z.object({ level: z.string().nullable(), canRun: z.boolean(), reason: z.string().nullable() })");
+  });
+});
