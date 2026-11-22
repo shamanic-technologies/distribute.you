@@ -103,3 +103,75 @@ export function nextChildPosition(skills: readonly SkillSummary[], parentSlug: s
   for (const s of skills) if (s.parentSlug === parentSlug && s.position > max) max = s.position;
   return max + 1;
 }
+
+/** Where a dragged line lands on another: above it, inside it (last child), or below it. */
+export type DropZone = "before" | "inside" | "after";
+
+/** The zone under the pointer: the top and bottom quarter of a line insert beside it, the middle drops inside. */
+export function dropZoneAt(offsetY: number, height: number): DropZone {
+  if (offsetY < height / 4) return "before";
+  if (offsetY > (height * 3) / 4) return "after";
+  return "inside";
+}
+
+/** True when `slug` is `ancestor` itself or sits anywhere under it. */
+export function isSelfOrDescendant(skills: readonly SkillSummary[], slug: string, ancestor: string): boolean {
+  const parent = new Map(skills.map((s) => [s.slug, s.parentSlug]));
+  for (let cur: string | null | undefined = slug, guard = 0; cur && guard < 100; cur = parent.get(cur), guard++) {
+    if (cur === ancestor) return true;
+  }
+  return false;
+}
+
+/**
+ * What a drop asks chat-service's move (SKILL-TREE-EDIT-1122): the new parent and the 0-based place
+ * among that parent's OTHER sub-skills (the dragged one left out, as the move reads it). `null` = the
+ * drop is refused here: onto itself or under its own branch (a cycle), beside the root (the root has
+ * no parent), or a drop that changes nothing.
+ */
+export function planSkillDrop(
+  skills: readonly SkillSummary[],
+  dragged: string,
+  target: string,
+  zone: DropZone,
+): { parentSlug: string; position: number } | null {
+  const bySlug = new Map(skills.map((s) => [s.slug, s]));
+  const moving = bySlug.get(dragged);
+  const onto = bySlug.get(target);
+  if (!moving || !onto || moving.parentSlug === null) return null;
+  if (isSelfOrDescendant(skills, target, dragged)) return null;
+  const parentSlug = zone === "inside" ? onto.slug : onto.parentSlug;
+  if (parentSlug === null) return null;
+  const siblings = skills
+    .filter((s) => s.parentSlug === parentSlug && s.slug !== dragged)
+    .sort((a, b) => a.position - b.position || a.slug.localeCompare(b.slug));
+  const at = siblings.findIndex((s) => s.slug === onto.slug);
+  const position = zone === "inside" ? siblings.length : zone === "before" ? at : at + 1;
+  // The place it already holds: nothing to move.
+  const current = skills
+    .filter((s) => s.parentSlug === moving.parentSlug)
+    .sort((a, b) => a.position - b.position || a.slug.localeCompare(b.slug))
+    .findIndex((s) => s.slug === dragged);
+  if (parentSlug === moving.parentSlug && position === current) return null;
+  return { parentSlug, position };
+}
+
+/** The list as the move leaves it, before chat-service answers: the skill under its new parent, places renumbered. */
+export function applySkillMove<T extends SkillSummary>(skills: readonly T[], dragged: string, parentSlug: string, position: number): T[] {
+  const moving = skills.find((s) => s.slug === dragged);
+  if (!moving) return [...skills];
+  const order = (parent: string | null) =>
+    skills
+      .filter((s) => s.parentSlug === parent && s.slug !== dragged)
+      .sort((a, b) => a.position - b.position || a.slug.localeCompare(b.slug))
+      .map((s) => s.slug);
+  const target = order(parentSlug);
+  target.splice(Math.min(position, target.length), 0, dragged);
+  const places = new Map(target.map((slug, i) => [slug, i]));
+  if (moving.parentSlug !== parentSlug) order(moving.parentSlug).forEach((slug, i) => places.set(slug, i));
+  return skills.map((s) => {
+    const p = places.get(s.slug);
+    if (p === undefined) return s;
+    return { ...s, position: p, parentSlug: s.slug === dragged ? parentSlug : s.parentSlug };
+  });
+}

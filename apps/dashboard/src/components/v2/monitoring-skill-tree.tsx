@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { ApiError, getStaffSkill, getStaffSkills, writeStaffSkill, type StaffSkill } from "@/lib/api";
+import { ApiError, deleteStaffSkill, getStaffSkill, getStaffSkills, moveStaffSkill, writeStaffSkill, type StaffSkill } from "@/lib/api";
 import {
+  applySkillMove,
   buildSkillTree,
+  dropZoneAt,
   initiallyOpen,
+  isSelfOrDescendant,
+  planSkillDrop,
+  type DropZone,
   nextChildPosition,
   slugForNewSkill,
   visibleSkillRows,
@@ -18,6 +23,8 @@ import { FolderIcon } from "@phosphor-icons/react/dist/csr/Folder";
 import { FolderOpenIcon } from "@phosphor-icons/react/dist/csr/FolderOpen";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
+import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
+import { DotsSixVerticalIcon } from "@phosphor-icons/react/dist/csr/DotsSixVertical";
 
 /**
  * THE Copilot skill tree editor (SKILL-TREE-EDIT-1122), one component for both pages that show the
@@ -27,7 +34,9 @@ import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
  *
  * In place, per skill: its title and its one-line description read as text, a click turns each into
  * its field, Enter or leaving it saves, Esc drops it. "+" on a line adds a skill under it (the root
- * included). A click anywhere else on the line opens the skill's text in the right panel.
+ * included), the bin deletes it (a second click confirms; chat-service keeps its history), and a
+ * line dragged by its grip lands above, inside or below another (chat-service renumbers the places).
+ * A click anywhere else on the line opens the skill's text in the right panel.
  */
 
 export function useSkillWrites() {
@@ -74,7 +83,36 @@ export function useSkillWrites() {
     return skill;
   };
 
-  return { rename, create };
+  /** Drag and drop: the tree moves at once; chat-service's answer (siblings renumbered) then wins. */
+  const move = async (slug: string, to: { parentSlug: string; position: number }) => {
+    const before = queryClient.getQueryData<SkillSummary[]>(["staffSkills"]);
+    patchList((list) => applySkillMove(list, slug, to.parentSlug, to.position));
+    try {
+      const { skill, siblings } = await moveStaffSkill(slug, to);
+      const places = new Map(siblings.map((x) => [x.slug, x.position]));
+      patchList((list) => list.map((s) => (s.slug === skill.slug ? skill : places.has(s.slug) ? { ...s, position: places.get(s.slug)! } : s)));
+      queryClient.setQueryData(["staffSkill", skill.slug], skill);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["staffSkills"] }),
+        queryClient.invalidateQueries({ queryKey: ["staffDistryConfig"] }),
+      ]);
+    } catch (err) {
+      queryClient.setQueryData(["staffSkills"], before);
+      throw err;
+    }
+  };
+
+  const remove = async (slug: string) => {
+    await deleteStaffSkill(slug);
+    patchList((list) => list.filter((s) => s.slug !== slug));
+    queryClient.removeQueries({ queryKey: ["staffSkill", slug] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["staffSkills"] }),
+      queryClient.invalidateQueries({ queryKey: ["staffDistryConfig"] }),
+    ]);
+  };
+
+  return { rename, create, move, remove };
 }
 
 class SkillWriteRefused extends Error {}
@@ -94,6 +132,7 @@ export function SkillTree({
   trailing,
   head,
   dimmed,
+  onDeleted,
 }: {
   selected?: string | null;
   onOpen: (slug: string) => void;
@@ -105,12 +144,32 @@ export function SkillTree({
   head?: ReactNode;
   /** A skill shown muted (Distry does not read it). */
   dimmed?: (slug: string) => boolean;
+  /** A skill left the tree: the page closes its panel if it was open on it. */
+  onDeleted?: (slug: string) => void;
 }) {
   const list = useAuthQuery(["staffSkills"], getStaffSkills, { staleTime: 30_000, retry: false });
   const tree = useMemo(() => (list.data ? buildSkillTree(list.data) : undefined), [list.data]);
   const [open, setOpen] = useState<Set<string> | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
+  const [dragged, setDragged] = useState<string | null>(null);
+  const [over, setOver] = useState<{ slug: string; zone: DropZone } | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
   const writes = useSkillWrites();
+  const plan = (target: string, zone: DropZone) => (dragged && list.data ? planSkillDrop(list.data, dragged, target, zone) : null);
+  const drop = async (target: string, zone: DropZone) => {
+    const to = plan(target, zone);
+    setDragged(null);
+    setOver(null);
+    if (!to || !dragged) return;
+    setMoveError(null);
+    if (zone === "inside") setOpen((prev) => new Set([...(prev ?? []), target]));
+    try {
+      await writes.move(dragged, to);
+    } catch (err) {
+      console.error("[dashboard] skill tree: move refused", { dragged, to, err });
+      setMoveError(err instanceof ApiError && (err.status === 400 || err.status === 409) ? "Not moved: a skill cannot go under its own branch, and the root stays on top." : "Not moved. Try again in a moment.");
+    }
+  };
   // Folders start open on the first answer only; after that, what the reader opened stays.
   useEffect(() => {
     if (tree && open === null) setOpen(initiallyOpen(tree));
@@ -158,6 +217,7 @@ export function SkillTree({
   return (
     <div className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
       {head}
+      {moveError && <p className="px-4 py-2 text-[12px] text-[var(--data-rose)]">{moveError}</p>}
       {rows === undefined
         ? [0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="flex h-12 items-center px-4">
@@ -178,6 +238,33 @@ export function SkillTree({
                 onOpen={() => onOpen(r.skill.slug)}
                 onAdd={() => startAdding(r.skill.slug)}
                 onRename={(change) => writes.rename(r.skill.slug, change)}
+                onDelete={async () => {
+                  await writes.remove(r.skill.slug);
+                  onDeleted?.(r.skill.slug);
+                }}
+                drag={{
+                  draggable: r.skill.parentSlug !== null,
+                  dragging: dragged === r.skill.slug,
+                  // Under the pointer and accepted: where the line would land.
+                  zone: over?.slug === r.skill.slug ? over.zone : null,
+                  start: () => {
+                    setMoveError(null);
+                    setDragged(r.skill.slug);
+                  },
+                  end: () => {
+                    setDragged(null);
+                    setOver(null);
+                  },
+                  over: (zone) => {
+                    if (!dragged || !list.data || isSelfOrDescendant(list.data, r.skill.slug, dragged) || !plan(r.skill.slug, zone)) {
+                      if (over?.slug === r.skill.slug) setOver(null);
+                      return false;
+                    }
+                    if (over?.slug !== r.skill.slug || over.zone !== zone) setOver({ slug: r.skill.slug, zone });
+                    return true;
+                  },
+                  drop: (zone) => void drop(r.skill.slug, zone),
+                }}
               />
             );
             return i + 1 === draftAt ? [line, draft] : [line];
@@ -209,6 +296,8 @@ function SkillLine({
   onOpen,
   onAdd,
   onRename,
+  onDelete,
+  drag,
 }: {
   row: SkillRow;
   isOpen: boolean;
@@ -220,9 +309,23 @@ function SkillLine({
   onOpen: () => void;
   onAdd: () => void;
   onRename: (change: { title?: string; description?: string }) => Promise<void>;
+  onDelete: () => Promise<void>;
+  drag: {
+    draggable: boolean;
+    dragging: boolean;
+    zone: DropZone | null;
+    start: () => void;
+    end: () => void;
+    over: (zone: DropZone) => boolean;
+    drop: (zone: DropZone) => void;
+  };
 }) {
   const { skill, depth, hasChildren, childCount } = row;
   const Icon = hasChildren ? (isOpen ? FolderOpenIcon : FolderIcon) : FileTextIcon;
+  const zoneOf = (e: React.DragEvent<HTMLDivElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    return dropZoneAt(e.clientY - box.top, box.height);
+  };
   return (
     <div
       role="button"
@@ -232,8 +335,40 @@ function SkillLine({
         if (e.key === "Enter" && e.target === e.currentTarget) onOpen();
       }}
       data-skill={skill.slug}
-      className={`k-row group flex cursor-pointer items-start gap-3 px-4 py-2 ${selected ? "k-selected" : ""}`}
+      draggable={drag.draggable}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", skill.slug);
+        drag.start();
+      }}
+      onDragEnd={drag.end}
+      onDragOver={(e) => {
+        if (drag.over(zoneOf(e))) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        drag.drop(zoneOf(e));
+      }}
+      className={`k-row group relative flex cursor-pointer items-start gap-3 px-4 py-2 ${selected || drag.zone === "inside" ? "k-selected" : ""} ${drag.dragging ? "opacity-50" : ""}`}
     >
+      {/* Where the dragged line will land: a line above or below this one, or this one tinted for "inside". */}
+      {(drag.zone === "before" || drag.zone === "after") && (
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute right-4 h-0.5 rounded-full bg-[var(--accent)] ${drag.zone === "before" ? "-top-px" : "-bottom-px"}`}
+          style={{ left: 16 + depth * INDENT + 30 }}
+        />
+      )}
+      {drag.draggable ? (
+        <span aria-hidden title="Drag to move" className="k-fg4 -ml-3 mt-0.5 w-3 shrink-0 cursor-grab opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <DotsSixVerticalIcon size={14} weight="bold" />
+        </span>
+      ) : (
+        <span className="-ml-3 w-3 shrink-0" />
+      )}
       {leading}
       <div className="flex min-w-0 flex-1 items-start gap-1.5" style={{ paddingLeft: depth * INDENT }}>
         {hasChildren ? (
@@ -287,6 +422,7 @@ function SkillLine({
       >
         <PlusIcon size={14} weight="bold" />
       </button>
+      <DeleteButton title={skill.title} onDelete={onDelete} hasChildren={hasChildren} />
       {trailing}
     </div>
   );
@@ -484,5 +620,60 @@ function NewSkillLine({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The bin on a line: a first click asks, a second deletes (chat-service keeps every version, a PUT
+ * brings it back). A refusal says why in our words: chat-service refuses a skill with sub-skills, and
+ * a skill every chat reads.
+ */
+function DeleteButton({ title, hasChildren, onDelete }: { title: string; hasChildren: boolean; onDelete: () => Promise<void> }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const click = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!asking) {
+      setAsking(true);
+      setError(null);
+      return;
+    }
+    setBusy(true);
+    try {
+      await onDelete();
+    } catch (err) {
+      console.error("[dashboard] skill tree: delete refused", { title, err });
+      setError(
+        err instanceof ApiError && err.status === 409
+          ? hasChildren
+            ? "Move or delete its sub-skills first."
+            : "Every chat reads this skill: it stays."
+          : "Not deleted. Try again in a moment.",
+      );
+      setAsking(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <span className="relative mt-0.5 flex shrink-0 flex-col items-end">
+      <button
+        type="button"
+        aria-label={asking ? `Confirm: delete ${title}` : `Delete ${title}`}
+        title={asking ? "Click again to delete" : "Delete this skill"}
+        disabled={busy}
+        onClick={(e) => void click(e)}
+        onBlur={() => setAsking(false)}
+        className={`k-btn-ghost inline-flex h-6 shrink-0 items-center justify-center gap-1 transition-opacity duration-150 ${
+          asking || error ? "opacity-100" : "w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+        }`}
+        style={{ padding: asking ? "0 8px" : 0, color: asking ? "var(--data-rose)" : undefined }}
+      >
+        <TrashIcon size={14} weight="bold" />
+        {asking && <span className="text-[12px]">{busy ? "Deleting…" : "Delete?"}</span>}
+      </button>
+      {error && <span className="absolute top-7 right-0 z-10 whitespace-nowrap text-[12px] text-[var(--data-rose)]">{error}</span>}
+    </span>
   );
 }

@@ -78,3 +78,48 @@ describe("one shared tree editor on both pages", () => {
     expect(tree).toContain("Add a skill under");
   });
 });
+
+describe("drag and drop (SKILL-TREE-EDIT-1122)", () => {
+  // index > [campaigns > [budgets, briefs], comms, billing]
+  const flat = [
+    s("index", null, 0),
+    s("campaigns", "index", 0),
+    s("comms", "index", 1),
+    s("billing", "index", 2),
+    s("budgets", "campaigns", 0),
+    s("briefs", "campaigns", 1),
+  ];
+
+  it("reads the pointer: top quarter above, bottom quarter below, middle inside", async () => {
+    const { dropZoneAt } = await import("../src/lib/monitoring/skills-tree");
+    expect(dropZoneAt(5, 60)).toBe("before");
+    expect(dropZoneAt(30, 60)).toBe("inside");
+    expect(dropZoneAt(55, 60)).toBe("after");
+  });
+
+  it("asks the place among the parent's OTHER sub-skills", async () => {
+    const { planSkillDrop } = await import("../src/lib/monitoring/skills-tree");
+    expect(planSkillDrop(flat, "billing", "campaigns", "before")).toEqual({ parentSlug: "index", position: 0 });
+    expect(planSkillDrop(flat, "campaigns", "billing", "after")).toEqual({ parentSlug: "index", position: 2 });
+    expect(planSkillDrop(flat, "billing", "campaigns", "inside")).toEqual({ parentSlug: "campaigns", position: 2 });
+    expect(planSkillDrop(flat, "billing", "budgets", "after")).toEqual({ parentSlug: "campaigns", position: 1 });
+  });
+
+  it("refuses a cycle, the root, a drop beside the root and a drop that changes nothing", async () => {
+    const { planSkillDrop } = await import("../src/lib/monitoring/skills-tree");
+    expect(planSkillDrop(flat, "campaigns", "budgets", "inside")).toBeNull();
+    expect(planSkillDrop(flat, "campaigns", "campaigns", "inside")).toBeNull();
+    expect(planSkillDrop(flat, "index", "billing", "inside")).toBeNull();
+    expect(planSkillDrop(flat, "billing", "index", "before")).toBeNull();
+    expect(planSkillDrop(flat, "comms", "campaigns", "after")).toBeNull();
+    expect(planSkillDrop(flat, "comms", "billing", "before")).toBeNull();
+  });
+
+  it("moves the tree at once, places renumbered under both parents", async () => {
+    const { applySkillMove, buildSkillTree } = await import("../src/lib/monitoring/skills-tree");
+    const moved = applySkillMove(flat, "campaigns", "billing", 0);
+    const tree = buildSkillTree(moved);
+    expect(tree[0].children.map((n) => [n.skill.slug, n.skill.position])).toEqual([["comms", 0], ["billing", 1]]);
+    expect(tree[0].children[1].children.map((n) => n.skill.slug)).toEqual(["campaigns"]);
+  });
+});
