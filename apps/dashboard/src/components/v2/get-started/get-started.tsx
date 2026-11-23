@@ -606,9 +606,14 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandId, offer?.offerId, funnel?.salesFunnelId, canReadFunnels, wantedVolume, wantedPeriod]);
 
-  // A website carried from a link starts the walk at once, like Explee's hero.
+  // A website carried from a link starts the walk at once ONLY when the first page has
+  // nothing left to ask: the dashboard walk (no name, no phone there) or a prepared link
+  // that already carries the number. A visitor from the landing sees the first page with
+  // the website filled in, so name and WhatsApp are asked (owner 2026-11-23: the page
+  // never showed for anyone who typed their website on the landing).
   useEffect(() => {
     if (ran.current || started || (isSignedIn && !org)) return;
+    if (!org && !prefill.phone) return;
     const carried = params.get("url");
     if (carried && !websiteInputProblem(carried) && params.get("resume") !== "1") void start(carried);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2344,96 +2349,81 @@ function Hero({
         <p className="gs-in k-fg2 mt-2 text-[14px] leading-6" style={{ animationDelay: "120ms" }}>
           {inOrg ? "Type its website. See 5 of them in a minute." : "Type your website. See 5 of them in a minute. No account needed."}
         </p>
-        {noSite && onWithoutWebsite ? (
-          <form
-            className="gs-in k-card mt-6 space-y-2 p-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              onWithoutWebsite(name, sells);
-            }}
-          >
-            <input className="k-input w-full px-3 text-[14px]" placeholder="Brand name" value={name} onChange={(e) => setName(e.target.value)} autoFocus aria-label="Brand name" />
-            <textarea
-              className="k-input min-h-[96px] w-full resize-y px-3 py-2 text-[14px] leading-5"
-              placeholder="What a customer buys from you, in a few sentences."
-              value={sells}
-              onChange={(e) => setSells(e.target.value)}
-              aria-label="What you sell"
-            />
-            <div className="flex justify-end">
-              <button type="submit" className="k-btn-accent h-9 px-4">
-                Start
-              </button>
-            </div>
-          </form>
-        ) : (
+        {/* ONE form, the button LAST (owner 2026-11-23: the Start button sat beside the
+            website, above the name and WhatsApp, so people pressed it before seeing them). */}
         <form
-          className="gs-in k-card mt-6 flex items-center gap-2 p-2"
+          className="gs-in k-card mt-6 grid gap-4 p-4"
           style={{ animationDelay: "180ms" }}
           onSubmit={(e) => {
             e.preventDefault();
-            onSubmit();
+            if (noSite && onWithoutWebsite) onWithoutWebsite(name, sells);
+            else onSubmit();
           }}
         >
-          <input
-            className="k-input h-9 min-w-0 flex-1 px-3 text-[14px]"
-            placeholder="yourcompany.com"
-            value={website}
-            onChange={(e) => onWebsite(e.target.value)}
-            autoFocus
-            inputMode="url"
-            aria-label="Your website"
-          />
-          <button type="submit" className="k-btn-accent h-9 px-4">
-            Start
+          {noSite && onWithoutWebsite ? (
+            <div className="grid gap-2">
+              <input className="k-input w-full px-3 text-[14px]" placeholder="Brand name" value={name} onChange={(e) => setName(e.target.value)} autoFocus aria-label="Brand name" />
+              <textarea
+                className="k-input min-h-[96px] w-full resize-y px-3 py-2 text-[14px] leading-5"
+                placeholder="What a customer buys from you, in a few sentences."
+                value={sells}
+                onChange={(e) => setSells(e.target.value)}
+                aria-label="What you sell"
+              />
+            </div>
+          ) : (
+            <label className="grid gap-1.5">
+              <span className="k-fg text-[13px] font-medium">Your website</span>
+              <input
+                className="k-input k-cta-input w-full"
+                placeholder="yourcompany.com"
+                value={website}
+                onChange={(e) => onWebsite(e.target.value)}
+                autoFocus={!website}
+                inputMode="url"
+                aria-label="Your website"
+              />
+            </label>
+          )}
+          {person && (
+            <div className="grid gap-1.5">
+              <p className="k-fg text-[13px] font-medium">
+                Your name <span className="k-fg3 font-normal">(optional)</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  className="k-input k-cta-input min-w-0"
+                  placeholder="First name"
+                  aria-label="First name"
+                  autoComplete="given-name"
+                  autoFocus={!!website && !person.firstName}
+                  value={person.firstName}
+                  onChange={(e) => onPerson({ ...person, firstName: e.target.value })}
+                />
+                <input
+                  className="k-input k-cta-input min-w-0"
+                  placeholder="Last name"
+                  aria-label="Last name"
+                  autoComplete="family-name"
+                  value={person.lastName}
+                  onChange={(e) => onPerson({ ...person, lastName: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          {phone && (
+            <div className="grid gap-1.5">
+              <p className="k-fg text-[13px] font-medium">
+                Your WhatsApp <span className="k-fg3 font-normal">(optional)</span>
+              </p>
+              <PhoneField value={phone} onChange={onPhone} onBlur={onPhoneBlur} problem={phoneError} disabled={false} autoFocus={false} />
+              <p className="k-fg3 text-[12px]">We message you there if you need a hand.</p>
+            </div>
+          )}
+          <button type="submit" className="k-btn-accent k-cta w-full justify-center">
+            {noSite && onWithoutWebsite ? "Start" : "Find my next clients"}
           </button>
         </form>
-        )}
-        {phone && (
-          <form
-            className="gs-in mt-4"
-            style={{ animationDelay: "210ms" }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              onSubmit();
-            }}
-          >
-            {person && (
-              <>
-                <p className="k-fg mb-1.5 text-[13px] font-medium">
-                  Your name <span className="k-fg3 font-normal">(optional)</span>
-                </p>
-                <div className="k-card mb-4 grid grid-cols-2 gap-2 p-2">
-                  <input
-                    className="k-input min-w-0"
-                    style={{ paddingLeft: 12, paddingRight: 12 }}
-                    placeholder="First name"
-                    aria-label="First name"
-                    autoComplete="given-name"
-                    value={person.firstName}
-                    onChange={(e) => onPerson({ ...person, firstName: e.target.value })}
-                  />
-                  <input
-                    className="k-input min-w-0"
-                    style={{ paddingLeft: 12, paddingRight: 12 }}
-                    placeholder="Last name"
-                    aria-label="Last name"
-                    autoComplete="family-name"
-                    value={person.lastName}
-                    onChange={(e) => onPerson({ ...person, lastName: e.target.value })}
-                  />
-                </div>
-              </>
-            )}
-            <p className="k-fg mb-1.5 text-[13px] font-medium">
-              Your WhatsApp <span className="k-fg3 font-normal">(optional)</span>
-            </p>
-            <div className="k-card p-2">
-              <PhoneField value={phone} onChange={onPhone} onBlur={onPhoneBlur} problem={phoneError} disabled={false} autoFocus={false} compact />
-            </div>
-            <p className="k-fg3 mt-1.5 text-[12px]">We message you there if you need a hand.</p>
-          </form>
-        )}
         {onWithoutWebsite && (
           <button type="button" className="k-btn-ghost -ml-2 mt-2 h-7 text-[12px]" onClick={() => setNoSite((v) => !v)}>
             {noSite ? "This brand has a website" : "This brand has no website"}
