@@ -87,6 +87,7 @@ import {
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import {
   SIGNUP_TARGET,
+  PRICING_TARGET,
   targetLabel,
   VOLUME_PERIODS,
   budgetRangeText,
@@ -582,7 +583,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       setEstimateState("loading");
       getTargetVolumeEstimate(brandId, offer.offerId, {
         salesFunnelIds: [funnel.salesFunnelId],
-        target: SIGNUP_TARGET,
+        target: PRICING_TARGET,
         volume: wantedVolume,
         period: wantedPeriod,
       })

@@ -93,7 +93,7 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     const TEN = { ...DEFAULT_SIGNUP_DRAFT, volume: "10" };
     const r = signupLaunchPlan({ draft: TEN, funnel, briefPrefill: "Book HR leaders.", estimate: ESTIMATE(10, "week") });
     expect(r).toEqual({
-      plan: { salesFunnelIds: [MEET], salesFunnelId: MEET, name: "Motivate", target: "conversation", brief: "Book HR leaders.", volume: 10, period: "week", maxBudgetCents: 492200 },
+      plan: { salesFunnelIds: [MEET], salesFunnelId: MEET, name: "Motivate", target: "meeting_booked", brief: "Book HR leaders.", volume: 10, period: "week", maxBudgetCents: 492200 },
     });
     const edited = signupLaunchPlan({ draft: { ...TEN, brief: "  Mine.  " }, funnel, briefPrefill: "x", estimate: ESTIMATE(10, "week") });
     expect("plan" in edited && edited.plan.brief).toBe("Mine.");
@@ -120,7 +120,7 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     const e = ESTIMATE(10, "week");
     expect(budgetRangeText(e)).toBe("$1,523 to $4,922");
     expect(timingText(e, 10, "week")).toBe("First meetings booked around week 1, then about 10 a week from week 10.");
-    // The signup Target (a positive reply) reads in the owner's word (2026-11-23).
+    // The pricing outcome (a positive reply) reads in the owner's word (2026-11-23).
     const interested = { ...e, target: { step: "conversation", label: "Positive reply" } };
     expect(timingText(interested, 5, "week")).toBe("First interested leads around week 1, then about 5 a week from week 10.");
     expect(timingText(ESTIMATE(10, "week", { timing: { firstUnitsWeek: 3, steadyFromWeek: null, unavailableReason: null } }), 10, "week")).toBe("First meetings booked around week 3.");
@@ -136,15 +136,19 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     expect(PAGE).toContain("saveSnapshot({ briefPrefill: next });");
     expect(PAGE).toContain("saveSnapshot({ estimate: next });");
     expect(PAGE).toContain("if (s.estimate) setEstimate(s.estimate);");
+    // The estimate prices interested leads; the brief and the funnels keep the campaign's Target (owner 2026-11-23).
+    expect(PAGE).toContain("target: PRICING_TARGET,\n        volume: wantedVolume,");
+    expect(PAGE).toContain("target: SIGNUP_TARGET });");
     const allow = read("src/lib/anon-proxy-allowlist.ts");
     expect(allow).toContain('segments: ["offers", ":seg", "target-volume-estimate"], queryBrand: "brandId"');
   });
 });
 
 describe("what we launch: ONE campaign, its caps on it (owner 2026-11-22)", () => {
-  it("one create carrying Target, brief, volume and max budget; no funnel-wide caps, no second campaign", () => {
+  it("one create carrying Target, brief and max budget, never the pricing volume as a cap; no funnel-wide caps, no second campaign", () => {
     const fn = LAUNCH.slice(LAUNCH.indexOf("async function launchCampaign("), LAUNCH.indexOf("export async function launchFromPreview("));
-    expect(fn).toContain("maxVolume: { count: plan.volume, period }");
+    // The volume typed is interested leads that only price the campaign (owner 2026-11-23).
+    expect(fn).not.toContain("maxVolume:");
     expect(fn).toContain("maxBudget: { amountCents: plan.maxBudgetCents, period }");
     expect(fn).toContain("target: plan.target");
     expect(LAUNCH).not.toContain("saveSalesFunnelCaps");

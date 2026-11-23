@@ -78,7 +78,11 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
   if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, offerId, fields);
 }
 
-/** The ONE create: brief, Target, volume and max budget in the same request. Skipped on a retry once it landed. */
+/**
+ * The ONE create: brief, Target and max budget in the same request. Skipped on a retry once it landed. The volume typed
+ * is interested leads that only PRICE the campaign (owner 2026-11-23), so it is never sent as a cap on a campaign whose
+ * Target is a meeting booked.
+ */
 async function launchCampaign(brandId: string, offerId: string, plan: SignupLaunchPlan, progress: LaunchProgress): Promise<string> {
   if (progress.campaignId) return progress.campaignId;
   const period = capPeriodOf(plan.period);
@@ -89,7 +93,6 @@ async function launchCampaign(brandId: string, offerId: string, plan: SignupLaun
     salesFunnelId: plan.salesFunnelId,
     target: plan.target,
     brief: plan.brief,
-    maxVolume: { count: plan.volume, period },
     maxBudget: { amountCents: plan.maxBudgetCents, period },
   });
   progress.campaignId = campaign.id;

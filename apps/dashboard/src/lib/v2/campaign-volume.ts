@@ -10,19 +10,22 @@
  */
 import { z } from "zod";
 
+/** The campaign's Target, a catalogue step key (owner 2026-11-22: « Meeting booked oui »): the brief and the launch. */
+export const SIGNUP_TARGET = "meeting_booked";
+
 /**
- * The outcome the visitor counts, a catalogue step key: a positive reply (`conversation`), shown as « Interested leads »
- * (owner 2026-11-23, replaces 2026-11-22 « Meeting booked »: « Présente dans l'onboarding des interested leads, pas des
- * book meetings »). The funnel underneath still answers them and books meetings; the promise is the interested lead.
+ * The outcome the visitor counts ON THIS SCREEN ONLY, to price the campaign: a positive reply (`conversation`), shown as
+ * « Interested leads » (owner 2026-11-23: « Les leads interested c'est juste pour calibrer le pricing dans cette page de
+ * l'onboarding »). The campaign itself keeps its Target and funnel; the volume never becomes a campaign cap.
  */
-export const SIGNUP_TARGET = "conversation";
+export const PRICING_TARGET = "conversation";
 
-/** The owner's word for the signup Target (2026-11-23), on this screen only; elsewhere it stays the served name. */
-export const SIGNUP_TARGET_LABEL = "Interested leads";
+/** The owner's word for the pricing outcome (2026-11-23), on this screen only; elsewhere it stays the served name. */
+export const PRICING_TARGET_LABEL = "Interested leads";
 
-/** The Target's name as the visitor reads it: the owner's word for the signup Target, else the served label. */
+/** The outcome's name as the visitor reads it: the owner's word for the pricing outcome, else the served label. */
 export function targetLabel(e: VolumeEstimate): string {
-  return e.target.step === SIGNUP_TARGET ? SIGNUP_TARGET_LABEL : e.target.label;
+  return e.target.step === PRICING_TARGET ? PRICING_TARGET_LABEL : e.target.label;
 }
 
 export const VOLUME_PERIODS = ["day", "week", "month"] as const;
