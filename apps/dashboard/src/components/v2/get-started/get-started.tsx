@@ -87,6 +87,7 @@ import {
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import {
   SIGNUP_TARGET,
+  targetLabel,
   VOLUME_PERIODS,
   budgetRangeText,
   parseVolumeEstimate,
@@ -1953,7 +1954,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     written: writtenCount,
     campaignLine:
       steps.campaign === "done" && launchPlan
-        ? `${launchPlan.volume} ${(estimate?.target.label ?? launchPlan.name).toLowerCase()} a ${launchPlan.period}`
+        ? `${launchPlan.volume} ${(estimate ? targetLabel(estimate) : launchPlan.name).toLowerCase()} a ${launchPlan.period}`
         : null,
     lifetimeRevenue: valueInput,
     signalCount: steps.signals === "done" ? signals.filter((c) => signalTicks.has(c.id)).length : null,
@@ -3129,7 +3130,7 @@ function BriefText({
 
 /** Where the estimate's figures come from, in the visitor's words (the served `basis`). */
 function basisWords(e: VolumeEstimate): string | null {
-  if (e.basis === "measured") return "Based on your own meetings so far";
+  if (e.basis === "measured") return "Based on your own interested leads so far";
   if (e.basis === "fleet") return "Based on what other brands pay for theirs";
   if (e.basis === "stated" || e.basis === "default") return "Based on our starting assumptions";
   return null;
@@ -3230,7 +3231,7 @@ export function CampaignStage({
                 onChange={(e) => set({ volume: e.target.value })}
               />
               {estimate ? (
-                <span className="k-fg text-[28px] font-medium leading-9">{estimate.target.label.toLowerCase()}</span>
+                <span className="k-fg text-[28px] font-medium leading-9">{targetLabel(estimate).toLowerCase()}</span>
               ) : (
                 <Shimmer className="h-8 w-48" />
               )}

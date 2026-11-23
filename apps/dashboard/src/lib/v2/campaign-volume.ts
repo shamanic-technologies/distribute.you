@@ -1,7 +1,7 @@
 /**
  * The signup campaign as ONE campaign (owner 2026-11-22, ONE-CAMPAIGN-VOLUME-1122): one brief, a wanted volume
- * of meetings booked per day / week / month, the budget range that volume costs (20th to 80th percentile), when
- * the first meetings land, and the campaign's own max budget = the top of that range. « Les gens ne pensent pas
+ * of interested leads per day / week / month, the budget range that volume costs (20th to 80th percentile), when
+ * the first interested leads land, and the campaign's own max budget = the top of that range. « Les gens ne pensent pas
  * en 20/jour » : the visitor states outcomes, never a daily spend.
  *
  * Every figure is features-service's (`GET /v1/offers/:offerId/target-volume-estimate`), asked again for each
@@ -10,8 +10,20 @@
  */
 import { z } from "zod";
 
-/** The outcome the visitor counts (owner 2026-11-22: « Meeting booked oui »), a catalogue step key. */
-export const SIGNUP_TARGET = "meeting_booked";
+/**
+ * The outcome the visitor counts, a catalogue step key: a positive reply (`conversation`), shown as « Interested leads »
+ * (owner 2026-11-23, replaces 2026-11-22 « Meeting booked »: « Présente dans l'onboarding des interested leads, pas des
+ * book meetings »). The funnel underneath still answers them and books meetings; the promise is the interested lead.
+ */
+export const SIGNUP_TARGET = "conversation";
+
+/** The owner's word for the signup Target (2026-11-23), on this screen only; elsewhere it stays the served name. */
+export const SIGNUP_TARGET_LABEL = "Interested leads";
+
+/** The Target's name as the visitor reads it: the owner's word for the signup Target, else the served label. */
+export function targetLabel(e: VolumeEstimate): string {
+  return e.target.step === SIGNUP_TARGET ? SIGNUP_TARGET_LABEL : e.target.label;
+}
 
 export const VOLUME_PERIODS = ["day", "week", "month"] as const;
 export type VolumePeriod = (typeof VOLUME_PERIODS)[number];
@@ -36,7 +48,7 @@ export const VolumeEstimateSchema = z
       .nullable(),
     timing: z
       .object({
-        /** Week after launch the first meeting is expected; null = later than 26 weeks. */
+        /** Week after launch the first Target unit is expected; null = later than 26 weeks. */
         firstUnitsWeek: z.number().nullable(),
         /** Week the pace reaches 80% of the volume; null = later than 26 weeks. */
         steadyFromWeek: z.number().nullable(),
@@ -78,13 +90,13 @@ export function budgetRangeText(e: VolumeEstimate): string | null {
 }
 
 /**
- * "First meetings around week 1, then about 10 a week from week 10": the served timing in words, with the
+ * "First interested leads around week 1, then about 10 a week from week 10": the served timing in words, with the
  * served outcome label; null when the producer states none (the line is then not shown).
  */
 export function timingText(e: VolumeEstimate, volume: number, period: VolumePeriod): string | null {
   const t = e.timing;
   if (!t || t.firstUnitsWeek == null) return null;
-  const plural = e.target.label.toLowerCase();
+  const plural = targetLabel(e).toLowerCase();
   const first = `First ${plural} around week ${t.firstUnitsWeek}`;
   if (t.steadyFromWeek == null) return `${first}.`;
   return `${first}, then about ${volume.toLocaleString("en-US")} a ${period} from week ${t.steadyFromWeek}.`;
