@@ -41,6 +41,7 @@ import { useAuth, useOrganizationList, useSession, useUser } from "@clerk/nextjs
 import { useSignIn, useSignUp } from "@clerk/nextjs/legacy";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
+import { recordEmailGiven } from "@/lib/email-given";
 import {
   createEmbeddedCardSetup,
   getBillingAccount,
@@ -359,6 +360,8 @@ export function AccountCardWall({
     const waiting = setTimeout(() => setCaptchaWaiting(true), CAPTCHA_PROMPT_DELAY_MS);
     try {
       posthog.capture("get_started_signup_email_started");
+      // A lead from here on, even if the code never reaches them (lib/email-given.ts).
+      recordEmailGiven(posthog, email, "get-started");
       await signUp.create({ emailAddress: email.trim(), password: generatedPassword() });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setStage("code");

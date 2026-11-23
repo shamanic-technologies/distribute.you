@@ -8,6 +8,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
+import { recordEmailGiven } from "@/lib/email-given";
 import { LastUsedBadge, rememberAuthMethod } from "@/components/auth/last-used-badge";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { claimedSignUpCopy } from "@/lib/claimed-signup";
@@ -231,6 +232,8 @@ export default function SignUpPage() {
     setSubmitting(true);
     try {
       posthog.capture("signup_email_started");
+      // A lead from here on, even if the code never reaches them (lib/email-given.ts).
+      recordEmailGiven(posthog, email, "sign-up");
       await signUp.create({ emailAddress: email, password });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setPendingVerification(true);
