@@ -407,7 +407,7 @@ export function stageDwellMs(nextPhase: StepPhase | undefined, baseMs: number, h
 }
 
 /** Explee's three steps after the preview: what the account turns on. Not run here. */
-export const NEXT_STEPS = ["Send emails", "Book meetings", "Learn and double down"] as const;
+export const NEXT_STEPS = ["Send emails", "Get interested leads", "Learn and double down"] as const;
 
 /** The written email, as the wall shows it again at the moment of paying. */
 export interface GetStartedEmail {

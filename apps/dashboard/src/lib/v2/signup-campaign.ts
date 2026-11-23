@@ -1,11 +1,11 @@
 /**
  * The END of signup (`/get-started` and "Add a brand"), owner 2026-11-22 (ONE-CAMPAIGN-VOLUME-1122, replaces the
- * 2026-10-16 two cards): ONE campaign aimed at meetings booked, ONE card:
+ * 2026-10-16 two cards): ONE campaign aimed at interested leads (positive replies, owner 2026-11-23), ONE card:
  *
  *   WHAT IT DOES       <one brief, prefilled by features-service, click to edit>
- *   HOW MANY YOU WANT  [10] meetings booked  [per day | per week | per month]
+ *   HOW MANY YOU WANT  [5] interested leads  [per day | per week | per month]
  *   ESTIMATED BUDGET   $X to $Y per week (20th to 80th percentile, served), never more than $Y per week
- *                      First meetings around week N, then about 10 a week from week M (served)
+ *                      First interested leads around week N, then about 10 a week from week M (served)
  *   Never spend more than $9,000 per month, all campaigns together
  *   [ Launch ]  -> then the payment wall exactly as today
  *
@@ -151,7 +151,7 @@ export function estimatedLine(f: Pick<SignupFunnel, "costUsd" | "costPer" | "roi
 
 /** What the person typed, as typed (strings), so a half-typed value survives a reload. */
 export interface SignupCampaignDraft {
-  /** Meetings booked wanted per period, as typed. */
+  /** Interested leads wanted per period, as typed. */
   volume: string;
   volumePeriod: VolumePeriod;
   /** The brief as edited; null while untouched (features-service's served prefill shows and launches). */
@@ -160,9 +160,9 @@ export interface SignupCampaignDraft {
   monthlyLimit: string | null;
 }
 
-/** 2 meetings booked a week (owner 2026-11-22: « go with your reco »; 10 a week priced past the $9,000 monthly limit). */
+/** 5 interested leads a week (owner 2026-11-23: « sure », replaces 2 meetings booked a week of 2026-11-22). */
 export const DEFAULT_SIGNUP_DRAFT: SignupCampaignDraft = {
-  volume: "2",
+  volume: "5",
   volumePeriod: "week",
   brief: null,
   monthlyLimit: null,
