@@ -7,11 +7,12 @@
  * `stepViewName`). An entry is never drawn for the step the stage is showing, so the
  * two never carry the same transition name at once.
  *
- * The audience entry is also the audience picker: picking another one builds its
- * companies (step 5) and the first emails (step 6) again.
+ * READ-ONLY (owner 2026-11-24: « Seulement ils peuvent changer avec le bouton BACK et
+ * SUIVANT »): no entry moves the walk, reopens a step or changes a pick. A click here sent a
+ * client back to a step that restarted. Moving is the step's own Back and Continue.
  *
  * Desktop draws a rail (`JournalRail`); a phone draws a compact strip above the
- * stage (`JournalStrip`) with the same picker.
+ * stage (`JournalStrip`) with the same entries.
  */
 
 import type { AudienceCompanyRow, AudienceSegmentProposal } from "@/lib/api";
@@ -52,8 +53,6 @@ export interface JournalData {
   signalCount: number | null;
   leverCount: number;
   giveCount: number;
-  onPickAudience: (index: number) => void;
-  onFocus: (key: GetStartedStepKey) => void;
 }
 
 /** A finished step behind the stage. A step ahead of it is not drawn, even settled (a failed read ahead is said when the stage gets there). */
@@ -75,14 +74,14 @@ export function JournalRail(d: JournalData) {
           <div className="mt-3 grid gap-4">
             {shown.map((s) => (
               <section key={s.key} className="gs-in" style={{ viewTransitionName: stepViewName(s.key) }}>
-                <button type="button" onClick={() => d.onFocus(s.key)} className="k-mono k-fg3 k-hover -mx-1 flex w-[calc(100%+8px)] items-center gap-1.5 rounded px-1 py-0.5 text-left text-[11px]">
+                <p className="k-mono k-fg3 flex items-center gap-1.5 py-0.5 text-[11px]">
                   <span className={d.steps[s.key] === "done" ? "text-[var(--data-teal)]" : "text-[var(--data-amber)]"} aria-hidden="true">
                     {d.steps[s.key] === "done" ? "✓" : "!"}
                   </span>
                   <span>step {s.index}</span>
                   <span aria-hidden="true">·</span>
                   <span className="truncate">{s.label}</span>
-                </button>
+                </p>
                 <div className="mt-2">
                   <RailEntry d={d} k={s.key} />
                 </div>
@@ -116,7 +115,7 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
         {d.offer.description && <p className="k-fg3 mt-0.5 line-clamp-2 text-[12px] leading-[18px]">{d.offer.description}</p>}
       </div>
     ) : null;
-  if (k === "audience") return <AudiencePicker d={d} />;
+  if (k === "audience") return <AudienceList d={d} />;
   if (k === "campaign") return d.campaignLine ? <p className="k-fg2 truncate text-[12px] tabular-nums">{d.campaignLine}</p> : null;
   if (k === "signals")
     return d.signalCount != null ? <p className="k-fg2 text-[12px] tabular-nums">{d.signalCount === 1 ? "1 signal per email" : `${d.signalCount} signals per email`}</p> : null;
@@ -188,8 +187,8 @@ function CompetitorList({ competitors }: { competitors: Competitor[] }) {
   );
 }
 
-/** The audiences in words; picking another one builds its companies again. */
-function AudiencePicker({ d }: { d: JournalData }) {
+/** The audiences in words, the picked one marked. Display only: the pick changes on step 4. */
+function AudienceList({ d }: { d: JournalData }) {
   return (
     <div>
       <p className="k-label">
@@ -199,17 +198,9 @@ function AudiencePicker({ d }: { d: JournalData }) {
         {d.audienceProposals.map((a, i) => {
           const on = d.audience?.name === a.name;
           return (
-            <li key={`${a.name}-${i}`} className="gs-in" style={stagger(i, 50)}>
-              <button
-                type="button"
-                onClick={() => d.onPickAudience(i)}
-                disabled={d.audienceBusy != null}
-                aria-pressed={on}
-                className={`w-full rounded-lg px-2 py-1.5 text-left ${on ? "k-card ring-1 ring-[var(--accent)]" : "k-hover"}`}
-              >
-                <span className={`block truncate text-[12.5px] ${on ? "k-fg font-medium" : "k-fg2"}`}>{a.name}</span>
-                {d.audienceBusy === i && <span className="k-fg3 block text-[11px]">Finding companies</span>}
-              </button>
+            <li key={`${a.name}-${i}`} className={`gs-in rounded-lg px-2 py-1.5 ${on ? "k-card ring-1 ring-[var(--accent)]" : ""}`} style={stagger(i, 50)} aria-current={on ? "true" : undefined}>
+              <span className={`block truncate text-[12.5px] ${on ? "k-fg font-medium" : "k-fg2"}`}>{a.name}</span>
+              {d.audienceBusy === i && <span className="k-fg3 block text-[11px]">Finding companies</span>}
             </li>
           );
         })}
@@ -229,26 +220,26 @@ export function JournalStrip(d: JournalData) {
     <div className="lg:hidden">
       <div className="k-scroll -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {companyIn && (
-          <button type="button" onClick={() => d.onFocus("company")} className="gs-in k-card flex shrink-0 items-center gap-2 px-2.5 py-1.5" style={{ viewTransitionName: stepViewName("company") }}>
+          <div className="gs-in k-card flex shrink-0 items-center gap-2 px-2.5 py-1.5" style={{ viewTransitionName: stepViewName("company") }}>
             <BrandLogo domain={d.domain} size={16} className="rounded-sm" />
             <span className="k-fg max-w-[140px] truncate text-[12px] font-medium">{d.name ?? d.domain}</span>
-          </button>
+          </div>
         )}
         {competitorsIn && (
-          <button type="button" onClick={() => d.onFocus("competitors")} className="gs-in k-card flex shrink-0 items-center gap-2 px-2.5 py-1.5" style={{ viewTransitionName: stepViewName("competitors") }}>
+          <div className="gs-in k-card flex shrink-0 items-center gap-2 px-2.5 py-1.5" style={{ viewTransitionName: stepViewName("competitors") }}>
             <span className="flex -space-x-1">
               {d.competitors.slice(0, 3).map((c) => (
                 <BrandLogo key={c.domain ?? c.name} domain={c.domain} size={16} className="rounded-sm ring-2 ring-[var(--bg-raised)]" />
               ))}
             </span>
             <span className="k-fg2 text-[12px] tabular-nums">{d.competitors.length} competitors</span>
-          </button>
+          </div>
         )}
         {offerIn && d.offer && (
-          <button type="button" onClick={() => d.onFocus("offer")} className="gs-in k-card flex shrink-0 items-center gap-2 px-2.5 py-1.5" style={{ viewTransitionName: stepViewName("offer") }}>
+          <div className="gs-in k-card flex shrink-0 items-center gap-2 px-2.5 py-1.5" style={{ viewTransitionName: stepViewName("offer") }}>
             <span className="k-label">Offer</span>
             <span className="k-fg max-w-[160px] truncate text-[12px] font-medium">{d.offer.name}</span>
-          </button>
+          </div>
         )}
       </div>
       {audienceIn && (
@@ -256,16 +247,13 @@ export function JournalStrip(d: JournalData) {
           {d.audienceProposals.map((a, i) => {
             const on = d.audience?.name === a.name;
             return (
-              <button
+              <span
                 key={`${a.name}-${i}`}
-                type="button"
-                onClick={() => d.onPickAudience(i)}
-                disabled={d.audienceBusy != null}
-                aria-pressed={on}
+                aria-current={on ? "true" : undefined}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] ${on ? "k-card ring-1 ring-[var(--accent)] k-fg font-medium" : "k-card k-fg2"}`}
               >
                 <span className="max-w-[180px] truncate">{a.name}</span>
-              </button>
+              </span>
             );
           })}
         </div>

@@ -58,7 +58,9 @@ describe("the signals step", () => {
     const prep = PAGE.slice(PAGE.indexOf("async function prepareSignals("), PAGE.indexOf("async function draftAnswers("));
     expect(prep).toContain("listOfferQualificationCriteria(id, offerId)");
     expect(prep).toContain("suggestOfferQualificationCriteria(id, offerId)");
-    expect(prep).toContain("setSignalTicks(new Set(checks.map((c) => c.id)))");
+    // Ticks and roles are `signalTicksOnRead`'s: all ticked on a first read, what was saved on a resumed walk.
+    expect(prep).toContain("const read = signalTicksOnRead(checks, saved);");
+    expect(prep).toContain("setSignalTicks(new Set(read.ticked))");
     // Prepared as soon as the offer is saved, while the audience is picked.
     expect(PAGE).toContain("void prepareSignals(id, chosenOfferId);");
     expect(API).toContain("`${qualificationBase(brandId, offerId)}/suggestions`");
@@ -79,9 +81,8 @@ describe("the signals step", () => {
     expect(PAGE).toContain('{ key: "must_pass", label: "Must have" }');
     expect(PAGE).toContain('{ key: "mention", label: "Nice to have" }');
     // The toggle opens on what the AI recommended; the card title is lead-service's short title.
-    expect(PAGE).toContain("return c.recommendation?.mode ?? c.mode;");
     expect(PAGE).toContain("return c.title?.trim() || c.question;");
-    expect(PAGE).toContain("setSignalRoles(Object.fromEntries(checks.map((c) => [c.id, recommendedRole(c)])));");
+    expect(PAGE).toContain("setSignalRoles(read.roles);");
     expect(stage).toContain("text-[40px]");
     // Continue is never disabled for want of a tick.
     const footer = stage.slice(stage.indexOf("footer={"), stage.indexOf("Continue"));

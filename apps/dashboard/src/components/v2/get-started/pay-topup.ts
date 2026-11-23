@@ -73,6 +73,11 @@ export async function payTopup(params: {
     });
     return { clientSecret: null, creditedBefore };
   }
+  // A session with no form to mount left the button spinning for ever: said instead.
+  if (!session.client_secret) {
+    console.error("[get-started] billing answered a checkout with no card form to mount", session);
+    throw new Error("We could not open the card form. Try again.");
+  }
   return { clientSecret: session.client_secret, creditedBefore };
 }
 

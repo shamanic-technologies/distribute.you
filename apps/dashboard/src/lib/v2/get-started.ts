@@ -1203,3 +1203,56 @@ function countryCodeByName(): Map<string, string> {
   }
   return map;
 }
+
+/**
+ * The audience step of a RESUMED walk (2026-11-23, netzrecruiter): the list it showed comes
+ * back as it was, and the audience already picked is always in it. A resumed walk that held a
+ * pick but an empty list read « We could not work out who to write to » and its Try again
+ * drafted a second, different list for a brand that already had its audiences.
+ */
+export function resumedAudienceList(s: Pick<GetStartedSnapshot, "audience" | "audienceProposals">): SnapshotAudienceProposal[] {
+  const shown = s.audienceProposals ?? [];
+  const picked = s.audience;
+  if (!picked || shown.some((a) => a.name === picked.name)) return shown;
+  return [{ name: picked.name, description: picked.description, icon: "", iconConfidence: 0 }, ...shown];
+}
+
+/** An audience the offer already holds, as human-service lists it. */
+export interface HeldAudienceRow {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: string;
+  createdAt?: string | null;
+}
+
+/**
+ * The audiences an offer ALREADY has (a brand walked before, on another browser or signed out):
+ * step 4 shows them and never drafts a new list beside them. The live ones only, the one made
+ * last is the pick (it is the one the person chose last). Empty = the offer has none: draft.
+ */
+export function heldAudienceChoice(rows: readonly HeldAudienceRow[]): { list: GetStartedAudience[]; picked: GetStartedAudience | null } {
+  const live = rows.filter((r) => r.status === "active");
+  const list = live.map((r) => ({ audienceId: r.id, name: r.name, description: r.description ?? "" }));
+  let last = -1;
+  live.forEach((r, i) => {
+    if (last < 0 || (r.createdAt ?? "") > (live[last].createdAt ?? "")) last = i;
+  });
+  return { list, picked: last < 0 ? null : list[last] };
+}
+
+/**
+ * The signals step's ticks when its checks are read. A walk that already SAVED its signals
+ * (`saved`) comes back with what it saved: the checks turned on, in their own role. A first
+ * read ticks every check in the role the AI recommends.
+ */
+export function signalTicksOnRead(
+  checks: ReadonlyArray<SignalCheck & { recommendation?: { mode: SignalRole } | null }>,
+  saved: boolean,
+): { ticked: string[]; roles: Record<string, SignalRole> } {
+  const kept = saved && checks.some((c) => c.enabled);
+  return {
+    ticked: checks.filter((c) => !kept || c.enabled).map((c) => c.id),
+    roles: Object.fromEntries(checks.map((c) => [c.id, kept && c.enabled ? c.mode : c.recommendation?.mode ?? c.mode])),
+  };
+}

@@ -30,9 +30,9 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
     expect(parseSignupDraft({})?.monthlyLimit).toBeNull();
   });
 
-  it("the campaign step shows the line on signup only, right after the budgets", () => {
+  it("the campaign step shows the line wherever no limit is set yet, right after the budgets", () => {
     const gs = read("src/components/v2/get-started/get-started.tsx");
-    expect(gs).toContain("limitPrefillUsd={org ? null : DEFAULT_MONTHLY_LIMIT_USD}");
+    expect(gs).toContain("limitPrefillUsd={limitAsked ? DEFAULT_MONTHLY_LIMIT_USD : null}");
     const stage = gs.slice(gs.indexOf("export function CampaignStage("), gs.indexOf("function ValueStage("));
     expect(stage).toContain(">Never spend more than</span>");
     expect(stage).toContain(">per month, all campaigns together</span>");

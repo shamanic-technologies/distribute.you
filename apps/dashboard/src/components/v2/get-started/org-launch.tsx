@@ -11,6 +11,14 @@
  * (the edge first-run gate would bounce a not-yet-set-up org), and the person lands on
  * the campaign.
  *
+ * It is a STEP of the walk, drawn on the stage in the page (owner 2026-11-24: « WTF est cette
+ * modale… au lieu de passer à l'étape suivante dans le flow »): never a box over the walk.
+ * Back returns to the campaign step.
+ *
+ * The monthly limit (2026-11-23): an org with none set states it at the campaign step and it is
+ * saved to billing HERE, before any charge or launch, as the signup wall does (`monthlyLimit`;
+ * absent = the org already has one, nothing is written).
+ *
  * A POSTPAID org launches only once billing's $50 card check opened its credit line
  * (ORG-LAUNCH-CARD-REFUSED-1028, `orgLaunchStart`): refused = the wall's choice (another
  * card, checked again, or prepaid credit, the person picks), never checked = the check
@@ -27,6 +35,7 @@ import {
   getBillingAccount,
   getSavedCardFacts,
   sendAuthNotification,
+  setMonthlyChargeLimit,
   setApiActiveOrgOverride,
   setPaymentMode,
   type BillingAccount,
@@ -52,11 +61,14 @@ import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
+import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
 import { pingOwner } from "@/lib/owner-ping-client";
 import { sendLaunchEmail } from "@/lib/signup-emails";
 import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
 
 type Stage = "reading" | "credit" | "ready" | "card" | "launching";
+
+const CARD_FORM_BLOCKED = "The card form could not load. Turn off any ad or tracker blocker for this page, reload it, then pay again.";
 
 export function OrgLaunch({
   orgId,
@@ -66,6 +78,7 @@ export function OrgLaunch({
   targetAudience,
   note,
   plan,
+  monthlyLimit,
   answered,
   snapshotKey,
   onClose,
@@ -79,6 +92,8 @@ export function OrgLaunch({
   note: string | null;
   /** The campaign set at the "Your campaign" step (the funnels and their caps). */
   plan: SignupLaunchPlan;
+  /** The limit typed at the campaign step (null = its prefill, untouched); absent when the org already has one. */
+  monthlyLimit?: string | null;
   answered: boolean;
   snapshotKey: string;
   onClose: () => void;
@@ -106,13 +121,42 @@ export function OrgLaunch({
   // "Try again" replays the launch: every write that landed on an earlier attempt is skipped.
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS });
 
+  // The card form is Stripe's own script: when it cannot load (blocked, offline) the step said
+  // nothing and stayed empty. It is said, with what to do.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && stage !== "launching") onClose();
+    if (!cardSecret && !setupSecret) return;
+    let live = true;
+    getStripe()
+      .then((stripe) => {
+        if (live && !stripe) setError(CARD_FORM_BLOCKED);
+      })
+      .catch((e) => {
+        console.error("[brand-walk] Stripe.js did not load for the card form:", e);
+        if (live) setError(CARD_FORM_BLOCKED);
+      });
+    return () => {
+      live = false;
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [stage, onClose]);
+  }, [cardSecret, setupSecret]);
+
+  // The org's monthly limit, saved to billing before any charge or launch (owner 2026-10-12).
+  // `floorUsd` is the first charge it must let through (a top-up), 1 where nothing is charged now.
+  async function saveLimit(floorUsd: number): Promise<boolean> {
+    if (monthlyLimit === undefined) return true;
+    const limit = monthlyLimitToSave(monthlyLimit, { kind: "prepaid", topupUsd: floorUsd });
+    if ("problem" in limit) {
+      setError(limit.problem);
+      return false;
+    }
+    try {
+      await setMonthlyChargeLimit(limit.usd * 100);
+      return true;
+    } catch (e) {
+      console.error("[brand-walk] monthly limit not saved:", e);
+      setError("We could not save your monthly limit. Try again.");
+      return false;
+    }
+  }
 
   // An org with a card launches on the account it has, except a postpaid one whose $50 card
   // check did not open its credit line (`orgLaunchStart`). One with no card adds credit.
@@ -138,7 +182,7 @@ export function OrgLaunch({
       })
       .catch((e) => {
         console.error("[brand-walk] billing account read failed:", e);
-        setError("We could not read this organization's billing. Close and try again.");
+        setError("We could not read this organization's billing. Go back and try again.");
       });
   }, []);
 
@@ -146,6 +190,10 @@ export function OrgLaunch({
     if (busy) return;
     setBusy(true);
     setError(null);
+    if (!(await saveLimit(choice.topupUsd))) {
+      setBusy(false);
+      return;
+    }
     try {
       const opened = await payTopup({
         amountUsd: choice.topupUsd,
@@ -200,6 +248,10 @@ export function OrgLaunch({
   async function checkCard() {
     setBusy(true);
     setError(null);
+    if (!(await saveLimit(1))) {
+      setBusy(false);
+      return;
+    }
     // The boxes are ticked only on a card never checked; another card after a refusal
     // rides the consent the wall already stored.
     const consent = allTicked(postpaidTicked) ? consentRecord(postpaidConsent, new Date(), navigator.userAgent) : undefined;
@@ -327,6 +379,17 @@ export function OrgLaunch({
     setStage("credit");
   }
 
+  // An org that already pays launches on what it has: its limit, when it has none, is saved first.
+  async function launchReady() {
+    setBusy(true);
+    setError(null);
+    if (!(await saveLimit(1))) {
+      setBusy(false);
+      return;
+    }
+    void launch();
+  }
+
   async function launch() {
     setStage("launching");
     setBusy(true);
@@ -363,16 +426,15 @@ export function OrgLaunch({
     }
   }
 
+  const title = stage === "launching" ? "Launching your campaign" : stage === "credit" ? "Add credit and launch" : "Launch your campaign";
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-[#1010121f] px-3 pt-[8vh]">
-      <div role="dialog" aria-modal="true" aria-label="Launch" className="k-popover flex max-h-[84vh] w-full max-w-[560px] flex-col overflow-hidden">
-        <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
-          <span className="k-label">{stage === "launching" ? "Launching" : stage === "credit" ? "Add credit" : "Launch"}</span>
-          <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={onClose} disabled={stage === "launching" && busy}>
-            ×
-          </button>
-        </div>
-        <div className="k-scroll min-h-0 flex-1 overflow-y-auto px-5 py-5">
+    <section className="gs-fade k-card relative overflow-hidden p-4" aria-label={title}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="k-label shrink-0">Last step</span>
+        <h2 className="k-fg min-w-0 text-[14px] font-medium">{title}</h2>
+      </div>
+      <div className="mt-3 max-w-[560px]">
+        <div>
           {note && stage !== "launching" && <p className="k-fg2 mb-3 text-[13px]">{note}</p>}
 
           {stage === "reading" && !error && <p className="k-fg2 text-[13px]">Reading your account...</p>}
@@ -380,7 +442,7 @@ export function OrgLaunch({
           {stage === "ready" && (
             <div className="grid gap-3">
               <p className="k-fg2 text-[13px]">Your campaigns start on this organization&apos;s credit and card.</p>
-              <button type="button" className="k-cta k-btn-accent w-full justify-center" onClick={() => void launch()} disabled={busy}>
+              <button type="button" className="k-cta k-btn-accent w-full justify-center" onClick={() => void launchReady()} disabled={busy}>
                 Launch
               </button>
             </div>
@@ -418,10 +480,11 @@ export function OrgLaunch({
                 {busy ? "Checking your payment..." : "Check my payment and launch"}
               </button>
             ) : (
-              <PrepaidTopup busy={busy} atCost={isAtCostOffer(account)} matchNote={matchNote(account)} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
+              <PrepaidTopup busy={busy} atCost={isAtCostOffer(account)} matchNote={matchNote(account)} monthlyLimit={monthlyLimit} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
             )
           )}
 
+          {stage === "credit" && cardSecret && <p className="k-fg mb-2 text-[13px] font-medium">Pay by card</p>}
           {stage === "credit" && cardSecret && (
             <EmbeddedCheckoutProvider
               stripe={getStripe()}
@@ -455,6 +518,11 @@ export function OrgLaunch({
           )}
         </div>
       </div>
-    </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button type="button" className="k-fg3 h-9 text-[13px] hover:text-[var(--fg-2)] disabled:opacity-40" onClick={onClose} disabled={stage === "launching" && busy}>
+          ← Back
+        </button>
+      </div>
+    </section>
   );
 }
