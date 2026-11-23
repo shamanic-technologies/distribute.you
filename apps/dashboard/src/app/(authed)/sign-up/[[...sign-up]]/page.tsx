@@ -475,6 +475,26 @@ export default function SignUpPage() {
                 >
                   {submitting ? "Verifying..." : "Verify email"}
                 </button>
+                {/* A strict company mail filter can hold the code: name the spam folder and the Google way in. */}
+                <p
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.8125rem",
+                    color: "oklch(48% 0.006 264)",
+                    textAlign: "center",
+                  }}
+                >
+                  {"Codes can take a few minutes to arrive. Not there? Check your spam, or "}
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignUp}
+                    className="hover:underline"
+                    style={{ background: "none", border: "none", padding: 0, font: "inherit", fontWeight: 500, color: "oklch(42% 0.2 264)" }}
+                  >
+                    continue with Google
+                  </button>
+                  .
+                </p>
                 <button
                   type="button"
                   onClick={handleResendCode}
