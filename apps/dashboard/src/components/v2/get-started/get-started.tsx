@@ -42,6 +42,7 @@ import {
   extractBrandFields,
   getBrand,
   getAudienceCompanies,
+  getMonthlyChargeLimit,
   getQualificationPreview,
   getCampaignBriefPrefill,
   getTargetVolumeEstimate,
@@ -88,6 +89,7 @@ import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import {
   SIGNUP_TARGET,
   PRICING_TARGET,
+  PRICING_TARGET_LABEL,
   targetLabel,
   VOLUME_PERIODS,
   budgetRangeText,
@@ -114,6 +116,9 @@ import {
   NEXT_STEPS,
   REOPENABLE_STEPS,
   VALUE_FIELDS,
+  heldAudienceChoice,
+  resumedAudienceList,
+  signalTicksOnRead,
   leadCountLabel,
   previousStep,
   signalWrites,
@@ -262,6 +267,33 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         ? Math.ceil(walkFirstTopupMinCents / 100)
         : TOPUP_CHOICES_USD[0],
   };
+
+  // The org walk's monthly limit (2026-11-23, netzrecruiter: signed up mid-walk, paid with no
+  // limit ever asked). billing holds ONE per account: an org with none is asked at the campaign
+  // step like a signup, one that has a limit is not asked twice. Unread or failed = not known.
+  const [orgLimit, setOrgLimit] = useState<"unread" | "none" | "set" | "failed">("unread");
+  function readOrgLimit() {
+    return getMonthlyChargeLimit()
+      .then((l) => {
+        const next = l.monthly_charge_limit_cents == null ? ("none" as const) : ("set" as const);
+        setOrgLimit(next);
+        return next;
+      })
+      .catch((e) => {
+        console.error("[brand-walk] monthly limit read failed:", e);
+        setOrgLimit("failed");
+        return "failed" as const;
+      });
+  }
+  useEffect(() => {
+    // Declared after the effect that names the org on every call, so it reads THIS org.
+    if (org) void readOrgLimit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [org?.orgId]);
+  // The limit line shows wherever no limit is set yet: every signup, and an org that has none.
+  const limitAsked = !org || orgLimit === "none";
+  // An org's first charge is chosen at the credit step, which checks the limit against it.
+  const limitFloorArm: LimitArm = org ? { kind: "prepaid", topupUsd: 1 } : limitArm;
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   // A prepared link (`?firstName=&lastName=&phone=+…`, owner 2026-10-21): what we already know
@@ -642,6 +674,12 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     setCompetitors(s.competitors);
     setOffer(s.offer);
     setAudience(s.audience);
+    // The list step 4 showed comes back with the pick in it (never an empty step with a retry
+    // that drafts a second list), and the pick is known as created: clicking it re-creates nothing.
+    if (s.audience) {
+      setAudienceProposals(resumedAudienceList(s));
+      createdAudiences.current.set(s.audience.name, s.audience);
+    }
     if (s.email) setRestoredEmail(s.email);
     if (s.campaign) setCampaignDraft(s.campaign);
     if (s.funnel) setFunnel(s.funnel);
@@ -680,7 +718,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
    * done (the brand, its offer and audience are already saved and are not re-created).
    */
   function resumePreparing(s: GetStartedSnapshot) {
-    if (s.offer && !s.signalsDone && s.lifetimeRevenueUsd == null) void prepareSignals(s.brandId, s.offer.offerId);
+    // The signals are read back even when the step was passed: going Back to it showed « Finding
+    // the signals » for ever, nothing was ever asked (2026-11-23). Saved ones cost no AI.
+    if (s.offer) void prepareSignals(s.brandId, s.offer.offerId, !!s.signalsDone || s.lifetimeRevenueUsd != null);
     if (!s.offer) {
       // A reload never asks the model again for a list it already showed (owner 2026-10-24).
       const plan = resumeOfferPlan(s);
@@ -692,17 +732,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       setStep("audience", "choose");
     } else if (!s.audience) {
       // The ideal customer is the picked offer's: without a pick, `pickOffer` drafts it.
-      if (s.icp && s.offer) {
-        setStep("audience", "running");
-        proposeAudienceSegments(s.brandId, s.icp)
-          .then(({ segments }) => {
-            showAudiences(segments);
-          })
-          .catch((e) => {
-            console.error("[get-started] audience proposals failed on resume:", e);
-            setStep("audience", "failed");
-          });
-      } else if (s.offer) void prepareAudiences(s.brandId, s.offer.offerId);
+      if (s.offer) void prepareAudiences(s.brandId, s.offer.offerId, s.icp || null);
     }
   }
 
@@ -846,10 +876,22 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
    * Who to write to for the offer PICKED at step 3 (owner 2026-10-06: the audiences
    * described the brand's other offer): its ideal customer, split into at most 6 audiences.
    */
-  async function prepareAudiences(id: string, offerId: string) {
+  async function prepareAudiences(id: string, offerId: string, knownIcp: string | null = null) {
     setStep("audience", "running");
     try {
-      const { icp } = await suggestBrandIcp(id, undefined, undefined, offerId);
+      // An offer that already holds audiences shows THEM, its last pick selected: no new list is
+      // drafted beside them (2026-11-23: a resumed brand got four more, two audiences became four).
+      const held = heldAudienceChoice((await listAudiences(id, { offerId, limit: 100 })).audiences);
+      if (held.picked) {
+        const picked = held.picked;
+        for (const a of held.list) createdAudiences.current.set(a.name, a);
+        const first = [picked, ...held.list.filter((a) => a.audienceId !== picked.audienceId)];
+        showAudiences(first.map((a) => ({ name: a.name, description: a.description, icon: "", iconConfidence: 0 })));
+        chooseAudience(picked);
+        return;
+      }
+      // A resumed walk keeps the ideal customer it already drafted.
+      const icp = knownIcp ?? (await suggestBrandIcp(id, undefined, undefined, offerId)).icp;
       icpRef.current = icp;
       setAudienceTarget(icp);
       saveSnapshot({ icp });
@@ -936,14 +978,16 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
    * it has some (a reload, a brand that had them), else lead-service suggests them (written off).
    * A failed read leaves the step empty: no signal is required to go on.
    */
-  async function prepareSignals(id: string, offerId: string) {
+  async function prepareSignals(id: string, offerId: string, saved = false) {
     setSignalsRead("running");
     try {
       const held = await listOfferQualificationCriteria(id, offerId);
-      const checks = held.length > 0 ? held : await suggestOfferQualificationCriteria(id, offerId);
+      // A walk that already saved its signals reads them back as saved: nothing is suggested again.
+      const checks = held.length > 0 || saved ? held : await suggestOfferQualificationCriteria(id, offerId);
+      const read = signalTicksOnRead(checks, saved);
       setSignals(checks);
-      setSignalTicks(new Set(checks.map((c) => c.id)));
-      setSignalRoles(Object.fromEntries(checks.map((c) => [c.id, recommendedRole(c)])));
+      setSignalTicks(new Set(read.ticked));
+      setSignalRoles(read.roles);
       setSignalsRead("done");
     } catch (e) {
       console.error("[get-started] signals read failed:", { brandId: id, offerId, e });
@@ -1042,9 +1086,17 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       setAnswerError(r.problem);
       return;
     }
-    // The monthly limit (signup only): a typed one under the first charge is refused here.
-    if (!org) {
-      const limit = monthlyLimitToSave(campaignDraft.monthlyLimit, limitArm);
+    // An org whose limit could not be read is not launched past it: read again, said here.
+    if (org && (orgLimit === "unread" || orgLimit === "failed")) {
+      setAnswerError("We could not read your monthly limit. Try again in a moment.");
+      void readOrgLimit().then((next) => {
+        if (next !== "failed") setAnswerError(null);
+      });
+      return;
+    }
+    // The monthly limit (wherever none is set yet): a typed one under the first charge is refused here.
+    if (limitAsked) {
+      const limit = monthlyLimitToSave(campaignDraft.monthlyLimit, limitFloorArm);
       if ("problem" in limit) {
         setAnswerError(limit.problem);
         return;
@@ -1604,12 +1656,6 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     withStageTransition(() => setFocus(next >= stageIdx ? null : GET_STARTED_STEPS[next].key));
   }
 
-  /** Opens a finished step on the stage; the walk takes over again when it moves on. */
-  function openStep(key: GetStartedStepKey) {
-    const idx = GET_STARTED_STEPS.findIndex((s) => s.key === key);
-    withStageTransition(() => setFocus(idx === stageIdx ? null : key));
-  }
-
   async function start(raw: string, chosen = false) {
     if (ran.current) return;
     const problem = websiteInputProblem(raw);
@@ -1923,6 +1969,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   }
 
   const stagedKey: GetStartedStepKey = focus ?? GET_STARTED_STEPS[stageIdx].key;
+  // The org walk's launch step is on the stage (the campaign is set, the plan is known).
+  const orgLaunchOpen = wallOpen && !!org && !!brandId && !!offer && !!audience && !!launchPlan;
   const audRows = audience ? rows[audience.audienceId] ?? [] : [];
   const writtenCount = Object.keys(examples).length;
   const PICK_LINES: Partial<Record<GetStartedStepKey, string>> = {
@@ -1946,8 +1994,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     competitors,
     offer: offer ?? (pendingOffer ? { offerId: "", ...pendingOffer } : null),
     audience: audience ?? (pendingAudience ? { audienceId: "", ...pendingAudience } : null),
-    // A resumed walk holds the picked audience but not the proposals (they are not saved):
-    // the rail still names it rather than "Audiences 0".
+    // A walk that holds a pick and no list still names it rather than "Audiences 0".
     audienceProposals:
       audienceProposals.length || !audience ? audienceProposals : [{ name: audience.name, description: audience.description, icon: "", iconConfidence: 0 }],
     audienceBusy,
@@ -1955,14 +2002,12 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     written: writtenCount,
     campaignLine:
       steps.campaign === "done" && launchPlan
-        ? `${launchPlan.volume} ${(estimate ? targetLabel(estimate) : launchPlan.name).toLowerCase()} a ${launchPlan.period}`
+        ? `${launchPlan.volume} ${(estimate ? targetLabel(estimate) : PRICING_TARGET_LABEL).toLowerCase()} a ${launchPlan.period}`
         : null,
     lifetimeRevenue: valueInput,
     signalCount: steps.signals === "done" ? signals.filter((c) => signalTicks.has(c.id)).length : null,
     leverCount: LEVER_DRAFT_FIELDS.filter((f) => answerLines(levers[f.key]).length > 0).length,
     giveCount: answerLines(gives.giveForFree).length,
-    onPickAudience: (i) => void pickAudience(i),
-    onFocus: openStep,
   };
 
   function stageFor(key: GetStartedStepKey): React.ReactNode {
@@ -1996,6 +2041,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           waitingForOffer={!offer && !pendingOffer}
           onPick={(i) => void pickAudience(i)}
           onOwn={(text) => void proposeOwnAudience(text)}
+          onContinue={steps.audience === "done" && !focus && audience ? () => advance("audience") : null}
           onRetry={() => brandId && offer && void prepareAudiences(brandId, offer.offerId)}
         />
       );
@@ -2012,7 +2058,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           briefsLoading={briefsState === "loading"}
           estimate={estimate}
           estimateFailed={estimateState === "failed"}
-          limitPrefillUsd={org ? null : DEFAULT_MONTHLY_LIMIT_USD}
+          limitPrefillUsd={limitAsked ? DEFAULT_MONTHLY_LIMIT_USD : null}
           error={steps.campaign === "choose" ? answerError : null}
           onRetry={() => brandId && offer && void loadFunnels(brandId, offer.offerId)}
           onLaunch={confirmCampaign}
@@ -2167,13 +2213,33 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
               <JournalStrip {...journal} />
             </div>
 
-            <div key={stagedKey} className="gs-in mt-4" style={{ viewTransitionName: stepViewName(stagedKey) }}>
-              <BackContext.Provider value={previousStep(stagedKey) ? () => goBack(stagedKey) : null}>
-                <NextContext.Provider value={focus ? () => goForward(focus) : null}>{stageFor(stagedKey)}</NextContext.Provider>
-              </BackContext.Provider>
-            </div>
+            {/* The org walk's launch is the NEXT STEP on the stage, in the page (owner 2026-11-24:
+                never a box floating over the walk); Back returns to the campaign step. */}
+            {orgLaunchOpen && org && brandId && offer && launchPlan ? (
+              <div key="launch" className="gs-in mt-4">
+                <OrgLaunch
+                  orgId={org.orgId}
+                  brandId={brandId}
+                  website={website.trim() ? websiteUrl(website) : ""}
+                  offer={offer}
+                  targetAudience={icpRef.current}
+                  note={wallNote}
+                  plan={launchPlan}
+                  monthlyLimit={orgLimit === "none" ? campaignDraft.monthlyLimit : undefined}
+                  answered={answered}
+                  snapshotKey={snapshotKey}
+                  onClose={() => setWallOpen(false)}
+                />
+              </div>
+            ) : (
+              <div key={stagedKey} className="gs-in mt-4" style={{ viewTransitionName: stepViewName(stagedKey) }}>
+                <BackContext.Provider value={previousStep(stagedKey) ? () => goBack(stagedKey) : null}>
+                  <NextContext.Provider value={focus ? () => goForward(focus) : null}>{stageFor(stagedKey)}</NextContext.Provider>
+                </BackContext.Provider>
+              </div>
+            )}
 
-            {readyForCampaign && stagedKey === (emailsShown ? "email" : "companies") && (
+            {!orgLaunchOpen && readyForCampaign && stagedKey === (emailsShown ? "email" : "companies") && (
               <div className="gs-in mt-6 flex justify-end" style={{ animationDelay: "200ms" }}>
                 <button type="button" className="k-btn-accent h-9 px-4" onClick={openCampaign} disabled={campaignAsked}>
                   {campaignAsked ? "Finding your companies..." : "Set up my campaign"}
@@ -2184,20 +2250,6 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         </main>
       </div>
 
-      {wallOpen && brandId && offer && audience && launchPlan && org && (
-        <OrgLaunch
-          orgId={org.orgId}
-          brandId={brandId}
-          website={website.trim() ? websiteUrl(website) : ""}
-          offer={offer}
-          targetAudience={icpRef.current}
-          note={wallNote}
-          plan={launchPlan}
-          answered={answered}
-          snapshotKey={snapshotKey}
-          onClose={() => setWallOpen(false)}
-        />
-      )}
       {/* Back from Google (`resume=1`): the wall waits on the funnels read to name the
           campaign. Until then a plain veil, never the email preview behind it (owner
           2026-10-06: "it sends me back to the email check"). A failed read drops the
@@ -3311,10 +3363,6 @@ export function CampaignStage({
  * companies that pass.
  */
 /** The toggle's first value: the role the AI recommended (lead-service), else the check's own role (a hand-made one). */
-function recommendedRole(c: QualificationCriterion): SignalRole {
-  return c.recommendation?.mode ?? c.mode;
-}
-
 export function SignalsStage({
   state,
   checks,
@@ -3666,8 +3714,11 @@ function AudienceStage({
   waitingForOffer,
   onPick,
   onOwn,
+  onContinue,
   onRetry,
 }: {
+  /** The step shows audiences the offer already holds, one picked: Continue moves on with it. */
+  onContinue: (() => void) | null;
   state: StepState;
   proposals: AudienceSegmentProposal[];
   picked: { name: string } | null;
@@ -3738,7 +3789,7 @@ function AudienceStage({
     </form>
   );
   return (
-    <StepCard index={4} title="Who to write to" state={state} meta={<StateWord state={state} />}>
+    <StepCard index={4} title="Who to write to" state={state} meta={<StateWord state={state} />} footer={onContinue ? <NextButton onNext={onContinue} /> : undefined}>
       {state === "running" || state === "waiting" ? (
         target ? (
           <>

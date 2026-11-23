@@ -19,7 +19,7 @@ describe("/get-started: a step opened to look back has a way forward (owner 2026
 
   it("Next goes to the following step, or back to the live one", () => {
     const at = src.indexOf("function goForward(");
-    const body = src.slice(at, src.indexOf("function openStep(", at));
+    const body = src.slice(at, src.indexOf("async function start(", at));
     expect(body).toContain("next >= stageIdx ? null : GET_STARTED_STEPS[next].key");
   });
 
