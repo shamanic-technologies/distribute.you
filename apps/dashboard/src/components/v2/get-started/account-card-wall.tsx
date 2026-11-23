@@ -978,6 +978,14 @@ export function AccountCardWall({
                       </button>
                     </div>
                     {notice && <p className="k-fg2 text-[12px]" role="status">{notice}</p>}
+                    {/* A strict company mail filter can hold the code: name the spam folder and the Google way in. */}
+                    <p className="k-fg2 text-[12px] leading-5">
+                      {"Codes can take a few minutes to arrive. Not there? Check your spam, or "}
+                      <button type="button" className="font-medium text-[var(--accent)] hover:underline" onClick={() => void google()} disabled={busy}>
+                        continue with Google
+                      </button>
+                      .
+                    </p>
                     <p className="k-fg3 text-[12px] leading-5">No password to remember. Next time, sign in with a code sent to this email.</p>
                   </form>
                 )}
