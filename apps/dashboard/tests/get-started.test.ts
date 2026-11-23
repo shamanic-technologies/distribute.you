@@ -132,7 +132,7 @@ describe("the rules the page decides on", () => {
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign, campaignDone: true }))).toMatchObject({ campaign: { ...campaign, volumePeriod: "week" }, campaignDone: true });
     // A step confirmed on the two-card campaign (daily budgets, no volume) is asked again (owner 2026-11-22).
     const old = { budget: "35", budgetPeriod: "weekly", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly" };
-    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign: old, campaignDone: true }))).toMatchObject({ campaign: { volume: "2", volumePeriod: "week" }, campaignDone: false });
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign: old, campaignDone: true }))).toMatchObject({ campaign: { volume: "5", volumePeriod: "week" }, campaignDone: false });
     // An older snapshot's sales path fields are dropped.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, salesPath: { steps: [], legs: [] }, campaigns: [] }))).not.toHaveProperty("salesPath");
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, offer: { name: "x" } }))?.offer).toBeNull();

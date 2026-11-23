@@ -81,8 +81,8 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     expect(isLearning({ status: "learning" })).toBe(true);
   });
 
-  it("opens on 2 meetings booked a week, the brief untouched (owner 2026-11-22)", () => {
-    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ volume: "2", volumePeriod: "week", brief: null, monthlyLimit: null });
+  it("opens on 5 interested leads a week, the brief untouched (owner 2026-11-23)", () => {
+    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ volume: "5", volumePeriod: "week", brief: null, monthlyLimit: null });
     // An older two-card snapshot keeps only the monthly limit.
     expect(parseSignupDraft({ budget: "35", proactiveOn: false, monthlyLimit: "500" })).toEqual({ ...DEFAULT_SIGNUP_DRAFT, monthlyLimit: "500" });
     expect(parseSignupDraft({ volume: "4", volumePeriod: "month", brief: "kept" })).toEqual({ volume: "4", volumePeriod: "month", brief: "kept", monthlyLimit: null });
@@ -93,7 +93,7 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     const TEN = { ...DEFAULT_SIGNUP_DRAFT, volume: "10" };
     const r = signupLaunchPlan({ draft: TEN, funnel, briefPrefill: "Book HR leaders.", estimate: ESTIMATE(10, "week") });
     expect(r).toEqual({
-      plan: { salesFunnelIds: [MEET], salesFunnelId: MEET, name: "Motivate", target: "meeting_booked", brief: "Book HR leaders.", volume: 10, period: "week", maxBudgetCents: 492200 },
+      plan: { salesFunnelIds: [MEET], salesFunnelId: MEET, name: "Motivate", target: "conversation", brief: "Book HR leaders.", volume: 10, period: "week", maxBudgetCents: 492200 },
     });
     const edited = signupLaunchPlan({ draft: { ...TEN, brief: "  Mine.  " }, funnel, briefPrefill: "x", estimate: ESTIMATE(10, "week") });
     expect("plan" in edited && edited.plan.brief).toBe("Mine.");
@@ -120,6 +120,9 @@ describe("Your campaign: ONE funnel that runs the whole campaign, picked as serv
     const e = ESTIMATE(10, "week");
     expect(budgetRangeText(e)).toBe("$1,523 to $4,922");
     expect(timingText(e, 10, "week")).toBe("First meetings booked around week 1, then about 10 a week from week 10.");
+    // The signup Target (a positive reply) reads in the owner's word (2026-11-23).
+    const interested = { ...e, target: { step: "conversation", label: "Positive reply" } };
+    expect(timingText(interested, 5, "week")).toBe("First interested leads around week 1, then about 5 a week from week 10.");
     expect(timingText(ESTIMATE(10, "week", { timing: { firstUnitsWeek: 3, steadyFromWeek: null, unavailableReason: null } }), 10, "week")).toBe("First meetings booked around week 3.");
     expect(timingText(ESTIMATE(10, "week", { timing: null }), 10, "week")).toBeNull();
     expect(budgetRangeText(ESTIMATE(10, "week", { budget: null }))).toBeNull();
@@ -171,7 +174,7 @@ describe("what we launch: ONE campaign, its caps on it (owner 2026-11-22)", () =
     expect(stage).toContain('title="Your campaign"');
     for (const label of ["What it does", "How many you want", "Estimated budget", "per month, all campaigns together"]) expect(stage, label).toContain(label);
     // The outcome is the served label, never a word typed here.
-    expect(stage).toContain("estimate.target.label.toLowerCase()");
+    expect(stage).toContain("targetLabel(estimate).toLowerCase()");
     expect(stage).not.toMatch(/>\s*meetings booked\s*</);
     expect(stage).not.toContain("Max budget in dollars");
     expect(stage).not.toContain("<CampaignChoice");
