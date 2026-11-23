@@ -21,6 +21,21 @@ describe("the first page asks the WhatsApp number, optional", () => {
     expect(hero.indexOf('aria-label="Your website"')).toBeLessThan(hero.indexOf("<PhoneField"));
   });
 
+  it("ONE form whose only button comes AFTER the name and WhatsApp (owner 2026-11-23)", () => {
+    expect(hero.match(/<form/g)?.length).toBe(1);
+    expect(hero.match(/type="submit"/g)?.length).toBe(1);
+    expect(hero.indexOf("<PhoneField")).toBeLessThan(hero.indexOf('type="submit"'));
+    expect(hero.indexOf('aria-label="Last name"')).toBeLessThan(hero.indexOf('type="submit"'));
+    expect(hero).toContain('className="k-btn-accent k-cta w-full justify-center"');
+  });
+
+  it("a website from the landing opens the first page filled in; only a prepared link with a number skips it", () => {
+    const auto = gs.slice(gs.indexOf("// A website carried from a link"), gs.indexOf("function applySnapshot("));
+    expect(auto).toContain("if (!org && !prefill.phone) return;");
+    expect(auto.indexOf("if (!org && !prefill.phone) return;")).toBeLessThan(auto.indexOf("void start(carried)"));
+    expect(hero).toContain("autoFocus={!website}");
+  });
+
   it("the dashboard walk shows no phone field", () => {
     expect(gs).toContain("phone={org ? null : phone}");
   });
