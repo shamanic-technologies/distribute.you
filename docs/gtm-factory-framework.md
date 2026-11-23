@@ -8,7 +8,7 @@ Revenue made easy. This document describes the open framework behind it: how to 
 
 ## 1. The plant
 
-Think of a car plant. An order comes in for a car. The plant explodes the car's bill of materials: an engine, a body, four wheels; each part has its own bill of materials, down to raw steel. Each part comes from the stock when one is there, else it is ordered from the shop that makes it. The full production cost of the car is rolled up along that tree. The plant manager does not ask "which machine is cheapest?" but "which tree makes a car for the least money, and is a car worth more than that?"
+Think of a car plant. An order comes in for a car. The plant explodes the car's bill of materials: an engine, a body, four wheels; each part has its own bill of materials, down to raw steel. Each shop decides, part by part, whether to take one already on the shelf (which one, how old) or to order a new one from the shop that makes it. The full production cost of the car is rolled up along that tree. The plant manager does not ask "which machine is cheapest?" but "which tree makes a car for the least money, and is a car worth more than that?"
 
 Go-to-market works the same way. The raw material is a market, which always has a finite size. The finished product is a paying client. In between, shops turn outcomes into new outcomes: a market becomes found leads, a found lead becomes an identified person, a person with a verified email gets a written message, the message is queued, the mailbox reports it sent and reads the reply, a reply becomes an interested lead, an interested lead books a meeting. Some of this work is done by rules, some by AI, some by people. Some of it is ours; some is performed by the client's team, the client's CRM, the mailbox or the organic market.
 
@@ -37,11 +37,11 @@ flowchart LR
 |---|---|
 | **Outcome** | A part reference, always the finest one: LinkedIn post published, Email sent, Template, Rating. It says WHAT a piece is and what it is about (its subject): a lead, a company, the brand, or the run that asked for it. |
 | **Unit** | One physical piece of an outcome: Marie, interested on day 24. Every Unit lands in the ledger, names who performed it and carries its traceability. |
-| **Engine** | One per outcome. It makes new Units of its outcome, and only of its outcome. Competing scripts perform it. |
+| **Engine** | One per outcome. Its `ask` makes one new Unit of its outcome, and only of its outcome, with the inputs it documents. Competing scripts perform it; the Rating picks which one runs. |
 | **Script** | Code that makes one Unit of its Engine's outcome, or none. Scripts of one Engine compete; each belongs to a **dynasty** of versions. |
-| **Provider** | One per outcome, never in competition: the stores of that outcome. A script asks a Provider for what it needs. |
+| **Provider** | One per outcome, never in competition: the service that owns that outcome's Units. Its `get` reads Units that already exist, with the filters it documents; it never makes one. |
 | **Run** | A production order: one script executed, one Unit or none. |
-| **Request** | What a run hands to the pieces it orders whose subject is the run itself. The writer asks for the email it wants (`ctx.ask({ prompt })`), then calls `ctx.get("llm_completion")`; the LLM completion script reads that Request (`ctx.request`) and writes it. `get()` keeps no argument: the Request travels beside it. |
+| **Request** | The inputs of an `ask`, as its Engine documents them. The writer asks for the completion it wants (`ctx.ask("llm_completion", { prompt })`); the LLM completion script the Rating picked reads those inputs as its Request (`ctx.request`) and writes it. |
 | **Offer** | What a brand sells, as a structured brief several campaigns share: what it is and its price, what we give and never give, the booking link, the lifetime revenue of a paid client, and its one Audience. A brand may sell several offers (a value ladder), each built for one Audience. |
 | **Campaign** | Orders production: a Target, a start, a budget, ONE Offer, and a strategy written as a brief. The brief may narrow the Offer's Audience ("US only") through a strategy. A person is contacted for one offer of a brand only. |
 | **Plan** | The tree a campaign runs, recomputed at every tick: each outcome, its Engine, the script that Engine picks now, and the Plan of each outcome that script calls. It is shown as what actually ran this week: at each Engine every script that made Units is a branch, with its share and cost, the pick of this tick highlighted. Nothing about it is frozen. |
@@ -74,20 +74,21 @@ A newsletter is no post: it sends one email per subscriber, each a Unit of its o
 ## 3. The six decisions
 
 1. **One Engine per outcome.** An Engine makes one outcome; competing scripts in dynasties perform it. A script makes one outcome and may consume any outcomes. The only pick left is the script, inside the Engine of an outcome: the best value per dollar among the scripts the strategy keeps.
-2. **No written manifest.** A script is code: it calls its Providers at run time. The outcomes it needs (its **materials**, for the Plan, costs and return) are read from its code: each `ctx.get("...")` names one, always a literal, and a test enforces it. They form its **bill of materials (BOM)**: the inputs a script consumes and the quantity of each per Unit produced, loss included. Then the ledger measures what each run consumed, and an unexpected call joins the list. No judge is needed.
-3. **Provider and Engine.** A Provider offers one function, `get()`, with no argument: it returns the most recent Unit of its outcome this caller has not received yet, for the caller's context (the run's subject, its company, its brand, or the run itself), from the stock, else by ordering one from the Engine. "Already received" is the ledger's record of consumption. A Provider never picks a template or a model: each is a tactic of the script that uses it, and a new one proves itself as a script (section 8). An Engine offers `pull()` and `push(unit)`, and always makes a new piece. `pull()` makes one piece for a context, down from the Target. `push(unit)` makes the next outcome from a Unit that landed, up toward the Target.
-4. **Freshness is the script's job.** A script unhappy with what it got calls `get()` again, and a new piece is made, as long as the run's budget lasts.
+2. **No written manifest.** A script is code: it calls its Providers at run time. The outcomes it needs (its **materials**, for the Plan, costs and return) are read from its code: each `ctx.get("...")` or `ctx.ask("...")` names its outcome, always a literal, and a test enforces it. They form its **bill of materials (BOM)**: the inputs a script consumes and the quantity of each per Unit produced, loss included. Then the ledger measures what each run consumed, and an unexpected call joins the list. No judge is needed.
+3. **Two gestures: `get` and `ask`.** `get` reads Units that already exist, from the outcome's Provider (the service that owns them), with the filters that Provider documents: old Units included, possibly none; it never makes one. `ask` makes one new Unit through the outcome's Engine, with the inputs that Engine documents: the Rating picks the script, which reads those inputs as its Request. Each Engine and each Provider owns its `get` and `ask`: routes, parameters and answer format are its own, documented in its owning service's internal OpenAPI, filed there under its Engine or Provider. Every call a script makes is a `get` on a Provider or an `ask` on an Engine, never a third kind: reading a page and a judgment are Engines too, like LLM completion. Only these calls link Units in the ledger: they roll up cost and credit the script that made the material. A Provider never picks a template or a model: each is a tactic of the script that uses it, and a new one proves itself as a script (section 8). A campaign moves Engines the same way: it asks for one piece down from its Target (pull), or hands a Unit that landed to the next Engine up toward it (push). An `ask` may also come from outside any campaign.
+4. **Which gesture, in what order, how old: the script decides.** A script may `get` first and `ask` only when nothing it read suits it, or `ask` straight away. Freshness and "already contacted" are its own `get` with its own window: before it writes, the writer `get`s Email sent for that person over the last 6 months. Distry uses outcomes exactly like a script: it reads the internal OpenAPI and calls the same `get` and `ask`.
 5. **The names.** Engine, Provider, Plan, Lead, Lifecycle.
 6. **"Performed by" is a tactic of scripts.** Who runs a script is data on the script, never an object of its own.
 
 ## 4. Scripts are code
 
-A script lives in `scripts/<outcome>/<dynasty>/v<n>.ts`. Its default export `run(ctx)` receives its subject, `ctx.get(outcome)` on the Providers, `ctx.ask(request)` and the Request it was handed (`ctx.request`), its Engine's storage, the vendor client and its tactics, and returns one Unit content or none. The email lookup, in full:
+A script lives in `scripts/<outcome>/<dynasty>/v<n>.ts`. Its default export `run(ctx)` receives its subject, `ctx.get(outcome, filters)` on the Providers, `ctx.ask(outcome, inputs)` on the Engines, the Request it was handed (`ctx.request`), its Engine's storage, the vendor client and its tactics, and returns one Unit content or none. The email lookup, in full:
 
 ```ts
 export default function run(ctx: ScriptContext): ScriptResult {
-  const lead = ctx.get("lead_identified");
-  ctx.get("rating");
+  const [lead] = ctx.get("lead_identified", { subject: ctx.subject, latest: 1 });
+  if (!lead) return null;
+  ctx.get("rating", { latest: 1 });
   const failed = ctx.storage.get("failed", lead.subject);
   if (typeof failed === "number" && ctx.day - failed < Number(ctx.tactics.retry_days ?? 30)) return null;
   const r = ctx.vendor.call("apollo.reveal", { lead: lead.subject });
@@ -103,7 +104,7 @@ A change is a new version of its dynasty; a different idea is a fork. The simula
 
 Two scripts of one Engine may call different Providers. The short writer calls no company research; the research writer does. Both compete in the Message written Engine, and no company research is ordered for a lead only the short writer served.
 
-A script that wants a fresh piece asks again: `if (context.ageDays > 90) context = ctx.get("brand_context")`. A script that never stops asking stops where the run's budget ends.
+A script that wants a fresh piece reads what exists and asks only if it is too old: `const [context] = ctx.get("brand_context", { since: "90 days" }); if (!context) ctx.ask("brand_context", { brand: ctx.brand })`. The filters and inputs are the ones that Provider and Engine document. A script that never stops asking stops where the run's budget ends.
 
 **Storage.** An Engine's storage holds only its scripts' notes ("no email found for this lead", "picked this person on day 12") and references to ledger Units, never copies. It is shared by the scripts of that Engine and read by nobody else. Business rules such as "Days before recontact" or "Days before retry" are tactics the script reads and enforces in its own code.
 
@@ -123,7 +124,7 @@ A script that wants a fresh piece asks again: `if (context.ageDays > 90) context
 
 A Campaign fixes only its **Target**, its start, its budget (a daily budget, with an optional volume per period) and its strategy. It never fixes a line. Its **Plan** is recomputed at every tick: from the Target down, each outcome's Engine and the script it would run now (the best mean value per dollar of the Rating, among the scripts the brief keeps), then the Plan of each outcome that script calls, down to Start or to a Unit a Provider serves. Plan, expected cost and return change at every tick.
 
-- **Pull** (proactive, from Start): the campaign pulls on its Target. Open work nearest the Target moves first, then Units waiting in the stock at a milestone below the Target, and only then new subjects from the market, with the budget left and within its volume.
+- **Pull** (proactive, from Start): the campaign pulls on its Target. Open work nearest the Target moves first, then Units already in the ledger at a milestone below the Target, and only then new subjects from the market, with the budget left and within its volume.
 - **Push** (reactive, from any other outcome): each Unit of the start outcome that lands for the brand is pushed to the next Engine the Plan names, up toward the Target.
 
 A Unit advances one Engine per tick. All campaigns run at each tick, each on its own budget spread over the day's ticks. An order that could not start (a script out of capacity, a cap reached) is undone, and the next tick asks again.
@@ -137,7 +138,7 @@ After **14** days, its Plan reads, from the Target down:
 - Meeting booked, made by the slot booking script (**3** scripts compete);
 - Lead interested, made by the website signup, performed by the client's team (**1** script);
 - Lead visited, made by the search ads script (**2** scripts compete);
-- the offer's Audience, served from the stock, and today's Rating.
+- the offer's Audience and today's Rating, each read by a `get` on its Provider.
 
 It passes through Lead visited, Lead interested and Meeting booked. Per milestone:
 
@@ -172,7 +173,7 @@ A **strategy** is a set of conditions on tactics: equals, in a list, within a ra
 
 ## 7. The ledger is the common stock
 
-Every Unit, from whoever performed it, lands in one stock. Several scripts feed one outcome: an interested lead found by our reply judge and one who signed up on the website sit side by side, and the booking script serves itself from both. A campaign never takes, for a subject it holds, the work in progress (WIP, section 12) of another campaign.
+Every Unit, from whoever performed it, lands in one stock, kept by its outcome's Provider. Several scripts feed one outcome: an interested lead found by our reply judge and one who signed up on the website sit side by side, and the booking script's `get` reads both. A campaign never takes, for a subject it holds, the work in progress (WIP, section 12) of another campaign.
 
 **Reuse.** A Unit never wears out: information is copied, not consumed, like a mould rather than raw material. Several campaigns may consume the same Unit; the books show it as a reuse gain (section 10).
 
@@ -186,7 +187,7 @@ A **pick is always a script**. A model is a script of the LLM completion Engine:
 
 A **candidate place** is a pair (asking script, outcome it calls): the free offer writer and the three-line writer both call LLM completion, they make two candidate places, and each can settle on a different model. A place with little history of its own starts from the wider place: (asking script, outcome), then (asking Engine, outcome), then the outcome alone. No threshold decides the switch: the wider place's belief counts as about one credited run, and the script's own credited runs replace it as they land.
 
-The **Supplier rating** is an Engine like any other. At each tick it reads the ledger and produces one **Rating** for the whole fleet: per candidate at each candidate place, its beliefs about value per dollar. Outcomes are rare, so one brand's runs seldom say enough alone. Every picking script calls the Rating's Provider.
+The **Supplier rating** is an Engine like any other. At each tick it reads the ledger and produces one **Rating** for the whole fleet: per candidate at each candidate place, its beliefs about value per dollar. Outcomes are rare, so one brand's runs seldom say enough alone. Every picking script reads it with a `get` on the Rating's Provider.
 
 The rule is one for every pick: **Thompson sampling on value per dollar**.
 
