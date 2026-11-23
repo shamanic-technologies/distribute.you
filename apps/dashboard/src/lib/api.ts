@@ -3087,6 +3087,9 @@ const DistryModelsSchema = z.object({
         level: z.string().nullable(),
         score: z.number().nullable(),
         intelligencePerDollar: z.number().nullable(),
+        // DISTRY-FALLBACK-ABSOLUTE-1123: the list is absolute, a candidate that cannot answer now keeps its
+        // rank and says why. Optional while the producer deploy lags.
+        availability: z.object({ runsNow: z.boolean(), reason: z.string().nullable() }).optional(),
       }),
     )
     .optional(),

@@ -40,6 +40,24 @@ describe("Distry fallback order", () => {
     expect(html).toContain("Show 1 more");
   });
 
+  it("keeps a candidate that cannot answer now in its served place, muted and tagged, never dropped (DISTRY-FALLBACK-ABSOLUTE-1123)", () => {
+    const order = [
+      { ...c("GPT-6.1 Sol", "high", 900), availability: { runsNow: false, reason: "OpenAI is out of credit." } },
+      { ...c("Claude Haiku 5.5", "low", 425), availability: { runsNow: true, reason: null } },
+      c("GLM-5.3", "none", 120),
+    ];
+    const html = renderToStaticMarkup(createElement(DistryFallbackOrder, { nextFallback: null, order }));
+    expect(html.indexOf("GPT-6.1 Sol")).toBeGreaterThan(-1);
+    expect(html.indexOf("GPT-6.1 Sol")).toBeLessThan(html.indexOf("Claude Haiku 5.5"));
+    expect(html.match(/Skipped now/g)).toHaveLength(1);
+    expect(html).not.toMatch(/rose|text-red/);
+    const comp = readFileSync(join(__dirname, "..", "src", "components", "v2", "distry-fallback-order.tsx"), "utf8");
+    expect(comp).toContain("c.availability?.runsNow === false");
+    expect(comp).toContain("<InfoTooltip tip={c.availability.reason}");
+    const api = readFileSync(join(__dirname, "..", "src", "lib", "api.ts"), "utf8");
+    expect(api).toContain("availability: z.object({ runsNow: z.boolean(), reason: z.string().nullable() }).optional()");
+  });
+
   it("says plainly when no other model can serve", () => {
     const html = renderToStaticMarkup(createElement(DistryFallbackOrder, { nextFallback: null, order: [] }));
     expect(html).toContain("No other model can serve Distry right now.");
@@ -50,5 +68,10 @@ describe("Distry fallback order", () => {
     expect(view).toContain("<DistryFallbackOrder nextFallback={d.nextFallback ?? null} order={d.fallbackOrder} />");
     const comp = readFileSync(join(__dirname, "..", "src", "components", "v2", "distry-fallback-order.tsx"), "utf8");
     expect(comp).not.toContain(".sort(");
+    // DISTRY-FALLBACK-ABSOLUTE-1123: the label carries an (i) stating every criterion that orders a row.
+    expect(comp).toContain("<InfoTooltip tip={FALLBACK_ORDER_TIP}");
+    expect(comp).toContain(
+      '"One row per model and thinking level Distry can run, best index per $ first (Artificial Analysis run cost; a model without one is ranked after, on our blended 1M-token price). Models with no index come last. Distry takes the first row that can answer now."',
+    );
   });
 });
