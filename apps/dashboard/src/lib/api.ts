@@ -2126,7 +2126,7 @@ export async function getLatestChatSession(
 ): Promise<ChatSessionHistory | null> {
   // `limit` = only the newest messages (a page load stays small whatever the session length);
   // `before` = the served `olderCursor`, to read the page just older (scroll up).
-  const params = new URLSearchParams({ configKey });
+  const params = new URLSearchParams({ configKey, view: "basic" });
   if (page) {
     params.set("limit", String(page.limit));
     if (page.before) params.set("before", page.before);
