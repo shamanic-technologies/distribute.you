@@ -296,7 +296,7 @@ export function CampaignLine({
   const plain = v2CampaignHref(orgId, campaign.brandId, campaign.id);
   const href = keepPreview ? withLayoutNext(plain) : plain;
   const [editing, setEditing] = useState(false);
-  // billing's verdict: a max budget AND/OR a max volume funds it.
+  // billing's verdict: a max budget funds it (a max volume only rides beside one, VOL-NEEDS-USD-1124).
   const notFunded = caps !== null && funnelFunded(caps) === false;
   const on = isOngoingFunnelCampaign(campaign);
   const reactive = (copy?.type ?? funnelTypeOf(caps)) === "reactive";

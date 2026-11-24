@@ -10,7 +10,7 @@
 
 distribute.you is done-for-you revenue automation. Give us your URL. We find your buyers, contact them by cold email and book your meetings.
 
-Every campaign is a sales funnel campaign. You set its caps: a max budget, a max volume per period, or both. You pay as you go, at the vendor's API price with 0% markup, listed on [distribute.you/catalog](https://distribute.you/catalog). One user is free, and a team is $9 per user each month.
+Every campaign is a sales funnel campaign. You set its caps: a max budget per period, plus a max volume if you want one (never a volume alone). You pay as you go, at the vendor's API price with 0% markup, listed on [distribute.you/catalog](https://distribute.you/catalog). One user is free, and a team is $9 per user each month.
 
 ## Distribution Features
 
@@ -20,7 +20,7 @@ Every campaign is a sales funnel campaign. You set its caps: a max budget, a max
 
 1. Create an account at [dashboard.distribute.you](https://dashboard.distribute.you)
 2. Add your URL
-3. Set your caps (max budget and/or max volume per period)
+3. Set your caps (max budget per period, plus a max volume if you want one)
 4. We run the campaign and A/B test templates, models and audiences on it
 
 ## Monorepo Structure

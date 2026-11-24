@@ -225,7 +225,8 @@ describe("campaignHoldCopy", () => {
   it("tells an unfunded campaign where to get funded, never a retired daily budget", () => {
     const copy = campaignHoldCopy(readCampaignHold([unfundedEvent()], NOW)!, NOW);
     expect(copy.action).toBe("campaign_budget");
-    expect(copy.body).toContain("max budget or a max volume");
+    expect(copy.body).toContain("needs a max budget to run");
+    expect(copy.body).not.toContain("max volume");
     for (const e of [ceilingEvent(), unfundedEvent(), creditEvent()]) {
       const c = campaignHoldCopy(readCampaignHold([e], NOW)!, NOW);
       expect(`${c.headline} ${c.body} ${c.actionLabel}`).not.toMatch(/daily budget|today/i);

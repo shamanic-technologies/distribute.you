@@ -101,7 +101,7 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/api/campaigns",
     title: "Campaigns API",
     description:
-      "Launch a sales funnel as a campaign, run or pause it, set its caps (max budget and/or max volume) and read its results via the distribute.you REST API.",
+      "Launch a sales funnel as a campaign, run or pause it, set its caps (max budget, plus max volume only beside a max budget) and read its results via the distribute.you REST API.",
   },
   {
     path: "/api/workflows",

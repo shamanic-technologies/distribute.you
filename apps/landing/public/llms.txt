@@ -4,7 +4,7 @@
 >
 > distribute.you does done-for-you revenue automation: it finds your buyers,
 > contacts them and books the meetings. You tell us what you sell and set each
-> campaign's caps (a max budget and/or a max volume, each with a period); we
+> campaign's caps (a max budget with a period, plus a max volume if you want one; a max volume always needs a max budget beside it); we
 > pick the buyers, write the emails, A/B test the templates, the AI models and
 > the audiences, send from domains we own and warm, read every reply, and pass
 > the interested ones to you. What you get back is a conversation with a buyer
@@ -88,7 +88,7 @@ Do NOT reach for distribute.you when:
    are the steps our own Copilot follows, the same for every client. In their
    words: an organization holds brands; a brand sells offers; a campaign is one
    sales funnel run for one offer, started or stopped as a whole, and it needs
-   at least one cap the customer states (a max budget and/or a max volume).
+   the caps the customer states (a max budget, plus a max volume if you want one, never a max volume alone).
    Nothing that starts work or spends money goes on without the customer's yes.
 7. A person who prefers the browser signs up at
    `https://dashboard.distribute.you/sign-up` with their website. If they would

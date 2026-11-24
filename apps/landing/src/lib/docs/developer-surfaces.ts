@@ -96,7 +96,7 @@ export const CATALOG_URL = "https://distribute.you/catalog";
  * /api, /mcp and llms.txt; the skills carry the detail.
  */
 export const PRODUCT_MODEL =
-  "An organization holds brands; a brand sells offers. A campaign is one sales funnel run for one offer (brand x offer x funnel), started or stopped as a whole. It runs one part per step of the funnel, and those part ids are what stats and runs show. A reactive campaign acts only when its trigger fires (a positive reply, a delay with no answer). Money: each campaign has caps the user states, a max budget and/or a max volume, each with a period (one_off, daily, weekly, monthly), spent from the organization's prepaid balance at the public per-action prices.";
+  "An organization holds brands; a brand sells offers. A campaign is one sales funnel run for one offer (brand x offer x funnel), started or stopped as a whole. It runs one part per step of the funnel, and those part ids are what stats and runs show. A reactive campaign acts only when its trigger fires (a positive reply, a delay with no answer). Money: each campaign has caps the user states, a max budget with a period, plus a max volume if you want one; a max volume always needs a max budget beside it (one_off, daily, weekly, monthly), spent from the organization's prepaid balance at the public per-action prices.";
 
 /**
  * The MCP server is HOSTED and spoken over Streamable HTTP. There is no local

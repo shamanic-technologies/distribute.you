@@ -76,7 +76,7 @@ export const AGENT_QUICKSTART_LINES: QuickstartLine[] = [
   },
   {
     label: "Method",
-    text: `Before acting on a request (an offer, a funnel, a campaign, its caps), read the method skills: \`${SKILLS_LIST_ROUTE}\`, then \`${SKILL_READ_ROUTE}\`, \`index\` first (MCP: \`distribute_list_skills\`, \`distribute_read_skill\`). They are the steps our own Copilot follows. A campaign is one sales funnel run for one offer, and it needs at least one cap the human states (a max budget and/or a max volume, each with a period). Nothing that starts work or spends money goes on without the human's yes.`,
+    text: `Before acting on a request (an offer, a funnel, a campaign, its caps), read the method skills: \`${SKILLS_LIST_ROUTE}\`, then \`${SKILL_READ_ROUTE}\`, \`index\` first (MCP: \`distribute_list_skills\`, \`distribute_read_skill\`). They are the steps our own Copilot follows. A campaign is one sales funnel run for one offer, and it needs the caps the human states (a max budget with a period, plus a max volume if you want one; a max volume always needs a max budget beside it). Nothing that starts work or spends money goes on without the human's yes.`,
   },
   {
     label: "Key refused",

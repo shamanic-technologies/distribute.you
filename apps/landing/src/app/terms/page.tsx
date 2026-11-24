@@ -289,7 +289,7 @@ const SECTIONS: SectionDef[] = [
         </p>
         <p>
           <strong>Campaign budgets.</strong> You set caps for each campaign
-          (a max budget and/or a max volume, each with a period). A channel
+          (a max budget with a period, plus a max volume if you want one; a max volume always needs a max budget beside it). A channel
           may have a minimum budget, and there is no maximum. Turning a campaign off stops its spend; amounts already
           used or reserved stay due.
         </p>

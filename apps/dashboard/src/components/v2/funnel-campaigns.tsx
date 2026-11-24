@@ -246,12 +246,15 @@ export function FunnelCampaignModal({
   const people = volume.trim() === "" ? null : parseWholeCount(volume);
   const limitsDirty = budget !== initial.budget || budgetPer !== initial.budgetPer || volume !== initial.volume || volumePer !== initial.volumePer;
   const statusDirty = on !== servedOn;
-  // A campaign needs a max budget AND/OR a max volume (owner 2026-10-11); neither = nothing to save.
+  // A max volume always comes with a max budget (owner 2026-11-24, VOL-NEEDS-USD-1124, replaces the 2026-10-11
+  // « max $ and/or max volume »): billing cannot count every volume, the $ is what stops the spend. A max $ alone is fine.
   const budgetProblem =
     budget.trim() !== "" && usd === null
       ? "Type a whole number of dollars."
-      : limitsDirty && budget.trim() === "" && volume.trim() === ""
-        ? "Set a budget or a volume."
+      : limitsDirty && budget.trim() === ""
+        ? volume.trim() !== ""
+          ? "Add a max budget to go with this volume."
+          : "Set a max budget."
         : null;
   const volumeProblem = volume.trim() !== "" && people === null ? "Type a whole number of people." : null;
   const submittable = (limitsDirty || statusDirty) && !budgetProblem && !volumeProblem;
@@ -653,7 +656,7 @@ function LimitCell({
 /**
  * One campaign that is a sales funnel: its face and name, ONE status for the whole of it,
  * its two limits with what the current period consumed (billing), then its results (each
- * step's own served figures). Neither a max budget nor a max volume = not funded (billing's
+ * step's own served figures). No max budget = not funded (billing's
  * `funded`): the page says so and asks for one.
  */
 const FUNNEL_TABS: { key: V2CampaignTab; label: string; needsColdEmail: boolean }[] = [
@@ -696,7 +699,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   const [editing, setEditing] = useState(false);
   const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
   const c = caps.data ?? null;
-  // billing's verdict (owner 2026-10-11): a max budget AND/OR a max volume funds it.
+  // billing's verdict: a max budget funds it (a max volume only rides beside one, VOL-NEEDS-USD-1124).
   const notFunded = capsSettled && funnelFunded(c) === false;
   const b = c?.maxBudget ?? null;
   const v = c?.maxVolume ?? null;
@@ -769,7 +772,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
           >
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-medium">Not funded yet</p>
-              <p className="k-fg2 text-[13px]">Set a budget or a volume so this campaign can run.</p>
+              <p className="k-fg2 text-[13px]">Set a max budget so this campaign can run.</p>
             </div>
             <button type="button" className="k-btn-accent" onClick={() => setEditing(true)}>
               Set a budget

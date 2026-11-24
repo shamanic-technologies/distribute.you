@@ -25,6 +25,7 @@ import {
   volumeFundingLabel,
   funnelFunded,
   fundingLimit,
+  assertVolumeHasBudget,
 } from "../src/lib/sales-funnel-campaigns";
 
 const parseSalesFunnelCampaigns = (raw: unknown) => SalesFunnelCampaignListSchema.parse(raw).salesFunnelCampaigns;
@@ -481,12 +482,12 @@ describe("a max budget AND/OR a max volume funds a funnel (owner 2026-10-11, bil
     expect(parsed.fundedBy).toBe("max_volume");
   });
 
-  it("every Not funded yet reads billing's verdict, and the modal saves a volume alone", () => {
+  it("every Not funded yet reads billing's verdict, and the modal never saves a volume alone (VOL-NEEDS-USD-1124)", () => {
     const f = src("src/components/v2/funnel-campaigns.tsx");
     expect(f.match(/funnelFunded\((c|caps|caps\.data \?\? null)\) === false/g)?.length).toBe(2);
     expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("funnelFunded(caps) === false");
     expect(f).not.toContain("c.maxBudget === null");
-    expect(f).toContain('"Set a budget or a volume."');
+    expect(f).toContain('"Set a max budget."');
     expect(f).toContain("maxBudget: usd === null ? null : { amountCents: usd * 100, period: budgetPer }");
   });
 });
@@ -505,5 +506,34 @@ describe("Running vs Past campaigns (owner 2026-10-13)", () => {
     expect(page).toContain("{past.length > 0 && (");
     expect(page).toContain("const base = showingPast ? past : running;");
     expect(page).toContain("{shown.map((c) => (");
+  });
+});
+
+// VOL-NEEDS-USD-1124 (owner 2026-11-24, « ajoute aussi un max en $ »): a max volume never goes without a max budget.
+describe("a max volume needs a max budget beside it", () => {
+  const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
+
+  it("refuses a volume-only write, keeps a $ alone and a $ beside a volume", () => {
+    expect(() => assertVolumeHasBudget("t", { maxBudget: null, maxVolume: { count: 1 } })).toThrow(/max budget/);
+    expect(() => assertVolumeHasBudget("t", { maxVolume: { count: 1 } })).toThrow(/max budget/);
+    expect(() => assertVolumeHasBudget("t", { maxBudget: { amountCents: 500 }, maxVolume: null })).not.toThrow();
+    expect(() => assertVolumeHasBudget("t", { maxBudget: { amountCents: 500 }, maxVolume: { count: 1 } })).not.toThrow();
+    expect(() => assertVolumeHasBudget("t", { maxBudget: null, maxVolume: null })).not.toThrow();
+  });
+
+  it("every caps writer checks before its request", () => {
+    const api = read("src/lib/api.ts");
+    for (const fn of ["saveCampaignCaps", "saveSalesFunnelCaps", "startSalesFunnelCampaign"]) {
+      const at = api.indexOf(`export async function ${fn}(`);
+      expect(at).toBeGreaterThan(-1);
+      const body = api.slice(at, api.indexOf("apiCall<unknown>(", at));
+      expect(body).toContain(`assertVolumeHasBudget("${fn}"`);
+    }
+  });
+
+  it("the campaign modal asks a max budget whenever a volume is typed", () => {
+    const src = read("src/components/v2/funnel-campaigns.tsx");
+    expect(src).toContain("Add a max budget to go with this volume.");
+    expect(src).not.toContain("Set a budget or a volume");
   });
 });
