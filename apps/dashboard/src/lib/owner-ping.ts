@@ -1,7 +1,7 @@
 /**
  * One short Telegram line to the owner at every step of a signup (owner 2026-10-07:
  * « il faut que je reçoive un message court à chaque étape »): the account made, the
- * site entered, each `/get-started` step reached, the payment wall, the payment, the
+ * site entered, the AI-agent setup chosen and its prompt copied, each `/get-started` step reached, the payment wall, the payment, the
  * launch. Sent the moment it happens, unlike the visit recap (`visit-recap-job.ts`),
  * which waits for the visit to end and filters it.
  *
@@ -12,7 +12,7 @@
  * Alias-free on purpose (no runtime `@/` import) so it gets real unit tests.
  */
 
-export const OWNER_PING_EVENTS = ["signed_up", "started", "step", "wall", "paid", "trial", "launched"] as const;
+export const OWNER_PING_EVENTS = ["signed_up", "started", "ai_setup", "ai_prompt_copied", "step", "wall", "paid", "trial", "launched"] as const;
 export type OwnerPingEvent = (typeof OWNER_PING_EVENTS)[number];
 
 /** Set in a browser where a staff account signed in: its later anonymous visits are the owner's too. */
@@ -55,6 +55,8 @@ export function clerkUserIdFromDistinctId(raw: unknown): string | null {
 const ICON: Record<OwnerPingEvent, string> = {
   signed_up: "🆕",
   started: "🌐",
+  ai_setup: "🤖",
+  ai_prompt_copied: "📋",
   step: "➡️",
   wall: "🧱",
   paid: "💳",
@@ -68,6 +70,10 @@ function what(p: OwnerPing): string {
       return "signed up";
     case "started":
       return "entered their site";
+    case "ai_setup":
+      return "chose to set up with their AI agent";
+    case "ai_prompt_copied":
+      return "copied the setup prompt for their AI agent";
     case "step":
       if (!p.step) throw new Error("[owner-ping] a step ping carries no step");
       return `${p.step.index}/${p.step.total} ${p.step.label}`;
