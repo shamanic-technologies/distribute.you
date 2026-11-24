@@ -263,7 +263,7 @@ export function campaignHoldCopy(
     case "unfunded":
       return {
         headline: "This campaign has no budget yet",
-        body: "This campaign needs a max budget or a max volume to run. Set one and sending starts within ten minutes.",
+        body: "This campaign needs a max budget to run. Set one and sending starts within ten minutes.",
         action: "campaign_budget",
         actionLabel: "Set a budget",
       };

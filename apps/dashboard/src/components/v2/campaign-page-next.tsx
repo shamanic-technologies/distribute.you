@@ -174,7 +174,7 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
               <div className="k-card flex flex-wrap items-center gap-3 px-4 py-3" style={{ background: "color-mix(in oklab, var(--data-amber) 10%, var(--bg-raised))" }}>
                 <div className="min-w-0 flex-1">
                   <p className="text-[14px] font-medium">Not funded yet</p>
-                  <p className="k-fg2 text-[13px]">Set a budget or a volume so this campaign can run.</p>
+                  <p className="k-fg2 text-[13px]">Set a max budget so this campaign can run.</p>
                 </div>
                 <button type="button" className="k-btn-accent" onClick={() => setEditing(true)}>
                   Set a budget

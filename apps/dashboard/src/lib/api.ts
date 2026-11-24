@@ -28,6 +28,7 @@ import {
   SalesFunnelCampaignOneSchema,
   SalesFunnelCapsSchema,
   campaignCapsPath,
+  assertVolumeHasBudget,
   type CapsTarget,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
@@ -2888,6 +2889,7 @@ export async function getCampaignCaps(c: CapsTarget): Promise<SalesFunnelCaps> {
 
 /** States a campaign's two caps at once (null clears one), offer or not. Charges nothing; answers the read's shape. */
 export async function saveCampaignCaps(c: CapsTarget, caps: SalesFunnelCapsInput, token?: string): Promise<SalesFunnelCaps> {
+  assertVolumeHasBudget("saveCampaignCaps", caps);
   const raw = await apiCall<unknown>(campaignCapsPath(c), {
     token,
     method: "PUT",
@@ -8692,6 +8694,7 @@ export async function saveSalesFunnelCaps(
   caps: SalesFunnelCapsInput,
   token?: string,
 ): Promise<SalesFunnelCaps> {
+  assertVolumeHasBudget("saveSalesFunnelCaps", caps);
   const raw = await apiCall<unknown>(salesFunnelCapsPath(brandId, offerId, salesFunnelId), {
     token,
     method: "PUT",
@@ -8726,6 +8729,7 @@ export async function startSalesFunnelCampaign(
 ): Promise<SalesFunnelCampaign> {
   const brief = input.brief.trim();
   if (!brief) throw new Error("[startSalesFunnelCampaign] a new campaign needs a brief");
+  assertVolumeHasBudget("startSalesFunnelCampaign", input);
   const raw = await apiCall<unknown>(`/sales-funnel-campaigns`, {
     token,
     method: "POST",

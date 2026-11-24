@@ -161,7 +161,7 @@ description: Use distribute.you, which finds buyers, writes and sends the cold e
 # distribute.you
 
 ${agentQuickstartMarkdown()}
-distribute.you runs cold email for a brand: it finds the people to write to, writes the emails, sends them from its own domains, reads the replies and forwards the interested ones. Each campaign runs within caps the customer sets (a max budget and/or a max volume, each with a period), and the work is paid from a prepaid balance at the public per-action prices on ${CATALOG_URL}.
+distribute.you runs cold email for a brand: it finds the people to write to, writes the emails, sends them from its own domains, reads the replies and forwards the interested ones. Each campaign runs within caps the customer sets (a max budget with a period, plus a max volume if you want one; a max volume always needs a max budget beside it), and the work is paid from a prepaid balance at the public per-action prices on ${CATALOG_URL}.
 
 The method our own Copilot follows is served as skills: \`GET /v1/skills\` (or the \`distribute_list_skills\` tool), then \`GET /v1/skills/index\` (\`distribute_read_skill\`) and every skill whose description matches the ask. Read them before organizing anything new (an offer, a campaign, its caps).
 
@@ -219,7 +219,7 @@ Base URL \`https://api.distribute.you\`, one header on every call: \`${AUTH_HEAD
 - A plain-language map of every service, written for a model: ${LLM_CONTEXT_URL}
 - A command line client: \`${CLI_INSTALL_COMMAND}\`
 
-How the account is organized: an **organization** holds **brands** (one per company it sells for); a brand sells **offers**; each offer is reached through **campaigns**, each campaign targeting **audiences** and producing **leads** we write to. A campaign is one sales funnel run for one offer, started or stopped as a whole. Money: each campaign has caps (a max budget and/or a max volume, each with a period), spent from the organization's prepaid balance.
+How the account is organized: an **organization** holds **brands** (one per company it sells for); a brand sells **offers**; each offer is reached through **campaigns**, each campaign targeting **audiences** and producing **leads** we write to. A campaign is one sales funnel run for one offer, started or stopped as a whole. Money: each campaign has caps (a max budget with a period, plus a max volume if you want one; a max volume always needs a max budget beside it), spent from the organization's prepaid balance.
 
 ## 4. What the user usually asks, and the routes that answer it
 

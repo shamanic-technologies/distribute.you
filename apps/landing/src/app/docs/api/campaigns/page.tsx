@@ -5,7 +5,7 @@ import { CopyForLLM } from "@/components/docs/copy-for-llm";
 export const metadata = docsMetadata("/api/campaigns");
 
 // A campaign is what the customer launched (owner 2026-10-10): one brand, one offer, run or paused
-// as one, with a max budget and a max volume. Its parts (`units`, one per channel step) are never
+// as one, with a max budget and an optional max volume beside it (VOL-NEEDS-USD-1124). Its parts (`units`, one per channel step) are never
 // documented as campaigns of their own (owner 2026-10-11). Every route below is in the deployed
 // api.distribute.you openapi.json.
 const LLM_INSTRUCTIONS = `# Campaigns API
@@ -34,7 +34,7 @@ Body: {"status": "activate"} or {"status": "stop"}
 GET /v1/brands/:brandId/offers/:offerId/sales-funnels/:salesFunnelId/caps
 PUT /v1/brands/:brandId/offers/:offerId/sales-funnels/:salesFunnelId/caps
 Body: {"maxBudget": {"amountCents": 5000, "period": "daily"}, "maxVolume": null}
-A campaign needs at least one cap the human states: a max budget, a max volume, or both. period: one_off, daily, weekly or monthly. Send both keys; null clears one. With no max budget, billing holds the campaign and it spends nothing.
+A campaign needs a max budget the human states; a max volume is optional and always goes with a max budget, never alone (a volume-only write is refused). period: one_off, daily, weekly or monthly. Send both keys; null clears one. With no max budget, billing holds the campaign and it spends nothing.
 
 ## Results of one part
 GET /v1/campaigns/:partId/stats   (partId = units[].campaignId)`;
@@ -140,7 +140,7 @@ Authorization: Bearer distrib.usr_YOUR_KEY
 }`}</code>
         </pre>
         <p>
-          A campaign needs at least one cap: a max budget, a max volume, or both. Take{" "}
+          A campaign needs a max budget. A max volume is optional and always goes with a max budget, never alone: a volume-only write is refused. Take{" "}
           <code>salesFunnelId</code> from the campaign. A period is <code>one_off</code>,{" "}
           <code>daily</code>, <code>weekly</code> or <code>monthly</code>. Send both keys;{" "}
           <code>null</code> clears one. With no max budget, the campaign spends nothing. The read also says

@@ -82,7 +82,8 @@ export const SalesFunnelCapsSchema = z
     // cached body carries it, null + a named reason when billing could not read it.
     salesFunnelType: z.string().nullish(),
     salesFunnelTypeUnavailableReason: z.string().nullish(),
-    // billing (owner 2026-10-11): FUNDED = a max budget AND/OR a max volume, each above 0. The one
+    // billing (owner 2026-10-11): FUNDED = a max budget AND/OR a max volume, each above 0 (a WRITE needs a max $
+    // beside any max volume since 2026-11-24, VOL-NEEDS-USD-1124; older volume-only caps keep billing's verdict). The one
     // answer to "may this funnel spend"; read it, never re-derive it from the caps. Optional until
     // every cached body carries it (an absent one reads as unknown, never as not funded).
     funded: z.boolean().optional(),
@@ -376,7 +377,8 @@ export function volumeFundingLabel(type: FunnelType | null, v: Pick<MaxVolume, "
 }
 
 /**
- * billing's funding verdict (owner 2026-10-11: a max $ AND/OR a max volume). `false` = not funded
+ * billing's funding verdict (owner 2026-10-11: a max $ AND/OR a max volume; new writes pair any volume with a $,
+ * VOL-NEEDS-USD-1124). `false` = not funded
  * ("Not funded yet"); null = billing has not served it yet (logged; nothing is claimed either way).
  */
 export function funnelFunded(caps: Pick<SalesFunnelCaps, "salesFunnelId" | "funded"> | null): boolean | null {
@@ -623,3 +625,18 @@ export function funnelSortKey(row: Pick<FunnelCampaignRow, "type"> | null, caps:
 }
 
 
+
+/**
+ * A max volume never goes without a max budget (owner 2026-11-24, VOL-NEEDS-USD-1124: « ajoute aussi un max en $ »,
+ * replaces the 2026-10-11 « max $ and/or max volume » on the volume side). Billing cannot count every volume (the
+ * Threads Posts campaign spent $8.12 in one morning under « max 1 new person a day »), so the $ is the safety. Every
+ * caps writer in this app calls it before the request: a volume-only write is refused here, loud, never sent.
+ */
+export function assertVolumeHasBudget(
+  where: string,
+  caps: { maxBudget?: { amountCents: number } | null; maxVolume?: { count: number } | null },
+): void {
+  if (caps.maxVolume && !caps.maxBudget) {
+    throw new Error(`[${where}] a max volume needs a max budget beside it (VOL-NEEDS-USD-1124)`);
+  }
+}

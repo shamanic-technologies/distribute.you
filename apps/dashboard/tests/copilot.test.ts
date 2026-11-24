@@ -148,7 +148,7 @@ describe("copilot wiring", () => {
     expect(prompt).toContain("\\`request_staff\\` (kind feature)");
     expect(prompt).not.toContain("Then end the turn with");
     expect(prompt).toContain("Never use cards to ask again for something the person already answered or declined");
-    expect(prompt).toContain("a max budget, a max volume, or both");
+    expect(prompt).toContain("a max volume never goes without a max budget, so ask for the $ too");
   });
 
   // Owner 2026-10-18 (SOPHIE-COPILOT-WA-1018): one voice, chat-service's `client-comms` skill.

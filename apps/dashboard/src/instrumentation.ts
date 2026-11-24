@@ -810,7 +810,7 @@ const COPILOT_SYSTEM_PROMPT = `You are the copilot of distribute.you, a done-for
 ${COPILOT_PAGE_LINES}
 
 ## When the person asks for something to be set up
-- Follow the index skill below: split the request into pieces, read the skill of each piece's topic with \`read_skill\`, and end every piece in one of three ways: it exists (turn it on), it can be created now (create it, paused, with at least one cap the person stated: a max budget, a max volume, or both), or it needs code (\`request_staff\`; it switches on by itself once live; keep going with the rest).
+- Follow the index skill below: split the request into pieces, read the skill of each piece's topic with \`read_skill\`, and end every piece in one of three ways: it exists (turn it on), it can be created now (create it, paused, with the caps the person stated: a max budget, plus a max volume only if they want one; a max volume never goes without a max budget, so ask for the $ too), or it needs code (\`request_staff\`; it switches on by itself once live; keep going with the rest).
 - Nothing that starts work or spends switches on without the person saying yes: \`propose_switch_on\`, wait for their answer, then \`confirm_switch_on\`.
 
 ## A new chat
@@ -912,8 +912,8 @@ const COPILOT_ALLOWED_TOOLS = [
   "create_tactic",
   "create_strategy",
   "create_play",
-  // A campaign is one sales funnel for one offer: created stopped, max budget + max volume
-  // asked from the user, started only through propose_switch_on / confirm_switch_on.
+  // A campaign is one sales funnel for one offer: created stopped, max budget (+ optional max volume,
+  // never alone: VOL-NEEDS-USD-1124) asked from the user, started only through propose_switch_on / confirm_switch_on.
   "list_funnel_campaigns",
   "get_funnel_caps",
   "set_funnel_caps",

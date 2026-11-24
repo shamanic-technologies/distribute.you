@@ -478,7 +478,7 @@ describe("the docs and the apex point at each other", () => {
 /**
  * The Copilot's method skills are the source of truth for the model (owner
  * 2026-10-14): a campaign is one sales funnel run for one offer, its money is
- * caps the user states (a max budget and/or a max volume, with a period). The
+ * caps the user states (a max budget with a period, plus an optional max volume that never goes without it). The
  * old pitch ("give us a URL and a daily budget"), the free-credit and $1/day
  * offers, and the TypeScript client that was never published are retired, so
  * they must not come back on any page, in llms.txt or in the served skill.md.

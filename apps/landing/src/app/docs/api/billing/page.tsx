@@ -6,7 +6,7 @@ export const metadata = docsMetadata("/api/billing");
 
 const LLM_INSTRUCTIONS = `# Billing API
 
-How money works: the organization prepays a balance (see /authentication for prepaid_checkout). Each action is billed at the public prices on https://distribute.you/catalog. Each campaign spends only up to its caps (a max budget and/or a max volume, each with a period), set on the campaign's sales funnel: see the Campaigns API. Method skill: GET /v1/skills/budget-and-billing.
+How money works: the organization prepays a balance (see /authentication for prepaid_checkout). Each action is billed at the public prices on https://distribute.you/catalog. Each campaign spends only up to its caps (a max budget with a period, plus a max volume if you want one; a max volume always needs a max budget beside it), set on the campaign's sales funnel: see the Campaigns API. Method skill: GET /v1/skills/budget-and-billing.
 
 ## Check Balance
 GET /v1/billing/accounts/balance
@@ -32,7 +32,7 @@ export default function BillingApiPage() {
           Your organization prepays a balance (see <a href="/docs/authentication">Authentication</a>).
           Each action is billed at the public prices on{" "}
           <a href="https://distribute.you/catalog">distribute.you/catalog</a>. Each campaign
-          spends only up to its caps, a max budget and/or a max volume with a period, set on the{" "}
+          spends only up to its caps, a max budget with a period, plus a max volume if you want one (never a max volume alone), set on the{" "}
           <a href="/docs/api/campaigns">Campaigns API</a>. The <code>budget-and-billing</code> method
           skill (<code>GET /v1/skills/budget-and-billing</code>) has the rest.
         </p>

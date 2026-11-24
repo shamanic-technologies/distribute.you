@@ -102,7 +102,7 @@ const faqJsonLd = {
       name: "What is distribute.you?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: `distribute.you runs cold email outreach for you: you tell it what you sell and set each campaign's caps (a max budget and/or a max volume), and it picks the buyers, writes and sends the email from domains it owns and warms, and passes the interested replies to you. It publishes a REST API with an OpenAPI document at ${OPENAPI_DOCUMENT_URL}, a hosted Model Context Protocol server at ${MCP_URL}, a command line client on npm, and these docs at ${DEVELOPER_HUB_URL}, so an AI assistant such as Claude, Cursor or ChatGPT can read and steer it. The method skills our own Copilot follows are served at ${SKILLS_LIST_ROUTE}, so an agent can follow the same steps.`,
+        text: `distribute.you runs cold email outreach for you: you tell it what you sell and set each campaign's caps (a max budget, plus a max volume if you want one, never a max volume alone), and it picks the buyers, writes and sends the email from domains it owns and warms, and passes the interested replies to you. It publishes a REST API with an OpenAPI document at ${OPENAPI_DOCUMENT_URL}, a hosted Model Context Protocol server at ${MCP_URL}, a command line client on npm, and these docs at ${DEVELOPER_HUB_URL}, so an AI assistant such as Claude, Cursor or ChatGPT can read and steer it. The method skills our own Copilot follows are served at ${SKILLS_LIST_ROUTE}, so an agent can follow the same steps.`,
       },
     },
     {
@@ -126,7 +126,7 @@ const faqJsonLd = {
       name: "How much does distribute.you cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: `The AI agent is usage based. You pay as you go from a prepaid balance, starting with $10: each action is billed at the vendor's API price with 0% markup, listed on ${CATALOG_URL}, and each campaign spends only up to the caps you set (a max budget and/or a max volume, each with a period). See what each result cost you in the dashboard.`,
+        text: `The AI agent is usage based. You pay as you go from a prepaid balance, starting with $10: each action is billed at the vendor's API price with 0% markup, listed on ${CATALOG_URL}, and each campaign spends only up to the caps you set (a max budget with a period, plus a max volume if you want one; a max volume always needs a max budget beside it). See what each result cost you in the dashboard.`,
       },
     },
   ],

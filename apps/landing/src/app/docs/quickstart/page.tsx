@@ -113,7 +113,7 @@ export default function QuickstartPage() {
           Ask your client to read the distribute.you skills (<code>distribute_list_skills</code>,
           then <code>distribute_read_skill</code>, starting with <code>index</code>). They are the
           steps our own Copilot follows. A campaign is one sales funnel run for one offer, and it
-          spends only up to the caps you state: a max budget and/or a max volume.
+          spends only up to the caps you state: a max budget, plus a max volume if you want one, never a max volume alone.
         </p>
 
         <h2>7. Create things over the API</h2>
