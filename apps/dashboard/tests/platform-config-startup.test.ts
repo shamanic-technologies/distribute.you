@@ -51,6 +51,8 @@ describe("Platform config registration at startup", () => {
       { provider: "deepseek", envVar: "DEEPSEEK_API_KEY" },
       { provider: "moonshot", envVar: "MOONSHOT_API_KEY" },
       { provider: "zai", envVar: "ZAI_API_KEY" },
+      { provider: "cerebras", envVar: "CEREBRAS_API_KEY" },
+      { provider: "groq", envVar: "GROQ_API_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -65,9 +67,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 41 platform keys", () => {
+    it("should register exactly 43 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(41);
+      expect(matches).toHaveLength(43);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {
