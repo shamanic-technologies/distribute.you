@@ -77,6 +77,7 @@ import { phoneSyntaxProblem, toE164 } from "@/lib/phone-syntax";
 import { readGetStartedPrefill } from "@/lib/get-started-prefill";
 import type { PhoneValue } from "@/components/onboarding/phone-input";
 import { PhoneField, defaultPhoneCountry } from "./phone-field";
+import { AiSetup, aiSetupTitle, useTouchOnly } from "./ai-setup";
 import {
   DEFAULT_SIGNUP_DRAFT,
   briefToLaunch,
@@ -158,6 +159,8 @@ import {
   GET_STARTED_YOU_KEY,
   parseRememberedYou,
   aiSetupPrompt,
+  chatAppSetupPrompt,
+  type AiApp,
   givenName as nameOf,
   type GiveDraftKey,
   type LeverDraftKey,
@@ -346,7 +349,10 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [exits, setExits] = useState<RefusalExits | null>(null);
   // After the first page (owner 2026-10-15): set up with their own AI, or here step by step.
   // Nothing is spent before they pick "Myself".
-  const [setup, setSetup] = useState<{ raw: string; view: "choose" | "ai" } | null>(null);
+  // With my AI: which AI they use (AI-SETUP-STUCK-1124), and whether a phone visitor asked
+  // for the AI steps anyway (a phone gets the walk first).
+  const [setup, setSetup] = useState<{ raw: string; view: "choose" | "ai"; app: AiApp | null; forced: boolean } | null>(null);
+  const touchOnly = useTouchOnly();
   const [started, setStarted] = useState(false);
   // One short Telegram line to the owner per signup step (lib/owner-ping.ts), once per page load.
   // Declared up here: the site-entered line fires from the submit itself, before the walk starts.
@@ -1686,7 +1692,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     setExits(null);
     if (!org && !chosen) {
       recordVisitor(raw);
-      setSetup({ raw, view: "choose" });
+      setSetup({ raw, view: "choose", app: null, forced: false });
       return;
     }
     ran.current = true;
@@ -1920,30 +1926,58 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const orgBar = org ? <OrgBar orgId={org.orgId} snapshotKey={snapshotKey} started={started} /> : null;
 
   if (!started && setup) {
+    const you = {
+      website: setup.raw.trim().replace(/^https?:\/\//i, "").replace(/\/$/, ""),
+      person: givenPerson,
+      phoneE164: givenPhone ? toE164(givenPhone) : null,
+    };
+    const manual = () => {
+      posthog.capture("get_started_setup_chosen", { mode: "manual" });
+      const raw = setup.raw;
+      setSetup(null);
+      void start(raw, true);
+    };
     return (
       <SetupChoice
         view={setup.view}
-        prompt={aiSetupPrompt({
-          website: setup.raw.trim().replace(/^https?:\/\//i, "").replace(/\/$/, ""),
-          person: givenPerson,
-          phoneE164: givenPhone ? toE164(givenPhone) : null,
-        })}
+        touchOnly={touchOnly}
+        title={aiSetupTitle(setup.app, touchOnly, setup.forced)}
         onAi={() => {
           posthog.capture("get_started_setup_chosen", { mode: "ai" });
           pingOnce("ai_setup", () => pingOwner({ event: "ai_setup", domain: hostOf(websiteUrl(setup.raw)) }));
           setSetup({ ...setup, view: "ai" });
         }}
-        onCopied={() => {
-          posthog.capture("get_started_ai_prompt_copied");
-          pingOnce("ai_prompt_copied", () => pingOwner({ event: "ai_prompt_copied", domain: hostOf(websiteUrl(setup.raw)) }));
-        }}
-        onManual={() => {
-          posthog.capture("get_started_setup_chosen", { mode: "manual" });
-          const raw = setup.raw;
-          setSetup(null);
-          void start(raw, true);
-        }}
-        onBack={() => (setup.view === "ai" ? setSetup({ ...setup, view: "choose" }) : setSetup(null))}
+        ai={
+          <AiSetup
+            app={setup.app}
+            touchOnly={touchOnly}
+            forced={setup.forced}
+            terminalPrompt={aiSetupPrompt(you)}
+            chatPrompt={chatAppSetupPrompt(you)}
+            onPick={(app) => {
+              posthog.capture("get_started_ai_app_chosen", { ai: app });
+              setSetup({ ...setup, app });
+            }}
+            onForce={() => {
+              posthog.capture("get_started_ai_phone_forced");
+              setSetup({ ...setup, forced: true });
+            }}
+            onCopied={(app, what) => {
+              posthog.capture("get_started_ai_prompt_copied", { ai: app, what, touch_only: touchOnly });
+              if (what === "prompt")
+                pingOnce("ai_prompt_copied", () => pingOwner({ event: "ai_prompt_copied", domain: hostOf(websiteUrl(setup.raw)) }));
+            }}
+            onManual={() => manual()}
+          />
+        }
+        onManual={() => manual()}
+        onBack={() =>
+          setup.view === "choose"
+            ? setSetup(null)
+            : setup.app !== null
+              ? setSetup({ ...setup, app: null })
+              : setSetup({ ...setup, view: "choose", forced: false })
+        }
       />
     );
   }
@@ -2527,69 +2561,61 @@ function Hero({
 }
 
 /**
- * After the first page (owner 2026-10-15): two big choices. "With my AI" hands over one
- * message to paste into their own AI (it connects our MCP and opens the account);
- * "Myself" runs the walk here.
+ * After the first page (owner 2026-10-15): two big choices. "With my AI" asks which AI
+ * they use, then shows only the steps that AI can follow (`AiSetup`, AI-SETUP-STUCK-1124);
+ * "Myself" runs the walk here. On a phone, "Myself" comes first: no AI app can add our
+ * tools from a phone.
  */
 function SetupChoice({
   view,
-  prompt,
+  touchOnly,
+  ai,
+  title,
   onAi,
-  onCopied,
   onManual,
   onBack,
 }: {
   view: "choose" | "ai";
-  prompt: string;
+  touchOnly: boolean;
+  ai: React.ReactNode;
+  title: string;
   onAi: () => void;
-  onCopied: () => void;
   onManual: () => void;
   onBack: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(prompt);
-      setCopied(true);
-      onCopied();
-    } catch (e) {
-      console.error("[get-started] AI instructions not copied:", e);
-    }
-  }
+  const aiCard = (
+    <button key="ai" type="button" onClick={onAi} className="k-card flex min-h-[148px] flex-col items-start gap-3 p-5 text-left">
+      <span className="flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ background: "color-mix(in oklch, var(--data-teal) 16%, transparent)", color: "var(--data-teal)" }}>
+        <RobotIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <span className="k-fg text-[16px] font-medium">With my AI</span>
+      <span className="k-fg2 text-[13px] leading-5">
+        {touchOnly ? "From a computer, with ChatGPT, Claude or Claude Code." : "ChatGPT, Claude, Claude Code, Codex or Cursor."}
+      </span>
+    </button>
+  );
+  const manualCard = (
+    <button key="manual" type="button" onClick={onManual} className="k-card flex min-h-[148px] flex-col items-start gap-3 p-5 text-left">
+      <span className="flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ background: "color-mix(in oklch, var(--accent) 16%, transparent)", color: "var(--accent)" }}>
+        <HandWavingIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <span className="k-fg text-[16px] font-medium">Myself</span>
+      <span className="k-fg2 text-[13px] leading-5">Step by step, right here.</span>
+    </button>
+  );
   return (
     <div className="k-canvas relative flex min-h-[100dvh] items-center justify-center px-6 py-10">
       <div className="w-full max-w-[560px]">
         <p className="k-label gs-in">distribute.you</p>
         <h1 className="gs-in k-fg mt-3 text-[28px] font-medium leading-9 tracking-[-0.01em]">
-          {view === "ai" ? "Paste this into your AI." : "How do you want to set up?"}
+          {view === "ai" ? title : "How do you want to set up?"}
         </h1>
         {view === "choose" ? (
           <div className="gs-in mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ animationDelay: "60ms" }}>
-            <button type="button" onClick={onAi} className="k-card flex min-h-[148px] flex-col items-start gap-3 p-5 text-left">
-              <span className="flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ background: "color-mix(in oklch, var(--data-teal) 16%, transparent)", color: "var(--data-teal)" }}>
-                <RobotIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
-              </span>
-              <span className="k-fg text-[16px] font-medium">With my AI</span>
-              <span className="k-fg2 text-[13px] leading-5">Paste one message into Claude Code, Codex or ChatGPT.</span>
-            </button>
-            <button type="button" onClick={onManual} className="k-card flex min-h-[148px] flex-col items-start gap-3 p-5 text-left">
-              <span className="flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ background: "color-mix(in oklch, var(--accent) 16%, transparent)", color: "var(--accent)" }}>
-                <HandWavingIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
-              </span>
-              <span className="k-fg text-[16px] font-medium">Myself</span>
-              <span className="k-fg2 text-[13px] leading-5">Step by step, right here.</span>
-            </button>
+            {touchOnly ? [manualCard, aiCard] : [aiCard, manualCard]}
           </div>
         ) : (
-          <div className="gs-in mt-6" style={{ animationDelay: "60ms" }}>
-            <pre className="k-inset k-fg2 max-h-[320px] overflow-auto whitespace-pre-wrap rounded-[12px] p-4 text-[13px] leading-5">{prompt}</pre>
-            <button type="button" onClick={() => void copy()} className="k-btn-accent k-cta mt-4 flex w-full items-center justify-center">
-              {copied ? "Copied. Paste it into your AI." : "Copy instructions"}
-            </button>
-            <button type="button" onClick={onManual} className="k-btn-ghost -ml-2 mt-3 h-7 text-[12px]">
-              Set up myself instead
-            </button>
-          </div>
+          ai
         )}
         <div className="mt-4">
           <BackLink onBack={onBack} />

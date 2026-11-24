@@ -569,8 +569,7 @@ export const AGENT_SIGNUP_START_URL = "https://api.distribute.you/v1/agent-signu
  * a newly added server loads only after a restart, and the visitor is never asked to
  * restart (LBVisible 2026-10-20 copied the old MCP-first message and was back on the
  * manual walk 99 s later, no signup ever reached us). A chat app that cannot run
- * commands (ChatGPT, claude.ai) adds the server as a connector instead: it needs no
- * key, the signup tools open the account inside that connection.
+ * commands (ChatGPT, claude.ai) gets its own steps: `chatAppSetupPrompt`.
  */
 export function aiSetupPrompt(input: { website: string; person: GetStartedName | null; phoneE164: string | null }): string {
   const name = input.person ? [input.person.firstName, input.person.lastName].filter(Boolean).join(" ") : "";
@@ -588,10 +587,82 @@ export function aiSetupPrompt(input: { website: string; person: GetStartedName |
     `3. Install the distribute.you MCP server (${DISTRIBUTE_MCP_URL}) with that key, for my next sessions. It only loads after a restart, so do not ask me to restart: in this session, keep going with the REST API and the same key.`,
     "4. Read the method skills (GET /v1/skills, then GET /v1/skills/index) and follow them to set up my brand, my offer, who I sell to and my first campaign.",
     "5. Ask me before anything that spends money. When I agree, send me the payment link.",
-    "",
-    `If you cannot run commands here (ChatGPT, claude.ai), walk me through adding ${DISTRIBUTE_MCP_URL} as a connector in this app, one step at a time, with no authentication. Then do the same steps with its tools: distribute_signup_start opens my account.`,
   ].join("\n");
 }
+
+/**
+ * Which AI the visitor sets up with (AI-SETUP-STUCK-1124). 13 people copied the one
+ * terminal message from 2026-10-30 to 2026-11-24; only the 2 who ran a terminal agent
+ * ever reached our API. A chat app cannot send a POST, so it gets its own steps: add
+ * our MCP server as a connector first, then a short message that uses only its tools.
+ */
+export type AiApp = "terminal" | "chatgpt" | "claude";
+
+export const AI_APPS: { key: AiApp; name: string; hint: string }[] = [
+  { key: "terminal", name: "Claude Code, Codex or Cursor", hint: "An AI that runs commands on your computer." },
+  { key: "chatgpt", name: "ChatGPT", hint: "On chatgpt.com or the desktop app." },
+  { key: "claude", name: "Claude", hint: "On claude.ai or the desktop app." },
+];
+
+/**
+ * The message for a chat app, once our connector is added there. It names only the
+ * connector's tools: no URL to call, no file to save (a chat app can do neither).
+ */
+export function chatAppSetupPrompt(input: { website: string; person: GetStartedName | null; phoneE164: string | null }): string {
+  const name = input.person ? [input.person.firstName, input.person.lastName].filter(Boolean).join(" ") : "";
+  const you = [`My website: ${input.website}`, name ? `My name: ${name}` : null, input.phoneE164 ? `My WhatsApp: ${input.phoneE164}` : null]
+    .filter((l): l is string => !!l)
+    .join("\n");
+  const ask = input.phoneE164 ? "Ask me for my email." : "Ask me for my email and my phone number.";
+  return [
+    "Set up distribute.you for my company. distribute.you finds new clients for B2B companies with cold email.",
+    "",
+    you,
+    "",
+    "Use the distribute.you connector tools in this chat for every step. Do not open any link yourself.",
+    `1. Open my account. ${ask} Call distribute_signup_start with my email and my ${input.phoneE164 ? "WhatsApp number" : "phone number"}. Then call distribute_signup_complete with the 6-digit code I give you.`,
+    "2. Call distribute_list_skills, then distribute_read_skill with index. Follow it to set up my brand, my offer, who I sell to and my first campaign.",
+    "3. Ask me before anything that spends money. When I agree, call distribute_prepay and give me the payment link.",
+    "",
+    "If you cannot see the distribute.you tools, tell me so and stop.",
+  ].join("\n");
+}
+
+/**
+ * The clicks to add our MCP server as a connector with no sign-in, per chat app, and
+ * which plans have it. Read from each vendor's help on 2026-11-24 (ChatGPT renamed
+ * connectors to Plugins on 2026-07-09; Claude moved them under Customize):
+ * help.openai.com/en/articles/12584461, developers.openai.com/api/docs/guides/custom-mcp-server,
+ * support.claude.com/en/articles/11175166. Both add it from the web or desktop only.
+ */
+export const CONNECTOR_STEPS: Record<Exclude<AiApp, "terminal">, { steps: string[]; plans: string }> = {
+  chatgpt: {
+    steps: [
+      "On chatgpt.com, open Plugins in the sidebar.",
+      "Click +, then Add custom MCP server.",
+      "Name it distribute.you and paste the URL below in Server URL.",
+      "Pick No authentication and tick I understand and want to continue.",
+      "Click Create as a plugin, then install it.",
+      "In a new chat, type @ and pick distribute.you.",
+    ],
+    plans:
+      "Works on ChatGPT Business, Enterprise and Edu. Free and Go plans do not have it, and Pro can only read. No + button on Plugins? The Claude app works on every plan.",
+  },
+  claude: {
+    steps: [
+      "On claude.ai or the desktop app, open Customize, then Connectors.",
+      "Click + Add, then Add custom connector.",
+      "Name it distribute.you, paste the URL below and click Continue.",
+      "Pick No sign in, then click Add.",
+      "In a new chat, click + at the bottom left, open Connectors and switch distribute.you on.",
+    ],
+    plans:
+      "Works on every Claude plan, free included. The free plan holds one custom connector. On Team or Enterprise, an owner adds it first in Organization settings.",
+  },
+};
+
+/** A phone or tablet: no terminal, and chat apps add connectors from a computer. */
+export const TOUCH_ONLY_QUERY = "(hover: none) and (pointer: coarse)";
 
 /**
  * What a visitor told us about THEMSELVES on an earlier walk in this browser (owner
