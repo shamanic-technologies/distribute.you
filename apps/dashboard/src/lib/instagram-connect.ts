@@ -101,8 +101,8 @@ export function instagramDeniedMessage(error: string | null): string {
 
 /** True when social-service says our Instagram app is not set up yet (its named 502 `instagram_not_configured`). */
 export function isInstagramNotConfigured(err: unknown): boolean {
-  const e = err as { status?: unknown; body?: { type?: unknown } | null } | null;
-  return e?.status === 502 && e.body?.type === "instagram_not_configured";
+  const e = err as { status?: unknown; body?: { type?: unknown; details?: { provider?: unknown } | null } | null } | null;
+  return e?.status === 502 && (e.body?.type === "instagram_not_configured" || typeof e.body?.details?.provider === "string");
 }
 
 /** What the card says when starting the login failed. Never the producer's own message. */

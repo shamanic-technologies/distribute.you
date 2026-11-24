@@ -65,6 +65,9 @@ describe("Instagram connect round trip (REELS-1124)", () => {
     };
     expect(instagramStartErrorMessage(notConfigured)).toBe("Instagram is not set up on our side yet. Try again soon.");
     expect(instagramFinishErrorMessage(notConfigured)).toBe("Instagram is not set up on our side yet. Try again soon.");
+    expect(instagramStartErrorMessage({ status: 502, body: { error: "missing", details: { provider: "INSTAGRAM_OAUTH_CONNECT_APP" } } })).toBe(
+      "Instagram is not set up on our side yet. Try again soon.",
+    );
     expect(instagramStartErrorMessage({ status: 502, body: { type: "upstream", error: "boom" } })).toBe(
       "We could not open Instagram just now. Try again.",
     );
