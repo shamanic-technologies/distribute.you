@@ -9,6 +9,7 @@ import { parseGetStartedSnapshot, parseSnapshotPhone } from "../src/lib/v2/get-s
  * campaign on the "WhatsApp number given" trigger, fed by the PostHog connector).
  */
 const gs = readFileSync(join(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
+const aiSetup = readFileSync(join(__dirname, "../src/components/v2/get-started/ai-setup.tsx"), "utf8");
 const hero = gs.slice(gs.indexOf("function Hero({"), gs.indexOf("function OrgBar("));
 const start = gs.slice(gs.indexOf("async function start(raw: string"), gs.indexOf("async function startWithoutWebsite("));
 
@@ -136,20 +137,32 @@ describe("after the first page: set up with my AI, or myself (owner 2026-10-15)"
   it("a public Start records the visitor, then shows the choice before anything is spent", () => {
     const head = start.slice(0, start.indexOf("ran.current = true"));
     expect(head).toContain("recordVisitor(raw)");
-    expect(head).toContain('setSetup({ raw, view: "choose" })');
-    expect(start.indexOf('setSetup({ raw, view: "choose" })')).toBeLessThan(start.indexOf("startAnonSession(url)"));
+    expect(head).toContain('setSetup({ raw, view: "choose", app: null, forced: false })');
+    expect(start.indexOf('setSetup({ raw, view: "choose", app: null, forced: false })')).toBeLessThan(start.indexOf("startAnonSession(url)"));
     expect(gs).toContain("posthog.setPersonProperties({ website: typed })");
   });
 
-  it("Myself runs the walk; With my AI shows the message to copy", () => {
+  it("Myself runs the walk; With my AI asks which AI, then shows that AI's steps", () => {
     expect(gs).toContain("void start(raw, true)");
     expect(gs).toContain('posthog.capture("get_started_setup_chosen", { mode: "ai" })');
     expect(gs).toContain('posthog.capture("get_started_setup_chosen", { mode: "manual" })');
     const choice = gs.slice(gs.indexOf("function SetupChoice("), gs.indexOf("function OrgBar("));
     expect(choice).toContain("With my AI");
     expect(choice).toContain("Myself");
-    expect(choice).toContain("navigator.clipboard.writeText(prompt)");
-    expect(choice).toContain("Copy instructions");
+    // A phone gets the walk first (AI-SETUP-STUCK-1124).
+    expect(choice).toContain("touchOnly ? [manualCard, aiCard] : [aiCard, manualCard]");
+    expect(aiSetup).toContain("navigator.clipboard.writeText(text)");
+    expect(aiSetup).toContain("Copy instructions");
+    expect(aiSetup).toContain("Which AI do you use?");
+    expect(aiSetup).toContain("Set up here, step by step");
+    expect(aiSetup).toContain("DISTRIBUTE_MCP_URL");
+  });
+
+  it("the copy event names the AI picked, so we see which path converts", () => {
+    expect(gs).toContain('posthog.capture("get_started_ai_prompt_copied", { ai: app, what, touch_only: touchOnly })');
+    expect(gs).toContain('posthog.capture("get_started_ai_app_chosen", { ai: app })');
+    expect(gs).toContain("terminalPrompt={aiSetupPrompt(you)}");
+    expect(gs).toContain("chatPrompt={chatAppSetupPrompt(you)}");
   });
 
   it("the AI message carries what they typed and asks the rest", async () => {
@@ -162,12 +175,27 @@ describe("after the first page: set up with my AI, or myself (owner 2026-10-15)"
     expect(full).toContain("/v1/agent-signups/start");
     expect(full).toContain("do not ask me to restart");
     expect(full).toContain("keep going with the REST API");
-    expect(full).toContain("distribute_signup_start");
     expect(full).toContain("ask me for my email");
     const bare = aiSetupPrompt({ website: "acme.com", person: null, phoneE164: null });
     expect(bare).not.toContain("My name");
     expect(bare).toContain("ask me for both");
     expect(full).not.toMatch(/[—–]/);
+  });
+
+  it("a chat app's message uses only the connector tools: no POST, no URL, no skill file", async () => {
+    const { chatAppSetupPrompt, CONNECTOR_STEPS } = await import("../src/lib/v2/get-started");
+    const full = chatAppSetupPrompt({ website: "acme.com", person: { firstName: "Marie", lastName: "Curie" }, phoneE164: "+33612345678" });
+    expect(full).toContain("My website: acme.com");
+    expect(full).toContain("distribute_signup_start");
+    expect(full).toContain("distribute_signup_complete");
+    expect(full).toContain("distribute_read_skill");
+    expect(full).not.toMatch(/POST|https?:\/\/|skill\.md|\/v1\//);
+    expect(full).toContain("Ask me for my email.");
+    const bare = chatAppSetupPrompt({ website: "acme.com", person: null, phoneE164: null });
+    expect(bare).toContain("Ask me for my email and my phone number.");
+    for (const text of [full, bare, ...Object.values(CONNECTOR_STEPS).flatMap((g) => [...g.steps, g.plans])]) {
+      expect(text).not.toMatch(/[—–]/);
+    }
   });
 
   it("every step sends what was entered, never from the dashboard walk", () => {
@@ -185,6 +213,8 @@ describe("the choice screen goes back like every step (owner 2026-10-15)", () =>
     const choice = gs.slice(gs.indexOf("function SetupChoice("), gs.indexOf("function OrgBar("));
     expect(choice).toContain("<BackLink onBack={onBack} />");
     expect(choice).not.toContain("Change my website");
-    expect(gs).toContain('setup.view === "ai" ? setSetup({ ...setup, view: "choose" }) : setSetup(null)');
+    // Back walks up one level: the AI's steps, then the AI list, then the choice.
+    expect(gs).toContain('? setSetup({ ...setup, app: null })');
+    expect(gs).toContain(': setSetup({ ...setup, view: "choose", forced: false })');
   });
 });
