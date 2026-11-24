@@ -304,6 +304,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "localLlm",
   // LinkedIn accounts of a brand, the same card beside X (LINKEDIN-ACCOUNTS-1106).
   "linkedinAccounts",
+  // Instagram accounts of a brand, the same card beside X (REELS-1124).
+  "instagramAccounts",
   // Free credits committed but not yet granted, on the Billing page.
   "freeCreditPromises",
   // Brand metadata + config + small summaries.

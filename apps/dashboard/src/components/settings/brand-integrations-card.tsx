@@ -33,6 +33,7 @@ import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
 import { ThreadsAccountsCard } from "@/components/v2/threads-accounts-card";
 import { XAccountsCard } from "@/components/v2/x-accounts-card";
 import { LinkedinAccountsCard } from "@/components/v2/linkedin-accounts-card";
+import { InstagramAccountsCard } from "@/components/v2/instagram-accounts-card";
 import {
   INTEGRATIONS,
   isStripeProvider,
@@ -192,6 +193,8 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
   rows.push(<XAccountsCard key="x" bare />);
   // LinkedIn accounts beside X, same card (LINKEDIN-ACCOUNTS-1106): every post of the connected page comes in, hand posts included.
   rows.push(<LinkedinAccountsCard key="linkedin" bare />);
+  // Instagram accounts beside them, the X card's twin (REELS-1124): Reels publish on a Pro (AI) account.
+  rows.push(<InstagramAccountsCard key="instagram" bare />);
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
   return (

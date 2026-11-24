@@ -1587,6 +1587,101 @@ export async function disconnectXAccount(accountId: string, token?: string): Pro
   return apiCall<unknown>(`/orgs/x/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
 }
 
+// ==================== INSTAGRAM ACCOUNTS (social-service, REELS-1124) ====================
+//
+// The X model for Instagram professional accounts (Business or Creator): any member connects
+// any number to a brand, each typed. social-service owns the Instagram login; the dashboard
+// starts it with the fixed redirect URI (`lib/instagram-connect.ts`) and relays `code` + `state`
+// back. `accountTypeLabel` and `health` are served: never re-derived here.
+
+const InstagramAccountSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  igUserId: z.string(),
+  username: z.string(),
+  name: z.string().nullable(),
+  profileImageUrl: z.string().nullable(),
+  profileUrl: z.string(),
+  igAccountType: z.string().nullable(),
+  accountType: XAccountTypeSchema,
+  accountTypeLabel: z.string(),
+  health: z.enum(["connected", "needs_reconnect"]),
+  healthReason: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type InstagramAccount = z.infer<typeof InstagramAccountSchema>;
+
+const InstagramConnectStartResponseSchema = z.object({
+  authorizationUrl: z.string().url(),
+  state: z.string(),
+  expiresAt: z.string(),
+  redirectUri: z.string(),
+});
+export type InstagramConnectStart = z.infer<typeof InstagramConnectStartResponseSchema>;
+
+export async function listInstagramAccounts(brandId: string, token?: string): Promise<InstagramAccount[]> {
+  const raw = await apiCall<unknown>(`/orgs/instagram/accounts?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = z.object({ accounts: z.array(InstagramAccountSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listInstagramAccounts response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("listInstagramAccounts returned an unexpected shape");
+  }
+  return parsed.data.accounts;
+}
+
+export async function startInstagramConnect(
+  input: { brandId: string; accountType: z.infer<typeof XAccountTypeSchema>; redirectUri: string },
+  token?: string,
+): Promise<InstagramConnectStart> {
+  // brandId in the query too: identity values reach downstream services from headers/query only.
+  const raw = await apiCall<unknown>(`/orgs/instagram/auth/start?brandId=${encodeURIComponent(input.brandId)}`, {
+    token,
+    method: "POST",
+    body: input,
+  });
+  const parsed = InstagramConnectStartResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] startInstagramConnect response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("startInstagramConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function finishInstagramConnect(
+  input: { code: string; state: string },
+  token?: string,
+): Promise<{ account: InstagramAccount; created: boolean }> {
+  const raw = await apiCall<unknown>(`/orgs/instagram/auth/callback`, { token, method: "POST", body: input });
+  const parsed = z.object({ account: InstagramAccountSchema, created: z.boolean() }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] finishInstagramConnect response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("finishInstagramConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function setInstagramAccountType(
+  accountId: string,
+  accountType: z.infer<typeof XAccountTypeSchema>,
+  token?: string,
+): Promise<InstagramAccount> {
+  const raw = await apiCall<unknown>(`/orgs/instagram/accounts/${encodeURIComponent(accountId)}`, {
+    token,
+    method: "PATCH",
+    body: { accountType },
+  });
+  const parsed = z.object({ account: InstagramAccountSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] setInstagramAccountType response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("setInstagramAccountType returned an unexpected shape");
+  }
+  return parsed.data.account;
+}
+
+export async function disconnectInstagramAccount(accountId: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(`/orgs/instagram/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
+}
+
 // ==================== AI ON THE USER'S OWN CLAUDE CODE (chat-service, LOCAL-CLAUDE-1116) ====================
 //
 // An org declares that every LLM call chat-service makes for it runs on the user's own Claude Code
