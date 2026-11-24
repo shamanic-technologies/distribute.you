@@ -36,6 +36,15 @@ describe("formatOwnerPing", () => {
     expect(formatOwnerPing({ event: "trial", who: "Grace", amountUsd: 99 })).toBe("🎟️ Grace · started the free trial of the $99/month plan");
   });
 
+  it("states the AI-agent setup chosen and its prompt copied", () => {
+    expect(formatOwnerPing({ event: "ai_setup", who: null, domain: "b2bsignals.ai", country: "BG" })).toBe(
+      "🤖 Visitor (no account yet) · b2bsignals.ai · chose to set up with their AI agent · BG",
+    );
+    expect(formatOwnerPing({ event: "ai_prompt_copied", who: null, domain: "b2bsignals.ai" })).toBe(
+      "📋 Visitor (no account yet) · b2bsignals.ai · copied the setup prompt for their AI agent",
+    );
+  });
+
   it("refuses a step ping without its step and a paid ping without its amount", () => {
     expect(() => formatOwnerPing({ event: "step", who: null })).toThrow();
     expect(() => formatOwnerPing({ event: "paid", who: null })).toThrow();
@@ -78,6 +87,22 @@ describe("every signup step pings the owner", () => {
     expect(s).toContain('pingOwner({ event: "started"');
     expect(s).toContain('pingOwner({ event: "step"');
     expect(s).toContain('pingOwner({ event: "wall"');
+  });
+
+  it("the site pings at SUBMIT, before the choice screen, so the AI-agent path is heard (b2bsignals.ai 2026-11-24)", () => {
+    const s = src("src/components/v2/get-started/get-started.tsx");
+    const fn = s.slice(s.indexOf("function recordVisitor("), s.indexOf("async function createAndWalk("));
+    expect(fn).toContain('pingOnce("started", () => pingOwner({ event: "started"');
+    // One dedup set for the submit and the walk: the site line is never sent twice.
+    expect(s).toContain("const once = pingOnce;");
+    expect(s.indexOf("const pingOnce = (")).toBeLessThan(s.indexOf("function recordVisitor("));
+  });
+
+  it("the AI-agent choice and the prompt copy each ping once", () => {
+    const s = src("src/components/v2/get-started/get-started.tsx");
+    const choice = s.slice(s.indexOf("<SetupChoice"), s.indexOf("onManual={"));
+    expect(choice).toContain('pingOnce("ai_setup", () => pingOwner({ event: "ai_setup"');
+    expect(choice).toContain('pingOnce("ai_prompt_copied", () => pingOwner({ event: "ai_prompt_copied"');
   });
 
   it("payment and launch, on both payment surfaces", () => {
