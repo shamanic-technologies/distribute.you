@@ -354,6 +354,14 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [setup, setSetup] = useState<{ raw: string; view: "choose" | "ai"; app: AiApp | null; forced: boolean } | null>(null);
   const touchOnly = useTouchOnly();
   const [started, setStarted] = useState(false);
+  // One short Telegram line to the owner per signup step (lib/owner-ping.ts), once per page load.
+  // Declared up here: the site-entered line fires from the submit itself, before the walk starts.
+  const pinged = useRef(new Set<string>());
+  const pingOnce = (key: string, send: () => void) => {
+    if (pinged.current.has(key)) return;
+    pinged.current.add(key);
+    send();
+  };
 
   const [brandId, setBrandId] = useState<string | null>(null);
   const [brandName, setBrandName] = useState<string | null>(null);
@@ -1623,15 +1631,10 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // One short Telegram line to the owner at each step of the walk (lib/owner-ping.ts):
   // the site entered, each step the stage reaches, the payment wall. Once per step per
   // page load; a reload resumes and says so again, which is news too.
-  const pinged = useRef(new Set<string>());
   const pingHost = domain ?? (website ? hostOf(websiteUrl(website)) : null);
   useEffect(() => {
     if (!started) return;
-    const once = (key: string, send: () => void) => {
-      if (pinged.current.has(key)) return;
-      pinged.current.add(key);
-      send();
-    };
+    const once = pingOnce;
     once("started", () => pingOwner({ event: "started", domain: pingHost }));
     const st = GET_STARTED_STEPS[stageIdx];
     once(`step:${st.key}`, () =>
@@ -1722,6 +1725,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     posthog.setPersonProperties({ website: typed });
     // `website` also feeds the owner's Telegram visit recap (lib/visit-recap.ts).
     posthog.capture("get_started_website_submitted", { website: typed });
+    // The owner hears of the site at submit: a visitor who then takes the AI-agent path never
+    // starts the walk, and its pings waited on `started` (b2bsignals.ai, 2026-11-24, no line at all).
+    pingOnce("started", () => pingOwner({ event: "started", domain: hostOf(websiteUrl(raw)) }));
     const given = phone.national.trim() ? { ...phone, national: phone.national.trim() } : null;
     givenPhoneRef.current = given;
     setGivenPhone(given);
@@ -1935,6 +1941,12 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       <SetupChoice
         view={setup.view}
         touchOnly={touchOnly}
+        title={aiSetupTitle(setup.app, touchOnly, setup.forced)}
+        onAi={() => {
+          posthog.capture("get_started_setup_chosen", { mode: "ai" });
+          pingOnce("ai_setup", () => pingOwner({ event: "ai_setup", domain: hostOf(websiteUrl(setup.raw)) }));
+          setSetup({ ...setup, view: "ai" });
+        }}
         ai={
           <AiSetup
             app={setup.app}
@@ -1950,15 +1962,14 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
               posthog.capture("get_started_ai_phone_forced");
               setSetup({ ...setup, forced: true });
             }}
-            onCopied={(app, what) => posthog.capture("get_started_ai_prompt_copied", { ai: app, what, touch_only: touchOnly })}
+            onCopied={(app, what) => {
+              posthog.capture("get_started_ai_prompt_copied", { ai: app, what, touch_only: touchOnly });
+              if (what === "prompt")
+                pingOnce("ai_prompt_copied", () => pingOwner({ event: "ai_prompt_copied", domain: hostOf(websiteUrl(setup.raw)) }));
+            }}
             onManual={() => manual()}
           />
         }
-        title={aiSetupTitle(setup.app, touchOnly, setup.forced)}
-        onAi={() => {
-          posthog.capture("get_started_setup_chosen", { mode: "ai" });
-          setSetup({ ...setup, view: "ai" });
-        }}
         onManual={() => manual()}
         onBack={() =>
           setup.view === "choose"
