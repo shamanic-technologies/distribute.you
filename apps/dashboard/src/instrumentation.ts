@@ -391,6 +391,10 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "deepseek", envVar: "DEEPSEEK_API_KEY" },
   { provider: "moonshot", envVar: "MOONSHOT_API_KEY" },
   { provider: "zai", envVar: "ZAI_API_KEY" },
+  // Open-weight models on the Cerebras and Groq free tiers (OPEN-LLM-FREE-1124),
+  // compared by the Rating against the private models. Same byte-critical slugs rule.
+  { provider: "cerebras", envVar: "CEREBRAS_API_KEY" },
+  { provider: "groq", envVar: "GROQ_API_KEY" },
   { provider: "scrape-do", envVar: "SCRAPE_DO_API_KEY" },
   { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
