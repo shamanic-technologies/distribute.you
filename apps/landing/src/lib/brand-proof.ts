@@ -23,6 +23,12 @@ export const BRAND_PROOF_DOMAIN = "distribute.you";
  * producer's max so the press list is whole; the wall keeps its first 24.
  */
 export const BRAND_PROOF_WALL_LIMIT = 24;
+/**
+ * Owner 2026-11-25: « 8 par ligne sur 3 lignes ». The wall is a grid of 8 columns
+ * (4 on narrow screens), and it only draws FULL rows: fewer than 24 drawable logos
+ * round down to a multiple of 8, so no logo ever sits alone on the last line.
+ */
+export const BRAND_PROOF_ROW = 8;
 export const BRAND_PROOF_FETCH_LIMIT = 100;
 
 /** The wall's token: no employer logo served, no wall at all. */
@@ -75,7 +81,7 @@ function drawable<T extends BrandProofCompany>(c: T): boolean {
  */
 function logoImg(c: BrandProofCompany): string {
   const name = escapeHtml((c.name ?? "").trim());
-  return `<img src="${escapeHtml(safeUrl(c.logoUrl)!)}" alt="" loading="lazy" decoding="async"><span>${name}</span>`;
+  return `<img src="${escapeHtml(safeUrl(c.logoUrl)!)}" alt="" loading="lazy" decoding="async"><span title="${name}">${name}</span>`;
 }
 
 /**
@@ -86,7 +92,8 @@ function logoImg(c: BrandProofCompany): string {
  */
 export function brandProofHtml(proof: BrandProof | null): string {
   if (!proof) return "";
-  const employers = (proof.employers ?? []).filter(drawable).slice(0, BRAND_PROOF_WALL_LIMIT);
+  const drawn = (proof.employers ?? []).filter(drawable).slice(0, BRAND_PROOF_WALL_LIMIT);
+  const employers = drawn.slice(0, drawn.length - (drawn.length % BRAND_PROOF_ROW));
   if (employers.length === 0) return "";
   return (
     '<section class="framed" id="clients"><div class="wrap">' +

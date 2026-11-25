@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BRAND_PROOF_TOKEN, BRAND_PROOF_WALL_LIMIT, PRESS_PROOF_TOKEN, brandProofHtml, pressProofHtml, type BrandProof } from "../../src/lib/brand-proof";
+import { BRAND_PROOF_ROW, BRAND_PROOF_TOKEN, BRAND_PROOF_WALL_LIMIT, PRESS_PROOF_TOKEN, brandProofHtml, pressProofHtml, type BrandProof } from "../../src/lib/brand-proof";
 
 const company = (name: string, extra: Partial<BrandProof["employers"][number]> = {}) => ({
   companyId: "00000000-0000-4000-8000-000000000001",
@@ -16,7 +16,7 @@ const company = (name: string, extra: Partial<BrandProof["employers"][number]> =
 const proof = (over: Partial<BrandProof> = {}): BrandProof => ({
   brandId: "00000000-0000-4000-8000-0000000000aa",
   domain: "distribute.you",
-  employers: ["Google", "Bain", "EY", "Accor", "IBM", "Visa"].map((n) => company(n)),
+  employers: ["Google", "Bain", "EY", "Accor", "IBM", "Visa", "Uber", "Meta"].map((n) => company(n)),
   press: ["TechBullion", "Forbes", "Wired"].map((n) => ({ ...company(n), article: { url: `https://${n.toLowerCase()}.com/a`, title: "A", publishedAt: null } })),
   ...over,
 });
@@ -44,7 +44,7 @@ describe("brand proof logos (BRAND-PROOF-LOGOS-1121)", () => {
   it("escapes served strings and refuses non-http URLs", () => {
     const base = proof();
     const evil = proof({
-      employers: [...base.employers, company('<b>"Evil"</b>'), company("Js", { logoUrl: "javascript:alert(1)" })],
+      employers: [company('<b>"Evil"</b>'), company("Js", { logoUrl: "javascript:alert(1)" }), ...base.employers],
       press: [...base.press, { ...company("P"), article: { url: "javascript:alert(1)", title: null, publishedAt: null } }],
     });
     for (const html of [brandProofHtml(evil), pressProofHtml(evil)]) {
@@ -66,7 +66,19 @@ describe("brand proof logos (BRAND-PROOF-LOGOS-1121)", () => {
     expect((band.match(/<li aria-hidden="true">/g) ?? []).length).toBe(51);
     expect((band.match(/tabindex="-1"/g) ?? []).length).toBe(51);
     expect(band).toContain("Out50");
-    expect(brandProofHtml(proof({ employers: [company("Solo", { notorietyScore: 3 })] }))).toContain("Solo");
+  });
+
+  it("draws only FULL rows of 8, never a logo alone on the last line (owner 2026-11-25)", () => {
+    expect(BRAND_PROOF_ROW).toBe(8);
+    expect(BRAND_PROOF_WALL_LIMIT % BRAND_PROOF_ROW).toBe(0);
+    const n = (count: number) => (brandProofHtml(proof({ employers: Array.from({ length: count }, (_, i) => company(`C${i}`)) })).match(/<li>/g) ?? []).length;
+    expect(n(11)).toBe(8);
+    expect(n(23)).toBe(16);
+    expect(n(45)).toBe(24);
+    expect(n(7)).toBe(0);
+    const css = readFileSync(join(__dirname, "../../public/landing/v2/styles.css"), "utf8");
+    expect(css).toContain("grid-template-columns: repeat(8, minmax(0, 1fr))");
+    expect(css).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
   });
 
   it("the homepage carries the wall between proof and quotes, and the press band apart, before pricing", () => {
