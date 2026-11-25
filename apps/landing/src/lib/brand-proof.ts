@@ -10,6 +10,11 @@
  * « Press feature found ») and ranked by brand-service (Jev notoriety, then
  * traffic). This module ranks NOTHING: it draws in the producer's order.
  *
+ * Owner 2026-11-25 (BRANDMARK-WALL-1125): the wall reads like learn2reinvent's,
+ * wide grey WORDMARKS with no name typed beside them. brand-service fills
+ * `wordmarkUrl` gradually (best-ranked first); a company without one yet keeps
+ * its square mark and its name, so the wall is never empty during the fill.
+ *
  * Alias-free on purpose so it carries real unit tests.
  */
 
@@ -41,6 +46,10 @@ export interface BrandProofCompany {
   name: string | null;
   domain: string | null;
   logoUrl: string | null;
+  /** Wide wordmark made for a LIGHT background, hosted by us. null or absent = none known yet. */
+  wordmarkUrl?: string | null;
+  /** Its dark-background twin. Both pages draw the wall on a light band, so nothing reads it yet. */
+  wordmarkDarkUrl?: string | null;
   notorietyScore: number;
   monthlyTraffic: number | null;
 }
@@ -70,17 +79,20 @@ function safeUrl(value: string | null | undefined): string | null {
   return /^https?:\/\//i.test(value) ? value : null;
 }
 
-/** A logo needs both a picture and a name to say what it is. */
+/** A logo needs a picture (wordmark or square mark) and a name to say what it is. */
 function drawable<T extends BrandProofCompany>(c: T): boolean {
-  return Boolean(safeUrl(c.logoUrl) && c.name && c.name.trim());
+  return Boolean((safeUrl(c.wordmarkUrl) || safeUrl(c.logoUrl)) && c.name && c.name.trim());
 }
 
 /**
- * logo.dev serves a square MARK, not a wordmark: a grey square alone is not
- * recognisable, so every mark carries the company name beside it.
+ * A wordmark spells the company out: it is drawn alone, its name in the `alt`.
+ * A logo.dev square MARK alone is not recognisable, so it keeps the name beside it.
+ * The class sits on the `<img>` (the `<li>` stays bare) so each stylesheet sizes both kinds.
  */
 function logoImg(c: BrandProofCompany): string {
   const name = escapeHtml((c.name ?? "").trim());
+  const wordmark = safeUrl(c.wordmarkUrl);
+  if (wordmark) return `<img class="wordmark" src="${escapeHtml(wordmark)}" alt="${name}" title="${name}" loading="lazy" decoding="async">`;
   return `<img src="${escapeHtml(safeUrl(c.logoUrl)!)}" alt="" loading="lazy" decoding="async"><span title="${name}">${name}</span>`;
 }
 

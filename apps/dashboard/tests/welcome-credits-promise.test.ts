@@ -153,6 +153,7 @@ describe("landing stylesheet version", () => {
     const STYLES_SHA256_BY_VERSION: Record<string, string> = {
       "25": "b7b0deb2ddf3ede08d694c345dedfe4ff9ebc53ad5cf99f7c4c38aecdcebd07b",
       "26": "5df273306c5c60d4431bca8778b97cd66a4d7f1ce31009dfccc39568233e0a64",
+      "27": "15d5044b60db35c01000c6b5c512ddbf9b3539d479be698562aecb7bc0296189",
     };
     const version = /export const V2_STYLES_VERSION = (\d+);/.exec(read("apps/landing/src/lib/v2-shell.ts"))?.[1] ?? "";
     const css = readFileSync(join(REPO, "apps/landing/public/landing/v2/styles.css"));

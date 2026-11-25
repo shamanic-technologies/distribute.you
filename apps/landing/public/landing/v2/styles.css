@@ -945,16 +945,18 @@ footer :focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 
 
 /* ---------- Team and clients have worked at + As featured in (BRAND-PROOF-LOGOS-1121) ----------
-   The wall: grey marks that warm up on hover, each with its name (a logo.dev mark alone is
-   not recognisable). The press band lives apart, lower on the page (owner 2026-11-25), and
+   The wall: wide grey wordmarks that take their colour on hover, no name typed beside them
+   (owner 2026-11-25, BRANDMARK-WALL-1125). A company whose wordmark is not known yet keeps
+   its square mark with its name under it. The press band lives apart, lower on the page (owner 2026-11-25), and
    scrolls every outlet without end; the list is drawn twice so the loop has no seam. */
 /* Owner 2026-11-25: 8 per row on 3 rows; the renderer only draws full rows (multiple of 8). */
-.logo-wall { list-style: none; margin: 0 auto; padding: 0; max-width: 1200px; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 36px 20px; }
-.logo-wall li { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; }
+.logo-wall { list-style: none; margin: 0 auto; padding: 0; max-width: 1200px; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 48px 32px; align-items: center; }
+.logo-wall li { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-width: 0; }
 .press-track li { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; flex: none; }
 .logo-wall img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; filter: grayscale(1); opacity: 0.75; transition: filter 0.3s, opacity 0.3s; }
 .logo-wall span, .press-track span { font-family: var(--font-display); font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: var(--muted); white-space: nowrap; transition: color 0.3s; }
 .logo-wall span { max-width: 100%; font-size: 14px; line-height: 1.25; text-align: center; white-space: normal; overflow-wrap: anywhere; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.logo-wall img.wordmark { width: auto; max-width: 100%; height: 40px; border-radius: 0; opacity: 0.7; }
 .logo-wall li:hover img, .press-track a:hover img { filter: none; opacity: 1; }
 .logo-wall li:hover span, .press-track a:hover span { color: var(--text); }
 .featured-in { text-align: center; }
@@ -966,10 +968,11 @@ footer :focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 .press-track a { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
 .press-track a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
 .press-track img { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; filter: grayscale(1); opacity: 0.75; transition: filter 0.3s, opacity 0.3s; }
+.press-track img.wordmark { width: auto; max-width: 200px; height: 30px; border-radius: 0; opacity: 0.7; }
 @media (prefers-reduced-motion: reduce) {
   .press-marquee { overflow-x: auto; }
   .press-track { animation: none; }
   .press-track li[aria-hidden="true"] { display: none; }
 }
-@media (max-width: 900px) { .logo-wall { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 16px; } }
-@media (max-width: 520px) { .logo-wall span { font-size: 12px; } }
+@media (max-width: 900px) { .logo-wall { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 36px 20px; } }
+@media (max-width: 520px) { .logo-wall span { font-size: 12px; } .logo-wall img.wordmark { height: 28px; } .press-track img.wordmark { height: 26px; max-width: 160px; } }

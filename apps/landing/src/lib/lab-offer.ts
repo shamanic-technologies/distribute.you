@@ -344,7 +344,8 @@ export function stillPress(html: string): string {
   return html.replace(/<div class="press-marquee"><ul class="press-track" data-brand-proof="press">([\s\S]*?)<\/ul><\/div>/, (_all, items: string) => {
     const byName = new Map<string, string>();
     for (const li of items.match(/<li>[\s\S]*?<\/li>/g) ?? []) {
-      const name = /<span title="([^"]*)"/.exec(li)?.[1];
+      // A square mark names its outlet in the span beside it, a wordmark in its alt.
+      const name = /<span title="([^"]*)"/.exec(li)?.[1] ?? /<img class="wordmark"[^>]* alt="([^"]+)"/.exec(li)?.[1];
       if (name && !byName.has(name)) byName.set(name, li);
     }
     const kept = LAB_PRESS.map((name) => {
