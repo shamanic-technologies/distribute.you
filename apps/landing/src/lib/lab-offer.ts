@@ -1,8 +1,8 @@
 /**
  * The lab's offer (owner 2026-11-25), stated on every page of `lab-distry`:
  *
- * - Self-served: $99/month, 3-day free trial, same agent.
- * - Managed: custom price, our team runs it, 100% money back on fixed outcome prices
+ * - Self-served: $99/month, 3-day free trial.
+ * - Managed: from $499/month, our team runs it, 100% money back on fixed outcome prices
  *   (interested lead, meeting booked, signup, website visit).
  *
  * The live site still states the offer in force in production (usage based, 0% markup,
@@ -44,7 +44,7 @@ export const OLD_OFFER: readonly RegExp[] = [
 
 const A = "(?:'|&#39;|&apos;|’)";
 const SELF_SENTENCE = "Self-served is $99/month with a 3-day free trial.";
-const MANAGED_SENTENCE = "Managed has a custom price and a 100% money back guarantee on fixed outcome prices.";
+const MANAGED_SENTENCE = "Managed starts at $499/month, with 100% money back on fixed outcome prices.";
 
 /** The two plan cards, in the live site's own card markup. */
 export const LAB_PLANS = `<div class="plans">
@@ -63,7 +63,7 @@ export const LAB_PLANS = `<div class="plans">
       </article>
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Managed</span>
-        <div class="plan-price">Custom price<small>100% money back</small></div>
+        <div class="plan-price">From $499/month<small>100% money back</small></div>
         <p class="plan-desc">Our team runs it for you.</p>
         <a class="btn btn-accent btn-lg" href="${LAB_BOOK_A_CALL}" target="_blank" rel="noopener">Book a call</a>
         <div class="plan-included">What's included</div>
@@ -88,7 +88,7 @@ const BLOCKS: readonly Rule[] = [
   // The heading over them.
   [
     /(<section[^>]*id="pricing"[^>]*>\s*<div class="wrap">\s*<div class="section-head[^"]*">\s*<span class="eyebrow">Pricing<\/span>\s*<h2>)[^<]*(<\/h2>\s*<p>)[^<]*(<\/p>)/g,
-    (_m, a, b, c) => `${a}More pipeline for your sales team.${b}The same agent on both plans. Pause or cancel anytime.${c}`,
+    (_m, a, b, c) => `${a}More pipeline for your sales team.${b}Start on your own, or let our team run it. Pause or cancel anytime.${c}`,
   ],
   // The two notes beside the live price list.
   [
@@ -104,7 +104,7 @@ const BLOCKS: readonly Rule[] = [
   [/<li><b>MIT<\/b><span>open source, run it yourself<\/span><\/li>/g, "<li><b>100%</b><span>money back on Managed outcome prices</span></li>"],
   // Our single plan card beside a competitor's plans.
   [/<div class="plan-price">Usage based<small>0% markup<\/small><\/div>/g, '<div class="plan-price">$99/month<small>3-day free trial</small></div>'],
-  [/<li><i><\/i>Open source under MIT<\/li>/g, "<li><i></i>Managed: custom price, 100% money back</li>"],
+  [/<li><i><\/i>Open source under MIT<\/li>/g, "<li><i></i>Managed: from $499/month, 100% money back</li>"],
   // The live price list's rows (`actionPricesHtml`), filled by the route after the builder.
   [/<small>API price, 0% markup<\/small>/g, "<small>unit price</small>"],
   // The footer's link to a section the lab home no longer has.
@@ -118,7 +118,7 @@ const SENTENCES: readonly Rule[] = [
   [/Usage based · 0% markup/g, "$99/month · 3-day free trial"],
   [
     new RegExp(`Usage based\\. Every \\w+ at the vendor${A}s API price, 0% markup, from a prepaid balance\\. Start with \\$10, cancel anytime\\.`, "g"),
-    "Self-served is $99/month after a 3-day free trial. Managed has a custom price. Cancel anytime.",
+    "Self-served is $99/month after a 3-day free trial. Managed starts at $499/month. Cancel anytime.",
   ],
   [/Every \w+ at the API price, 0% markup\. Start with \$10\. Pause or cancel anytime\./g, "Self-served is $99/month. Pause or cancel anytime."],
   [/Free, and open source\. You pay only for the actions, at the API price, and your campaign starts sending on day one\./g, "A 3-day free trial. Your campaign starts sending on day one."],
@@ -134,7 +134,7 @@ const SENTENCES: readonly Rule[] = [
     `${SELF_SENTENCE} ${MANAGED_SENTENCE}`,
   ],
   [/or let us host it, usage based with 0% markup\./g, "or start Self-served at $99/month with a 3-day free trial."],
-  [/Same agent, same API prices\./g, "Same agent, same plan."],
+  [/Same agent, same API prices\./g, "One plan at $99/month."],
   [/Open source, usage based, 0% markup\./g, "$99/month, 3-day free trial."],
   [/Our AI agent runs it for you at the API price\./g, "Our AI agent runs it for you from $99/month."],
   [
@@ -154,7 +154,7 @@ const SENTENCES: readonly Rule[] = [
   // The "how we compare" rows of the tool catalogues.
   [
     new RegExp(`Usage based\\. [^<".]*? at the vendor${A}s API price, 0% markup, from a prepaid balance you start with \\$10\\.`, "g"),
-    "Self-served is $99/month with a 3-day free trial. Managed has a custom price.",
+    "Self-served is $99/month with a 3-day free trial. Managed starts at $499/month.",
   ],
   [/Start with \$10, hosted\. Open source under MIT, free to run yourself\./g, "A 3-day free trial."],
   [/Usage based, 0% markup: what you spend covers the list, the emails and the sending, at the API price\./g, "Self-served is $99/month with a 3-day free trial."],
@@ -180,14 +180,14 @@ const SENTENCES: readonly Rule[] = [
   [/Run the open source version with your own [^<.]*keys\. Each vendor bills you directly(?:, and we see nothing)?\./g, "Self-served opens with a 3-day free trial."],
   [/Hosted accounts run on a prepaid balance\. Auto reload adds at least \$10 when the balance reaches \$0\./g, "Managed sets a fixed price per outcome, with 100% money back."],
   [/A daily budget is a hard cap\. Your prepaid balance is the ceiling\./g, "A daily budget is a hard cap."],
-  [/The same agent runs them all, on one balance\./g, "The same agent runs them all, on one plan."],
+  [/The same agent runs them all, on one balance\./g, "Every channel runs from one account."],
 ];
 
 /** What is left inside other sentences, most specific first. */
 const PHRASES: readonly Rule[] = [
-  // The Agency price: on the lab, Managed has a custom price (owner 2026-11-25).
-  [/,? from \$1K\/month \+ 10% of budget/g, ", at a custom price"],
-  [/From \$1K\/month \+ 10% of budget/g, "Custom price, 100% money back"],
+  // The Agency price: on the lab, Managed starts at $499/month (owner 2026-11-25).
+  [/,? from \$1K\/month \+ 10% of budget/g, ", from $499/month"],
+  [/From \$1K\/month \+ 10% of budget/g, "From $499/month, 100% money back"],
   [new RegExp(`usage based: (?:every|each) [^.<"]*?(?:is |are )?(?:billed )?at the (?:vendor${A}s )?API price with 0% markup`, "g"), "$99/month with a 3-day free trial"],
   [/usage based, (?:with )?every (?:action|message) (?:is )?at the API price (?:with|and) 0% markup/g, "$99/month with a 3-day free trial"],
   [/usage based, at the API price with 0% markup/g, "$99/month with a 3-day free trial"],
