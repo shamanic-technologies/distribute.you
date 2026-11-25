@@ -25,12 +25,13 @@ export const BRAND_PROOF_DOMAIN = "distribute.you";
  * Owner 2026-11-21: no fame threshold, « affiche le top 24 c'est tout » for the wall.
  * Owner 2026-11-25: the press row shows EVERY outlet served, as an endless scroll,
  * in its own place on the page (« pas collé au 24 logos »). One read asks the
- * producer's max so the press list is whole; the wall keeps its first 24.
+ * producer's max so the press list is whole; the wall keeps its first 8
+ * (owner 2026-11-25 later: « garde que le top 8 », one row of 8).
  */
-export const BRAND_PROOF_WALL_LIMIT = 24;
+export const BRAND_PROOF_WALL_LIMIT = 8;
 /**
- * Owner 2026-11-25: « 8 par ligne sur 3 lignes ». The wall is a grid of 8 columns
- * (4 on narrow screens), and it only draws FULL rows: fewer than 24 drawable logos
+ * Owner 2026-11-25: « 8 par ligne », now one line (top 8). The wall is a grid of 8 columns
+ * (4 on narrow screens), and it only draws FULL rows: fewer than 8 drawable logos
  * round down to a multiple of 8, so no logo ever sits alone on the last line.
  */
 export const BRAND_PROOF_ROW = 8;
