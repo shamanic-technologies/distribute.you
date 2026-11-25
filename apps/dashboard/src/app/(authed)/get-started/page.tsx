@@ -26,7 +26,7 @@ export default async function GetStartedPage({ searchParams }: { searchParams: P
     <>
       {skin ? <DistrySkin /> : skinQuery !== null ? <DistrySkinOff /> : null}
       <Suspense fallback={null}>
-        <GetStarted ipCountry={ipCountry} gsArm={arm} gsArmFresh={fresh} />
+        <GetStarted ipCountry={ipCountry} gsArm={arm} gsArmFresh={fresh} labDistry={skin} />
       </Suspense>
     </>
   );

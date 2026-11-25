@@ -53,6 +53,7 @@ import {
 } from "@/lib/api";
 import { cardRiskCopy, type CardFacts } from "@/lib/v2/card-risk";
 import { CardRiskNotice } from "./card-risk-notice";
+import { ChannelHandoff, useLabDistry } from "./lab-handoff";
 import { getStripe } from "@/lib/stripe";
 import {
   authFailureProps,
@@ -184,6 +185,9 @@ export function AccountCardWall({
   const cardSaved = useRef<(() => void) | null>(null);
 
   const [stage, setStage] = useState<Stage>("account");
+  // Lab Distry: after payment the founder picks where Distry works with them, never a dashboard.
+  const lab = useLabDistry();
+  const [handoff, setHandoff] = useState(false);
   const [email, setEmail] = useState("");
   const [emailOpen, setEmailOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -775,6 +779,11 @@ export function AccountCardWall({
         // Nothing to clean up in a tab that never wrote one.
       }
       pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
+      if (lab) {
+        setHandoff(true);
+        setBusy(false);
+        return;
+      }
       window.location.assign(v2Href(orgId, brandId, "today"));
     } catch (e) {
       console.error("[get-started] launch failed:", e);
@@ -795,6 +804,14 @@ export function AccountCardWall({
         <TrialSpots />
       </div>
     ) : null;
+
+  if (handoff)
+    return createPortal(
+      <div className="v2-root fixed inset-0 z-[60] overflow-y-auto">
+        <ChannelHandoff website={website} />
+      </div>,
+      document.body,
+    );
 
   return createPortal(
     <div

@@ -203,6 +203,22 @@ export function withoutHydration(html: string): string {
     .replace(/<link\b[^>]*\brel="preload"[^>]*\bas="script"[^>]*>/gi, "");
 }
 
+/** The sign-up walk, which wears the skin too when the visitor comes from a skinned page. */
+const SIGN_UP_WALK = "https://dashboard.distribute.you/get-started";
+
+/**
+ * Every way into the sign-up walk carries `skin=distry`, so the walk the lab sends a visitor
+ * to is the lab's own (its first choice and last screen, ONBOARDING-CHANNEL-HANDOFF-1125). A
+ * GET form drops its action's query, so a form gets a hidden field instead.
+ */
+export function withSkinSignUp(html: string): string {
+  return html
+    .replace(/href="https:\/\/dashboard\.distribute\.you\/get-started(\?[^"#]*)?"/g, (all, query?: string) =>
+      query && /(^|[?&;])skin=/.test(query) ? all : `href="${SIGN_UP_WALK}${query ? `${query}&amp;` : "?"}skin=distry"`,
+    )
+    .replace(/<form\b[^>]*\baction="https:\/\/dashboard\.distribute\.you\/get-started"[^>]*>(?!<input type="hidden" name="skin")/g, (tag) => `${tag}<input type="hidden" name="skin" value="distry">`);
+}
+
 export function applyDistrySkin(html: string, pathname = "/", status = 200): string {
   if (!/<\/head>/i.test(html) || !/<body\b/i.test(html)) return html;
   const sceneUrl = `${SKIN_ASSETS}/assets/${sceneFor(pathname, status)}.webp`;
@@ -221,6 +237,7 @@ export function applyDistrySkin(html: string, pathname = "/", status = 200): str
   );
   // The lab states its own offer (owner 2026-11-25): the live page's old-offer claims are restated on the way.
   out = withLabOffer(out);
+  out = withSkinSignUp(out);
   // Links to the production site stay on the host the visitor is reviewing.
   out = out.replace(/(href|action)="https:\/\/distribute\.you(\/[^"]*)?"/g, (_m, attr: string, path?: string) => `${attr}="${path ?? "/"}"`);
   out = withDistryLogo(placeSections(out));
