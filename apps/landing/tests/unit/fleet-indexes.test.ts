@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   INDEX_LINKS_TOKEN,
   RENAMED_INDEX_SLUGS,
+  formatIndexRange,
   formatIndexValue,
   formatTick,
   indexLinksHtml,
@@ -437,5 +438,144 @@ describe("every served reason reads as its own plain sentence (INDEX-REASONS-LAN
   it("a published early read no longer claims it is published anyway", () => {
     expect(statusLine("noise", RULE)).toBe("Early read: under 10 outcomes so far.");
     expect(statusLine("noise", RULE, false)).toBe("Early read: under 10 outcomes so far, not published yet.");
+  });
+});
+
+describe("the likely range sits under every figure, bare (INDEX-RANGE-1125)", () => {
+  const RANGE_RULE = { lowPercentile: 20, highPercentile: 80, text: "The range runs from the 20th to the 80th percentile of that day's value." };
+  const ranged = summary({ valueRange: { low: 3.2, high: 6.4 }, valueRangeUnavailableReason: null });
+  const days: IndexPoint[] = [
+    point("2026-10-18", 4, { valueRange: { low: 3, high: 6 } }),
+    point("2026-10-19", 5, { valueRange: { low: 3, high: 7 } }),
+    point("2026-10-20", null, { valueRange: null, valueRangeUnavailableReason: "no_value" }),
+    point("2026-10-21", 5, { valueRange: { low: 4, high: 7 } }),
+    point("2026-10-22", 4.35, { valueRange: { low: 3.2, high: 6.4 } }),
+  ];
+  const detail: IndexDetail = { statusRule: RULE, rangeRule: RANGE_RULE, index: ranged, points: days };
+  const heroOf = (html: string) => html.slice(html.indexOf('class="ix-hero"'), html.indexOf('id="measures"'));
+  const factsOf = (html: string) => html.slice(html.indexOf('<dl class="ix-facts">'), html.indexOf("</dl>"));
+
+  it("reads the range and its rule when served, and a payload without them", () => {
+    const list = parseIndexList({ statusRule: RULE, rangeRule: RANGE_RULE, indexes: [ranged] });
+    expect(list.rangeRule).toEqual(RANGE_RULE);
+    expect(list.indexes[0].valueRange).toEqual({ low: 3.2, high: 6.4 });
+    const read = parseIndexDetail({ ...detail });
+    expect(read.rangeRule?.text).toBe(RANGE_RULE.text);
+    expect(read.points[0].valueRange).toEqual({ low: 3, high: 6 });
+    expect(read.points[2].valueRange).toBeNull();
+    // Before the producer deploy: no field, no range, no error.
+    expect(parseIndexList(LIST).rangeRule).toBeUndefined();
+    expect(parseIndexDetail({ statusRule: RULE, index: summary(), points: [point("2026-10-18", 4)] }).rangeRule).toBeUndefined();
+  });
+
+  it("refuses a malformed range or rule", () => {
+    const list = (valueRange: unknown) => () => parseIndexList({ statusRule: RULE, indexes: [summary({ valueRange: valueRange as never })] });
+    expect(list({ low: 6, high: 3 })).toThrow(/valueRange/);
+    expect(list({ low: "3", high: 6 })).toThrow(/valueRange/);
+    expect(list({ low: 3 })).toThrow(/valueRange/);
+    expect(list({ low: 3, high: Number.NaN })).toThrow(/valueRange/);
+    expect(list("3-6")).toThrow(/valueRange/);
+    expect(() =>
+      parseIndexDetail({ statusRule: RULE, index: summary(), points: [point("2026-10-18", 4, { valueRange: { low: 5, high: 4 } })] }),
+    ).toThrow(/point 2026-10-18 has valueRange/);
+    expect(() => parseIndexList({ statusRule: RULE, rangeRule: { lowPercentile: 20, highPercentile: 80 }, indexes: [] })).toThrow(/rangeRule/);
+    expect(() => parseIndexDetail({ statusRule: RULE, rangeRule: { lowPercentile: "20", highPercentile: 80, text: "x" }, index: summary(), points: [] })).toThrow(/rangeRule/);
+  });
+
+  it("low and high are rounded like the value, joined by a plain hyphen", () => {
+    expect(formatIndexRange(ranged, "usd")).toBe("$3 - $6");
+    expect(formatIndexRange({ value: 1243, valueRange: { low: 812.4, high: 1764.9 } }, "usd")).toBe("$810 - $1,760");
+    expect(formatIndexRange({ value: 0.18, valueRange: { low: 0.12, high: 0.31 } }, "percent")).toBe("0.1% - 0.3%");
+    expect(formatIndexRange(summary(), "usd")).toBeNull();
+    expect(formatIndexRange({ value: null, valueRange: { low: 3, high: 6 } }, "usd")).toBeNull();
+  });
+
+  it("a list row prints the range under its value, with no label", () => {
+    const html = renderIndexListPage({ statusRule: RULE, rangeRule: RANGE_RULE, indexes: [ranged] }, new Map());
+    expect(html).toContain('<div class="ix-row-value">$4</div><div class="ix-row-range">$3 - $6</div>');
+    const row = html.slice(html.indexOf('<a class="ix-row"'), html.indexOf("</a>", html.indexOf('<a class="ix-row"')));
+    expect(row).not.toMatch(/percentile|20-80|range<|Range/);
+    // No served range: the row is the value alone.
+    expect(renderIndexListPage(LIST, new Map())).not.toContain('class="ix-row-range"');
+  });
+
+  it("the index page prints it under the big value", () => {
+    const hero = heroOf(renderIndexPage(ranged.slug, detail, LIST));
+    expect(hero).toContain('<div class="ix-value" data-motion="count-up">$4</div>');
+    expect(hero).toContain('<div class="ix-range">$3 - $6</div>');
+    expect(hero.indexOf('class="ix-range"')).toBeGreaterThan(hero.indexOf('class="ix-value"'));
+    expect(hero.indexOf('class="ix-range"')).toBeLessThan(hero.indexOf('class="ix-side"'));
+  });
+
+  it("an expected value never carries a range, even a served one", () => {
+    const expected = summary({ valueKind: "expected", valueRange: { low: 3.2, high: 6.4 } });
+    expect(formatIndexRange(expected, "usd")).toBeNull();
+    expect(renderIndexListPage({ statusRule: RULE, indexes: [expected] }, new Map())).not.toContain('class="ix-row-range"');
+    const points = days.map((p) => ({ ...p, valueKind: "expected" as const }));
+    const html = renderIndexPage(expected.slug, { ...detail, index: expected, points }, LIST);
+    expect(heroOf(html)).not.toContain('class="ix-range"');
+    expect(heroOf(html)).not.toContain('class="ix-band"');
+    expect(factsOf(html)).not.toContain("Range");
+  });
+
+  it("a range whose two ends print alike is left out", () => {
+    const tight = summary({ valueRange: { low: 4.1, high: 4.4 } });
+    expect(formatIndexRange(tight, "usd")).toBeNull();
+    expect(renderIndexListPage({ statusRule: RULE, indexes: [tight] }, new Map())).not.toContain('class="ix-row-range"');
+    expect(heroOf(renderIndexPage(tight.slug, { statusRule: RULE, index: tight, points: [] }, LIST))).not.toContain('class="ix-range"');
+  });
+
+  it("the chart draws a pale band between each day's low and high, under the line, broken on a day without a range", () => {
+    const html = chartHtml(days, "usd", "x");
+    const bands = html.match(/<path class="ix-band"[^>]*>/g)!;
+    // Oct 18-19, then Oct 21-22: the null day splits the band like it splits the line.
+    expect(bands).toHaveLength(2);
+    for (const b of bands) {
+      expect(b).toContain('fill="currentColor"');
+      expect(b).toContain('fill-opacity="0.12"');
+      expect(b).toContain('stroke="none"');
+      expect(b).toMatch(/ Z"/);
+      expect(b).not.toContain("NaN");
+    }
+    expect(html.indexOf('class="ix-band"')).toBeLessThan(html.indexOf('class="ix-area"'));
+    expect(html.indexOf('class="ix-band"')).toBeLessThan(html.indexOf('class="ix-line"'));
+    // The band's extremes ($3, $7) are inside the drawn height: nothing is clipped.
+    const ys = bands.flatMap((b) => [...b.matchAll(/[ML][\d.]+ ([\d.-]+)/g)].map((m) => Number(m[1])));
+    expect(Math.min(...ys)).toBeGreaterThan(0);
+    expect(Math.max(...ys)).toBeLessThan(300);
+    // The first day's band spans its low to its high around the line's point.
+    expect(bands[0]).toMatch(/^<path class="ix-band" d="M0\.0 /);
+  });
+
+  it("no served range, no band; one ranged day alone draws a full-width band", () => {
+    expect(chartHtml([point("2026-10-18", 4), point("2026-10-19", 5)], "usd", "x")).not.toContain("ix-band");
+    const one = chartHtml([point("2026-10-18", 4, { valueRange: { low: 3, high: 6 } })], "usd", "x");
+    expect(one.match(/<path class="ix-band" d="M0\.0 [\d.]+ L1000\.0 /g)).toHaveLength(1);
+    // A ranged day between two days without one has no width: nothing drawn, nothing broken.
+    const lone = chartHtml(
+      [point("2026-10-18", 4), point("2026-10-19", 5, { valueRange: { low: 3, high: 7 } }), point("2026-10-20", 4)],
+      "usd",
+      "x",
+    );
+    expect(lone).not.toContain("ix-band");
+    expect(lone).not.toContain("NaN");
+  });
+
+  it("the small print says what the range is, in the service's sentence, only when it is served", () => {
+    const facts = factsOf(renderIndexPage(ranged.slug, detail, LIST));
+    expect(facts).toContain(`<div><dt>Range</dt><dd>${esc(RANGE_RULE.text)}</dd></div>`);
+    const { rangeRule: _dropped, ...noRule } = detail;
+    expect(factsOf(renderIndexPage(ranged.slug, noRule, LIST))).not.toContain("<dt>Range</dt>");
+    // A rule with no range anywhere on the page explains nothing: left out.
+    const bare: IndexDetail = { statusRule: RULE, rangeRule: RANGE_RULE, index: summary(), points: [point("2026-10-18", 4)] };
+    expect(factsOf(renderIndexPage(ranged.slug, bare, LIST))).not.toContain("<dt>Range</dt>");
+    // The list page never explains it.
+    expect(renderIndexListPage({ statusRule: RULE, rangeRule: RANGE_RULE, indexes: [ranged] }, new Map())).not.toContain(RANGE_RULE.text);
+  });
+
+  it("the history table is unchanged by a range", () => {
+    expect(historyTableHtml(days, "usd", "per website visit")).toBe(
+      historyTableHtml(days.map(({ valueRange: _r, valueRangeUnavailableReason: _w, ...p }) => p), "usd", "per website visit"),
+    );
   });
 });
