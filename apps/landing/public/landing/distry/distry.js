@@ -460,14 +460,14 @@ function setupChat() {
     panel.className = "dc";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", "Chat with Distry");
-    panel.innerHTML = `<header class="dc-top"><img src="${face.querySelector("img").src}" alt="" width="36" height="36"><div><b>Distry</b><small>distribute.you assistant</small></div><button type="button" class="dc-close" aria-label="Close the chat">×</button></header><div class="dc-list" aria-live="polite"></div><form class="dc-form"><input type="text" name="text" autocomplete="off" maxlength="2000" placeholder="Ask Distry anything" aria-label="Your message"><button type="submit">Send</button></form><a class="dc-wa" href="${whatsapp}" target="_blank" rel="noopener noreferrer">Continue on WhatsApp</a>`;
+    panel.innerHTML = `<header class="dc-top"><img src="${face.querySelector("img").src}" alt="" width="36" height="36"><div><b>Distry</b><small></small></div><button type="button" class="dc-close" aria-label="Close the chat">×</button></header><div class="dc-list" aria-live="polite"></div><form class="dc-form"><input type="text" name="text" autocomplete="off" maxlength="2000" placeholder="Ask Distry anything" aria-label="Your message"><button type="submit">Send</button></form><a class="dc-wa" href="${whatsapp}" target="_blank" rel="noopener noreferrer">Continue on WhatsApp</a>`;
     document.body.append(panel);
     const list = panel.querySelector(".dc-list");
     const form = panel.querySelector("form");
     const input = form.querySelector("input");
     const who = panel.querySelector(".dc-top small");
     // Their own email, once they proved it in the chat: the conversation acts with their account.
-    const showAccount = (email) => { who.textContent = email ? `Signed in as ${email}` : "distribute.you assistant"; };
+    const showAccount = (email) => { who.textContent = email ? `Signed in as ${email}` : ""; };
     try { showAccount(localStorage.getItem(ACCOUNT)); } catch (e) { /* private mode */ }
     bubble(list, "them", "Hi, I'm Distry. Share your website and I will build your plan right here.");
     log.forEach((m) => bubble(list, m.who, m.text));
