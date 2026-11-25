@@ -5,15 +5,16 @@ import { describe, expect, it } from "vitest";
 import { renderCompetitorAlternativesPage, renderComparePage } from "../../src/lib/compare-page";
 import { COMPETITORS } from "../../src/lib/competitors";
 import { applyDistrySkin } from "../../src/lib/distry-skin";
-import { LAB_BOOK_A_CALL, LAB_PLANS, LAB_SIGN_UP, OLD_OFFER, dressBrandProof, meetingsOnlyShowcase, oldOfferClaims, readableText, withLabOffer } from "../../src/lib/lab-offer";
+import { LAB_BOOK_A_CALL, LAB_OFFER, LAB_PLANS, LAB_SIGN_UP, LAB_START, OLD_OFFER, dressBrandProof, labRedirectFor, meetingsOnlyShowcase, oldOfferClaims, readableText, withLabChrome, withLabHome, withLabOffer } from "../../src/lib/lab-offer";
+import { navHtml, footerInnerHtml } from "../../src/lib/site-chrome";
 import { AD_TOOL_CLUSTER } from "../../src/lib/pages/ai-ad-management";
 import { renderToolAlternativesPage, renderToolVsPage } from "../../src/lib/pages/agent-tools-compare";
 import { BOOK_A_CALL, SIGN_UP } from "../../src/lib/site-chrome";
 
 /**
- * The lab (`lab-distry`) states ONE offer on every page (owner 2026-11-25): Self-served
- * at $99/month with a 3-day free trial, Managed from $499/month with 100% money back
- * on fixed outcome prices. The live pages it skins still state production's offer, so
+ * The lab (`lab-distry`) states ONE offer on every page (owner 2026-11-25, LAB-SOLO-PIVOT-1125):
+ * free with your own keys or your Claude subscription, or $99/month on our keys at 0%
+ * markup with a 3-day free trial. No Managed plan, no Agency, no Book a call. The live pages it skins still state production's offer, so
  * the skin restates them (`withLabOffer`). This sweep renders the real page builders
  * through the skin and reads what a visitor would.
  */
@@ -63,25 +64,34 @@ describe("the old offer is recognised", () => {
       "Usage based. Every action at the API price, 0% markup.",
       "usage-based pricing",
       "You pay the vendor's price with 0% markup",
-      "there is no markup",
       "You start with $10, auto reload keeps it going",
       "add your first $10",
       "a prepaid balance",
       "Free on your server",
       "0% additional fee.",
+      "Self-served is $99/month",
+      "Managed starts at $499/month",
+      "Managed from $499/month",
+      "100% money back on fixed outcome prices",
+      "Book a call",
+      "Our GTM agency runs your whole go-to-market",
+      "Your dashboard shows every reply",
+      "measured on your dashboard",
+      "See our User Acquisition Agency",
+      "distribute.you GTM Agency",
     ]) {
       expect(OLD_OFFER.some((p) => p.test(claim)), claim).toBe(true);
     }
   });
 
   it("and not in the new offer or a competitor's own plan", () => {
-    for (const fine of ["$99/month, 3-day free trial", "From $499/month, 100% money back on fixed outcome prices", "Free plan, then $49/seat/month", "Start free trial", "$10,000 a month"]) {
+    for (const fine of [LAB_OFFER, "0% markup on every key", "Frank is software you configure at $499 a month", "a 30-day money back guarantee", "Free plan, then $49/seat/month", "Start free trial", "$10,000 a month", "Bosar Agency"]) {
       expect(OLD_OFFER.some((p) => p.test(fine)), fine).toBe(false);
     }
   });
 
   it("across two elements, once the markup is stripped", () => {
-    expect(oldOfferClaims("<li><b>0%</b><span>markup on every action</span></li>")).toHaveLength(1);
+    expect(oldOfferClaims("<p>Our <b>GTM agency</b> runs it</p>").length).toBeGreaterThan(0);
     expect(oldOfferClaims('<script type="application/ld+json">{"description":"Usage based, 0% markup."}</script>').length).toBeGreaterThan(0);
     expect(oldOfferClaims("<script>var s='usage based'</script><p>$99/month</p>")).toEqual([]);
   });
@@ -100,6 +110,9 @@ describe("every skinned page states the lab's offer", async () => {
   it("leaves no old-offer claim readable after the skin", () => {
     const left: string[] = [];
     for (const [name, html] of pages) {
+      // A page the lab does not serve (an Agency page, a hidden automation page) is never read there.
+      const canonical = /<link rel="canonical" href="https:\/\/distribute\.you([^"]*)"/.exec(html)?.[1];
+      if (canonical !== undefined && labRedirectFor(canonical || "/") !== null) continue;
       for (const claim of oldOfferClaims(applyDistrySkin(html, "/ai-sdr"))) left.push(`${name}: ${claim}`);
     }
     if (process.env.LAB_OFFER_DUMP) writeFileSync(process.env.LAB_OFFER_DUMP, [...new Set(left.map((l) => l.slice(l.indexOf(": ") + 2)))].join("\n"));
@@ -111,10 +124,11 @@ describe("every skinned page states the lab's offer", async () => {
     const live = renderAiSdrPage();
     expect(live).toContain("<i></i>Open source</span>");
     const text = readableText(applyDistrySkin(live, "/ai-sdr"));
-    expect(text).toContain("Self-served 3-day free trial Then $99/month");
-    expect(text).toContain("Managed From $499/month 100% money back");
+    expect(text).toContain("Free $0 With your own keys");
+    expect(text).toContain("$99 per month 3-day free trial Then $99/month");
     expect(text).not.toContain("View the code");
-    expect(text).toContain("More pipeline for your sales team.");
+    expect(text).toContain("Start free. Grow when the meetings come.");
+    expect(text).not.toMatch(/Managed|\$499|money back|sales team/);
   });
 
   it("restates the live price rows a route fills after the builder", async () => {
@@ -138,13 +152,31 @@ describe("every skinned page states the lab's offer", async () => {
 });
 
 describe("the plan cards", () => {
-  it("send Self-served to signup and Managed to the site's own Book a call", () => {
+  it("send Free to the visitor's own AI and $99 to the free trial, never to a call", () => {
     expect(LAB_SIGN_UP).toBe(SIGN_UP);
     expect(LAB_BOOK_A_CALL).toBe(BOOK_A_CALL);
+    expect(LAB_PLANS).toContain(`href="${LAB_START}">Get started from your AI</a>`);
     expect(LAB_PLANS).toContain(`href="${SIGN_UP}">Start free trial</a>`);
-    expect(LAB_PLANS).toContain(`href="${BOOK_A_CALL}"`);
+    expect(LAB_PLANS).not.toContain(BOOK_A_CALL);
     expect(oldOfferClaims(LAB_PLANS)).toEqual([]);
   });
+});
+
+describe("the site chrome on the lab", () => {
+  for (const path of ["/", "/ai-sdr", "/catalog"]) {
+    it(`keeps no Agency menu, no Book a call and no hidden page on ${path}`, () => {
+      const live = navHtml(path) + footerInnerHtml(path);
+      expect(live).toContain("Book a call");
+      expect(live).toContain("GTM Agency");
+      const out = withLabChrome(live);
+      const text = readableText(out);
+      expect(text).not.toMatch(/\bAgency\b|Book a call|GTM Automation|Lead Nurturing|Customer Success Automation|AI Ad Management|Best for/);
+      expect(out).not.toContain(BOOK_A_CALL);
+      expect(text).toContain("Signups Automation");
+      expect(text).toContain("Use it from your AI");
+      expect(out).toContain(`href="${LAB_START}"`);
+    });
+  }
 });
 
 describe("the lab home", () => {
@@ -153,11 +185,28 @@ describe("the lab home", () => {
   it("states the new offer and none of the old one", () => {
     expect(oldOfferClaims(home)).toEqual([]);
     const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="quotes"'));
+    expect(pricing).toContain('<p class="plan-name">Free</p>');
+    expect(pricing).toContain("$0 <small>With your own keys</small>");
+    expect(pricing).toContain("Every AI step can run on your Claude subscription");
     expect(pricing).toContain("3-day free trial <small>Then $99/month</small>");
     expect(pricing).toContain(`href="${SIGN_UP}">Start free trial</a>`);
-    expect(pricing).toContain("From $499/month <span>100% money back</span>");
-    expect(pricing).toContain(`href="${BOOK_A_CALL}">Book a call</a>`);
-    expect(home).toContain("$99/month · 3-day free trial · Cancel anytime");
+    expect(pricing).toContain("Need more? Add $100 a month at a time");
+    expect(pricing).toContain("prorated");
+    expect(pricing).toContain("Out of credit?");
+    expect(home).toContain("Free with your own keys · $99/month on ours · Cancel anytime");
+  });
+
+  it("speaks to the solo founder through three doors, and sells nothing the pivot killed", () => {
+    expect(home).toContain("The GTM team a solo founder never had.");
+    const doors = home.slice(home.indexOf('id="doors"'), home.indexOf("<!--press-proof-->"));
+    for (const name of ["From your AI", "On WhatsApp or Telegram", "By email", "Conductor", "Claude Desktop", "ChatGPT", "Hermes", "Grok Bot", "Dots"]) expect(doors).toContain(name);
+    // The main call to action installs the MCP server, never a call.
+    const hero = home.slice(home.indexOf('id="top"'), home.indexOf('id="how"'));
+    expect(hero).toContain("claude mcp add --transport http distribute https://mcp.distribute.you/mcp");
+    expect(hero).toContain(`href="${LAB_START}">Get started from your AI</a>`);
+    const text = readableText(home).replace("Bosar Agency", "Bosar");
+    expect(text).not.toMatch(/Managed|\$499|money back|Book a call|\bAgency\b|\bagency\b|dashboard|sales team|One login for every brand|Mac app|Cursor|Zapier|n8n/);
+    expect(home).not.toContain(BOOK_A_CALL);
   });
 
   it("carries the logo wall and the press band tokens, the wall first", () => {
