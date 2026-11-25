@@ -11,8 +11,15 @@
 /** The code of `/start <code>` (Telegram's start parameter: [A-Za-z0-9_-], up to 64). */
 export function startCode(text: string): string | null {
   const match = /^\/start(?:@\w+)?\s+([A-Za-z0-9_-]{1,64})$/.exec(text.trim());
-  return match ? match[1] : null;
+  if (!match) return null;
+  // `site-<base64url website>` is the signed-out door (DISTRY-START-DOOR-1125): a visitor
+  // opening the bot with their website. Distry reads it as their first message, never a code.
+  if (match[1].startsWith(VISITOR_SITE_PREFIX)) return null;
+  return match[1];
 }
+
+/** Start parameter prefix of a visitor's website deep link; client-service codes never start with it. */
+export const VISITOR_SITE_PREFIX = "site-";
 
 export type OwnerLinkOutcome = "linked" | "unknown" | "expired" | "used" | "unavailable";
 
