@@ -68,7 +68,7 @@ export const AGENT_QUICKSTART_LINES: QuickstartLine[] = [
   },
   {
     label: "No key yet? No human needed",
-    text: `\`POST ${API_BASE_URL}/agent-signups/start\` with \`{"email", "phone"}\` (an email you can read; phone in E.164, format checked only) emails a 6-digit code; \`POST /v1/agent-signups/complete\` with \`{"email", "code"}\` returns a new API key every time. Over MCP: \`distribute_signup_start\`, then \`distribute_signup_complete\`, with no key.`,
+    text: `An app that cannot set a header (claude.ai, ChatGPT, Claude Code with no \`--header\`) connects to \`${MCP_URL}\` with OAuth: the person types their email once on our page and clicks Confirm in the email we send, then the app keeps their own key in every chat. An agent with no browser gets a key from the REST API: \`POST ${API_BASE_URL}/agent-signups/start\` with \`{"email", "phone"}\` (an email you can read; phone in E.164, format checked only) emails a 6-digit code; \`POST /v1/agent-signups/complete\` with \`{"email", "code"}\` returns a new API key every time. Send it as \`Authorization: Bearer <key>\` on REST and MCP calls.`,
   },
   {
     label: "Paying",

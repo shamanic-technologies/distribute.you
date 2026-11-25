@@ -193,7 +193,7 @@ ${indent(CODEX_BRIDGE_CONFIG, 5)}
      \`\`\`json
 ${indent(MCP_STDIO_BRIDGE_CONFIG, 5)}
      \`\`\`
-   - **claude.ai in the browser, ChatGPT**: these cannot run commands and their connectors cannot carry a key. Walk the user through adding \`${MCP_URL}\` as a custom connector with no authentication (claude.ai: Settings, Connectors, Add custom connector; ChatGPT: turn on Developer mode in its settings, then add a connector). In that connection, \`distribute_signup_start\` then \`distribute_signup_complete\` open the account, and the key stays bound to it. A user who already has a key uses the REST API through your code tool instead.
+   - **claude.ai in the browser, ChatGPT**: these cannot run commands and their connectors cannot carry a key. Walk the user through adding \`${MCP_URL}\` as a custom connector with OAuth (claude.ai: Customize, Connectors, + Add, Add custom connector, then Sign in now; ChatGPT: Plugins, +, Add custom MCP server, Authentication OAuth). Our page opens: the user types their email once and clicks Confirm in the email we send. The app then keeps their own key in every chat.
    Replace \`${API_KEY_PREFIX}YOUR_KEY\` with the real key.
 4. **Check it works**: call the \`distribute_status\` tool when its tools are loaded, else
    \`\`\`
