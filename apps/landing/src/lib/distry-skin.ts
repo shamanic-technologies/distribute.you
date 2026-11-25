@@ -11,6 +11,8 @@
  * Alias-free: unit-tested directly.
  */
 
+import { withLabOffer } from "./lab-offer";
+
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
 /** Bumped on any edit to `public/landing/distry/{skin.css,distry.js}`. */
@@ -188,6 +190,8 @@ export function applyDistrySkin(html: string, pathname = "/", status = 200): str
   let out = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (tag) =>
     TRACKER.test(tag) && !/application\/ld\+json/i.test(tag) ? "" : tag,
   );
+  // The lab states its own offer (owner 2026-11-25): the live page's old-offer claims are restated on the way.
+  out = withLabOffer(out);
   // Links to the production site stay on the host the visitor is reviewing.
   out = out.replace(/(href|action)="https:\/\/distribute\.you(\/[^"]*)?"/g, (_m, attr: string, path?: string) => `${attr}="${path ?? "/"}"`);
   out = withDistryLogo(placeSections(out));

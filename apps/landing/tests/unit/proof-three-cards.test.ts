@@ -23,7 +23,8 @@ const brand = (domain: string, name: string, meetings: number, replies: number):
 const PICK = [brand("docdinners.com", "Doc Dinners", 173, 38), brand("legistai.com", "Legistai", 14, 1), brand("shockwavecenters.com", "Shockwave Centers", 5, 10)];
 
 describe("the proof section always shows three clients (owner 2026-11-19)", () => {
-  for (const page of ["public/landing/index-v2.html", "prototypes/distry/index.html"]) {
+  // The lab home (`prototypes/distry`) no longer ships proof cards: price cards stand there (owner 2026-11-25, `lab-outcome-ranges.test.ts`).
+  for (const page of ["public/landing/index-v2.html"]) {
     it(`${page}: the three picked clients, in the pick's order, faces kept where the page ships one`, () => {
       const out = renderProofSelection(read(page), PICK);
       const order = [...out.matchAll(/data-proof-brand="([^"]+)"/g)].map((m) => m[1]);
