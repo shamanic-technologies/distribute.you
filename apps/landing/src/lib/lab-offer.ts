@@ -25,6 +25,7 @@ export const LAB_BOOK_A_CALL = "https://calendar.app.google/BkmyoA7ujMFFDg1s9";
 
 /** What a visitor must never read on the lab: the claims of the offer it replaces. */
 export const OLD_OFFER: readonly RegExp[] = [
+  /\$1K\/month \+ 10% of budget/,
   /usage[- ]based/i,
   /\b0% ?(?:additional fee|markup)/i,
   /\b(?:no|zero) markup\b/i,
@@ -184,6 +185,9 @@ const SENTENCES: readonly Rule[] = [
 
 /** What is left inside other sentences, most specific first. */
 const PHRASES: readonly Rule[] = [
+  // The Agency price: on the lab, Managed has a custom price (owner 2026-11-25).
+  [/,? from \$1K\/month \+ 10% of budget/g, ", at a custom price"],
+  [/From \$1K\/month \+ 10% of budget/g, "Custom price, 100% money back"],
   [new RegExp(`usage based: (?:every|each) [^.<"]*?(?:is |are )?(?:billed )?at the (?:vendor${A}s )?API price with 0% markup`, "g"), "$99/month with a 3-day free trial"],
   [/usage based, (?:with )?every (?:action|message) (?:is )?at the API price (?:with|and) 0% markup/g, "$99/month with a 3-day free trial"],
   [/usage based, at the API price with 0% markup/g, "$99/month with a 3-day free trial"],
