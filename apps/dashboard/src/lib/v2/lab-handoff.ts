@@ -17,5 +17,5 @@ export function distryWhatsAppHref(text: string): string {
  */
 export function labAiPrompt(website: string, mcpUrl: string): string {
   const site = website.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "");
-  return `Add distribute.you to your tools: it is an MCP server at ${mcpUrl}. Then sign me in and show me how my campaign for ${site} is doing.`;
+  return `Add distribute.you to your tools: it is an MCP server at ${mcpUrl}. Then sign me in and start my campaign for ${site}, which waits for me.`;
 }

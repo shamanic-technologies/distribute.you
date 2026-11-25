@@ -105,7 +105,7 @@ describe("the page's call sites", () => {
   });
 
   it("starts the ONE campaign once the levers land, and skips re-drafting answered levers", () => {
-    expect(LAUNCH.indexOf("await levers;")).toBeLessThan(LAUNCH.indexOf("return launchCampaign(input.brandId, offerId, input.plan, progress);"));
+    expect(LAUNCH.indexOf("await levers;")).toBeLessThan(LAUNCH.indexOf("return launchCampaign(input.brandId, offerId, input.plan, progress, input.held === true);"));
     expect(LAUNCH).toContain("if (input.answered) progress.levers = true;");
   });
 });

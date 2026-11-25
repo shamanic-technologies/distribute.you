@@ -49,8 +49,7 @@ import {
   sendAuthNotification,
   savePhoneNumber,
   setMonthlyChargeLimit,
-  type BillingAccount,
-} from "@/lib/api";
+  type BillingAccount, postCopilotHandoff } from "@/lib/api";
 import { cardRiskCopy, type CardFacts } from "@/lib/v2/card-risk";
 import { CardRiskNotice } from "./card-risk-notice";
 import { ChannelHandoff, useLabDistry } from "./lab-handoff";
@@ -187,7 +186,7 @@ export function AccountCardWall({
   const [stage, setStage] = useState<Stage>("account");
   // Lab Distry: after payment the founder picks where Distry works with them, never a dashboard.
   const lab = useLabDistry();
-  const [handoff, setHandoff] = useState(false);
+  const [handoff, setHandoff] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [emailOpen, setEmailOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -761,8 +760,8 @@ export function AccountCardWall({
     setBusy(true);
     setError(null);
     try {
-      await launchFromPreview(
-        { brandId, website, offer, targetAudience, plan, answered },
+      const campaignId = await launchFromPreview(
+        { brandId, website, offer, targetAudience, plan, answered, held: lab },
         progress.current,
       );
       await defaultSalesRepToAccount(brandId, userRef.current);
@@ -772,7 +771,8 @@ export function AccountCardWall({
       if (!res.ok) throw new Error("We could not finish setting up your account. Try again.");
       await session?.getToken({ skipCache: true });
       posthog.capture("get_started_launched", { campaigns: 1, volume: plan.volume, period: plan.period, plan: "prepaid" });
-      await sendLaunchEmail().catch((e) => console.error("[get-started] launch email failed:", e));
+      // Lab: the campaign waits for the founder's first message and Distry writes them itself, so no "launched" email.
+      if (!lab) await sendLaunchEmail().catch((e) => console.error("[get-started] launch email failed:", e));
       try {
         localStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
       } catch {
@@ -780,7 +780,9 @@ export function AccountCardWall({
       }
       pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
       if (lab) {
-        setHandoff(true);
+        // The campaign waits: Distry starts it on the founder's first message, so chat-service must know it.
+        await postCopilotHandoff({ campaignId });
+        setHandoff(campaignId);
         setBusy(false);
         return;
       }
@@ -808,7 +810,7 @@ export function AccountCardWall({
   if (handoff)
     return createPortal(
       <div className="v2-root fixed inset-0 z-[60] overflow-y-auto">
-        <ChannelHandoff website={website} />
+        <ChannelHandoff website={website} campaignId={handoff} />
       </div>,
       document.body,
     );

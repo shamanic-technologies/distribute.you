@@ -8772,6 +8772,12 @@ export async function startSalesFunnelCampaign(
     target?: string;
     maxVolume?: { count: number; period: CampaignCapPeriod };
     maxBudget?: { amountCents: number; period: CampaignCapPeriod };
+    /**
+     * Created with everything written but NOT started (campaign-service #940): no run, no spend until
+     * Distry starts it on the founder's first message on a channel (lab walk, ONBOARDING-CHANNEL-HANDOFF-1125).
+     * Never create-then-stop (it races the first run).
+     */
+    held?: boolean;
   },
   token?: string,
 ): Promise<SalesFunnelCampaign> {
@@ -8785,7 +8791,7 @@ export async function startSalesFunnelCampaign(
       brandId: input.brandId,
       offerId: input.offerId,
       salesFunnelId: input.salesFunnelId,
-      status: "ongoing",
+      status: input.held ? "stopped" : "ongoing",
       brief,
       ...(input.target ? { target: input.target } : {}),
       ...(input.maxVolume ? { maxVolume: input.maxVolume } : {}),
@@ -8794,6 +8800,50 @@ export async function startSalesFunnelCampaign(
     headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": input.brandId },
   });
   return parseStaff("startSalesFunnelCampaign", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
+}
+
+// ==================== HAND-OFF TO DISTRY ON A CHANNEL (chat-service #949) ====================
+//
+// After the lab walk's payment the founder's ONE campaign waits (created stopped); Distry starts
+// it on their first message on any channel. The dashboard tells chat-service which campaign waits,
+// and asks Distry to write first on WhatsApp or by email when they pick one.
+
+const HandoffHelloSchema = z.object({
+  at: z.string().nullish(),
+  status: z.string().nullish(),
+  error: z.string().nullish(),
+});
+const CopilotHandoffSchema = z.object({
+  campaignId: z.string().nullish(),
+  campaignWaiting: z.boolean().nullish(),
+  campaignStartedAt: z.string().nullish(),
+  campaignStartedVia: z.string().nullish(),
+  hellos: z.object({ whatsapp: HandoffHelloSchema.nullish(), email: HandoffHelloSchema.nullish() }).nullish(),
+});
+export type CopilotHandoff = z.infer<typeof CopilotHandoffSchema>;
+export type HandoffChannel = "whatsapp" | "email";
+
+/** Hands the founder to Distry: names the waiting campaign and/or asks Distry to write first. 409 `no_phone` when WhatsApp is asked with no number on the account. */
+export async function postCopilotHandoff(body: { campaignId?: string; sayHelloOn?: HandoffChannel }, token?: string): Promise<CopilotHandoff> {
+  if (!body.campaignId && !body.sayHelloOn) throw new Error("[postCopilotHandoff] needs a campaign or a channel");
+  const raw = await apiCall<unknown>(`/copilot/handoff`, { token, method: "POST", body });
+  const parsed = CopilotHandoffSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] postCopilotHandoff response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("postCopilotHandoff returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Where the hand-off stands: hellos sent, and whether Distry started the waiting campaign. */
+export async function getCopilotHandoff(token?: string): Promise<CopilotHandoff> {
+  const raw = await apiCall<unknown>(`/copilot/handoff`, { token });
+  const parsed = CopilotHandoffSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getCopilotHandoff response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("getCopilotHandoff returned an unexpected shape");
+  }
+  return parsed.data;
 }
 
 /**
