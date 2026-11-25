@@ -359,7 +359,7 @@ h3 { font-size: 1.42rem; line-height: 1.18; }
 @media (max-width: 560px) { .showcase-grid { grid-template-columns: minmax(0, 1fr); } }
 .muted { opacity: 0.6; }
 
-/* the five bets: one row to drag */
+/* the four bets: one row to drag on small screens, all four side by side on desktop */
 .bets { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(280px, 1fr); gap: 18px; overflow-x: auto; padding: 6px 4px 22px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--gold) transparent; }
 .bet { scroll-snap-align: start; padding: 24px; display: grid; gap: 10px; align-content: start; }
 .bet p { font-size: 0.95rem; opacity: 0.85; }
@@ -368,6 +368,7 @@ h3 { font-size: 1.42rem; line-height: 1.18; }
 .bet td { padding: 7px 0; border-bottom: 1px solid rgba(132, 191, 255, 0.1); }
 .bet td:last-child, .bet th:last-child { text-align: right; }
 .bet td:last-child { color: var(--gold); font-weight: 600; }
+@media (min-width: 981px) { .bets { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; } }
 
 /* ---------- day: paper ---------- */
 .why-card, .plan, .quote, .faq details, .cta-box {
