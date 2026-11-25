@@ -80,20 +80,20 @@ describe("the price cards", () => {
     expect(HOME).not.toContain("data-proof-brand=");
   });
 
-  it("are filled from the served range, and a card with none is removed", () => {
+  it("are filled from the served range, and a row with none reads Learning", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const out = applyOutcomeRanges(HOME, parseOutcomeRanges(SERVED));
     expect(card(out, OUTCOME_RANGE_SLUGS.websiteVisit)).toContain("<b data-range>$4 - $6</b>");
     expect(card(out, OUTCOME_RANGE_SLUGS.interestedLead)).toContain("<b data-range>$55 - $70</b>");
-    expect(card(out, OUTCOME_RANGE_SLUGS.meetingBooked)).toBeNull();
-    expect(card(out, OUTCOME_RANGE_SLUGS.signup)).toBeNull();
+    expect(card(out, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain('<b data-range class="learning">Learning</b>');
+    expect(card(out, OUTCOME_RANGE_SLUGS.signup)).toContain('<b data-range class="learning">Learning</b>');
     expect(out).toContain("A clear price for every outcome.");
     // Never the single value in place of a range, never an outcome count.
     expect(out).not.toContain("$199");
     expect(out).not.toContain("$62");
     const said = error.mock.calls.map((c) => String(c[0]));
-    expect(said).toContain("[landing] lab price card hidden: cold-email-cost-per-meeting (expected_value)");
-    expect(said).toContain("[landing] lab price card hidden: cold-email-cost-per-signup (index_not_served)");
+    expect(said).toContain("[landing] lab price row learning: cold-email-cost-per-meeting (expected_value)");
+    expect(said).toContain("[landing] lab price row learning: cold-email-cost-per-signup (index_not_served)");
   });
 
   it("light up the day their index serves a range", () => {
@@ -109,5 +109,19 @@ describe("the price cards", () => {
     expect(out).not.toContain("A clear price for every outcome.");
     expect(out).toContain('id="live-cards"');
     expect(error.mock.calls.map((c) => String(c[0]))).toContain("[landing] lab price card hidden: cold-email-cost-per-click (read_failed)");
+  });
+});
+
+describe("an expected value's derived range (OUTCOME-RANGES-1125)", () => {
+  it("fills the meeting booked row from derivedValueRange when valueRange is null", () => {
+    const served = {
+      indexes: [
+        { slug: OUTCOME_RANGE_SLUGS.meetingBooked, unit: "usd", valueRange: null, valueRangeUnavailableReason: "expected_value", derivedValueRange: { low: 133.7, high: 286.9 }, derivedValueRangeUnavailableReason: null },
+        { slug: OUTCOME_RANGE_SLUGS.signup, unit: "usd", valueRange: null, valueRangeUnavailableReason: "no_value", derivedValueRange: null, derivedValueRangeUnavailableReason: "no_value" },
+      ],
+    };
+    const out = applyOutcomeRanges(HOME, parseOutcomeRanges(served));
+    expect(card(out, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain("<b data-range>$134 - $287</b>");
+    expect(card(out, OUTCOME_RANGE_SLUGS.signup)).toContain("Learning");
   });
 });
