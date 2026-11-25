@@ -5,7 +5,7 @@ import path from "node:path";
 import { gunzipSync } from "node:zlib";
 
 import { applyDistrySkin, isHydratedPage, isRestatedReactPage, withoutHydration } from "../../src/lib/distry-skin";
-import { LAB_HIDDEN_PAGES, LAB_UNRESTATED_PAGES, isLabHiddenPage, oldOfferClaims, withoutHiddenCards } from "../../src/lib/lab-offer";
+import { LAB_HIDDEN_PAGES, LAB_UNRESTATED_PAGES, isLabHiddenPage, oldOfferClaims, readableText as readableTextOf, withoutHiddenCards } from "../../src/lib/lab-offer";
 
 /**
  * The React pages of the site (docs, blog, investors, privacy, terms) as the lab serves
@@ -45,6 +45,9 @@ describe("the React pages on the lab state the lab's offer", () => {
       const out = applyDistrySkin(html, pathname);
       expect(out, pathname).toContain('"price":"99"');
       expect(out, pathname).toContain("Self-served is $99/month with a 3-day free trial.");
+      expect(out, pathname).toContain("Managed starts at $499/month");
+      // Owner 2026-11-25: Managed is "From $499/month", and no "same agent" line.
+      expect(readableTextOf(out), pathname).not.toMatch(/custom price|same agent/i);
     }
   });
 
@@ -64,6 +67,7 @@ describe("the React pages on the lab state the lab's offer", () => {
     const investors = pages.find((p) => p.pathname === "/investors");
     const out = applyDistrySkin(investors!.html, "/investors");
     expect(out).toContain("The business model has two plans.");
+    expect(out).toContain("<strong>Managed</strong> starts at $499/month".replace("<strong>", '<strong class="text-gray-900">'));
     expect(out).not.toContain("GTM agency</strong> is from $1K");
   });
 

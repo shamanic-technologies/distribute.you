@@ -1,10 +1,10 @@
 /**
- * The lab home's four price cards (owner 2026-11-25): one per outcome, each stating our
- * likely price range, bare (`$4 - $6`), under the outcome's name.
+ * The lab home's price table (owner 2026-11-25): one row per outcome, an icon beside its
+ * name, our likely price range bare (`$4 - $6`).
  *
  * Every figure is READ from the public fleet indexes (`GET /v1/public/indexes`, the
  * `valueRange {low, high}` features-service serves beside each value) at render. The
- * page ships no figure, the browser computes none, and a card whose index serves no
+ * page ships no figure, the browser computes none, and a row whose index serves no
  * range is REMOVED: no single value, no last-known figure, no outcome count stands in.
  *
  * Lab only (`lab-distry`): run by the prototype route, never by `staticResponse`.
@@ -31,6 +31,9 @@ const indexSchema = z.object({
   unit: z.string().nullish(),
   valueRange: rangeSchema.nullish(),
   valueRangeUnavailableReason: z.string().nullish(),
+  // An EXPECTED value (meeting booked today) carries its range here, derived by features-service (OUTCOME-RANGES-1125).
+  derivedValueRange: rangeSchema.nullish(),
+  derivedValueRangeUnavailableReason: z.string().nullish(),
 });
 
 const listSchema = z.object({
@@ -52,7 +55,11 @@ export function parseOutcomeRanges(body: unknown): OutcomeRanges | null {
   const out: OutcomeRanges = new Map();
   for (const index of parsed.data.indexes) {
     if (index.unit && index.unit !== "usd") continue;
-    out.set(index.slug, index.valueRange ? { low: index.valueRange.low, high: index.valueRange.high } : { missing: index.valueRangeUnavailableReason ?? "no_range_served" });
+    const range = index.valueRange ?? index.derivedValueRange;
+    const reason = index.valueRange === null && index.derivedValueRangeUnavailableReason && index.derivedValueRangeUnavailableReason !== "measured_value"
+      ? index.derivedValueRangeUnavailableReason
+      : index.valueRangeUnavailableReason;
+    out.set(index.slug, range ? { low: range.low, high: range.high } : { missing: reason ?? "no_range_served" });
   }
   return out;
 }
@@ -78,16 +85,21 @@ export function formatRange(range: OutcomeRange): string | null {
 export function applyOutcomeRanges(html: string, ranges: OutcomeRanges | null): string {
   let drawn = 0;
   const out = html.replace(
-    /\s*<article class="price-card[^"]*" data-index-slug="([^"]+)"[^>]*>[\s\S]*?<\/article>/g,
+    /\s*<tr class="price-row[^"]*" data-index-slug="([^"]+)"[^>]*>[\s\S]*?<\/tr>/g,
     (card, slug: string) => {
       const served = ranges?.get(slug);
       const text = served && !("missing" in served) ? formatRange(served) : null;
-      if (!text) {
-        const reason = !ranges ? "read_failed" : !served ? "index_not_served" : "missing" in served ? served.missing : "range_under_a_dollar";
-        console.error(`[landing] lab price card hidden: ${slug} (${reason})`);
+      if (!ranges) {
+        console.error(`[landing] lab price card hidden: ${slug} (read_failed)`);
         return "";
       }
       drawn += 1;
+      if (!text) {
+        // Every outcome the owner listed keeps its row (owner 2026-11-25 « toute la liste »): no served range yet = Learning, never a figure.
+        const reason = !served ? "index_not_served" : "missing" in served ? served.missing : "range_under_a_dollar";
+        console.error(`[landing] lab price row learning: ${slug} (${reason})`);
+        return card.replace(/<b data-range[^>]*>[^<]*<\/b>/, '<b data-range class="learning">Learning</b>');
+      }
       // A function, so a figure such as `$12` is never read as a group reference.
       return card.replace(/(<b data-range[^>]*>)[^<]*(<\/b>)/, (_m, open: string, close: string) => `${open}${text}${close}`);
     },
