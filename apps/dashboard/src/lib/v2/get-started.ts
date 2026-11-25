@@ -607,20 +607,22 @@ export const AI_APPS: { key: AiApp; name: string; hint: string }[] = [
 /**
  * The message for a chat app, once our connector is added there. It names only the
  * connector's tools: no URL to call, no file to save (a chat app can do neither).
+ * The account is already open: the connector's OAuth approval (email once, Confirm in
+ * the email) opened or linked it and the app holds the person's own key (MCP-OAUTH-1125),
+ * so the message asks for no signup and no code.
  */
 export function chatAppSetupPrompt(input: { website: string; person: GetStartedName | null; phoneE164: string | null }): string {
   const name = input.person ? [input.person.firstName, input.person.lastName].filter(Boolean).join(" ") : "";
   const you = [`My website: ${input.website}`, name ? `My name: ${name}` : null, input.phoneE164 ? `My WhatsApp: ${input.phoneE164}` : null]
     .filter((l): l is string => !!l)
     .join("\n");
-  const ask = input.phoneE164 ? "Ask me for my email." : "Ask me for my email and my phone number.";
   return [
     "Set up distribute.you for my company. distribute.you finds new clients for B2B companies with cold email.",
     "",
     you,
     "",
     "Use the distribute.you connector tools in this chat for every step. Do not open any link yourself.",
-    `1. Open my account. ${ask} Call distribute_signup_start with my email and my ${input.phoneE164 ? "WhatsApp number" : "phone number"}. Then call distribute_signup_complete with the 6-digit code I give you.`,
+    "1. Call distribute_status to see my account.",
     "2. Call distribute_list_skills, then distribute_read_skill with index. Follow it to set up my brand, my offer, who I sell to and my first campaign.",
     "3. Ask me before anything that spends money. When I agree, call distribute_prepay and give me the payment link.",
     "",
@@ -629,8 +631,11 @@ export function chatAppSetupPrompt(input: { website: string; person: GetStartedN
 }
 
 /**
- * The clicks to add our MCP server as a connector with no sign-in, per chat app, and
- * which plans have it. Read from each vendor's help on 2026-11-24 (ChatGPT renamed
+ * The clicks to add our MCP server as a connector signed in with OAuth, per chat app, and
+ * which plans have it (MCP-OAUTH-1125: a keyless request gets 401 + OAuth, so "No
+ * authentication" / "No sign in" connectors no longer work). Our approval page asks the
+ * email once, the person clicks Confirm in the email, and the app keeps their own key in
+ * every chat. Read from each vendor's help on 2026-11-25 (ChatGPT renamed
  * connectors to Plugins on 2026-07-09; Claude moved them under Customize):
  * help.openai.com/en/articles/12584461, developers.openai.com/api/docs/guides/custom-mcp-server,
  * support.claude.com/en/articles/11175166. Both add it from the web or desktop only.
@@ -641,9 +646,10 @@ export const CONNECTOR_STEPS: Record<Exclude<AiApp, "terminal">, { steps: string
       "On chatgpt.com, open Plugins in the sidebar.",
       "Click +, then Add custom MCP server.",
       "Name it distribute.you and paste the URL below in Server URL.",
-      "Pick No authentication and tick I understand and want to continue.",
+      "Under Authentication, pick OAuth. Tick I understand and want to continue.",
       "Click Create as a plugin, then install it.",
-      "In a new chat, type @ and pick distribute.you.",
+      "On our sign-in page, type your email. Click Confirm in the email we send you.",
+      "In a new chat, type @ and pick distribute.you. Every chat uses your account.",
     ],
     plans:
       "Works on ChatGPT Business, Enterprise and Edu. Free and Go plans do not have it, and Pro can only read. No + button on Plugins? The Claude app works on every plan.",
@@ -653,8 +659,9 @@ export const CONNECTOR_STEPS: Record<Exclude<AiApp, "terminal">, { steps: string
       "On claude.ai or the desktop app, open Customize, then Connectors.",
       "Click + Add, then Add custom connector.",
       "Name it distribute.you, paste the URL below and click Continue.",
-      "Pick No sign in, then click Add.",
-      "In a new chat, click + at the bottom left, open Connectors and switch distribute.you on.",
+      "Claude finds our sign-in by itself. Click Continue, pick Sign in now, then click Add.",
+      "On our sign-in page, type your email. Click Confirm in the email we send you.",
+      "In a new chat, click + at the bottom left, open Connectors and switch distribute.you on. Every chat uses your account.",
     ],
     plans:
       "Works on every Claude plan, free included. The free plan holds one custom connector. On Team or Enterprise, an owner adds it first in Organization settings.",

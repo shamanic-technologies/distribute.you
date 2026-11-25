@@ -110,8 +110,9 @@ export const MCP_SERVER_NAME = "distribute";
 
 /**
  * Claude Code registers a remote server with an explicit transport, and NO header: this is
- * the command a visitor copies before they have a key. With no key the server answers with
- * the signup steps (email + phone, a 6-digit code), and the agent opens the account itself.
+ * the command a visitor copies before they have a key. With no key the server answers 401 +
+ * OAuth (MCP-OAUTH-1125): Claude Code's /mcp opens our approval page, the person types their
+ * email and clicks Confirm in the email, and Claude Code keeps that person's own key.
  * A placeholder key copied as-is was refused as "Invalid API key" and sent the agent to the
  * dashboard instead (tested in a blank Claude Code, 2026-10-31).
  */
@@ -196,7 +197,7 @@ export const MCP_TOOLS: McpTool[] = [
     name: "distribute_signup_start",
     category: "Account",
     description:
-      "No human needed: request a key with an email, prepay when you need to spend. Step 1 of 2 to open a distribute.you account and get an API key, with no key and no dashboard.",
+      "Step 1 of 2 to open a distribute.you account by email and get an API key, with no dashboard. An app that cannot set a header signs in with OAuth instead.",
   },
   {
     name: "distribute_signup_complete",

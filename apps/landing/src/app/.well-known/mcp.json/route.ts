@@ -18,7 +18,7 @@ export function GET() {
     {
       name: "distribute.you",
       description:
-        "Revenue made easy. No human needed: request a key with an email (distribute_signup_start, distribute_signup_complete), prepay when you need to spend (distribute_prepay). Read the method skills first (distribute_list_skills, distribute_read_skill): the steps our own Copilot follows. Then read brands, campaigns, leads and their results, and call any API operation.",
+        "Revenue made easy. Connect with OAuth: type your email once and click Confirm in the email we send, and your app keeps your own key in every chat. An agent with no browser gets a key from POST https://api.distribute.you/v1/agent-signups/start, then /v1/agent-signups/complete, and sends it as Authorization: Bearer. Prepay when you need to spend (distribute_prepay). Read the method skills first (distribute_list_skills, distribute_read_skill): the steps our own Copilot follows. Then read brands, campaigns, leads and their results, and call any API operation.",
       version: "1",
       servers: [
         {
