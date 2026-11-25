@@ -197,7 +197,9 @@ describe("the lab home", () => {
     expect(pricing).toContain("3-day free trial <small>Then $99/month</small>");
     expect(pricing).toContain(`href="${LAB_WALK}">Start free trial</a>`);
     expect(pricing).toContain("Need more? Add $100 a month at a time");
-    expect(pricing).toContain("prorated");
+    // Upgrade rule (owner 2026-11-25): the cycle restarts that day, unspent credit comes off the price.
+    expect(pricing).toContain("Your new month starts that day. Unspent credit comes off the price.");
+    expect(pricing).not.toContain("prorated");
     expect(pricing).toContain("Out of credit?");
     expect(home).toContain("Or start from your AI</a> · Free with your own keys · $99/month on ours · Cancel anytime");
   });
