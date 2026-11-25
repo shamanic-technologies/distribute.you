@@ -208,7 +208,17 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("The referred account\n          receives no referral credit.");
     expect(terms).not.toContain("each side");
     expect(terms).toContain("is an acquisition agency delivered as a service");
-    expect(terms).toContain('const LAST_UPDATED = "November 18, 2026"');
+    expect(terms).toContain('const LAST_UPDATED = "November 25, 2026"');
+  });
+
+  it("the terms cover who signs outreach: a member, our staff, or a persona (SIGNER-TERMS-1125)", () => {
+    const terms = read("src/app/terms/page.tsx");
+    expect(terms).toContain("<strong>Who signs your outreach.</strong>");
+    expect(terms).toContain("(c) a persona name set for your brand");
+    expect(terms).toContain("You are the sender and initiator of this");
+    expect(terms).toContain("you name has agreed to outreach being sent under their name");
+    expect(terms).toContain("persona name set under Section 5 (Who signs your outreach) is");
+    expect(terms).toContain("any claim by a person whose name, title, or");
   });
 
   it("the terms state the risk of a brand MCP server our AI reads from and writes to (BRAND-MCP-1109)", () => {

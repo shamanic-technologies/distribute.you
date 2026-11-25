@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "November 18, 2026";
+const LAST_UPDATED = "November 25, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -404,6 +404,18 @@ const SECTIONS: SectionDef[] = [
           prospect.
         </p>
         <p>
+          <strong>Who signs your outreach.</strong> Outreach may be sent
+          under the name, title, and signature of (a) a member of your
+          organization, (b) a staff member of {SERVICE} acting for your
+          brand, or (c) a persona name set for your brand. Every message
+          names your brand, so recipients can always tell which business
+          is contacting them. You are the sender and initiator of this
+          outreach under the CAN-SPAM Act and similar laws, and we send it
+          as your agent. You represent and warrant that each real person
+          you name has agreed to outreach being sent under their name, and
+          that you will tell us at once if that agreement ends.
+        </p>
+        <p>
           <strong>Our infrastructure.</strong> Outreach is sent from sending
           infrastructure owned, operated, or contracted by us, including
           inboxes on domains we own, hosted by mailbox providers such as
@@ -582,7 +594,9 @@ const SECTIONS: SectionDef[] = [
           </li>
           <li>
             Use the Service to impersonate a third party or to misrepresent
-            your affiliation, identity, or qualifications.
+            your affiliation, identity, or qualifications. A signer or
+            persona name set under Section 5 (Who signs your outreach) is
+            not impersonation.
           </li>
           <li>
             Reverse-engineer, decompile, scrape, or extract data from the
@@ -735,9 +749,10 @@ const SECTIONS: SectionDef[] = [
           Customer Data; (b) outreach we sent on your behalf at your
           direction; (c) your violation of these Terms, applicable law, or
           third-party platform terms; (d) your product, service, website, or
-          business; (e) your infringement of any third-party right; or (f)
+          business; (e) your infringement of any third-party right; (f)
           any spam, abuse, or unsubscribe complaint attributable to your
-          campaigns.
+          campaigns; or (g) any claim by a person whose name, title, or
+          signature you had us use in your outreach.
         </p>
       </>
     ),
