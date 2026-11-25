@@ -1,4 +1,5 @@
 import { applyDistrySkin, isSkinnedStylesheet, skinStylesheet } from "@/lib/distry-skin";
+import { isLabHiddenPage } from "@/lib/lab-offer";
 import { prototypeFor } from "@/lib/prototype-catalogue";
 
 /**
@@ -22,6 +23,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (prototypeFor(slug) === null) return new Response("Not found.", { status: 404, headers: HEADERS });
 
   const pathname = `/${(path ?? []).map(encodeURIComponent).join("/")}`;
+  // An article about the old offer is not served on the lab (`LAB_HIDDEN_PAGES`).
+  if (isLabHiddenPage(pathname)) return new Response(null, { status: 307, headers: { ...HEADERS, location: "/blog" } });
   const search = new URL(request.url).search;
   const headers = new Headers();
   for (const name of FORWARDED) {

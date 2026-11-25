@@ -11,7 +11,7 @@
  * Alias-free: unit-tested directly.
  */
 
-import { withLabOffer } from "./lab-offer";
+import { LAB_UNRESTATED_PAGES, withLabOffer } from "./lab-offer";
 
 export const SKIN_ROUTE_PREFIX = "/internal-skin";
 export const SKIN_ASSETS = "/landing/distry";
@@ -176,9 +176,38 @@ export function frameHtml(sceneUrl: string): string {
   return `<figure class="d-frame" aria-hidden="true"><img src="${sceneUrl}" alt="" loading="lazy" width="1600" height="893"></figure>`;
 }
 
+/**
+ * The React pages whose copy states the offer: the lab serves them without React, so their
+ * text can be restated. `/terms` is left as production serves it (`LAB_UNRESTATED_PAGES`).
+ */
+const RESTATED_REACT_PAGE = /^\/(?:docs|blog|investors|privacy|terms)(?:\/|$)/;
+
+export function isRestatedReactPage(pathname: string): boolean {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  return RESTATED_REACT_PAGE.test(path) && !LAB_UNRESTATED_PAGES.includes(path);
+}
+
+/**
+ * A React page, served as the HTML its server rendered and nothing more: the framework's
+ * scripts (chunks, the hydration payload, the bundler's bootstrap) are dropped, so the
+ * text the page shows is the text in the HTML and can be restated like a static page's.
+ * React would otherwise rebuild the body from its payload and bring the old copy back.
+ * What is lost on the lab: client navigation and the few client widgets (copy buttons,
+ * the docs menu toggle). Streaming helpers React inlines for Suspense are kept.
+ */
+export function withoutHydration(html: string): string {
+  return html
+    .replace(/<script\b[^>]*\bsrc="\/_next\/static\/[^"]*"[^>]*><\/script>/gi, "")
+    .replace(/<script\b[^>]*>\s*\(?self\.__next_f\b[\s\S]*?<\/script>/gi, "")
+    .replace(/<script\b[^>]*>\s*\(globalThis\["TURBOPACK"\][\s\S]*?<\/script>/gi, "")
+    .replace(/<link\b[^>]*\brel="preload"[^>]*\bas="script"[^>]*>/gi, "");
+}
+
 export function applyDistrySkin(html: string, pathname = "/", status = 200): string {
   if (!/<\/head>/i.test(html) || !/<body\b/i.test(html)) return html;
   const sceneUrl = `${SKIN_ASSETS}/assets/${sceneFor(pathname, status)}.webp`;
+  // The lab states its own offer on the React pages too (owner 2026-11-25): served without React, skinned as static.
+  if (isHydratedPage(html) && isRestatedReactPage(pathname)) html = withoutHydration(html);
   if (isHydratedPage(html)) {
     // Nothing is added to the body: the script dresses the page once it has settled.
     const handover = JSON.stringify({ late: true, sky: SKY, buddy: BUDDY, lines: LINES, frame: frameHtml(sceneUrl), logo: DISTRY_LOGO }).replace(/</g, "\\u003c");
