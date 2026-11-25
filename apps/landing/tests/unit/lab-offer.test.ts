@@ -232,5 +232,9 @@ describe("the lab press band (owner 2026-11-25)", () => {
     expect(out).not.toContain("press-marquee");
     expect(out).not.toContain("aria-hidden");
     expect([...out.matchAll(/<span title="([^"]*)"/g)].map((m) => m[1])).toEqual([...LAB_PRESS]);
+    // An outlet drawn as a wordmark carries no span: its name is read from the alt.
+    const wm = (n: string) => `<li><a href="https://x.test/${n.length}"><img class="wordmark" src="https://l.test/w.png" alt="${n}" title="${n}"></a></li>`;
+    const wide = stillPress(`<div class="press-marquee"><ul class="press-track" data-brand-proof="press">${names.map(wm).join("")}</ul></div>`);
+    expect([...wide.matchAll(/<img class="wordmark"[^>]* alt="([^"]*)"/g)].map((m) => m[1])).toEqual([...LAB_PRESS]);
   });
 });
