@@ -5,6 +5,8 @@ import path from "node:path";
 import { clonePathFor, contentTypeFor, originPathFor, withinRoot } from "@/lib/clone-files";
 import { PROTOTYPE_ROUTE_PREFIX, byteRangeFor, prototypeFor } from "@/lib/prototype-catalogue";
 import { withDistryLogo } from "@/lib/distry-skin";
+import { withLabHome } from "@/lib/lab-offer";
+import { withOutcomeRanges } from "@/lib/lab-outcome-ranges";
 import { withSiteChrome } from "@/lib/site-chrome";
 import { withLiveFigures } from "@/lib/static-html";
 
@@ -16,7 +18,8 @@ import { withLiveFigures } from "@/lib/static-html";
  * every other host. A prototype is not a live page, so it gets no analytics and no
  * canonical. Its PAGES do wear what a visitor of the live site sees: the real menu and
  * footer (`withSiteChrome`, from its `<!--site-nav-->` / `<!--site-footer-->` tokens) and
- * the live client figures (`withLiveFigures`, keyed like the homepage's). Other files
+ * the live client figures (`withLiveFigures`, keyed like the homepage's), then the lab's own
+ * reads (`withOutcomeRanges`, `withLabHome`). Other files
  * are served as they are on disk.
  *
  * The path helpers are the clones' (`src/lib/clone-files.ts`): they answer a question
@@ -87,7 +90,10 @@ export async function GET(
   }
 
   if (found.file.endsWith(".html")) {
-    const page = withDistryLogo(await withLiveFigures(withSiteChrome(found.body.toString("utf8"), "/")));
+    // Lab only: the price cards read their range, the client cards state meetings booked only.
+    const page = withDistryLogo(
+      withLabHome(await withOutcomeRanges(await withLiveFigures(withSiteChrome(found.body.toString("utf8"), "/")))),
+    );
     return new Response(page, { headers: { ...BASE_HEADERS, "content-type": "text/html; charset=utf-8" } });
   }
 

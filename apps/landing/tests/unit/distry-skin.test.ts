@@ -191,7 +191,7 @@ describe("Distry's mark replaces the site's", () => {
   it("ships the logo, and the home wears it", () => {
     expect(existsSync(path.resolve(__dirname, "../../public/landing/distry/assets/distry-mark.webp"))).toBe(true);
     const route = readFileSync(path.resolve(__dirname, "../../src/app/internal-prototype/[slug]/[[...path]]/route.ts"), "utf8");
-    expect(route).toContain("withDistryLogo(await withLiveFigures(");
+    expect(route).toMatch(/withDistryLogo\(\s*withLabHome\(await withOutcomeRanges\(await withLiveFigures\(/);
   });
 });
 

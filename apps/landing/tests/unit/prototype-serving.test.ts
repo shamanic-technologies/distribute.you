@@ -179,11 +179,11 @@ describe("the Distry home wears the live site's chrome and figures", () => {
         },
       ],
     };
-    const proof = reseedProofCards(html, payload);
-    expect(proof).toContain("<b>20,001</b>contacted");
-    expect(proof).toContain("<b>$71</b>");
+    // The lab home ships no proof card (price cards stand there, owner 2026-11-25): the proof reseed is a no-op.
+    expect(reseedProofCards(html, payload)).toBe(html);
+    // Its client cards state meetings booked only, and the reseed keeps to the cell on screen.
     const hero = reseedShowcaseCards(html, payload);
-    expect(hero).toContain('data-brand="docdinners.com" data-steps="4,41"');
+    expect(hero).toContain('data-brand="docdinners.com" data-steps="4"');
     expect(html).toContain('<div class="showcase-grid" id="live-cards">');
     expect(html).toContain('<a class="show-card yours"');
     expect(reseedFounderCount(html, 237)).toContain("Loved by 230+ founders");
