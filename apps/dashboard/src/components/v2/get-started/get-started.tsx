@@ -177,6 +177,7 @@ import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
 import { AccountCardWall } from "./account-card-wall";
+import { LabDistryContext, LabSetupChoice, useLabDistry } from "./lab-handoff";
 import { GS_ARM_COOKIE, GS_ARM_COPY, showsEmails, walkStepNumber, walkSteps, type GsArm } from "@/lib/v2/get-started-arm";
 import { EMAIL_ANGLES, ANGLE_CHANNEL, angleStrategy, funnelFitsAngles, toggleAngle, type EmailAngle } from "@/lib/v2/email-angles";
 import { OrgLaunch } from "./org-launch";
@@ -220,20 +221,30 @@ export interface OrgWalk {
   brandId: string | null;
 }
 
-type GetStartedProps = { org?: OrgWalk; ipCountry?: string | null; gsArm?: GsArm; gsArmFresh?: boolean };
+type GetStartedProps = {
+  org?: OrgWalk;
+  ipCountry?: string | null;
+  gsArm?: GsArm;
+  gsArmFresh?: boolean;
+  /** The walk wears the Distry skin (the lab): its own first choice and last screen (`lab-handoff.tsx`). */
+  labDistry?: boolean;
+};
 
 /** The arm this walk was drawn into, for the stages that word or number themselves by it. */
 const GsArmContext = createContext<GsArm>("emails");
 
 export function GetStarted(props: GetStartedProps = {}) {
   return (
-    <GsArmContext.Provider value={props.gsArm ?? "emails"}>
-      <GetStartedWalk {...props} />
-    </GsArmContext.Provider>
+    <LabDistryContext.Provider value={props.labDistry === true}>
+      <GsArmContext.Provider value={props.gsArm ?? "emails"}>
+        <GetStartedWalk {...props} />
+      </GsArmContext.Provider>
+    </LabDistryContext.Provider>
   );
 }
 
 function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = false }: GetStartedProps) {
+  const lab = useLabDistry();
   const params = useSearchParams();
   // The get-started A/B arm (owner 2026-10-17, lib/v2/get-started-arm.ts), drawn on the
   // server: kept in a cookie and carried on every PostHog event as `gs_arm`.
@@ -1937,6 +1948,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       setSetup(null);
       void start(raw, true);
     };
+    if (lab)
+      return <LabSetupChoice website={you.website} onWeb={() => manual()} onBack={() => setSetup(null)} />;
     return (
       <SetupChoice
         view={setup.view}

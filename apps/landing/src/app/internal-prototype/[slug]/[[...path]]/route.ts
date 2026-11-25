@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { clonePathFor, contentTypeFor, originPathFor, withinRoot } from "@/lib/clone-files";
 import { PROTOTYPE_ROUTE_PREFIX, byteRangeFor, prototypeFor } from "@/lib/prototype-catalogue";
-import { withDistryLogo } from "@/lib/distry-skin";
+import { withDistryLogo, withSkinSignUp } from "@/lib/distry-skin";
 import { withLabHome } from "@/lib/lab-offer";
 import { withOutcomeRanges } from "@/lib/lab-outcome-ranges";
 import { withSiteChrome } from "@/lib/site-chrome";
@@ -92,7 +92,7 @@ export async function GET(
   if (found.file.endsWith(".html")) {
     // Lab only: the price cards read their range, the client cards state meetings booked only.
     const page = withDistryLogo(
-      withLabHome(await withOutcomeRanges(await withLiveFigures(withSiteChrome(found.body.toString("utf8"), "/")))),
+      withSkinSignUp(withLabHome(await withOutcomeRanges(await withLiveFigures(withSiteChrome(found.body.toString("utf8"), "/"))))),
     );
     return new Response(page, { headers: { ...BASE_HEADERS, "content-type": "text/html; charset=utf-8" } });
   }
