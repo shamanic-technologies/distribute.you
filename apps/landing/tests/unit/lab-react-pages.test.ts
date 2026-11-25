@@ -146,6 +146,14 @@ describe("the solo-founder pivot hides every page it does not name (owner 2026-1
     expect(text).not.toMatch(/\bAgency\b|Book a call|GTM Automation|Cursor|Zapier|n8n|Make\.com/);
     expect(text).toContain("Use it from your AI");
   });
+
+  it("links to the dashboard nowhere on the React pages it restates (owner 2026-11-25)", () => {
+    for (const { pathname, html } of restated) {
+      const out = applyDistrySkin(html, pathname);
+      expect(out.slice(out.indexOf("<body")), pathname).not.toContain("dashboard.distribute.you");
+      expect(readableTextOf(out), pathname).not.toMatch(/\bLog in\b/);
+    }
+  });
 });
 
 describe("withoutHydration", () => {

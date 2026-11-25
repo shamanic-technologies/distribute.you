@@ -156,7 +156,8 @@ describe("the plan cards", () => {
     expect(LAB_SIGN_UP).toBe(SIGN_UP);
     expect(LAB_BOOK_A_CALL).toBe(BOOK_A_CALL);
     expect(LAB_PLANS).toContain(`href="${LAB_START}">Get started from your AI</a>`);
-    expect(LAB_PLANS).toContain(`href="${SIGN_UP}">Start free trial</a>`);
+    expect(LAB_PLANS).toContain(`href="${LAB_START}">Start free trial</a>`);
+    expect(LAB_PLANS).not.toContain("dashboard.distribute.you");
     expect(LAB_PLANS).not.toContain(BOOK_A_CALL);
     expect(oldOfferClaims(LAB_PLANS)).toEqual([]);
   });
@@ -172,6 +173,10 @@ describe("the site chrome on the lab", () => {
       const text = readableText(out);
       expect(text).not.toMatch(/\bAgency\b|Book a call|GTM Automation|Lead Nurturing|Customer Success Automation|AI Ad Management|Best for/);
       expect(out).not.toContain(BOOK_A_CALL);
+      // Owner 2026-11-25: the lab never links to the dashboard, "Log in" included.
+      expect(live).toContain("dashboard.distribute.you");
+      expect(out).not.toContain("dashboard.distribute.you");
+      expect(text).not.toContain("Log in");
       expect(text).toContain("Signups Automation");
       expect(text).toContain("Use it from your AI");
       expect(out).toContain(`href="${LAB_START}"`);
@@ -189,7 +194,7 @@ describe("the lab home", () => {
     expect(pricing).toContain("$0 <small>With your own keys</small>");
     expect(pricing).toContain("Every AI step can run on your Claude subscription");
     expect(pricing).toContain("3-day free trial <small>Then $99/month</small>");
-    expect(pricing).toContain(`href="${SIGN_UP}">Start free trial</a>`);
+    expect(pricing).toContain(`href="${LAB_START}">Start free trial</a>`);
     expect(pricing).toContain("Need more? Add $100 a month at a time");
     expect(pricing).toContain("prorated");
     expect(pricing).toContain("Out of credit?");
@@ -207,6 +212,7 @@ describe("the lab home", () => {
     const text = readableText(home).replace("Bosar Agency", "Bosar");
     expect(text).not.toMatch(/Managed|\$499|money back|Book a call|\bAgency\b|\bagency\b|dashboard|sales team|One login for every brand|Mac app|Cursor|Zapier|n8n/);
     expect(home).not.toContain(BOOK_A_CALL);
+    expect(home).not.toContain("dashboard.distribute.you");
   });
 
   it("carries the logo wall and the press band tokens, the wall first", () => {

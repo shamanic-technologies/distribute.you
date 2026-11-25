@@ -139,7 +139,7 @@ export const LAB_PLANS = `<div class="plans">
         <span class="plan-tag"><i></i>$99 per month</span>
         <div class="plan-price">3-day free trial<small>Then $99/month</small></div>
         <p class="plan-desc">We hold the keys for you.</p>
-        <a class="btn btn-accent btn-lg" href="${LAB_SIGN_UP}">Start free trial</a>
+        <a class="btn btn-accent btn-lg" href="${LAB_START}">Start free trial</a>
         <div class="plan-included">What's included</div>
         <ul>
           <li><i></i>$99 of credit on our keys every month</li>
@@ -416,7 +416,7 @@ const AGENCY_GROUP = /<div\b[^>]*>(?:<button\b[^>]*>|<p\b[^>]*>|<h4\b[^>]*>)Agen
  * the integrations the pivot names.
  */
 export function withLabChrome(html: string): string {
-  let out = html.replace(
+  let out = withoutDashboard(html).replace(
     /href="\/docs\/integrations\/claude"([^>]*)>Use from Claude Code or Grok</g,
     (_m, attrs: string) => `href="${LAB_START}"${attrs}>Use it from your AI<`,
   );
@@ -428,6 +428,21 @@ export function withLabChrome(html: string): string {
   }
   // A footer column every link of which left (the rankings) leaves too.
   return withoutHiddenCards(out).replace(/<div>\s*<h4\b[^>]*>[^<]*<\/h4>\s*<ul\b[^>]*>\s*<\/ul>\s*<\/div>/g, "");
+}
+
+/**
+ * The lab never links to the dashboard (owner 2026-11-25: « ne le connectons pas au sous
+ * domaine lab, comme s'il n'existait pas »; production keeps every dashboard link).
+ * "Log in" leaves; every other dashboard address (sign-up, get started, API keys) becomes
+ * the way in the lab sells: getting started from your AI.
+ */
+export function withoutDashboard(html: string): string {
+  return html
+    .replace(/<a\b[^>]*href="https:\/\/dashboard\.distribute\.you\/sign-in[^"]*"[^>]*>[\s\S]*?<\/a>/g, "")
+    .replace(/(href|action)="https:\/\/dashboard\.distribute\.you\/api-keys[^"]*"/g, (_m, attr: string) => `${attr}="/docs/quickstart"`)
+    .replace(/(href|action)="https:\/\/dashboard\.distribute\.you[^"]*"/g, (_m, attr: string) => `${attr}="${LAB_START}"`)
+    .replace(/(?:https:\/\/)?dashboard\.distribute\.you\/api-keys/g, "distribute.you/docs/quickstart")
+    .replace(/(?:https:\/\/)?dashboard\.distribute\.you(?:\/[a-z-]+)*/g, `distribute.you${LAB_START}`);
 }
 
 /** Where the lab sends a reader of a page it does not serve, or null when the page is served. */
