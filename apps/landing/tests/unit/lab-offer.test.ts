@@ -111,7 +111,7 @@ describe("every skinned page states the lab's offer", async () => {
     const live = renderAiSdrPage();
     expect(live).toContain("<i></i>Open source</span>");
     const text = readableText(applyDistrySkin(live, "/ai-sdr"));
-    expect(text).toContain("Self-served $99/month 3-day free trial");
+    expect(text).toContain("Self-served 3-day free trial Then $99/month");
     expect(text).toContain("Managed From $499/month 100% money back");
     expect(text).not.toContain("View the code");
     expect(text).toContain("More pipeline for your sales team.");
@@ -153,7 +153,7 @@ describe("the lab home", () => {
   it("states the new offer and none of the old one", () => {
     expect(oldOfferClaims(home)).toEqual([]);
     const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="quotes"'));
-    expect(pricing).toContain("$99/month <span>3-day free trial</span>");
+    expect(pricing).toContain("3-day free trial <small>Then $99/month</small>");
     expect(pricing).toContain(`href="${SIGN_UP}">Start free trial</a>`);
     expect(pricing).toContain("From $499/month <span>100% money back</span>");
     expect(pricing).toContain(`href="${BOOK_A_CALL}">Book a call</a>`);

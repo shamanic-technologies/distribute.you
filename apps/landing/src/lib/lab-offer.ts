@@ -64,7 +64,7 @@ const MANAGED_SENTENCE = "Managed starts at $499/month, with 100% money back on 
 export const LAB_PLANS = `<div class="plans">
       <article class="plan rv">
         <span class="plan-tag"><i></i>Self-served</span>
-        <div class="plan-price">$99/month<small>3-day free trial</small></div>
+        <div class="plan-price">3-day free trial<small>Then $99/month</small></div>
         <p class="plan-desc">You run the agent.</p>
         <a class="btn btn-accent btn-lg" href="${LAB_SIGN_UP}">Start free trial</a>
         <div class="plan-included">What's included</div>
@@ -128,7 +128,7 @@ const BLOCKS: readonly Rule[] = [
   [/<li><b>0%<\/b><span>markup on [^<]*<\/span><\/li>/g, "<li><b>$99</b><span>a month, 3-day free trial</span></li>"],
   [/<li><b>MIT<\/b><span>open source, run it yourself<\/span><\/li>/g, "<li><b>100%</b><span>money back on Managed outcome prices</span></li>"],
   // Our single plan card beside a competitor's plans.
-  [/<div class="plan-price">Usage based<small>0% markup<\/small><\/div>/g, '<div class="plan-price">$99/month<small>3-day free trial</small></div>'],
+  [/<div class="plan-price">Usage based<small>0% markup<\/small><\/div>/g, '<div class="plan-price">3-day free trial<small>Then $99/month</small></div>'],
   [/<li><i><\/i>Open source under MIT<\/li>/g, "<li><i></i>Managed: from $499/month, 100% money back</li>"],
   // The live price list's rows (`actionPricesHtml`), filled by the route after the builder.
   [/<small>API price, 0% markup<\/small>/g, "<small>unit price</small>"],
