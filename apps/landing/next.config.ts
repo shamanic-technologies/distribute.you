@@ -103,6 +103,10 @@ const nextConfig: NextConfig = {
       // `cold-email-agency-page.test.ts` pins one 301 per moved page here.
       { source: "/best/cold-email-agency-for-saas-founders", destination: "/cold-email-agency/best/cold-email-agency-for-saas-founders", statusCode: 301, missing: offLab },
       { source: "/best/cold-email-agency-for-solo-founders", destination: "/cold-email-agency/best/cold-email-agency-for-solo-founders", statusCode: 301, missing: offLab },
+      // The Mac app was retired on 2026-11-25 (DELETE-MAC-APP-1125): its page, installer and
+      // top-up return page are gone; any old link lands on the home page.
+      { source: "/desktop", destination: "/", statusCode: 301, missing: offLab },
+      { source: "/desktop/:path+", destination: "/", statusCode: 301, missing: offLab },
       { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false, missing: offLab },
       { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false, missing: offLab },
     ];

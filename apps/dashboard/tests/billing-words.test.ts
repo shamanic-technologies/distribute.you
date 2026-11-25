@@ -8,7 +8,7 @@ describe("billing copy never says 'you owe'", () => {
   it("no app source carries 'You owe' / 'Owed now' in copy", () => {
     const root = join(__dirname, "../..");
     const out = execSync(
-      `grep -rnE "\\"You owe|>\\s*You owe|\\\`You owe|Owed now|You owe \\{|Text\\(\\"You owe" --include=*.ts --include=*.tsx --include=*.swift dashboard/src admin/src desktop/Sources || true`,
+      `grep -rnE "\\"You owe|>\\s*You owe|\\\`You owe|Owed now|You owe \\{|Text\\(\\"You owe" --include=*.ts --include=*.tsx dashboard/src admin/src || true`,
       { cwd: root, encoding: "utf8" },
     );
     expect(out).toBe("");
