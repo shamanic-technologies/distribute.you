@@ -28,6 +28,12 @@ export const LAB_SIGN_UP = "https://dashboard.distribute.you/get-started";
 export const LAB_BOOK_A_CALL = "https://calendar.app.google/BkmyoA7ujMFFDg1s9";
 /** Where the lab sends "get started": the visitor's own AI (the integration pages). */
 export const LAB_START = "/docs/integrations";
+/**
+ * The web sign-up walk in the lab's own skin (owner 2026-11-25: keep the web onboarding, its
+ * main button first; ONBOARDING-CHANNEL-HANDOFF-1125). The one dashboard address the lab
+ * links to: the walk ends by handing the founder to WhatsApp, Telegram or their AI.
+ */
+export const LAB_WALK = `${LAB_SIGN_UP}?skin=distry`;
 
 /**
  * Articles the lab does not serve: an article whose SUBJECT is the old offer cannot be
@@ -139,7 +145,7 @@ export const LAB_PLANS = `<div class="plans">
         <span class="plan-tag"><i></i>$99 per month</span>
         <div class="plan-price">3-day free trial<small>Then $99/month</small></div>
         <p class="plan-desc">We hold the keys for you.</p>
-        <a class="btn btn-accent btn-lg" href="${LAB_START}">Start free trial</a>
+        <a class="btn btn-accent btn-lg" href="${LAB_WALK}">Start free trial</a>
         <div class="plan-included">What's included</div>
         <ul>
           <li><i></i>$99 of credit on our keys every month</li>
@@ -433,16 +439,21 @@ export function withLabChrome(html: string): string {
 /**
  * The lab never links to the dashboard (owner 2026-11-25: « ne le connectons pas au sous
  * domaine lab, comme s'il n'existait pas »; production keeps every dashboard link).
- * "Log in" leaves; every other dashboard address (sign-up, get started, API keys) becomes
- * the way in the lab sells: getting started from your AI.
+ * "Log in" leaves; the sign-up walk stays (owner 2026-11-25, kept for the web onboarding;
+ * `withSkinSignUp` then dresses it in the lab's skin); every other dashboard address
+ * (sign-up, API keys) becomes the way in from your AI.
  */
 export function withoutDashboard(html: string): string {
+  // The sign-up walk stays (owner 2026-11-25), in the lab's skin; parked so the sweep below skips it.
+  const WALK = "__LAB_WALK__";
   return html
+    .replace(/(href|action)="https:\/\/dashboard\.distribute\.you\/get-started[^"]*"/g, (_m, attr: string) => `${attr}="${WALK}"`)
     .replace(/<a\b[^>]*href="https:\/\/dashboard\.distribute\.you\/sign-in[^"]*"[^>]*>[\s\S]*?<\/a>/g, "")
     .replace(/(href|action)="https:\/\/dashboard\.distribute\.you\/api-keys[^"]*"/g, (_m, attr: string) => `${attr}="/docs/quickstart"`)
     .replace(/(href|action)="https:\/\/dashboard\.distribute\.you[^"]*"/g, (_m, attr: string) => `${attr}="${LAB_START}"`)
     .replace(/(?:https:\/\/)?dashboard\.distribute\.you\/api-keys/g, "distribute.you/docs/quickstart")
-    .replace(/(?:https:\/\/)?dashboard\.distribute\.you(?:\/[a-z-]+)*/g, `distribute.you${LAB_START}`);
+    .replace(/(?:https:\/\/)?dashboard\.distribute\.you(?:\/[a-z-]+)*/g, `distribute.you${LAB_START}`)
+    .replaceAll(`="${WALK}"`, `="${LAB_SIGN_UP}"`);
 }
 
 /** Where the lab sends a reader of a page it does not serve, or null when the page is served. */

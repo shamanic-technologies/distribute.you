@@ -147,10 +147,11 @@ describe("the solo-founder pivot hides every page it does not name (owner 2026-1
     expect(text).toContain("Use it from your AI");
   });
 
-  it("links to the dashboard nowhere on the React pages it restates (owner 2026-11-25)", () => {
+  it("links to the dashboard nowhere on the React pages it restates, but the sign-up walk (owner 2026-11-25)", () => {
     for (const { pathname, html } of restated) {
       const out = applyDistrySkin(html, pathname);
-      expect(out.slice(out.indexOf("<body")), pathname).not.toContain("dashboard.distribute.you");
+      const body = out.slice(out.indexOf("<body")).replaceAll("https://dashboard.distribute.you/get-started?skin=distry", "");
+      expect(body, pathname).not.toContain("dashboard.distribute.you");
       expect(readableTextOf(out), pathname).not.toMatch(/\bLog in\b/);
     }
   });
