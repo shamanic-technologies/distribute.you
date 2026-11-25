@@ -23,6 +23,20 @@ export const LAB_SIGN_UP = "https://dashboard.distribute.you/get-started";
 /** The site's "Book a call" link (`BOOK_A_CALL` in `site-chrome.ts`; a test pins them equal). */
 export const LAB_BOOK_A_CALL = "https://calendar.app.google/BkmyoA7ujMFFDg1s9";
 
+/**
+ * Pages the lab does not serve: an article whose SUBJECT is the old offer cannot be
+ * restated without rewriting what it is about. The lab sends its readers to `/blog`, and
+ * its card leaves the blog index (`withoutHiddenCards`).
+ */
+export const LAB_HIDDEN_PAGES: readonly string[] = ["/blog/ai-gtm"];
+
+/**
+ * Pages the lab serves with the old offer LEFT IN, on purpose: `/terms` is the contract
+ * accounts sign today (prepaid credit, automatic reload). Rewriting it into the lab's offer
+ * would put legal terms in front of a reader that no account can get yet.
+ */
+export const LAB_UNRESTATED_PAGES: readonly string[] = ["/terms"];
+
 /** What a visitor must never read on the lab: the claims of the offer it replaces. */
 export const OLD_OFFER: readonly RegExp[] = [
   /usage[- ]based/i,
@@ -41,7 +55,7 @@ export const OLD_OFFER: readonly RegExp[] = [
   /\bopen source too\b/i,
 ];
 
-const A = "(?:'|&#39;|&apos;|’)";
+const A = "(?:'|&#39;|&#x27;|&apos;|’)";
 const SELF_SENTENCE = "Self-served is $99/month with a 3-day free trial.";
 const MANAGED_SENTENCE = "Managed has a custom price and a 100% money back guarantee on fixed outcome prices.";
 
@@ -79,6 +93,17 @@ type Rule = readonly [RegExp, string | ((...m: string[]) => string)];
 
 /** Whole blocks a page builds around the old offer. */
 const BLOCKS: readonly Rule[] = [
+  // The structured-data offer every React page carries (root layout).
+  [
+    /"price":"10",("priceCurrency":"USD","description":")Usage based\. [^"]*?Start with \$10\. Pause or cancel anytime\."/g,
+    (_m, mid) => `"price":"99",${mid}${SELF_SENTENCE} ${MANAGED_SENTENCE} Pause or cancel anytime."`,
+  ],
+  // The /investors business model: both arms, as the lab sells them.
+  [
+    /The business model has two arms\. The(?:<!-- -->)? <strong([^>]*)>AI agent<\/strong> is usage based ?, with every action at the API price, 0% markup, prepaid\. The(?:<!-- -->)? <strong[^>]*>GTM agency<\/strong> is from \$1K a month plus 10% of the budget\./g,
+    (_m, attrs) =>
+      `The business model has two plans. ${SELF_SENTENCE.replace("Self-served", `<strong${attrs}>Self-served</strong>`)} ${MANAGED_SENTENCE.replace("Managed", `<strong${attrs}>Managed</strong>`)}`,
+  ],
   // The Open source / Hosted pair of plan cards.
   [
     /<div class="plans">\s*(?:<article class="plan[\s\S]*?<\/article>\s*)+<\/div>/g,
@@ -114,6 +139,26 @@ const BLOCKS: readonly Rule[] = [
 
 /** Sentences the page builders share, whole. */
 const SENTENCES: readonly Rule[] = [
+  // The React pages (docs, blog, investors), before any shorter rule takes a piece of them.
+  [/Paste your website, confirm what we found, and add your first \$10\./g, "Paste your website, confirm what we found, and start your 3-day free trial."],
+  [
+    new RegExp(
+      `The AI agent is usage based\\. You pay as you go from a prepaid balance, starting with \\$10: each action is billed at the vendor${A}s API price with 0% markup, listed on (?:<a [^>]*>)?https://distribute\\.you/catalog(?:</a>)?, and each campaign`,
+      "g",
+    ),
+    `${SELF_SENTENCE} ${MANAGED_SENTENCE} Each campaign`,
+  ],
+  [/Every paid call is prepaid:/g, "Paid calls need an active account:"],
+  [new RegExp(`, spent from the organization${A}s prepaid balance at the public per-action prices\\.`, "g"), "."],
+  [/Read the prepaid account:/g, "Read the account:"],
+  [/Prepaid balance and account settings/g, "Balance and account settings"],
+  [/the automatic reload settings and/g, "the reload settings and"],
+  [/<li>Every action at the API price, the return of each outcome shown<\/li>/g, "<li>The return of each outcome shown</li>"],
+  [/Stripe and Revolut \(usage-based, auto top-up\)/g, "Stripe and Revolut"],
+  [/Pricing is usage based\. You only pay for your outreach, prepaid (?:from \$10|at public catalog prices)\./g, "Self-served is $99/month with a 3-day free trial."],
+  [/Usage based, with 0% markup on the API price(, and (?:you can cancel anytime|we send from our own domains)|)/g, (_m, rest) => `Self-served is $99/month with a 3-day free trial${rest}`],
+  [/, with 0% markup on the API price\./g, "."],
+  [/Usage-based pricing is easy for vendors/g, "Pricing by usage is easy for vendors"],
   [/Usage based · 0% markup/g, "$99/month · 3-day free trial"],
   [
     new RegExp(`Usage based\\. Every \\w+ at the vendor${A}s API price, 0% markup, from a prepaid balance\\. Start with \\$10, cancel anytime\\.`, "g"),
@@ -217,7 +262,22 @@ function applyRules(html: string, rules: readonly Rule[]): string {
 
 /** A live page, restated in the lab's offer. A page stating none of the old offer comes back unchanged. */
 export function withLabOffer(html: string): string {
-  return applyRules(applyRules(applyRules(html, BLOCKS), SENTENCES), PHRASES);
+  return withoutHiddenCards(applyRules(applyRules(applyRules(html, BLOCKS), SENTENCES), PHRASES));
+}
+
+/** Links to a page the lab does not serve: a card leaves the page, a link inside a sentence keeps its words. */
+export function withoutHiddenCards(html: string): string {
+  let out = html;
+  for (const page of LAB_HIDDEN_PAGES) {
+    const href = `href="(?:https://distribute\\.you)?${page.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`;
+    out = out.replace(new RegExp(`<a\\b[^>]*${href}[^>]*>([\\s\\S]*?)<\\/a>`, "g"), (_m, inner: string) => (/<article\b/.test(inner) ? "" : inner));
+  }
+  return out;
+}
+
+/** A path the lab does not serve, answered with the blog instead. */
+export function isLabHiddenPage(pathname: string): boolean {
+  return LAB_HIDDEN_PAGES.includes(pathname.replace(/\/+$/, ""));
 }
 
 /** What a reader sees: scripts (structured data kept) and styles dropped, tags stripped, entities read. */
