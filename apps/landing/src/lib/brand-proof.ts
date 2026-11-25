@@ -1,5 +1,6 @@
 /**
- * The homepage's "our clients have worked at" wall and "As featured in" row,
+ * The homepage's "our team and clients have worked at" wall and, apart from it,
+ * the "As featured in" scrolling band,
  * rendered from brand-service's public brand proof (BRAND-PROOF-LOGOS-1121).
  *
  * Owner 2026-11-21: a learn2reinvent-style wall of companies where our paying
@@ -16,16 +17,18 @@
 export const BRAND_PROOF_DOMAIN = "distribute.you";
 
 /**
- * Owner 2026-11-21: no fame threshold, « affiche le top 24 c'est tout » for the wall,
- * and the top 3 outlets « quel que soit le score » for the press row. The producer's
- * ranking (notoriety, then traffic) decides the order; the landing cuts the press row
- * to its first 3.
+ * Owner 2026-11-21: no fame threshold, « affiche le top 24 c'est tout » for the wall.
+ * Owner 2026-11-25: the press row shows EVERY outlet served, as an endless scroll,
+ * in its own place on the page (« pas collé au 24 logos »). One read asks the
+ * producer's max so the press list is whole; the wall keeps its first 24.
  */
 export const BRAND_PROOF_WALL_LIMIT = 24;
-export const BRAND_PROOF_PRESS_LIMIT = 3;
+export const BRAND_PROOF_FETCH_LIMIT = 100;
 
-/** One token for the whole section: no logo served, no section at all. */
+/** The wall's token: no employer logo served, no wall at all. */
 export const BRAND_PROOF_TOKEN = "<!--brand-proof-->";
+/** The press band's token, placed apart from the wall. */
+export const PRESS_PROOF_TOKEN = "<!--press-proof-->";
 
 export interface BrandProofCompany {
   companyId: string;
@@ -76,7 +79,7 @@ function logoImg(c: BrandProofCompany): string {
 }
 
 /**
- * The whole section, or "" when the producer served nothing drawable.
+ * The "worked at" wall, or "" when the producer served no drawable employer.
  *
  * An empty wall is not drawn as a half-empty grid with a heading over it: the
  * section is simply absent, like the hot-lead band when its index is unmeasured.
@@ -84,29 +87,40 @@ function logoImg(c: BrandProofCompany): string {
 export function brandProofHtml(proof: BrandProof | null): string {
   if (!proof) return "";
   const employers = (proof.employers ?? []).filter(drawable).slice(0, BRAND_PROOF_WALL_LIMIT);
-  const press = (proof.press ?? [])
-    .filter((p) => drawable(p) && safeUrl(p.article?.url))
-    .slice(0, BRAND_PROOF_PRESS_LIMIT);
-  if (employers.length === 0 && press.length === 0) return "";
+  if (employers.length === 0) return "";
+  return (
+    '<section class="framed" id="clients"><div class="wrap">' +
+    '<div class="section-head center rv">' +
+    "<h2>Our team and clients have worked at great companies</h2>" +
+    "<p>Each logo is a company where someone from distribute.you or a paying client worked.</p>" +
+    "</div>" +
+    `<ul class="logo-wall" data-brand-proof="employers">${employers.map((c) => `<li>${logoImg(c)}</li>`).join("")}</ul>` +
+    "</div></section>"
+  );
+}
 
-  const wall = employers.length
-    ? '<div class="section-head center rv">' +
-      "<h2>Our clients have worked at great companies</h2>" +
-      "<p>Each logo is a company where a paying client of distribute.you worked.</p>" +
-      "</div>" +
-      `<ul class="logo-wall" data-brand-proof="employers">${employers
-        .map((c) => `<li>${logoImg(c)}</li>`)
-        .join("")}</ul>`
-    : "";
-
-  const featured = press.length
-    ? `<div class="featured-in rv"><h3>As featured in</h3><ul class="featured-row" data-brand-proof="press">${press
-        .map(
-          (p) =>
-            `<li><a href="${escapeHtml(safeUrl(p.article.url)!)}" target="_blank" rel="noopener">${logoImg(p)}</a></li>`,
-        )
-        .join("")}</ul></div>`
-    : "";
-
-  return `<section class="framed" id="clients"><div class="wrap">${wall}${featured}</div></section>`;
+/**
+ * The "As featured in" band: every served outlet, scrolling without end.
+ *
+ * The list is drawn twice in one track so the loop has no seam; the copy is
+ * aria-hidden and unfocusable, so a screen reader and a keyboard meet each
+ * outlet once. "" when nothing drawable is served.
+ */
+export function pressProofHtml(proof: BrandProof | null): string {
+  if (!proof) return "";
+  const press = (proof.press ?? []).filter((p) => drawable(p) && safeUrl(p.article?.url));
+  if (press.length === 0) return "";
+  const items = (copy: boolean) =>
+    press
+      .map(
+        (p) =>
+          `<li${copy ? ' aria-hidden="true"' : ""}><a href="${escapeHtml(safeUrl(p.article.url)!)}" target="_blank" rel="noopener"${copy ? ' tabindex="-1"' : ""}>${logoImg(p)}</a></li>`,
+      )
+      .join("");
+  return (
+    '<section class="framed" id="featured"><div class="wrap wide">' +
+    '<div class="featured-in rv"><h3>As featured in</h3>' +
+    `<div class="press-marquee"><ul class="press-track" data-brand-proof="press">${items(false)}${items(true)}</ul></div>` +
+    "</div></div></section>"
+  );
 }

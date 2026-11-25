@@ -15,7 +15,7 @@ import { BEFORE_SEND_JS } from "@/lib/posthog-before-send";
 import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { reseedFounderCount } from "@/lib/founder-count";
-import { BRAND_PROOF_DOMAIN, BRAND_PROOF_TOKEN, BRAND_PROOF_WALL_LIMIT, brandProofHtml, type BrandProof } from "@/lib/brand-proof";
+import { BRAND_PROOF_DOMAIN, BRAND_PROOF_FETCH_LIMIT, BRAND_PROOF_TOKEN, PRESS_PROOF_TOKEN, brandProofHtml, pressProofHtml, type BrandProof } from "@/lib/brand-proof";
 import { INDEX_LINKS_TOKEN, displayValue, fetchIndexDetail, fetchIndexList, indexLinksHtml, isExpected, type IndexDetail } from "@/lib/fleet-indexes";
 import {
   renderShowcaseSelection,
@@ -527,16 +527,16 @@ async function withIndexLinks(html: string): Promise<string> {
 }
 
 /**
- * The "our clients have worked at" wall + "As featured in" row (BRAND-PROOF-LOGOS-1121),
+ * The "worked at" wall + the separate "As featured in" band (BRAND-PROOF-LOGOS-1121),
  * read from brand-service's public brand proof through the gateway. Owner 2026-11-21: no
- * fame threshold, « affiche le top 24 c'est tout » for the wall and the top 3 outlets
- * whatever their score: so the ask lifts the producer's score and traffic floors and keeps
+ * fame threshold, « affiche le top 24 c'est tout » for the wall, and every outlet in its own
+ * scrolling band (owner 2026-11-25): so the ask lifts the producer's score and traffic floors and keeps
  * its ranking. The producer judges and ranks; this only asks and draws. A failed read is
  * logged loud and drops the section: a heading over an empty wall says nothing true.
  */
 async function fetchBrandProof(): Promise<BrandProof> {
   const apiUrl = resolvePublicApiUrl();
-  const query = `domain=${encodeURIComponent(BRAND_PROOF_DOMAIN)}&minScore=0&minMonthlyTraffic=0&limit=${BRAND_PROOF_WALL_LIMIT}`;
+  const query = `domain=${encodeURIComponent(BRAND_PROOF_DOMAIN)}&minScore=0&minMonthlyTraffic=0&limit=${BRAND_PROOF_FETCH_LIMIT}`;
   const res = await fetch(`${apiUrl}/v1/public/brand-proof?${query}`, {
     headers: { Accept: "application/json" },
     next: { revalidate: 300 },
@@ -549,12 +549,13 @@ async function fetchBrandProof(): Promise<BrandProof> {
 }
 
 async function withBrandProof(html: string): Promise<string> {
-  if (!html.includes(BRAND_PROOF_TOKEN)) return html;
+  if (!html.includes(BRAND_PROOF_TOKEN) && !html.includes(PRESS_PROOF_TOKEN)) return html;
   try {
-    return html.replaceAll(BRAND_PROOF_TOKEN, brandProofHtml(await fetchBrandProof()));
+    const proof = await fetchBrandProof();
+    return html.replaceAll(BRAND_PROOF_TOKEN, brandProofHtml(proof)).replaceAll(PRESS_PROOF_TOKEN, pressProofHtml(proof));
   } catch (error) {
-    console.error("[landing] brand proof logos unavailable, dropping the section", error);
-    return html.replaceAll(BRAND_PROOF_TOKEN, "");
+    console.error("[landing] brand proof logos unavailable, dropping the wall and the press band", error);
+    return html.replaceAll(BRAND_PROOF_TOKEN, "").replaceAll(PRESS_PROOF_TOKEN, "");
   }
 }
 
