@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,100&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="preload" as="image" href="/landing/distry/assets/hero-night.webp" media="(min-width: 760px)">
-<link rel="stylesheet" href="/landing/distry/home.css?v=16">
+<link rel="stylesheet" href="/landing/distry/home.css?v=17">
 <script>if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("js")</script>
 </head>
 <body>
@@ -182,29 +182,16 @@
         <h2>A clear price for every outcome.</h2>
         <p class="sub">Each price range is read live from our campaigns.</p>
       </div>
-      <!-- Each figure is filled at serve time from the public indexes (`withOutcomeRanges`); a card with no served range is removed. -->
-      <div class="prices" id="proof">
-        <article class="price-card" data-index-slug="cold-email-cost-per-positive-reply" data-lit>
-          <h3>Interested lead</h3>
-          <b data-range></b>
-          <p>per interested lead</p>
-        </article>
-        <article class="price-card" data-index-slug="cold-email-cost-per-meeting" data-lit>
-          <h3>Meeting booked</h3>
-          <b data-range></b>
-          <p>per meeting booked</p>
-        </article>
-        <article class="price-card" data-index-slug="cold-email-cost-per-signup" data-lit>
-          <h3>Signup</h3>
-          <b data-range></b>
-          <p>per signup</p>
-        </article>
-        <article class="price-card" data-index-slug="cold-email-cost-per-click" data-lit>
-          <h3>Website visit</h3>
-          <b data-range></b>
-          <p>per website visit</p>
-        </article>
-      </div>
+      <!-- Each figure is filled at serve time from the public indexes (`withOutcomeRanges`); a row with no served range is removed. -->
+      <table class="price-table" id="proof">
+        <thead><tr><th scope="col">Outcome</th><th scope="col">Price</th></tr></thead>
+        <tbody>
+          <tr class="price-row" data-index-slug="cold-email-cost-per-positive-reply"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12Z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg></span>Interested lead</th><td><b data-range></b></td></tr>
+          <tr class="price-row" data-index-slug="cold-email-cost-per-meeting"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="m9 15 2 2 4-4"/></svg></span>Meeting booked</th><td><b data-range></b></td></tr>
+          <tr class="price-row" data-index-slug="cold-email-cost-per-signup"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 20a7 7 0 0 1 12.5-4.3"/><path d="M19 14v6M16 17h6"/></svg></span>Signup</th><td><b data-range></b></td></tr>
+          <tr class="price-row" data-index-slug="cold-email-cost-per-click"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 14 7-6 2-2 6Z"/><path d="m13 13 6 6"/></svg></span>Website visit</th><td><b data-range></b></td></tr>
+        </tbody>
+      </table>
       <p class="prices-more"><a href="/indexes">See how each price is measured</a></p>
     </div>
     <!--/outcome-ranges-->

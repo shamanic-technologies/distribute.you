@@ -1,10 +1,10 @@
 /**
- * The lab home's four price cards (owner 2026-11-25): one per outcome, each stating our
- * likely price range, bare (`$4 - $6`), under the outcome's name.
+ * The lab home's price table (owner 2026-11-25): one row per outcome, an icon beside its
+ * name, our likely price range bare (`$4 - $6`).
  *
  * Every figure is READ from the public fleet indexes (`GET /v1/public/indexes`, the
  * `valueRange {low, high}` features-service serves beside each value) at render. The
- * page ships no figure, the browser computes none, and a card whose index serves no
+ * page ships no figure, the browser computes none, and a row whose index serves no
  * range is REMOVED: no single value, no last-known figure, no outcome count stands in.
  *
  * Lab only (`lab-distry`): run by the prototype route, never by `staticResponse`.
@@ -78,7 +78,7 @@ export function formatRange(range: OutcomeRange): string | null {
 export function applyOutcomeRanges(html: string, ranges: OutcomeRanges | null): string {
   let drawn = 0;
   const out = html.replace(
-    /\s*<article class="price-card[^"]*" data-index-slug="([^"]+)"[^>]*>[\s\S]*?<\/article>/g,
+    /\s*<tr class="price-row[^"]*" data-index-slug="([^"]+)"[^>]*>[\s\S]*?<\/tr>/g,
     (card, slug: string) => {
       const served = ranges?.get(slug);
       const text = served && !("missing" in served) ? formatRange(served) : null;

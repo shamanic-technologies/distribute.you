@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { OUTCOME_RANGE_SLUGS, applyOutcomeRanges, formatRange, formatWholeUsd, parseOutcomeRanges } from "../../src/lib/lab-outcome-ranges";
 
 /**
- * The lab home's four price cards (owner 2026-11-25): each states a likely price range
+ * The lab home's price table (owner 2026-11-25): each states a likely price range
  * READ from the public indexes. No figure ships in the page, and a card with no served
  * range is not drawn.
  */
@@ -23,7 +23,7 @@ const SERVED = {
   ],
 };
 
-const card = (html: string, slug: string) => html.match(new RegExp(`<article class="price-card" data-index-slug="${slug}"[\\s\\S]*?</article>`))?.[0] ?? null;
+const card = (html: string, slug: string) => html.match(new RegExp(`<tr class="price-row" data-index-slug="${slug}"[\\s\\S]*?</tr>`))?.[0] ?? null;
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -72,10 +72,10 @@ describe("the price cards", () => {
       expect(shipped).toContain("<b data-range></b>");
       expect(shipped).not.toMatch(/\$\d/);
     }
-    expect(card(HOME, OUTCOME_RANGE_SLUGS.interestedLead)).toContain("per interested lead");
-    expect(card(HOME, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain("per meeting booked");
-    expect(card(HOME, OUTCOME_RANGE_SLUGS.signup)).toContain("per signup");
-    expect(card(HOME, OUTCOME_RANGE_SLUGS.websiteVisit)).toContain("per website visit");
+    expect(card(HOME, OUTCOME_RANGE_SLUGS.interestedLead)).toContain("Interested lead");
+    expect(card(HOME, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain("Meeting booked");
+    expect(card(HOME, OUTCOME_RANGE_SLUGS.signup)).toContain("Signup");
+    expect(card(HOME, OUTCOME_RANGE_SLUGS.websiteVisit)).toContain("Website visit");
     // The old proof cards are gone.
     expect(HOME).not.toContain("data-proof-brand=");
   });
@@ -105,7 +105,7 @@ describe("the price cards", () => {
   it("leave with their heading on a failed read", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const out = applyOutcomeRanges(HOME, null);
-    expect(out).not.toContain("price-card");
+    expect(out).not.toContain("price-row");
     expect(out).not.toContain("A clear price for every outcome.");
     expect(out).toContain('id="live-cards"');
     expect(error.mock.calls.map((c) => String(c[0]))).toContain("[landing] lab price card hidden: cold-email-cost-per-click (read_failed)");
