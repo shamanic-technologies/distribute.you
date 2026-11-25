@@ -8,7 +8,6 @@ Claude Code loads a nested `CLAUDE.md` only when working in that directory. Read
 - `apps/dashboard/CLAUDE.md` (customer dashboard: data layer, cache, org switching, tenant identity, money/maturity, auth) and `apps/dashboard/src/components/{onboarding,campaigns,billing,crm,leads,workflows,v2}/CLAUDE.md` (per-domain surfaces).
 - `apps/admin/CLAUDE.md` (staff console on the box, config console, `/metrics`, audit pages, `/model`, investors).
 - `apps/landing/CLAUDE.md` (served static pages, clones/archives, blog, SEO/GEO, agent readiness, compare cluster).
-- `apps/desktop/CLAUDE.md` (Mac app: prepaid-only offer, user's own Claude Code CLI, CI-only build).
 
 ## Commands
 
@@ -97,7 +96,7 @@ No `release.sh hotfix` here (that is for backend semver services). The box (netc
 ## Architecture
 
 **Monorepo**: pnpm workspaces + Turborepo; roots `apps/`, `packages/`, `shared/`.
-- **Apps**: `apps/dashboard/` (port 3001, Next.js App Router, Clerk) · `apps/admin/` (staff console, on the box) · `apps/landing/` · `apps/desktop/` (SwiftUI Mac app, private beta, built by CI; see its CLAUDE.md).
+- **Apps**: `apps/dashboard/` (port 3001, Next.js App Router, Clerk) · `apps/admin/` (staff console, on the box) · `apps/landing/`.
 - **Extracted services (separate repos)**: api-service, mcp (github.com/shamanic-technologies/<name>).
 - **Packages** (published MCP servers, tsup ESM): mcp-sales-outreach · mcp-google-ads · mcp-influencer-pitch · mcp-journalist-pitch · mcp-podcaster-pitch · mcp-reddit-ads · mcp-thought-leader (`@distribute/*`).
 - **Shared libs**: `shared/auth` · `shared/content` · `shared/pictures` · `shared/runs-client` · `shared/types`.
@@ -108,7 +107,7 @@ No `release.sh hotfix` here (that is for backend semver services). The box (netc
 - **Offer (owner 2026-10-29, OFFER-RESET-1029).** AI Agent: free open source / local (BYOK allowed in copy, "free" only scoped to running it yourself); hosted = "Usage based, 0% markup" at vendor price ×1 (owner 2026-11-17: never called free, never "no monthly fee"/"$0/month", CTA "Get started"; guard `apps/landing/tests/unit/no-free-claim.test.ts`). ONE plan, no Team tier (owner 2026-10-31): public pages never state a member count (the 5-member cap is in /terms only). Every support cost (onboarding, chat tokens, payment fees) bills to the client org at cost. Onboarding = PREPAID like the API: first top-up ≥ $10 on the checkout page, reload threshold ≥ $5, reload adds ≥ $10 whatever the threshold (owner 2026-11-11, never "threshold + $10"), auto reload required; signup advance $5 (was $30), deducted from the first top-up, never called a gift. ENDED for new signups: the $100 match (banner), the whole referral program, postpaid, the $99/month arm, "$1/day". Accounts created before the ship keep everything (offers AND ×2 prices). **Until billing-service + costs-service serve it in PROD, public pages keep today's offer: never publish "no markup", $10 or the end of the match before** (cross-env gate). "No seat (self-serve), no setup fee, pause or cancel anytime" are TRUE. The Agency offer carries the guarantee "6 booked meetings in 3 months or your paid media budget back" (owner 2026-10-30; /terms §4, plans since 2026-10-29; shown on the meetings Agency pages only); the AI Agent has none.
 - **NAME models and LLMs on public copy, precisely (ENCOURAGED, owner 2026-10-13: « au contraire »)**: "Gemini 3 Flash", "Claude Opus 5.5", "Jev 1.13". Only internal jargon stays banned: "cross-org workflow", "best-performing playbook", "best rate" qualifying the live rate. The software is OPTIONAL (a client can send a website and never log in).
 - **Opens are DEPRECATED**: never show an open rate, "Opened" step or opens count anywhere (funnel is Sent, Click, Positive reply). **Agency sending model**: all outreach goes out from OUR domains/inboxes; copy about sender/domain/warmup/setup attributes the infrastructure to distribute, never "your sending domain".
-- **Stats are SINCE INCEPTION, never a 7 / 30 day window** (owner 2026-10-04, in caps), on the dashboard AND the Mac app: no window toggle; features-service serves the totals as `?windowDays=all`.
+- **Stats are SINCE INCEPTION, never a 7 / 30 day window** (owner 2026-10-04, in caps), on the dashboard: no window toggle; features-service serves the totals as `?windowDays=all`.
 - **No invented people or numbers** on public surfaces: a figure is a live server token, a sourced benchmark or a real named customer. A positive reply is called a POSITIVE REPLY everywhere customers read (owner-decided 2026-09-24).
 
 ## Cross-app backend rules (dashboard, admin, landing readers)
