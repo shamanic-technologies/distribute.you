@@ -195,7 +195,9 @@ describe("billing's reload rules are the only source of the figures (RELOAD-RULE
   it("the credit step reads the rules from billing and holds no number of its own", () => {
     const topup = src("src/components/v2/get-started/prepaid-topup.tsx");
     expect(topup).toContain("getReloadRules()");
-    expect(topup).toContain("useState(String(rules.defaultReloadUsd))");
+    // The reload mirrors the credit picked until typed over (owner 2026-11-25).
+    expect(topup).toContain("reloadTyped ?? (first === OTHER ? firstOther : String(first))");
+    expect(topup).toContain("onAmount={setReloadTyped}");
     const lib = src("src/lib/v2/get-started.ts");
     expect(lib).not.toMatch(/(MIN|DEFAULT)_(RELOAD|THRESHOLD|TOPUP)\w*\s*=/);
     expect(src("src/lib/api.ts")).toContain('"/billing/accounts/reload_rules"');
