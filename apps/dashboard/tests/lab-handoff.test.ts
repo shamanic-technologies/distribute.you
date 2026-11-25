@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { DISTRY_WHATSAPP, distryWhatsAppHref, labAiPrompt } from "../src/lib/v2/lab-handoff";
+import { DISTRY_TELEGRAM_BOT, DISTRY_WHATSAPP, distryTelegramStartHref, distryWhatsAppHref, labAiPrompt } from "../src/lib/v2/lab-handoff";
 
 const read = (p: string) => readFileSync(path.resolve(__dirname, "..", p), "utf8");
 
@@ -9,6 +9,13 @@ describe("lab Distry hand-off (ONBOARDING-CHANNEL-HANDOFF-1125)", () => {
   it("opens WhatsApp on Distry's line, the support button's number, message typed", () => {
     expect(read("src/components/support/support-button.tsx")).toContain(`"${DISTRY_WHATSAPP}"`);
     expect(distryWhatsAppHref("Hi Distry!")).toBe(`https://wa.me/${DISTRY_WHATSAPP}?text=Hi%20Distry!`);
+  });
+
+  it("opens our Telegram bot with the website in the start payload, bare when too long", () => {
+    expect(distryTelegramStartHref("https://acme.com/")).toBe("https://t.me/distribute_you_bot?start=site-YWNtZS5jb20");
+    expect(distryTelegramStartHref("")).toBe(DISTRY_TELEGRAM_BOT);
+    expect(distryTelegramStartHref(`${"a".repeat(60)}.com`)).toBe(DISTRY_TELEGRAM_BOT);
+    expect(read("src/components/v2/get-started/lab-handoff.tsx")).toContain("href={distryTelegramStartHref(website)}");
   });
 
   it("hands the founder's AI one line: our MCP server and their site, no key, no code", () => {
