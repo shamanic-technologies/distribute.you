@@ -91,11 +91,11 @@ describe("applyDistrySkin", () => {
     expect(out).toContain("/landing/v2/main.js");
   });
 
-  it("keeps site links on the reviewed host and sends the dashboard's links to the AI start (owner 2026-11-25)", () => {
+  it("keeps site links on the reviewed host and sends the sign-up to the lab's own walk (owner 2026-11-25)", () => {
     expect(out).toContain('href="/catalog"');
     expect(out).toContain('<a href="/">h</a>');
-    expect(out).not.toContain("dashboard.distribute.you");
-    expect(out).toContain('href="/docs/integrations"');
+    expect(out).toContain('href="https://dashboard.distribute.you/get-started?skin=distry"');
+    expect(out.replaceAll("https://dashboard.distribute.you/get-started?skin=distry", "")).not.toContain("dashboard.distribute.you");
   });
 
   it("puts the skin on every way into the walk, forms included, once", () => {

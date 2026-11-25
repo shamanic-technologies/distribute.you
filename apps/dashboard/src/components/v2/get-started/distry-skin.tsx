@@ -2,11 +2,11 @@
  * The Distry skin on the sign-up walk (`distry-brand` skill), behind a private switch:
  * `/get-started?skin=distry` turns it on and remembers it in a cookie, `?skin=off` turns
  * it off. Nobody else is served any of this. It adds the night sky, the fireflies, the
- * painting and Distry around the walk and loads a stylesheet that re-points Keel's
+ * painting and Distry around the walk (at daybreak since 2026-11-25) and loads a stylesheet that re-points Keel's
  * tokens; the walk itself is not touched.
  */
 export const DISTRY_SKIN_COOKIE = "dy_skin";
-const VERSION = 7;
+const VERSION = 8;
 
 /** Whether this request wears the skin: the query wins, else the cookie. */
 export function wearsDistrySkin(query: string | null, cookie: string | undefined): boolean {
@@ -29,9 +29,10 @@ export function DistrySkin() {
       <link rel="stylesheet" href={`/distry/get-started.css?v=${VERSION}`} />
       <script dangerouslySetInnerHTML={{ __html: BOOT(true) }} />
       <div className="d-sky" aria-hidden>
-        <div className="d-sky-layer d-sky-night" />
+        <div className="d-sky-layer d-sky-day" />
+        {/* distry.js draws on it; hidden by day */}
         <canvas className="d-stars" id="stars" />
-        <div className="d-orb d-moon" />
+        <div className="d-orb d-sun" />
       </div>
       <div className="d-backdrop" aria-hidden />
       <canvas className="d-fireflies" id="fireflies" aria-hidden />

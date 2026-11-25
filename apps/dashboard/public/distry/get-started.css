@@ -74,47 +74,42 @@ html.distry {
 
 
 
-/* ---------- the walk, at night ---------- */
-html.distry body { background: var(--night); }
+/* ---------- the walk, at daybreak (owner 2026-11-25: « plutôt une image plus légère, blanche, de levée du jour ») ---------- */
+html.distry body { background: #f3f9ff; }
+html.distry .d-sky-night, html.distry .d-stars, html.distry .d-moon { display: none; }
+/* a white morning: pale sky, a warm glow low on the horizon, no sun disc */
+html.distry .d-sky-day { opacity: 1; background: radial-gradient(90% 50% at 50% 110%, rgba(255, 226, 170, 0.55) 0%, rgba(255, 226, 170, 0) 70%), linear-gradient(180deg, #eaf3ff 0%, #f8fbff 55%, #fffaf0 100%); }
+html.distry .d-sun { display: none; }
 html.distry .v2-root {
-  position: relative; z-index: 2; background: transparent; color: var(--cream);
+  position: relative; z-index: 2; background: transparent; color: var(--ink);
   --bg-canvas: transparent; --bg-surface: #fffdf6; --bg-raised: #fffdf6; --bg-inset: #fff8e6;
-  --bg-hover: rgba(255, 255, 255, 0.08); --bg-active: rgba(255, 255, 255, 0.14); --bg-selected: rgba(255, 255, 255, 0.1);
-  --fg-1: #fdf8ec; --fg-2: #d3daf5; --fg-3: #aab4dc; --fg-4: #8590c2;
-  --line-subtle: rgba(255, 255, 255, 0.12); --line: rgba(255, 255, 255, 0.18); --line-strong: rgba(255, 255, 255, 0.3);
-  --accent: #84bfff; --accent-text: #f6c667; --accent-soft: rgba(132, 191, 255, 0.14);
-}
-/* a Keel surface is paper: ink on it, hairlines in ink */
-html.distry .v2-root :is(.k-card, .k-card-on, .k-card-dashed, .k-panel, .k-popover, .k-inset, .k-raised, .k-surface, .k-input, .k-btn, .k-chip, .k-kbd) {
-  --fg-1: #0b1230; --fg-2: #46507a; --fg-3: #6c76a0; --fg-4: #a0a7c8;
   --bg-hover: #0b12300a; --bg-active: #0b123012; --bg-selected: #0b12300f;
+  --fg-1: #0b1230; --fg-2: #46507a; --fg-3: #6c76a0; --fg-4: #a0a7c8;
   --line-subtle: #0b123011; --line: #0b123017; --line-strong: #0b123024;
   --accent: #2563eb; --accent-text: #1a4fc3; --accent-soft: #eef3ff;
-  color: var(--fg-1);
 }
-html.distry .v2-root :is(.k-card, .k-panel, .k-popover) { box-shadow: 0 0 0 1px rgba(246, 198, 103, 0.28), 0 24px 60px rgba(3, 6, 24, 0.45); }
+/* a Keel surface is paper: cream line, blue-tinted shadow */
+html.distry .v2-root :is(.k-card, .k-card-on, .k-card-dashed, .k-panel, .k-popover, .k-inset, .k-raised, .k-surface, .k-input, .k-btn, .k-chip, .k-kbd) { color: var(--fg-1); }
+html.distry .v2-root :is(.k-card, .k-panel, .k-popover) { box-shadow: 0 0 0 1px var(--paper-line), 0 18px 50px rgba(37, 99, 235, 0.12); }
 html.distry .v2-root :is(h1, h2) { font-family: var(--display); font-weight: 600; letter-spacing: -0.02em; }
 /* the one big button is gold */
 html.distry .v2-root .k-btn-accent.k-cta, html.distry .v2-root .k-btn-accent {
   color: #2a1a00; border-radius: 999px;
   background: linear-gradient(180deg, #ffe39a 0%, var(--gold) 45%, var(--gold-deep) 100%);
-  box-shadow: 0 0 0 1px rgba(255, 240, 200, 0.5) inset, 0 8px 26px rgba(246, 198, 103, 0.38);
+  box-shadow: 0 0 0 1px rgba(255, 240, 200, 0.5) inset, 0 8px 26px rgba(233, 169, 58, 0.32);
   transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
-html.distry .v2-root .k-btn-accent.k-cta:hover:not(:disabled) { background: linear-gradient(180deg, #ffe39a 0%, var(--gold) 45%, var(--gold-deep) 100%); transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255, 240, 200, 0.7) inset, 0 14px 44px rgba(246, 198, 103, 0.62); }
+html.distry .v2-root .k-btn-accent.k-cta:hover:not(:disabled) { background: linear-gradient(180deg, #ffe39a 0%, var(--gold) 45%, var(--gold-deep) 100%); transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255, 240, 200, 0.7) inset, 0 14px 44px rgba(233, 169, 58, 0.5); }
 html.distry .v2-root .k-input.k-cta-input { border-radius: 999px; padding-inline: 18px; }
-/* the painting behind the walk */
-html.distry .d-backdrop { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: url(/distry/assets/onb-website.webp) 100% 50% / cover no-repeat; opacity: 0.6; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%, #000 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 55%, #000 100%); }
-@media (max-width: 760px) { html.distry .d-backdrop { opacity: 0.28; -webkit-mask-image: none; mask-image: none; } }
+/* the morning painting beside the walk: Distry brings the news with the coffee */
+html.distry .d-backdrop { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: url(/distry/assets/morning-kitchen.webp) 100% 50% / cover no-repeat; opacity: 0.5; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%, #000 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 55%, #000 100%); }
 @media (prefers-reduced-motion: reduce) { html.distry .d-fireflies { display: none; } html.distry .buddy-face { animation: none; } }
 
 /* The skin is rendered INSIDE .v2-root (the page's children), which is its own stacking
    context: the sky and the painting go behind the walk, never over it. */
 html.distry .v2-root .d-sky { z-index: -2; }
-html.distry .v2-root .d-backdrop { z-index: -1; opacity: 0.7; -webkit-mask-image: linear-gradient(90deg, transparent 38%, #000 74%, #000 100%); mask-image: linear-gradient(90deg, transparent 38%, #000 74%, #000 100%); }
-html.distry .v2-root .d-moon { left: auto; right: 4vw; top: 6vh; width: 56px; height: 56px; }
+html.distry .v2-root .d-backdrop { z-index: -1; opacity: 0.6; -webkit-mask-image: linear-gradient(90deg, transparent 50%, #000 82%, #000 100%); mask-image: linear-gradient(90deg, transparent 50%, #000 82%, #000 100%); }
 @media (max-width: 760px) {
-  html.distry .v2-root .d-backdrop { opacity: 0.16; -webkit-mask-image: none; mask-image: none; }
-  html.distry .v2-root .d-moon { display: none; }
+  html.distry .v2-root .d-backdrop { opacity: 0.1; -webkit-mask-image: none; mask-image: none; }
   html.distry .buddy-say { display: none; }
 }

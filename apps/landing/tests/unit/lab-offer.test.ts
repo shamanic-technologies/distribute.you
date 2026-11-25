@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { renderCompetitorAlternativesPage, renderComparePage } from "../../src/lib/compare-page";
 import { COMPETITORS } from "../../src/lib/competitors";
 import { applyDistrySkin } from "../../src/lib/distry-skin";
-import { LAB_BOOK_A_CALL, LAB_OFFER, LAB_PLANS, LAB_SIGN_UP, LAB_START, OLD_OFFER, dressBrandProof, labRedirectFor, meetingsOnlyShowcase, oldOfferClaims, readableText, withLabChrome, withLabHome, withLabOffer } from "../../src/lib/lab-offer";
+import { LAB_BOOK_A_CALL, LAB_OFFER, LAB_PLANS, LAB_SIGN_UP, LAB_START, LAB_WALK, OLD_OFFER, dressBrandProof, labRedirectFor, meetingsOnlyShowcase, oldOfferClaims, readableText, withLabChrome, withLabHome, withLabOffer } from "../../src/lib/lab-offer";
 import { navHtml, footerInnerHtml } from "../../src/lib/site-chrome";
 import { AD_TOOL_CLUSTER } from "../../src/lib/pages/ai-ad-management";
 import { renderToolAlternativesPage, renderToolVsPage } from "../../src/lib/pages/agent-tools-compare";
@@ -152,12 +152,12 @@ describe("every skinned page states the lab's offer", async () => {
 });
 
 describe("the plan cards", () => {
-  it("send Free to the visitor's own AI and $99 to the free trial, never to a call", () => {
+  it("send Free to the visitor's own AI and $99 to the free trial walk, never to a call", () => {
     expect(LAB_SIGN_UP).toBe(SIGN_UP);
     expect(LAB_BOOK_A_CALL).toBe(BOOK_A_CALL);
     expect(LAB_PLANS).toContain(`href="${LAB_START}">Get started from your AI</a>`);
-    expect(LAB_PLANS).toContain(`href="${LAB_START}">Start free trial</a>`);
-    expect(LAB_PLANS).not.toContain("dashboard.distribute.you");
+    expect(LAB_PLANS).toContain(`href="${LAB_WALK}">Start free trial</a>`);
+    expect(LAB_PLANS.replaceAll(LAB_WALK, "")).not.toContain("dashboard.distribute.you");
     expect(LAB_PLANS).not.toContain(BOOK_A_CALL);
     expect(oldOfferClaims(LAB_PLANS)).toEqual([]);
   });
@@ -173,9 +173,10 @@ describe("the site chrome on the lab", () => {
       const text = readableText(out);
       expect(text).not.toMatch(/\bAgency\b|Book a call|GTM Automation|Lead Nurturing|Customer Success Automation|AI Ad Management|Best for/);
       expect(out).not.toContain(BOOK_A_CALL);
-      // Owner 2026-11-25: the lab never links to the dashboard, "Log in" included.
+      // Owner 2026-11-25: the lab never links to the dashboard, "Log in" included; only the
+      // sign-up walk stays (owner, same day: keep the web onboarding, ONBOARDING-CHANNEL-HANDOFF-1125).
       expect(live).toContain("dashboard.distribute.you");
-      expect(out).not.toContain("dashboard.distribute.you");
+      expect(out.replaceAll(LAB_SIGN_UP, "")).not.toContain("dashboard.distribute.you");
       expect(text).not.toContain("Log in");
       expect(text).toContain("Signups Automation");
       expect(text).toContain("Use it from your AI");
@@ -194,25 +195,26 @@ describe("the lab home", () => {
     expect(pricing).toContain("$0 <small>With your own keys</small>");
     expect(pricing).toContain("Every AI step can run on your Claude subscription");
     expect(pricing).toContain("3-day free trial <small>Then $99/month</small>");
-    expect(pricing).toContain(`href="${LAB_START}">Start free trial</a>`);
+    expect(pricing).toContain(`href="${LAB_WALK}">Start free trial</a>`);
     expect(pricing).toContain("Need more? Add $100 a month at a time");
     expect(pricing).toContain("prorated");
     expect(pricing).toContain("Out of credit?");
-    expect(home).toContain("Free with your own keys · $99/month on ours · Cancel anytime");
+    expect(home).toContain("Or start from your AI</a> · Free with your own keys · $99/month on ours · Cancel anytime");
   });
 
   it("speaks to the solo founder through three doors, and sells nothing the pivot killed", () => {
     expect(home).toContain("The GTM team a solo founder never had.");
     const doors = home.slice(home.indexOf('id="doors"'), home.indexOf("<!--press-proof-->"));
     for (const name of ["From your AI", "On WhatsApp or Telegram", "By email", "Conductor", "Claude Desktop", "ChatGPT", "Hermes", "Grok Bot", "Dots"]) expect(doors).toContain(name);
-    // The main call to action installs the MCP server, never a call.
+    // The main button opens the web walk (owner 2026-11-25), the AI start right beside it, never a call.
     const hero = home.slice(home.indexOf('id="top"'), home.indexOf('id="how"'));
     expect(hero).toContain("claude mcp add --transport http distribute https://mcp.distribute.you/mcp");
-    expect(hero).toContain(`href="${LAB_START}">Get started from your AI</a>`);
+    expect(hero).toContain(`href="${LAB_WALK}">Get started</a>`);
+    expect(hero).toContain(`href="${LAB_START}">Or start from your AI</a>`);
     const text = readableText(home).replace("Bosar Agency", "Bosar");
     expect(text).not.toMatch(/Managed|\$499|money back|Book a call|\bAgency\b|\bagency\b|dashboard|sales team|One login for every brand|Mac app|Cursor|Zapier|n8n/);
     expect(home).not.toContain(BOOK_A_CALL);
-    expect(home).not.toContain("dashboard.distribute.you");
+    expect(home.replaceAll(LAB_WALK, "")).not.toContain("dashboard.distribute.you");
   });
 
   it("carries the logo wall and the press band tokens, the wall first", () => {
