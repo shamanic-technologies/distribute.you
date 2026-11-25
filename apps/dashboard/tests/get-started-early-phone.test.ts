@@ -186,13 +186,19 @@ describe("after the first page: set up with my AI, or myself (owner 2026-10-15)"
     const { chatAppSetupPrompt, CONNECTOR_STEPS } = await import("../src/lib/v2/get-started");
     const full = chatAppSetupPrompt({ website: "acme.com", person: { firstName: "Marie", lastName: "Curie" }, phoneE164: "+33612345678" });
     expect(full).toContain("My website: acme.com");
-    expect(full).toContain("distribute_signup_start");
-    expect(full).toContain("distribute_signup_complete");
+    expect(full).toContain("distribute_status");
     expect(full).toContain("distribute_read_skill");
+    // MCP-OAUTH-1125: the connector's OAuth approval opened the account, so no signup and no code
+    expect(full).not.toMatch(/signup|6-digit|code/i);
     expect(full).not.toMatch(/POST|https?:\/\/|skill\.md|\/v1\//);
-    expect(full).toContain("Ask me for my email.");
     const bare = chatAppSetupPrompt({ website: "acme.com", person: null, phoneE164: null });
-    expect(bare).toContain("Ask me for my email and my phone number.");
+    expect(bare).not.toMatch(/signup|6-digit|code/i);
+    expect(CONNECTOR_STEPS.chatgpt.steps.join(" ")).toContain("pick OAuth");
+    expect(CONNECTOR_STEPS.claude.steps.join(" ")).toContain("Sign in now");
+    for (const g of Object.values(CONNECTOR_STEPS)) {
+      expect(g.steps.join(" ")).not.toMatch(/No authentication|No sign in|code/);
+      expect(g.steps.join(" ")).toContain("Click Confirm in the email");
+    }
     for (const text of [full, bare, ...Object.values(CONNECTOR_STEPS).flatMap((g) => [...g.steps, g.plans])]) {
       expect(text).not.toMatch(/[—–]/);
     }

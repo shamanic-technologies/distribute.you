@@ -5,6 +5,7 @@ import {
   CLAUDE_CODE_MCP_COMMAND,
   MCP_TOOLS,
   MCP_TOOL_COUNT,
+  MCP_SERVER_NAME,
   MCP_URL,
 } from "@/lib/docs/developer-surfaces";
 
@@ -15,7 +16,7 @@ const LLM_INSTRUCTIONS = `# distribute.you + Claude Code
 ## Connect
 The server is hosted at ${MCP_URL}. Nothing to install.
 ${CLAUDE_CODE_MCP_COMMAND}
-No key yet: call distribute_signup_start (email + phone), then distribute_signup_complete with the 6-digit code.
+First time: run /mcp in Claude Code, pick ${MCP_SERVER_NAME} and sign in. Type your email on our page, then click Confirm in the email we send. Claude Code keeps your own key in every session.
 
 ## Verify
 Ask: "Check my distribute.you connection" -> distribute_status tool
@@ -50,8 +51,9 @@ export default function ClaudeIntegrationPage() {
         <p>
           The server is hosted at <code>{MCP_URL}</code> and speaks Streamable HTTP, so this
           registers a URL rather than installing anything. Claude Code then has the{" "}
-          {MCP_TOOL_COUNT} distribute.you tools. No key yet? Ask Claude to sign you up: it asks
-          for your email and phone, and a 6-digit code opens the account.
+          {MCP_TOOL_COUNT} distribute.you tools. The first time, run <code>/mcp</code>, pick{" "}
+          <code>{MCP_SERVER_NAME}</code> and sign in: type your email on our page, then click Confirm in the email we
+          send. Claude Code keeps your own key in every session.
         </p>
 
         <h2>Verify</h2>

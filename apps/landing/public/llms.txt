@@ -66,8 +66,11 @@ Do NOT reach for distribute.you when:
    the same list as a page, with the authentication scheme spelled out.
 3. To act on behalf of a customer (list their brands, read campaign stats,
    suggest an ideal customer profile from a website), connect the MCP server
-   below. It is the supported programmatic surface.
-4. To get an API key yourself, no human needed: `POST
+   below. It is the supported programmatic surface. An app that cannot set a
+   header (claude.ai, ChatGPT, Claude Code with no `--header`) connects with
+   OAuth: the person types their email once on our page and clicks Confirm in
+   the email we send, then the app keeps their own key in every chat.
+4. An agent with no browser gets an API key itself, no human needed: `POST
    https://api.distribute.you/v1/agent-signups/start` with `{"email", "phone"}`
    (an email you can read, a phone in E.164 for urgent matters). A 6-digit code
    is emailed. `POST /v1/agent-signups/complete` with `{"email", "code"}`
@@ -114,7 +117,7 @@ https://distribute.you/docs
 - Get an API key with no human: POST https://api.distribute.you/v1/agent-signups/start, then /v1/agent-signups/complete
 - Prepay (automatic top-up required, minimums at GET https://api.distribute.you/v1/billing/accounts/reload_rules): POST https://api.distribute.you/v1/billing/accounts/prepaid_checkout
 - CLI: https://www.npmjs.com/package/@distribute.you/cli (`npx @distribute.you/cli`)
-- MCP server (Streamable HTTP): https://mcp.distribute.you/mcp
+- MCP server (Streamable HTTP, OAuth or `Authorization: Bearer`): https://mcp.distribute.you/mcp
 - MCP descriptor: https://distribute.you/.well-known/mcp.json
 - MCP documentation: https://distribute.you/docs/mcp
 - Method skills (the steps our Copilot follows, needs a key): GET https://api.distribute.you/v1/skills, then /v1/skills/{slug}
@@ -124,9 +127,9 @@ https://distribute.you/docs
 
 ### MCP tools
 
-- `distribute_status`: who the key belongs to; with no key, how to get one
-- `distribute_signup_start`: no key needed: email + phone, a 6-digit code is emailed
-- `distribute_signup_complete`: no key needed: the code returns a new API key, used by the session at once
+- `distribute_status`: who the key belongs to, and every organization it reaches
+- `distribute_signup_start`: email + phone, a 6-digit code is emailed
+- `distribute_signup_complete`: the code returns a new API key
 - `distribute_prepay`: returns a payment link: prepay (min $10) with automatic top-up
 - `distribute_prepaid_status`: balance, automatic top-up, and whether the card can reload
 - `distribute_list_skills`: the method skills, the steps our own Copilot follows; read before acting
