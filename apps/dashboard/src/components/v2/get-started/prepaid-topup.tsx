@@ -180,7 +180,8 @@ export function ReloadFields({
 
 /**
  * The at-cost checkout (owner 2026-10-29, every org created since): the first top-up,
- * then the automatic reload, OPTIONAL and ticked by default: at $0, add $Y (no threshold,
+ * then the automatic reload, OPTIONAL and ticked by default: at $0, add $Y, the credit
+ * picked unless typed over (no threshold,
  * owner 2026-11-18: « On ne permet pas de changer cette valeur nulle part »). Each
  * minimum and default is billing's (`rules`). One step, one payment. No match, nothing free.
  */
@@ -201,7 +202,10 @@ function AtCostTopup({
 }) {
   const [first, setFirst] = useState<number | typeof OTHER>(AT_COST_TOPUP_CHOICES_USD[0]);
   const [firstOther, setFirstOther] = useState("");
-  const [reload, setReload] = useState(String(rules.defaultReloadUsd));
+  // The reload mirrors the credit picked until the customer types their own (owner
+  // 2026-11-25: « auto reload par défaut égal au montant de load »).
+  const [reloadTyped, setReloadTyped] = useState<string | null>(null);
+  const reload = reloadTyped ?? (first === OTHER ? firstOther : String(first));
   const [reloadOn, setReloadOn] = useState(true);
   const [ticked, setTicked] = useState([false, false]);
   const [shown, setShown] = useState(false);
@@ -214,7 +218,7 @@ function AtCostTopup({
     arm: {
       kind: "prepaid",
       topupUsd,
-      reload: reloadOn ? { amountUsd: checked.values?.reloadUsd ?? rules.defaultReloadUsd } : null,
+      reload: reloadOn ? { amountUsd: checked.values?.reloadUsd ?? topupUsd } : null,
       ...(limit && "usd" in limit ? { limitUsd: limit.usd } : {}),
     },
   });
@@ -255,7 +259,7 @@ function AtCostTopup({
           setTicked((t) => [false, t[1]]);
         }}
         amount={reload}
-        onAmount={setReload}
+        onAmount={setReloadTyped}
         problem={checked.problems.reload}
         disabled={off}
       />
