@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { DISTRY_CHAT_URL, applyDistrySkin, hourFor, isHydratedPage, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet, withDistryLogo } from "../../src/lib/distry-skin";
+import { DISTRY_CHAT_URL, applyDistrySkin, hourFor, isHydratedPage, isSkinPassThrough, isSkinnedStylesheet, placeSections, sceneFor, skinStylesheet, withDistryLogo, withSkinSignUp } from "../../src/lib/distry-skin";
 
 describe("which requests a skin host fetches and skins", () => {
   it("lets files and framework internals through", () => {
@@ -91,10 +91,18 @@ describe("applyDistrySkin", () => {
     expect(out).toContain("/landing/v2/main.js");
   });
 
-  it("keeps site links on the reviewed host and leaves the app links alone", () => {
+  it("keeps site links on the reviewed host and sends the sign-up to the lab's own walk", () => {
     expect(out).toContain('href="/catalog"');
     expect(out).toContain('<a href="/">h</a>');
-    expect(out).toContain('href="https://dashboard.distribute.you/get-started"');
+    expect(out).toContain('href="https://dashboard.distribute.you/get-started?skin=distry"');
+  });
+
+  it("puts the skin on every way into the walk, forms included, once", () => {
+    const page = `<a href="https://dashboard.distribute.you/get-started?url=a.com">x</a><form class="launch" action="https://dashboard.distribute.you/get-started" method="get"><input name="url"></form>`;
+    const once = withSkinSignUp(page);
+    expect(once).toContain('href="https://dashboard.distribute.you/get-started?url=a.com&amp;skin=distry"');
+    expect(once).toContain('method="get"><input type="hidden" name="skin" value="distry"><input name="url">');
+    expect(withSkinSignUp(once)).toBe(once);
   });
 
   it("returns anything that is not a document untouched", () => {
@@ -191,7 +199,7 @@ describe("Distry's mark replaces the site's", () => {
   it("ships the logo, and the home wears it", () => {
     expect(existsSync(path.resolve(__dirname, "../../public/landing/distry/assets/distry-mark.webp"))).toBe(true);
     const route = readFileSync(path.resolve(__dirname, "../../src/app/internal-prototype/[slug]/[[...path]]/route.ts"), "utf8");
-    expect(route).toMatch(/withDistryLogo\(\s*withLabHome\(await withOutcomeRanges\(await withLiveFigures\(/);
+    expect(route).toMatch(/withDistryLogo\(\s*withSkinSignUp\(withLabHome\(await withOutcomeRanges\(await withLiveFigures\(/);
   });
 });
 
