@@ -54,13 +54,14 @@ describe("brand proof logos (BRAND-PROOF-LOGOS-1121)", () => {
     expect(brandProofHtml(evil)).toContain("&lt;b&gt;");
   });
 
-  it("draws the top 24 employers and EVERY outlet, twice for a seamless loop (owner 2026-11-21, 2026-11-25)", () => {
+  it("draws the top 16 employers and EVERY outlet, twice for a seamless loop (owner 2026-11-21, 2026-11-25)", () => {
     const many = Array.from({ length: 30 }, (_, i) => company(`Co${i}`, { notorietyScore: 1 }));
     const outlets = Array.from({ length: 51 }, (_, i) => ({ ...company(`Out${i}`, { notorietyScore: 2 }), article: { url: `https://o${i}.com/a`, title: null, publishedAt: null } }));
     const wall = brandProofHtml(proof({ employers: many }));
     expect((wall.match(/<li>/g) ?? []).length).toBe(BRAND_PROOF_WALL_LIMIT);
     expect(wall).toContain("Co0");
-    expect(wall).not.toContain("Co24");
+    expect(wall).toContain("Co15");
+    expect(wall).not.toContain("Co16");
     const band = pressProofHtml(proof({ press: outlets }));
     expect((band.match(/<li>/g) ?? []).length).toBe(51);
     expect((band.match(/<li aria-hidden="true">/g) ?? []).length).toBe(51);
@@ -74,7 +75,7 @@ describe("brand proof logos (BRAND-PROOF-LOGOS-1121)", () => {
     const n = (count: number) => (brandProofHtml(proof({ employers: Array.from({ length: count }, (_, i) => company(`C${i}`)) })).match(/<li>/g) ?? []).length;
     expect(n(11)).toBe(8);
     expect(n(23)).toBe(16);
-    expect(n(45)).toBe(24);
+    expect(n(45)).toBe(16);
     expect(n(7)).toBe(0);
     const css = readFileSync(join(__dirname, "../../public/landing/v2/styles.css"), "utf8");
     expect(css).toContain("grid-template-columns: repeat(8, minmax(0, 1fr))");
