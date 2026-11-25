@@ -10,7 +10,7 @@ vi.mock("@/lib/chat/store", () => store);
 
 import { POST } from "@/app/api/chat/telegram/route";
 import { OWNER_LINK_REPLIES, startCode } from "@/lib/chat/owner-link";
-import { NOT_LINKED_REPLY, RELAY_UNAVAILABLE_REPLY } from "@/lib/chat/copilot-relay";
+import { RELAY_UNAVAILABLE_REPLY } from "@/lib/chat/copilot-relay";
 
 const TEAM_CHAT = "1000";
 const CUSTOMER_CHAT = 2000;
@@ -68,6 +68,7 @@ describe("startCode", () => {
     expect(startCode("/start")).toBeNull();
     expect(startCode("/start two words")).toBeNull();
     expect(startCode("hello /start abc")).toBeNull();
+    expect(startCode("/start site-YWNtZS5jb20")).toBeNull();
   });
 });
 
@@ -120,12 +121,33 @@ describe("Telegram webhook: a customer's chat talks with Sophie (SOPHIE-TELEGRAM
     expect(store.addMessage).not.toHaveBeenCalled();
   });
 
-  it("an unlinked chat gets the linking guidance, and nothing else", async () => {
+  it("a visitor's /start site-<website> goes to Distry unchanged, never tried as a link code (DISTRY-START-DOOR-1125)", async () => {
+    const res = await POST(update(CUSTOMER_CHAT, "/start site-YWNtZS5jb20"));
+    expect(res.status).toBe(200);
+    expect(linkCalls()).toHaveLength(0);
+    expect(relayCalls()).toHaveLength(1);
+    expect(relayCalls()[0].body).toEqual({ chatId: String(CUSTOMER_CHAT), messageId: "7", text: "/start site-YWNtZS5jb20" });
+    expect(telegramSends()).toHaveLength(0);
+  });
+
+  it("a real 24-char link code still links, and never reaches Distry", async () => {
+    await POST(update(CUSTOMER_CHAT, "/start Ab3_x-Yz9QwErTyUiOpAsDfG"));
+    expect(linkCalls()).toHaveLength(1);
+    expect(linkCalls()[0].body).toEqual({ code: "Ab3_x-Yz9QwErTyUiOpAsDfG", chatId: String(CUSTOMER_CHAT) });
+    expect(relayCalls()).toHaveLength(0);
+  });
+
+  it("a guest chat (bare /start, linked to no org) goes to Distry, which answers it itself", async () => {
+    await POST(update(CUSTOMER_CHAT, "/start"));
+    expect(linkCalls()).toHaveLength(0);
+    expect(relayCalls()[0].body.text).toBe("/start");
+    expect(telegramSends()).toHaveLength(0);
+  });
+
+  it("a status chat-service no longer serves (not_linked) reads as unavailable", async () => {
     relay = { status: 200, body: { status: "not_linked" } };
     await POST(update(CUSTOMER_CHAT, "hello"));
-    expect(telegramSends()).toHaveLength(1);
-    expect(telegramSends()[0].body).toMatchObject({ chat_id: CUSTOMER_CHAT, text: NOT_LINKED_REPLY });
-    expect(store.addMessage).not.toHaveBeenCalled();
+    expect(telegramSends()[0].body).toMatchObject({ chat_id: CUSTOMER_CHAT, text: RELAY_UNAVAILABLE_REPLY });
   });
 
   it("a webhook retry chat-service already took sends nothing", async () => {
@@ -148,7 +170,7 @@ describe("Telegram webhook: a customer's chat talks with Sophie (SOPHIE-TELEGRAM
   });
 
   it("the copy is short and plain, without dashes", () => {
-    for (const text of [NOT_LINKED_REPLY, RELAY_UNAVAILABLE_REPLY]) {
+    for (const text of [RELAY_UNAVAILABLE_REPLY]) {
       expect(text).not.toMatch(/[—–]/);
       expect(text.length).toBeLessThan(120);
     }
