@@ -6,9 +6,11 @@ import {
   esc,
   displayValue,
   formatDay,
+  formatIndexRange,
   formatIndexValue,
   formatTick,
   isExpected,
+  shownRange,
   statusLegend,
   statusLine,
   unavailableLine,
@@ -96,7 +98,13 @@ export function chartHtml(served: IndexPoint[], unit: IndexUnit, ariaName: strin
 <div class="ix-empty-line" aria-hidden="true"></div>
 </div>`;
   }
-  const { lo, hi } = chartDomain(measured.map((p) => p.value));
+  // The likely range of each day, at the shown figures like the line; in the domain so the band is never clipped.
+  const ranges = new Map<string, { low: number; high: number }>();
+  for (const p of served) {
+    const r = shownRange(p);
+    if (r) ranges.set(p.day, { low: displayValue(r.low), high: displayValue(r.high) });
+  }
+  const { lo, hi } = chartDomain([...measured.map((p) => p.value), ...[...ranges.values()].flatMap((r) => [r.low, r.high])]);
   const first = dayNumber(points[0].day);
   const last = dayNumber(points[points.length - 1].day);
   const span = last - first;
@@ -126,6 +134,32 @@ export function chartHtml(served: IndexPoint[], unit: IndexUnit, ariaName: strin
   if (current) segments.push(current);
 
   const single = span === 0;
+
+  // The band follows the curve between each day's low and high, and breaks on a day without a range.
+  type BandPt = { x: number; top: number; bottom: number };
+  const runs: BandPt[][] = [];
+  let run: BandPt[] = [];
+  for (const p of points) {
+    const r = ranges.get(p.day);
+    if (r) {
+      run.push({ x: xOf(p.day), top: yOf(r.high), bottom: yOf(r.low) });
+    } else if (run.length) {
+      runs.push(run);
+      run = [];
+    }
+  }
+  if (run.length) runs.push(run);
+  const bands = runs
+    .map((pts) => (single ? [{ ...pts[0], x: 0 }, pts[0]] : pts))
+    // One ranged day between two days without one has no width to draw.
+    .filter((pts) => pts.length > 1)
+    .map((pts) => {
+      const upper = pts.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(1)} ${q.top.toFixed(1)}`).join(" ");
+      const lower = [...pts].reverse().map((q) => `L${q.x.toFixed(1)} ${q.bottom.toFixed(1)}`).join(" ");
+      return `<path class="ix-band" d="${upper} ${lower} Z" fill="currentColor" fill-opacity="0.12" stroke="none"/>`;
+    })
+    .join("\n");
+
   const paths = segments
     .map((seg) => {
       const pts = single ? [{ x: 0, y: seg.pts[0].y }, seg.pts[0]] : seg.pts;
@@ -166,6 +200,7 @@ ${grid}
 <linearGradient id="ix-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2563eb" stop-opacity="0.16"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/></linearGradient>
 <linearGradient id="ix-fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2563eb" stop-opacity="0"/><stop offset="0.55" stop-color="#2563eb" stop-opacity="0.55"/><stop offset="1" stop-color="#2563eb" stop-opacity="1"/></linearGradient>
 </defs>
+${bands}
 ${paths}
 </svg>
 ${dots}
@@ -239,6 +274,8 @@ const STYLE = `<style>
 .ix-figure { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: flex-end; column-gap: 40px; row-gap: 16px; }
 .ix-value { font-family: var(--font-display); font-weight: 300; font-size: clamp(84px, 15vw, 212px); line-height: .82; letter-spacing: -0.06em; color: var(--text); margin-left: -0.04em; white-space: nowrap; }
 .ix-value-none { font-size: clamp(28px, 3.6vw, 44px); line-height: 1.15; letter-spacing: -0.03em; max-width: 620px; color: var(--text); font-weight: 300; }
+.ix-fig { display: grid; gap: 18px; justify-items: start; }
+.ix-range { font-size: clamp(18px, 1.8vw, 22px); line-height: 1.2; color: var(--muted); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ix-side { padding-bottom: 12px; display: grid; gap: 10px; justify-items: start; }
 .ix-per { font-size: clamp(18px, 1.8vw, 22px); color: var(--text); letter-spacing: -0.01em; }
 .ix-when { font-size: 14px; color: var(--muted); }
@@ -297,6 +334,7 @@ const STYLE = `<style>
 .ix-row-meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 14px; color: var(--muted); }
 .ix-row .ix-badge { font-size: 13px; padding: 3px 10px 3px 8px; }
 .ix-row-value { text-align: right; font-family: var(--font-display); font-weight: 300; font-size: clamp(30px, 3.6vw, 44px); letter-spacing: -0.04em; white-space: nowrap; }
+.ix-row-range { margin-top: 2px; text-align: right; font-family: var(--font-body); font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ix-row-value.ix-none { font-family: var(--font-body); font-size: 14px; letter-spacing: 0; color: var(--muted); }
 .ix-spark { width: 140px; height: 40px; overflow: visible; }
 .ix-spark path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -400,6 +438,12 @@ ${otherIndexes(list, slug)}`,
   const { index: i, points, statusRule } = detail;
   const value = i.value !== null ? valueText(i.value, i.unit, i) : null;
   const shown = i.value !== null ? formatIndexValue(i.value, i.unit) : null;
+  const range = formatIndexRange(i, i.unit);
+  // The rule is said only where a range prints or is drawn on this page.
+  const rangeFact =
+    detail.rangeRule && (range !== null || points.some((p) => shownRange(p) !== null))
+      ? `\n      <div><dt>Range</dt><dd>${esc(detail.rangeRule.text)}</dd></div>`
+      : "";
   const description =
     value !== null
       ? `${i.name}: ${value} ${i.valuePer} today. ${i.method}`
@@ -407,7 +451,9 @@ ${otherIndexes(list, slug)}`,
   const figure =
     value !== null
       ? `<div class="ix-figure">
-  <div class="ix-value" data-motion="count-up">${esc(shown ?? "")}</div>
+  <div class="ix-fig">
+    <div class="ix-value" data-motion="count-up">${esc(shown ?? "")}</div>${range !== null ? `\n    <div class="ix-range">${esc(range)}</div>` : ""}
+  </div>
   <div class="ix-side">
     <div class="ix-per">${esc(i.valuePer)}</div>
     ${expectedTag(i)}${badge(i.status)}
@@ -435,7 +481,7 @@ ${otherIndexes(list, slug)}`,
     <p class="ix-method">${esc(i.method)}</p>
     <dl class="ix-facts">
       <div><dt>Status</dt><dd>${esc(statusLine(i.status, statusRule, i.value !== null))}</dd></div>
-      <div><dt>Last recorded</dt><dd>${i.day ? esc(formatDay(i.day, true)) : "Not recorded yet."}</dd></div>
+      <div><dt>Last recorded</dt><dd>${i.day ? esc(formatDay(i.day, true)) : "Not recorded yet."}</dd></div>${rangeFact}
     </dl>
   </div>
 </section>
@@ -507,9 +553,10 @@ ${otherIndexes(list, i.slug)}`;
 function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>): string {
   const rows = indexes
     .map((i) => {
+      const range = formatIndexRange(i, i.unit);
       const value =
         i.value !== null
-          ? `<div class="ix-row-value">${esc(formatIndexValue(i.value, i.unit))}</div>`
+          ? `<div class="ix-row-fig"><div class="ix-row-value">${esc(formatIndexValue(i.value, i.unit))}</div>${range !== null ? `<div class="ix-row-range">${esc(range)}</div>` : ""}</div>`
           : `<div class="ix-row-value ix-none">Not published yet</div>`;
       return `<a class="ix-row" href="/indexes/${i.slug}">
   <div>
