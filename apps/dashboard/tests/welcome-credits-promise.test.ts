@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { SUBSCRIPTION_AMOUNT_OPTIONS_CENTS } from "../src/lib/subscription-plan";
 
 /**
@@ -142,6 +143,21 @@ describe("landing stylesheet version", () => {
     expect(version).toBeTruthy();
     const home = read("apps/landing/public/landing/index-v2.html");
     expect(home).toContain(`/landing/v2/styles.css?v=${version}`);
+  });
+
+  it("styles.css cannot change without a new version", () => {
+    // 2026-11-25: #6068 edited styles.css under ?v=24. Returning visitors kept the cached
+    // v24 file beside the new HTML: the press band rendered as a 9,299px invisible list,
+    // a screen-high blank on the homepage. Editing styles.css turns this red: bump
+    // V2_STYLES_VERSION + the homepage ?v=, then record the file's new hash here.
+    const STYLES_SHA256_BY_VERSION: Record<string, string> = {
+      "25": "b7b0deb2ddf3ede08d694c345dedfe4ff9ebc53ad5cf99f7c4c38aecdcebd07b",
+    };
+    const version = /export const V2_STYLES_VERSION = (\d+);/.exec(read("apps/landing/src/lib/v2-shell.ts"))?.[1] ?? "";
+    const css = readFileSync(join(REPO, "apps/landing/public/landing/v2/styles.css"));
+    const sha = createHash("sha256").update(css).digest("hex");
+    expect(STYLES_SHA256_BY_VERSION[version], `styles.css v${version} has no recorded hash`).toBeTruthy();
+    expect(sha, "styles.css changed: bump V2_STYLES_VERSION and the homepage ?v=, then record the new hash").toBe(STYLES_SHA256_BY_VERSION[version]);
   });
 });
 
