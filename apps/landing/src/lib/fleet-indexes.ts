@@ -40,7 +40,18 @@ export type IndexSummary = {
   recordedAt: string | null;
   /** Absent on payloads older than the field: read as measured. */
   valueKind?: ValueKind;
+  /** Absent on payloads older than the field: no range is shown. */
+  valueRange?: ValueRange | null;
+  valueRangeUnavailableReason?: string | null;
 };
+
+/**
+ * The likely range around a value (owner 2026-11-25), served by features-service beside
+ * it and only READ here: `low <= value <= high`, null on a null or an expected value.
+ */
+export type ValueRange = { low: number; high: number };
+/** Which percentiles the range spans, and the served sentence that says so. */
+export type RangeRule = { lowPercentile: number; highPercentile: number; text: string };
 
 /**
  * `measured` = read off what was spent and booked; `expected` = the price the producer
@@ -70,14 +81,16 @@ export type IndexPoint = {
   /** `recorded` = written live that day; `recomputed` = rebuilt later as of that day (the 2026-10-19 backfill). */
   basis?: IndexBasis;
   valueKind?: ValueKind;
+  valueRange?: ValueRange | null;
+  valueRangeUnavailableReason?: string | null;
 };
 
 export type IndexBasis = "recorded" | "recomputed";
 /** One served sentence per basis, for the label beside the curve. */
 export type BasisRule = Record<IndexBasis, string>;
 
-export type IndexList = { statusRule: StatusRule; indexes: IndexSummary[] };
-export type IndexDetail = { statusRule: StatusRule; index: IndexSummary; points: IndexPoint[]; basisRule?: BasisRule };
+export type IndexList = { statusRule: StatusRule; indexes: IndexSummary[]; rangeRule?: RangeRule };
+export type IndexDetail = { statusRule: StatusRule; index: IndexSummary; points: IndexPoint[]; basisRule?: BasisRule; rangeRule?: RangeRule };
 
 const STATUSES: readonly IndexStatus[] = ["robust", "signal", "noise"];
 
@@ -93,6 +106,27 @@ function parseRule(body: unknown): StatusRule {
   return r;
 }
 
+/** Optional while the producer deploy lags (absent = no range shown); strict once served. */
+function checkRange(where: string, x: { valueRange?: unknown; valueRangeUnavailableReason?: unknown }): void {
+  const r = x.valueRange as ValueRange | null | undefined;
+  if (r !== undefined && r !== null && (typeof r !== "object" || !isNum(r.low) || !isNum(r.high) || r.low > r.high)) {
+    throw new Error(`${where} has valueRange ${JSON.stringify(r)}`);
+  }
+  const why = x.valueRangeUnavailableReason;
+  if (why !== undefined && why !== null && typeof why !== "string") {
+    throw new Error(`${where} has valueRangeUnavailableReason ${JSON.stringify(why)}`);
+  }
+}
+
+function parseRangeRule(body: unknown): { rangeRule?: RangeRule } {
+  const r = (body as { rangeRule?: RangeRule })?.rangeRule;
+  if (r === undefined) return {};
+  if (!r || !isNum(r.lowPercentile) || !isNum(r.highPercentile) || typeof r.text !== "string" || !r.text.trim()) {
+    throw new Error(`rangeRule is ${JSON.stringify(r)}`);
+  }
+  return { rangeRule: r };
+}
+
 function parseSummary(s: IndexSummary): IndexSummary {
   if (typeof s?.slug !== "string" || !/^[a-z0-9-]+$/.test(s.slug)) throw new Error(`index slug ${JSON.stringify(s?.slug)}`);
   if (typeof s.name !== "string") throw new Error(`index ${s.slug} has name ${JSON.stringify(s.name)}`);
@@ -102,6 +136,7 @@ function parseSummary(s: IndexSummary): IndexSummary {
   if (s.valueKind !== undefined && !VALUE_KINDS.includes(s.valueKind)) {
     throw new Error(`index ${s.slug} has valueKind ${JSON.stringify(s.valueKind)}`);
   }
+  checkRange(`index ${s.slug}`, s);
   return s;
 }
 
@@ -109,7 +144,7 @@ function parseSummary(s: IndexSummary): IndexSummary {
 export function parseIndexList(body: unknown): IndexList {
   const indexes = (body as { indexes?: unknown })?.indexes;
   if (!Array.isArray(indexes)) throw new Error("indexes is not an array");
-  return { statusRule: parseRule(body), indexes: (indexes as IndexSummary[]).map(parseSummary) };
+  return { statusRule: parseRule(body), indexes: (indexes as IndexSummary[]).map(parseSummary), ...parseRangeRule(body) };
 }
 
 /** `GET /v1/public/indexes/{slug}`, points oldest day first. */
@@ -126,12 +161,13 @@ export function parseIndexDetail(body: unknown): IndexDetail {
     if (p.valueKind !== undefined && !VALUE_KINDS.includes(p.valueKind)) {
       throw new Error(`point ${p.day} has valueKind ${JSON.stringify(p.valueKind)}`);
     }
+    checkRange(`point ${p.day}`, p);
   }
   const rule = (body as { basisRule?: BasisRule }).basisRule;
   if (rule !== undefined && (typeof rule?.recorded !== "string" || typeof rule?.recomputed !== "string")) {
     throw new Error(`basisRule is ${JSON.stringify(rule)}`);
   }
-  return { statusRule: parseRule(body), index: parseSummary(b.index as IndexSummary), points: b.points, ...(rule ? { basisRule: rule } : {}) };
+  return { statusRule: parseRule(body), index: parseSummary(b.index as IndexSummary), points: b.points, ...(rule ? { basisRule: rule } : {}), ...parseRangeRule(body) };
 }
 
 /**
@@ -241,6 +277,23 @@ function withUnit(value: number, unit: IndexUnit): string {
 /** $4, $1,240, 2%, 20x, 0.2%: a decimal only under 1. */
 export function formatIndexValue(value: number, unit: IndexUnit): string {
   return withUnit(value, unit);
+}
+
+type Ranged = { value: number | null; valueKind?: ValueKind; valueRange?: ValueRange | null };
+
+/** The served range we may show: none on a null value, and never on an expected one even if served. */
+export function shownRange(x: Ranged): ValueRange | null {
+  if (x.value === null || isExpected(x) || !x.valueRange) return null;
+  return x.valueRange;
+}
+
+/** `$3 - $6`, each end rounded like the value; null when both ends print alike (it says nothing). */
+export function formatIndexRange(x: Ranged, unit: IndexUnit): string | null {
+  const r = shownRange(x);
+  if (!r) return null;
+  const low = withUnit(r.low, unit);
+  const high = withUnit(r.high, unit);
+  return low === high ? null : `${low} - ${high}`;
 }
 
 /** The chart scale labels, rounded the same way ($4, 2%, $40). */
