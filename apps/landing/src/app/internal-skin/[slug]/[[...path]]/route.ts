@@ -1,5 +1,6 @@
 import { applyDistrySkin, isSkinnedStylesheet, skinStylesheet } from "@/lib/distry-skin";
-import { isLabHiddenPage } from "@/lib/lab-offer";
+import { isLabDrawnDocsPage, LAB_INTEGRATIONS_PATH, withLabDocs } from "@/lib/lab-docs";
+import { labRedirectFor } from "@/lib/lab-offer";
 import { prototypeFor } from "@/lib/prototype-catalogue";
 
 /**
@@ -23,8 +24,9 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (prototypeFor(slug) === null) return new Response("Not found.", { status: 404, headers: HEADERS });
 
   const pathname = `/${(path ?? []).map(encodeURIComponent).join("/")}`;
-  // An article about the old offer is not served on the lab (`LAB_HIDDEN_PAGES`).
-  if (isLabHiddenPage(pathname)) return new Response(null, { status: 307, headers: { ...HEADERS, location: "/blog" } });
+  // A page the lab does not serve (`LAB_HIDDEN_PAGES`): an old-offer article goes to the blog, every other page home.
+  const hidden = labRedirectFor(pathname);
+  if (hidden !== null) return new Response(null, { status: 307, headers: { ...HEADERS, location: hidden } });
   const search = new URL(request.url).search;
   const headers = new Headers();
   for (const name of FORWARDED) {
@@ -34,7 +36,9 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (!headers.has("accept")) headers.set("accept", "text/html");
 
   const origin = `http://127.0.0.1:${process.env.PORT ?? "3000"}`;
-  const page = await fetch(`${origin}${pathname}${search}`, { headers, cache: "no-store", redirect: "manual" });
+  // An integration page only the lab has is drawn into the live overview page (`lab-docs.ts`).
+  const source = isLabDrawnDocsPage(pathname) ? LAB_INTEGRATIONS_PATH : pathname;
+  const page = await fetch(`${origin}${source}${search}`, { headers, cache: "no-store", redirect: "manual" });
 
   const location = page.headers.get("location");
   if (page.status >= 300 && page.status < 400 && location) {
@@ -45,7 +49,9 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
   const type = page.headers.get("content-type") ?? "application/octet-stream";
   if (type.includes("text/html")) {
-    return new Response(applyDistrySkin(await page.text(), pathname, page.status), { status: page.status, headers: { ...HEADERS, "content-type": type } });
+    const html = await page.text();
+    const restated = pathname === "/docs" || pathname.startsWith("/docs/") ? withLabDocs(html, pathname) : html;
+    return new Response(applyDistrySkin(restated, pathname, page.status), { status: page.status, headers: { ...HEADERS, "content-type": type } });
   }
   if (isSkinnedStylesheet(pathname) && page.ok) {
     return new Response(skinStylesheet(await page.text()), { headers: { ...HEADERS, "content-type": type } });
