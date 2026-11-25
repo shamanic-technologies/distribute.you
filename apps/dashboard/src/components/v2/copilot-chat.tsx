@@ -55,6 +55,7 @@ import { expectedBasisWord } from "@/lib/realized-return";
 import { realizedReturnWords } from "@/components/v2/return-figures";
 import { clickedControlLabel, pushRecentAction, type RecentAction } from "@/lib/recent-actions";
 import { mayAutoSend, nudgeDelayMs, sessionIdFromUIStream } from "@/lib/copilot-nudge";
+import { copilotErrorText } from "@/lib/copilot-error";
 
 /**
  * The Copilot (owner 2026-10-09, GA 2026-10-10), drawn inside the right panel. A reload shows the last
@@ -822,7 +823,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
 
           {error && !busy && (
             <div className="k-card mt-6 flex items-center justify-between gap-3 px-4 py-3">
-              <p className="k-fg2 min-w-0 text-[13px]">The copilot could not answer: {error.message}</p>
+              <p className="k-fg2 min-w-0 text-[13px]">{copilotErrorText(error.message)}</p>
               <button type="button" className="k-btn shrink-0" onClick={() => regenerate()}>
                 Try again
               </button>
