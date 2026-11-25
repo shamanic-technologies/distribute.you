@@ -215,7 +215,9 @@ describe("the copy behind the footer states the current positioning", () => {
     const terms = read("src/app/terms/page.tsx");
     expect(terms).toContain("<strong>Who signs your outreach.</strong>");
     expect(terms).toContain("(c) a persona name set for your brand");
-    expect(terms).toContain("You are the sender and initiator of this");
+    expect(terms).toContain("sender and initiator of this");
+    // Blind emails do not name the brand: the terms must not promise it (owner 2026-11-25).
+    expect(terms).not.toContain("names your brand");
     expect(terms).toContain("you name has agreed to outreach being sent under their name");
     expect(terms).toContain("persona name set under Section 5 (Who signs your outreach) is");
     expect(terms).toContain("any claim by a person whose name, title, or");
