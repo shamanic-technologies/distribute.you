@@ -184,7 +184,7 @@ describe("Distry's mark replaces the site's", () => {
   });
 
   it("hands the logo to the script on a page React hydrates", () => {
-    const out = applyDistrySkin('<html><head></head><body><main></main><script>self.__next_f=[]</script></body></html>', "/blog");
+    const out = applyDistrySkin('<html><head></head><body><main></main><script>self.__next_f=[]</script></body></html>', "/terms");
     expect(out).toContain('"logo":"/landing/distry/assets/distry-mark.webp"');
   });
 
