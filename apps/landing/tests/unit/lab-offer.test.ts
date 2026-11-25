@@ -12,7 +12,7 @@ import { BOOK_A_CALL, SIGN_UP } from "../../src/lib/site-chrome";
 
 /**
  * The lab (`lab-distry`) states ONE offer on every page (owner 2026-11-25): Self-served
- * at $99/month with a 3-day free trial, Managed at a custom price with 100% money back
+ * at $99/month with a 3-day free trial, Managed from $499/month with 100% money back
  * on fixed outcome prices. The live pages it skins still state production's offer, so
  * the skin restates them (`withLabOffer`). This sweep renders the real page builders
  * through the skin and reads what a visitor would.
@@ -75,7 +75,7 @@ describe("the old offer is recognised", () => {
   });
 
   it("and not in the new offer or a competitor's own plan", () => {
-    for (const fine of ["$99/month, 3-day free trial", "Custom price, 100% money back on fixed outcome prices", "Free plan, then $49/seat/month", "Start free trial", "$10,000 a month"]) {
+    for (const fine of ["$99/month, 3-day free trial", "From $499/month, 100% money back on fixed outcome prices", "Free plan, then $49/seat/month", "Start free trial", "$10,000 a month"]) {
       expect(OLD_OFFER.some((p) => p.test(fine)), fine).toBe(false);
     }
   });
@@ -112,7 +112,7 @@ describe("every skinned page states the lab's offer", async () => {
     expect(live).toContain("<i></i>Open source</span>");
     const text = readableText(applyDistrySkin(live, "/ai-sdr"));
     expect(text).toContain("Self-served $99/month 3-day free trial");
-    expect(text).toContain("Managed Custom price 100% money back");
+    expect(text).toContain("Managed From $499/month 100% money back");
     expect(text).not.toContain("View the code");
     expect(text).toContain("More pipeline for your sales team.");
   });
@@ -155,7 +155,7 @@ describe("the lab home", () => {
     const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="quotes"'));
     expect(pricing).toContain("$99/month <span>3-day free trial</span>");
     expect(pricing).toContain(`href="${SIGN_UP}">Start free trial</a>`);
-    expect(pricing).toContain("Custom price <span>100% money back</span>");
+    expect(pricing).toContain("From $499/month <span>100% money back</span>");
     expect(pricing).toContain(`href="${BOOK_A_CALL}">Book a call</a>`);
     expect(home).toContain("$99/month · 3-day free trial · Cancel anytime");
   });
