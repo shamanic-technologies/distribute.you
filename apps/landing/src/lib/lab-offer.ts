@@ -5,7 +5,8 @@
  * - Free: their own keys, sent through the MCP (the agent asks for exactly the keys a
  *   campaign's plan needs), every LLM step on their own Claude subscription if they want.
  * - $99/month, 3-day free trial: $99 of credit on OUR keys, 0% markup, every expense
- *   (payment fees, AI chat) paid from it. More budget = +$100/month layers, prorated.
+ *   (payment fees, AI chat) paid from it. More budget = +$100/month layers;
+ *   an upgrade restarts the month that day and takes the unspent credit off the price.
  * - Killed (owner: "on supprime tout le reste"): Managed, $499, money back, any Agency
  *   offer, Book a call, the dashboard as a product, the Mac app, Make/n8n/Zapier/Cursor.
  *
