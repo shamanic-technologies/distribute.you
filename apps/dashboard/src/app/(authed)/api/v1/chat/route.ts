@@ -8,6 +8,7 @@ import {
 } from "ai";
 import { checkProxyOrg } from "@/lib/proxy-org";
 import { getOrgName } from "@/lib/org-name";
+import { copilotErrorText } from "@/lib/copilot-error";
 
 export const maxDuration = 300;
 
@@ -132,7 +133,10 @@ export async function POST(req: NextRequest) {
     try {
       errBody = JSON.parse(errText);
     } catch {
-      errBody = { error: errText };
+      // Not JSON: an edge answered in place of the backend (Cloudflare's 524 HTML page
+      // after 100 s of silence). Log it, never hand the page to the panel.
+      console.error("[chat-proxy] non-JSON error from chat backend", { status: backendRes.status, body: errText.slice(0, 300) });
+      errBody = { error: copilotErrorText(errText, backendRes.status) };
     }
     return NextResponse.json(errBody, { status: backendRes.status });
   }
