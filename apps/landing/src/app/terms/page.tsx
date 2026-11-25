@@ -407,9 +407,8 @@ const SECTIONS: SectionDef[] = [
           <strong>Who signs your outreach.</strong> Outreach may be sent
           under the name, title, and signature of (a) a member of your
           organization, (b) a staff member of {SERVICE} acting for your
-          brand, or (c) a persona name set for your brand. Every message
-          names your brand, so recipients can always tell which business
-          is contacting them. You are the sender and initiator of this
+          brand, or (c) a persona name set for your brand. You are the
+          sender and initiator of this
           outreach under the CAN-SPAM Act and similar laws, and we send it
           as your agent. You represent and warrant that each real person
           you name has agreed to outreach being sent under their name, and
