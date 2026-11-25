@@ -379,14 +379,10 @@ h3 { font-size: 1.42rem; line-height: 1.18; }
 .why { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .why-card { padding: 28px; display: grid; gap: 12px; align-content: start; }
 .why-card a { color: var(--blue); }
-.why-card.zero { grid-column: 1 / -1; text-align: center; justify-items: center; background: linear-gradient(180deg, #17266b, var(--night)); color: var(--cream); box-shadow: 0 30px 70px rgba(13, 24, 72, 0.4); }
-.why-card.zero a { color: var(--gold); }
-.sum { font: 600 clamp(1.2rem, 2.6vw, 2rem) var(--display); display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; }
-.sum span:nth-child(2) { color: var(--gold); }
 .ticks { display: grid; gap: 7px; font-size: 0.96rem; }
 .ticks li { padding-left: 26px; position: relative; }
 .ticks li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--blue); font-weight: 700; }
-.zero .ticks li::before, .night .ticks li::before { color: var(--gold); }
+.night .ticks li::before { color: var(--gold); }
 .copybox { display: flex; gap: 8px; align-items: center; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--ink); color: var(--cream); }
 .copybox code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font: 500 0.8rem ui-monospace, SFMono-Regular, Menlo, monospace; scrollbar-width: none; }
 .copybox button { border: 0; border-radius: 9px; padding: 8px 12px; font: 600 0.82rem var(--body); cursor: pointer; background: var(--gold); color: #2a1a00; }
