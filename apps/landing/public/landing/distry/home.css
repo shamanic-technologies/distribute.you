@@ -619,6 +619,7 @@ body { background: #f6f8fc; }
 .press-marquee:hover .press-track, .press-marquee:focus-within .press-track { animation-play-state: paused; }
 @keyframes press-scroll { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 24px)); } }
 .press-track li { flex: none; }
+.press-still .press-track { width: auto; animation: none; justify-content: center; flex-wrap: wrap; gap: 20px 56px; }
 .press-track a { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
 .press-track a:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; border-radius: 6px; }
 .press-track img { width: 28px; height: 28px; border-radius: 7px; object-fit: contain; background: #ffffff; filter: grayscale(1); opacity: 0.8; transition: filter 0.3s, opacity 0.3s; }

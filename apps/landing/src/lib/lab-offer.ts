@@ -51,7 +51,7 @@ export const LAB_PLANS = `<div class="plans">
       <article class="plan rv">
         <span class="plan-tag"><i></i>Self-served</span>
         <div class="plan-price">$99/month<small>3-day free trial</small></div>
-        <p class="plan-desc">Your team runs the agent.</p>
+        <p class="plan-desc">You run the agent.</p>
         <a class="btn btn-accent btn-lg" href="${LAB_SIGN_UP}">Start free trial</a>
         <div class="plan-included">What's included</div>
         <ul>
@@ -276,9 +276,29 @@ export function meetingsOnlyShowcase(html: string): string {
   });
 }
 
+/** The four outlets the lab names, in this order, still (owner 2026-11-25: « arrête le défilement, que 4, les plus prestigieux »). */
+export const LAB_PRESS = ["COO Insider", "CMO Times", "TechBullion", "Grit Daily News"] as const;
+
+/** The served press band cut to `LAB_PRESS`, one still line: the marquee's copy and every other outlet leave. */
+export function stillPress(html: string): string {
+  return html.replace(/<div class="press-marquee"><ul class="press-track" data-brand-proof="press">([\s\S]*?)<\/ul><\/div>/, (_all, items: string) => {
+    const byName = new Map<string, string>();
+    for (const li of items.match(/<li>[\s\S]*?<\/li>/g) ?? []) {
+      const name = /<span title="([^"]*)"/.exec(li)?.[1];
+      if (name && !byName.has(name)) byName.set(name, li);
+    }
+    const kept = LAB_PRESS.map((name) => {
+      const li = byName.get(name);
+      if (!li) console.error(`[landing] lab press outlet not served: ${name}`);
+      return li ?? "";
+    }).join("");
+    return `<div class="press-still"><ul class="press-track" data-brand-proof="press">${kept}</ul></div>`;
+  });
+}
+
 /** The wall and the press band are rendered in the live site's markup: they join the lab home's day band. */
 export function dressBrandProof(html: string): string {
-  return html
+  return stillPress(html)
     .replace('<section class="framed" id="clients">', '<section class="framed day" id="clients" data-sky="1" data-say="My clients come from great places.">')
     .replace('<section class="framed" id="featured">', '<section class="framed day" id="featured" data-sky="1" data-say="The press wrote about us.">')
     .replace("<h3>As featured in</h3>", "<h3>Featured in</h3>");

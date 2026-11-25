@@ -220,3 +220,17 @@ describe("dressBrandProof", () => {
     expect(out).toContain("<h3>Featured in</h3>");
   });
 });
+
+describe("the lab press band (owner 2026-11-25)", () => {
+  it("keeps only the four named outlets, in order, still", async () => {
+    const { stillPress, LAB_PRESS } = await import("../../src/lib/lab-offer");
+    const li = (n: string) => `<li><a href="https://x.test/${n.length}"><img src="https://l.test/a.png" alt=""><span title="${n}">${n}</span></a></li>`;
+    const copy = (n: string) => `<li aria-hidden="true"><a href="https://x.test" tabindex="-1"><img src="https://l.test/a.png" alt=""><span title="${n}">${n}</span></a></li>`;
+    const names = ["TechBullion", "Grit Daily News", "College Recruiter", "CMO Times", "COO Insider", "Lawyer Magazine"];
+    const html = `<div class="press-marquee"><ul class="press-track" data-brand-proof="press">${names.map(li).join("")}${names.map(copy).join("")}</ul></div>`;
+    const out = stillPress(html);
+    expect(out).not.toContain("press-marquee");
+    expect(out).not.toContain("aria-hidden");
+    expect([...out.matchAll(/<span title="([^"]*)"/g)].map((m) => m[1])).toEqual([...LAB_PRESS]);
+  });
+});
