@@ -21,7 +21,8 @@ import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
 import { TelegramLogoIcon } from "@phosphor-icons/react/dist/csr/TelegramLogo";
 import { RobotIcon } from "@phosphor-icons/react/dist/csr/Robot";
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
-import { createOwnerTelegramLinkCode, getBillingAccount, getOwnerTelegram } from "@/lib/api";
+import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
+import { ApiError, createOwnerTelegramLinkCode, getBillingAccount, getCopilotHandoff, getOwnerTelegram, postCopilotHandoff, type HandoffChannel } from "@/lib/api";
 import { DISTRIBUTE_MCP_URL } from "@/lib/v2/get-started";
 import { distryWhatsAppHref, labAiPrompt } from "@/lib/v2/lab-handoff";
 
@@ -32,7 +33,7 @@ export const useLabDistry = () => useContext(LabDistryContext);
 /** Telegram's link answers within seconds of the tap; re-read until it says so. */
 const TELEGRAM_POLL_MS = 3000;
 
-type Tone = "--data-teal" | "--accent" | "--run";
+type Tone = "--data-teal" | "--accent" | "--run" | "--data-amber";
 
 function Mark({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   return (
@@ -93,13 +94,26 @@ export function LabSetupChoice({ website, onWeb, onBack }: { website: string; on
   );
 }
 
-/** The last screen on the lab, after payment: where Distry works with the founder from now on. */
-export function ChannelHandoff({ website }: { website: string }) {
+/** How often the last screen re-reads whether Distry started the campaign (the founder replies within seconds). */
+const HANDOFF_POLL_MS = 4000;
+
+type Hello = "idle" | "sending" | "sent" | "failed";
+
+/**
+ * The last screen on the lab, after payment: the campaign waits, Distry starts it on the founder's
+ * first message on a channel. WhatsApp and Email: Distry writes FIRST (chat-service hand-off); the
+ * founder just answers. Telegram: one tap on our bot. Their AI: one line to paste. The screen turns
+ * to "running" once Distry started the campaign.
+ */
+export function ChannelHandoff({ website, campaignId }: { website: string; campaignId: string | null }) {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [telegram, setTelegram] = useState<"idle" | "opening" | "waiting" | "linked">("idle");
+  const [hello, setHello] = useState<Record<HandoffChannel, Hello>>({ whatsapp: "idle", email: "idle" });
+  const [noPhone, setNoPhone] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [picked, setPicked] = useState<"whatsapp" | "telegram" | "ai" | null>(null);
+  const [picked, setPicked] = useState<"whatsapp" | "email" | "telegram" | "ai" | null>(null);
+  const [startedVia, setStartedVia] = useState<string | null>(null);
   const live = useRef(true);
 
   useEffect(() => {
@@ -113,6 +127,22 @@ export function ChannelHandoff({ website }: { website: string }) {
       live.current = false;
     };
   }, []);
+
+  // The campaign starts on the founder's first message, on any channel: this screen says so as it happens.
+  useEffect(() => {
+    if (!campaignId || startedVia) return;
+    const t = setInterval(() => {
+      getCopilotHandoff()
+        .then((h) => {
+          if (h.campaignStartedAt && live.current) {
+            setStartedVia(h.campaignStartedVia ?? "chat");
+            posthog.capture("get_started_campaign_started", { via: h.campaignStartedVia ?? null, lab: true });
+          }
+        })
+        .catch((e) => console.error("[lab-handoff] hand-off read failed:", e));
+    }, HANDOFF_POLL_MS);
+    return () => clearInterval(t);
+  }, [campaignId, startedVia]);
 
   // Telegram turns Connected on its own once the founder taps Start in the bot.
   useEffect(() => {
@@ -129,6 +159,24 @@ export function ChannelHandoff({ website }: { website: string }) {
     }, TELEGRAM_POLL_MS);
     return () => clearInterval(t);
   }, [telegram, orgId]);
+
+  async function sayHello(channel: HandoffChannel) {
+    if (hello[channel] === "sending" || hello[channel] === "sent") return;
+    setError(null);
+    setPicked(channel);
+    setHello((h) => ({ ...h, [channel]: "sending" }));
+    posthog.capture("get_started_channel_chosen", { channel, lab: true });
+    try {
+      await postCopilotHandoff({ sayHelloOn: channel });
+      setHello((h) => ({ ...h, [channel]: "sent" }));
+    } catch (e) {
+      console.error(`[lab-handoff] ${channel} hello failed:`, e);
+      setHello((h) => ({ ...h, [channel]: "failed" }));
+      // No number on the account: the founder writes first instead (their number is who they are).
+      if (channel === "whatsapp" && e instanceof ApiError && e.status === 409) setNoPhone(true);
+      else setError(channel === "email" ? "Distry could not email you just now. Try again." : "Distry could not text you just now. Try again.");
+    }
+  }
 
   async function openTelegram() {
     if (!orgId) return;
@@ -164,37 +212,70 @@ export function ChannelHandoff({ website }: { website: string }) {
     }
   }
 
+  const on = (key: typeof picked) => `${CARD}${picked === key ? " k-card-on" : ""}`;
+  const whatsappLine =
+    hello.whatsapp === "sent" ? "Distry just texted you. Reply there to start." : hello.whatsapp === "sending" ? "Distry is writing to you..." : "Distry texts you first.";
+  const emailLine = hello.email === "sent" ? "Distry just emailed you. Reply to start." : hello.email === "sending" ? "Distry is writing to you..." : "Distry emails you first.";
+
+  if (startedVia)
+    return (
+      <div className="k-canvas relative flex min-h-[100dvh] items-center justify-center px-6 py-10">
+        <div className="w-full max-w-[560px]">
+          <Mark tone="--run">
+            <CheckCircleIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+          </Mark>
+          <h1 className="gs-in k-fg mt-4 text-[28px] font-medium leading-9 tracking-[-0.01em]">Your campaign is running.</h1>
+          <p className="gs-in k-fg2 mt-2 text-[14px] leading-5" style={{ animationDelay: "40ms" }}>
+            Distry keeps you posted where you answered. You can close this page.
+          </p>
+        </div>
+      </div>
+    );
+
   return (
     <div className="k-canvas relative flex min-h-[100dvh] items-center justify-center px-6 py-10">
       <div className="w-full max-w-[640px]">
         <p className="k-label gs-in">Your campaign is ready</p>
         <h1 className="gs-in k-fg mt-3 text-[28px] font-medium leading-9 tracking-[-0.01em]">Where should Distry work with you?</h1>
         <p className="gs-in k-fg2 mt-2 text-[14px] leading-5" style={{ animationDelay: "40ms" }}>
-          Distry sends you your results there and answers you any time.
+          Your campaign starts as soon as you answer Distry there.
         </p>
-        <div className="gs-in mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3" style={{ animationDelay: "80ms" }}>
-          <a
-            href={distryWhatsAppHref("Hi Distry!")}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => {
-              setPicked("whatsapp");
-              posthog.capture("get_started_channel_chosen", { channel: "whatsapp", lab: true });
-            }}
-            className={`${CARD}${picked === "whatsapp" ? " k-card-on" : ""}`}
-          >
-            <Mark tone="--run">
-              <WhatsappLogoIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+        <div className="gs-in mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ animationDelay: "80ms" }}>
+          {noPhone ? (
+            <a
+              href={distryWhatsAppHref("Hi Distry!")}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setPicked("whatsapp")}
+              className={on("whatsapp")}
+            >
+              <Mark tone="--run">
+                <WhatsappLogoIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+              </Mark>
+              <span className="k-fg text-[16px] font-medium">WhatsApp</span>
+              <span className="k-fg2 text-[13px] leading-5">Say hi to Distry to start.</span>
+            </a>
+          ) : (
+            <button type="button" onClick={() => void sayHello("whatsapp")} disabled={hello.whatsapp === "sending"} className={on("whatsapp")}>
+              <Mark tone="--run">
+                <WhatsappLogoIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+              </Mark>
+              <span className="k-fg text-[16px] font-medium">WhatsApp</span>
+              <span className="k-fg2 text-[13px] leading-5" aria-live="polite">
+                {whatsappLine}
+              </span>
+            </button>
+          )}
+          <button type="button" onClick={() => void sayHello("email")} disabled={hello.email === "sending"} className={on("email")}>
+            <Mark tone="--data-amber">
+              <EnvelopeSimpleIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
             </Mark>
-            <span className="k-fg text-[16px] font-medium">WhatsApp</span>
-            <span className="k-fg2 text-[13px] leading-5">{picked === "whatsapp" ? "Say hi in WhatsApp. Distry answers there." : "Say hi to Distry."}</span>
-          </a>
-          <button
-            type="button"
-            onClick={() => void openTelegram()}
-            disabled={!orgId || telegram === "opening"}
-            className={`${CARD}${picked === "telegram" ? " k-card-on" : ""}`}
-          >
+            <span className="k-fg text-[16px] font-medium">Email</span>
+            <span className="k-fg2 text-[13px] leading-5" aria-live="polite">
+              {emailLine}
+            </span>
+          </button>
+          <button type="button" onClick={() => void openTelegram()} disabled={!orgId || telegram === "opening"} className={on("telegram")}>
             <Mark tone="--accent">
               {telegram === "linked" ? (
                 <CheckCircleIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
@@ -205,7 +286,7 @@ export function ChannelHandoff({ website }: { website: string }) {
             <span className="k-fg text-[16px] font-medium">Telegram</span>
             <span className="k-fg2 text-[13px] leading-5" aria-live="polite">
               {telegram === "linked"
-                ? "Connected. Distry answers you there."
+                ? "Connected. Say hi to Distry to start."
                 : telegram === "waiting"
                   ? "Tap Start in Telegram."
                   : telegram === "opening"
@@ -213,7 +294,7 @@ export function ChannelHandoff({ website }: { website: string }) {
                     : "Tap Start in our bot."}
             </span>
           </button>
-          <button type="button" onClick={() => void copyAi()} className={`${CARD}${picked === "ai" ? " k-card-on" : ""}`}>
+          <button type="button" onClick={() => void copyAi()} className={on("ai")}>
             <Mark tone="--data-teal">
               <RobotIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
             </Mark>

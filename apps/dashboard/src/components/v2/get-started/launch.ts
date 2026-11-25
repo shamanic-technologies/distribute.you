@@ -34,6 +34,8 @@ export interface LaunchInput {
   plan: SignupLaunchPlan;
   /** The offer points were answered in the preview and saved on the offer already. */
   answered: boolean;
+  /** Lab walk: the campaign is created waiting, Distry starts it on the founder's first message. */
+  held?: boolean;
 }
 
 export interface LaunchProgress {
@@ -83,7 +85,7 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
  * is interested leads that only PRICE the campaign (owner 2026-11-23), so it is never sent as a cap on a campaign whose
  * Target is a meeting booked.
  */
-async function launchCampaign(brandId: string, offerId: string, plan: SignupLaunchPlan, progress: LaunchProgress): Promise<string> {
+async function launchCampaign(brandId: string, offerId: string, plan: SignupLaunchPlan, progress: LaunchProgress, held = false): Promise<string> {
   if (progress.campaignId) return progress.campaignId;
   const period = capPeriodOf(plan.period);
   // A new campaign always carries its brief (owner 2026-11-21: « On ne devrait pas lancer de campaign sans brief »).
@@ -94,6 +96,7 @@ async function launchCampaign(brandId: string, offerId: string, plan: SignupLaun
     target: plan.target,
     brief: plan.brief,
     maxBudget: { amountCents: plan.maxBudgetCents, period },
+    held,
   });
   progress.campaignId = campaign.id;
   return campaign.id;
@@ -131,5 +134,5 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
 
   // The emails are written from the offer points: they land before anything starts.
   await levers;
-  return launchCampaign(input.brandId, offerId, input.plan, progress);
+  return launchCampaign(input.brandId, offerId, input.plan, progress, input.held === true);
 }

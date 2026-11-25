@@ -357,7 +357,7 @@ describe("no new campaign leaves the dashboard without a brief (HUMAN-BRIEF-1121
   it("the one create call requires a brief, refuses an empty one, and sends it", () => {
     expect(start).toContain("    brief: string;\n");
     expect(start).toContain('throw new Error("[startSalesFunnelCampaign] a new campaign needs a brief")');
-    expect(start).toContain('status: "ongoing",\n      brief,');
+    expect(start).toContain('status: input.held ? "stopped" : "ongoing",\n      brief,');
   });
   it("the launch hands the campaign's brief to it, and the brief is read from features-service, never composed", () => {
     expect(LAUNCH).toContain("    brief: plan.brief,\n");
