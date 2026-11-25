@@ -1682,53 +1682,6 @@ export async function disconnectInstagramAccount(accountId: string, token?: stri
   return apiCall<unknown>(`/orgs/instagram/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
 }
 
-// ==================== AI ON THE USER'S OWN CLAUDE CODE (chat-service, LOCAL-CLAUDE-1116) ====================
-//
-// An org declares that every LLM call chat-service makes for it runs on the user's own Claude Code
-// subscription, through the Mac app (the runner). Charged $0, usage still measured. Every figure here
-// is served by chat-service through the gateway's byte passthrough; nothing is computed in the browser.
-
-const LocalLlmStateSchema = z.object({
-  declared: z.boolean(),
-  declaredAt: z.string().nullable(),
-  declaredByUserId: z.string().nullable(),
-  runner: z.object({
-    connected: z.boolean(),
-    lastSeenAt: z.string().nullable(),
-    name: z.string().nullable(),
-    version: z.string().nullable(),
-  }),
-  pendingCalls: z.number().int(),
-  usageLast30Days: z.object({
-    calls: z.number().int(),
-    inputTokens: z.number(),
-    outputTokens: z.number(),
-    notionalCostUsd: z.number(),
-    chargedUsd: z.number(),
-  }),
-  runsLocally: z.array(z.string()),
-  stillOnPlatform: z.array(z.object({ family: z.string(), reason: z.string() })),
-});
-export type LocalLlmState = z.infer<typeof LocalLlmStateSchema>;
-
-function parseLocalLlmState(raw: unknown, where: string): LocalLlmState {
-  const parsed = LocalLlmStateSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(`[api] ${where} response shape mismatch`, parsed.error.flatten(), raw);
-    throw new Error(`${where} returned an unexpected shape`);
-  }
-  return parsed.data;
-}
-
-export async function getLocalLlm(token?: string): Promise<LocalLlmState> {
-  return parseLocalLlmState(await apiCall<unknown>(`/local-llm`, { token }), "getLocalLlm");
-}
-
-/** `enabled: true` runs the org's AI on the user's Claude Code, `false` sends it back to our platform. Answers the new state. */
-export async function setLocalLlm(enabled: boolean, token?: string): Promise<LocalLlmState> {
-  return parseLocalLlmState(await apiCall<unknown>(`/local-llm`, { token, method: "PUT", body: { enabled } }), "setLocalLlm");
-}
-
 // ==================== LINKEDIN ACCOUNTS (social-service, LINKEDIN-ACCOUNTS-1106) ====================
 //
 // The X accounts model plus the page whose posts are imported (`profileUrl`, a profile or a company

@@ -32,7 +32,9 @@ function walk(dir: string, exts: RegExp): string[] {
 /** Every public and signup surface that speaks for us. */
 export function surfaces(): string[] {
   return [
-    ...walk(path.join(LANDING, "src"), /\.(ts|tsx)$/),
+    // The lab's own offer (LAB-SOLO-PIVOT-1125, owner 2026-11-25) has a Free plan on your own keys:
+    // its two files only reach the password-gated lab host, never a public page.
+    ...walk(path.join(LANDING, "src"), /\.(ts|tsx)$/).filter((f) => !/[\\/]lib[\\/]lab-(?:offer|docs)\.ts$/.test(f)),
     ...walk(path.join(LANDING, "content/blog"), /\.(html|json)$/),
     ...walk(path.join(REPO, "shared/content/src"), /\.ts$/),
     ...walk(path.join(REPO, "apps/dashboard/src/app/(authed)/sign-up"), /\.tsx?$/),

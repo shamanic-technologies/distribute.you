@@ -140,12 +140,11 @@ describe("one chrome on every surface", () => {
     expect(read("src/app/route.ts")).toContain('withSiteChrome(page, "/")');
   });
 
-  it("the shell, the React components and the desktop page draw the same model", () => {
+  it("the shell and the React components draw the same model", () => {
     expect(read("src/lib/v2-shell.ts")).toContain("navHtml(path)");
     expect(read("src/lib/v2-shell.ts")).toContain("footerHtml(path)");
     expect(read("src/components/navbar.tsx")).toContain("navModel(path)");
     expect(read("src/components/footer.tsx")).toContain("footerModel(path)");
-    expect(read("src/lib/pages/desktop.ts")).toContain("footerHtml(DESKTOP_PATH)");
   });
 
   it("the React footer names the same pages as the rendered one", () => {

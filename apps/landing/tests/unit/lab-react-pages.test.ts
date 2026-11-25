@@ -5,7 +5,7 @@ import path from "node:path";
 import { gunzipSync } from "node:zlib";
 
 import { applyDistrySkin, isHydratedPage, isRestatedReactPage, withoutHydration } from "../../src/lib/distry-skin";
-import { LAB_HIDDEN_PAGES, LAB_UNRESTATED_PAGES, isLabHiddenPage, oldOfferClaims, readableText as readableTextOf, withoutHiddenCards } from "../../src/lib/lab-offer";
+import { LAB_HIDDEN_ARTICLES, LAB_HIDDEN_PAGES, LAB_UNRESTATED_PAGES, isLabHiddenPage, labRedirectFor, oldOfferClaims, readableText as readableTextOf, withoutHiddenCards } from "../../src/lib/lab-offer";
 
 /**
  * The React pages of the site (docs, blog, investors, privacy, terms) as the lab serves
@@ -44,10 +44,9 @@ describe("the React pages on the lab state the lab's offer", () => {
     for (const { pathname, html } of restated) {
       const out = applyDistrySkin(html, pathname);
       expect(out, pathname).toContain('"price":"99"');
-      expect(out, pathname).toContain("Self-served is $99/month with a 3-day free trial.");
-      expect(out, pathname).toContain("Managed starts at $499/month");
-      // Owner 2026-11-25: Managed is "From $499/month", and no "same agent" line.
-      expect(readableTextOf(out), pathname).not.toMatch(/custom price|same agent/i);
+      expect(out, pathname).toContain("Free with your own keys or your Claude subscription. Or $99/month on our keys at 0% markup, with a 3-day free trial.");
+      // Owner 2026-11-25 (LAB-SOLO-PIVOT-1125): no Managed plan, no "same agent" line.
+      expect(readableTextOf(out), pathname).not.toMatch(/custom price|same agent|Managed (?:starts|from)|from \$499/i);
     }
   });
 
@@ -63,12 +62,13 @@ describe("the React pages on the lab state the lab's offer", () => {
     }
   });
 
-  it("restates the /investors business model as the two lab plans", () => {
+  it("restates the /investors business model with one arm", () => {
     const investors = pages.find((p) => p.pathname === "/investors");
     const out = applyDistrySkin(investors!.html, "/investors");
-    expect(out).toContain("The business model has two plans.");
-    expect(out).toContain("<strong>Managed</strong> starts at $499/month".replace("<strong>", '<strong class="text-gray-900">'));
+    expect(out).toContain('The business model has one arm, the <strong class="text-gray-900">AI agent</strong>. Free with your own keys');
+    expect(out).toContain("More budget adds $100 a month at a time.");
     expect(out).not.toContain("GTM agency</strong> is from $1K");
+    expect(readableTextOf(out)).not.toMatch(/Managed|\$499|money back/);
   });
 
   it("keeps /terms exactly as production serves it: the contract accounts sign today", () => {
@@ -93,13 +93,66 @@ describe("an article about the old offer is not on the lab", () => {
   });
 
   it("sends a reader of its address to the blog", () => {
-    expect(LAB_HIDDEN_PAGES).toEqual(["/blog/ai-gtm"]);
-    expect(isLabHiddenPage("/blog/ai-gtm")).toBe(true);
-    expect(isLabHiddenPage("/blog/ai-gtm/")).toBe(true);
+    expect(LAB_HIDDEN_ARTICLES).toEqual(["/blog/ai-gtm"]);
+    expect(labRedirectFor("/blog/ai-gtm")).toBe("/blog");
+    expect(labRedirectFor("/blog/ai-gtm/")).toBe("/blog");
     expect(isLabHiddenPage("/blog/ai-gtm-2")).toBe(false);
     const route = readFileSync(path.resolve(__dirname, "../../src/app/internal-skin/[slug]/[[...path]]/route.ts"), "utf8");
-    expect(route.indexOf("isLabHiddenPage(pathname)")).toBeGreaterThan(-1);
-    expect(route.indexOf("isLabHiddenPage(pathname)")).toBeLessThan(route.indexOf("await fetch("));
+    expect(route.indexOf("labRedirectFor(pathname)")).toBeGreaterThan(-1);
+    expect(route.indexOf("labRedirectFor(pathname)")).toBeLessThan(route.indexOf("await fetch("));
+  });
+});
+
+describe("the solo-founder pivot hides every page it does not name (owner 2026-11-25)", () => {
+  it("sends every Agency page, the killed products and their compare pages home", () => {
+    for (const p of [
+      "/gtm-agency",
+      "/gtm-agency/alternatives",
+      "/cold-email-agency/best/cold-email-agency-for-saas-founders",
+      "/appointment-setting-agency/vs/belkins",
+      "/ppc-agency",
+      "/user-acquisition-agency",
+      "/gtm-automation",
+      "/cold-email-automation/vs/instantly",
+      "/ai-lead-generation",
+      "/lead-nurturing-automation",
+      "/ai-customer-success",
+      "/ai-ad-management",
+      "/desktop",
+      "/lp/concierge",
+      "/lp/instinct/sign-up",
+      "/best/outbound-agency-for-startups",
+      "/docs/integrations/claude",
+      "/docs/integrations/cursor",
+      "/docs/integrations/zapier",
+      "/docs/integrations/n8n",
+      "/docs/integrations/make",
+    ]) {
+      expect(labRedirectFor(p), p).toBe("/");
+    }
+  });
+
+  it("keeps the solo founder's pages", () => {
+    for (const p of ["/", "/ai-sdr", "/ai-sdr/vs/11x", "/signup-automation", "/website-traffic-automation", "/docs", "/docs/mcp", "/docs/api", "/docs/quickstart", "/docs/integrations", "/docs/integrations/claude-desktop", "/docs/integrations/chatgpt", "/docs/integrations/conductor", "/catalog", "/indexes", "/blog", "/about", "/contact", "/privacy", "/terms", "/investors"]) {
+      expect(labRedirectFor(p), p).toBeNull();
+    }
+    expect(LAB_HIDDEN_PAGES.length).toBeGreaterThan(20);
+  });
+
+  it("drops the Agency menu, its column, Book a call and every hidden link from the docs chrome", () => {
+    const docs = pages.find((p) => p.pathname === "/docs")!;
+    expect(docs.html).toMatch(/>Agency<svg/);
+    const text = readableTextOf(applyDistrySkin(docs.html, "/docs"));
+    expect(text).not.toMatch(/\bAgency\b|Book a call|GTM Automation|Cursor|Zapier|n8n|Make\.com/);
+    expect(text).toContain("Use it from your AI");
+  });
+
+  it("links to the dashboard nowhere on the React pages it restates (owner 2026-11-25)", () => {
+    for (const { pathname, html } of restated) {
+      const out = applyDistrySkin(html, pathname);
+      expect(out.slice(out.indexOf("<body")), pathname).not.toContain("dashboard.distribute.you");
+      expect(readableTextOf(out), pathname).not.toMatch(/\bLog in\b/);
+    }
   });
 });
 
@@ -123,7 +176,7 @@ describe("production is unchanged", () => {
       .filter((f) => /from "(?:@\/lib|\.)\/(?:lab-offer|distry-skin)"/.test(readFileSync(f, "utf8")))
       .map((f) => path.relative(SRC, f))
       .sort();
-    expect(readers).toEqual(["app/internal-prototype/[slug]/[[...path]]/route.ts", "app/internal-skin/[slug]/[[...path]]/route.ts", "lib/distry-skin.ts", "proxy.ts"]);
+    expect(readers).toEqual(["app/internal-prototype/[slug]/[[...path]]/route.ts", "app/internal-skin/[slug]/[[...path]]/route.ts", "lib/distry-skin.ts", "lib/lab-docs.ts", "proxy.ts"]);
     // The proxy reads only the skin's path helpers, and only on a prototype host.
     const proxy = readFileSync(path.join(SRC, "proxy.ts"), "utf8");
     expect(proxy).toContain('import { SKIN_ROUTE_PREFIX, isSkinPassThrough } from "@/lib/distry-skin";');

@@ -77,7 +77,6 @@ export function navModel(path: string, pages: SitePage[] = SITE_PAGES): NavModel
       label: "AI Agent",
       href: agents[0].path,
       items: agents.map(toLink),
-      // No Mac app link: `/desktop` stays unlinked and noindex (owner 2026-10-04).
       extra: [DOCS, CATALOG, { label: "Use from Claude Code or Grok", href: "/docs/integrations/claude" }],
     });
   }
