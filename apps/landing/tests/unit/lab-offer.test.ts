@@ -20,8 +20,8 @@ import { BOOK_A_CALL, SIGN_UP } from "../../src/lib/site-chrome";
 const ROOT = path.resolve(__dirname, "../..");
 const PAGES_DIR = path.join(ROOT, "src/lib/pages");
 
-/** Pages the lab leaves on their own offer: the Mac app (its own prepaid beta) and the two archived /lp pages. */
-const NOT_SWEPT = /^render(Desktop|Instinct|Assistant|Concierge|NotFound)/;
+/** Pages the lab leaves on their own offer: the archived /lp pages. */
+const NOT_SWEPT = /^render(Instinct|Assistant|Concierge|NotFound)/;
 
 async function livePages(): Promise<Map<string, string>> {
   const pages = new Map<string, string>();
