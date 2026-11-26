@@ -15,12 +15,12 @@ const SUBTITLE =
 const visible = (s: string) => s.replace(/<(script|style)[\s\S]*?<\/\1>/g, "").replace(/<[^>]+>/g, " ");
 
 describe("the Industrial-Grade hero", () => {
-  it("states the owner's title, subtitle and six words, no cost row", () => {
+  it("states the owner's title, subtitle and three words, no cost row", () => {
     expect(html).toContain('<h1>Revenue Automation<br><span class="accent ig">Industrial-Grade');
     expect(html).not.toContain('<span class="accent">Done For You</span>');
     expect(html).toContain(`<span class="sub">${SUBTITLE}</span>`);
     expect(html).toContain(
-      '<ul class="ig-pills"><li>Easy</li><li>Measurable</li><li>Auditable</li><li>Solid</li><li>Fast</li><li>State of the art</li></ul>',
+      '<ul class="ig-pills"><li>Fast</li><li>Measurable</li><li>Auditable</li></ul>',
     );
     expect(html.indexOf('class="ig-pills"')).toBeGreaterThan(html.indexOf('class="hero-links"'));
     expect(html).not.toContain("__HOT_LEAD_ROW__");

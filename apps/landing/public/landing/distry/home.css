@@ -469,9 +469,9 @@ h3 { font-size: 1.42rem; line-height: 1.18; }
 @media (max-width: 760px) {
   body { font-size: 16px; }
   .hero { align-items: end; }
-  .hero-art::after { background: linear-gradient(180deg, rgba(6, 10, 34, 0.2) 0%, rgba(6, 10, 34, 0.1) 30%, rgba(6, 10, 34, 0.92) 58%, var(--night) 100%); }
-  .hero-img, .hero-video { height: 62%; object-position: 78% 50%; }
-  .hero-copy { padding-block: 46svh 72px; gap: 16px; }
+  .hero-art::after { background: linear-gradient(180deg, rgba(6, 10, 34, 0.2) 0%, rgba(6, 10, 34, 0.1) 22%, rgba(6, 10, 34, 0.92) 40%, var(--night) 100%); }
+  .hero-img, .hero-video { height: 44%; object-position: 78% 50%; }
+  .hero-copy { padding-block: 30svh 72px; gap: 16px; }
   .scroll-cue { display: none; }
   .receipts, .plans { grid-template-columns: minmax(0, 1fr); }
   .quote { width: 290px; }
