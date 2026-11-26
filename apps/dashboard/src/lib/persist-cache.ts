@@ -410,8 +410,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // carries the scope, the tab, the search and the page number, so two windows onto one
   // brand never share an entry.
   "leadsPage",
-  // Needs your call: the people waiting on our answer (lead-service), a handful of rows.
-  "awaitingReply",
   // The people who reached one step (lead-service Unibox, LEAD-REACHED-STEP-1106): the per-step
   // counts (a few numbers) and one 50-row page of an outcome's people.
   "reachedCounts",

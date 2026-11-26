@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { keepPreviousData, useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import {
@@ -11,20 +10,15 @@ import {
   getBrandCompany,
   getBrandRevenueSummary,
   getBrandRevenueWindow,
-  getAwaitingReply,
   getReachedCounts,
-  getLeadDetail,
-  getLeadHistory,
   getOrgUsage,
   getUniboxLifecycleCounts,
   keepLastGoodFeatureRevenue,
-  type AwaitingReplyPerson,
   type LeadScope,
 } from "@/lib/api";
 import { useBrandScope } from "@/components/v2/brand-scope";
 import { COMPANIES_PAGE_SIZE, type BrandCompanyRow, type CompanyListQuery } from "@/lib/brand-companies";
 import type { BrandRevenueSummary } from "@/lib/revenue-parse";
-import type { LeadHistoryEvent } from "@/lib/lead-history";
 import { pollOptions, leadReadOptions, peopleOutcomesReadOptions, slowServerReadOptions } from "@/lib/query-options";
 import type { RevenueWindowDays } from "@/lib/revenue-window";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -226,52 +220,3 @@ export function useLeadDisqualifications(brandId: string) {
     { ...leadReadOptions, enabled: !!brandId },
   );
 }
-
-/**
- * NEEDS YOUR CALL (owner 2026-10-11): ONLY the people who wrote back and are waiting on US.
- * lead-service decides the set (`getAwaitingReply`): their latest message came after any
- * answer of ours, an answer through our mailboxes or an "answered outside" statement takes
- * them out, website visitors never enter. `total` is that set's own length, so the bell,
- * Work and Today count exactly the rows they list. Each shown person's row is read by id for
- * the card (company, avatar, conversation link); `waiting` says why they are there.
- */
-export function useNeedsYourCall(brandId: string, limit: number) {
-  return useAuthQuery(
-    ["awaitingReply", brandId, limit],
-    async () => {
-      const awaiting = await getAwaitingReply(brandId);
-      const rowless = awaiting.people.filter((p) => !p.id);
-      if (rowless.length > 0) {
-        console.error("[dashboard] useNeedsYourCall: waiting people with no lead row at the brand", {
-          brandId,
-          leadIds: rowless.map((p) => p.leadId),
-        });
-      }
-      const shown = awaiting.people.filter((p): p is AwaitingReplyPerson & { id: string } => !!p.id).slice(0, limit);
-      const leads = await Promise.all(shown.map((p) => getLeadDetail(p.id, brandId)));
-      const waiting: Record<string, AwaitingReplyPerson> = {};
-      for (const p of shown) waiting[p.id] = p;
-      return { total: awaiting.total, leads, waiting };
-    },
-    { ...leadReadOptions, enabled: !!brandId },
-  );
-}
-
-/** The latest message the person SENT us, off lead-service's merged history. */
-export function useTheirLastWords(leadRowId: string, brandId: string) {
-  const q = useAuthQuery(
-    ["leadHistory", leadRowId, brandId, "brand"],
-    () => getLeadHistory(leadRowId, { brandId, scope: "brand" }),
-    { enabled: !!leadRowId && !!brandId },
-  );
-  const inbound = useMemo(() => {
-    let latest: LeadHistoryEvent | null = null;
-    for (const e of q.data?.events ?? []) {
-      if (e.type !== "message" || e.direction !== "inbound") continue;
-      if (!latest || (e.at ?? "") >= (latest.at ?? "")) latest = e;
-    }
-    return latest;
-  }, [q.data]);
-  return { inbound, settled: q.data !== undefined || q.isError };
-}
-
