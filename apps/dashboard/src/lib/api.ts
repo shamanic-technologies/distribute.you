@@ -14071,6 +14071,17 @@ export async function getStaffSchemaConformance(days: number): Promise<StaffSche
   return parseStaff("getStaffSchemaConformance", StaffSchemaConformanceSchema, await apiCall<unknown>(`${STAFF_SCHEMA_CONFORMANCE_PATH}?days=${days}`));
 }
 
+// ─── Monitoring > AI vendors > Model named (MODEL-TAG-EVERY-AI-MESSAGE-1126) ───
+import { AiMessageModelsSchema as StaffAiMessageModelsSchema, type AiMessageModels as StaffAiMessageModels } from "./monitoring/ai-message-models";
+
+/** features-service's daily count of AI messages with vs without the model that wrote them named, through api-service's staff route. */
+export const STAFF_AI_MESSAGE_MODELS_PATH = "/features/audit/ai-message-models";
+
+/** One stored row per UTC day (newest first, fleet + per org) over the last `days` (1..90), with the served health. */
+export async function getStaffAiMessageModels(days: number): Promise<StaffAiMessageModels> {
+  return parseStaff("getStaffAiMessageModels", StaffAiMessageModelsSchema, await apiCall<unknown>(`${STAFF_AI_MESSAGE_MODELS_PATH}?days=${days}`));
+}
+
 // ─── Monitoring > Security (SEC-ADVISORIES-MONITORING-1025) ───
 import { SecurityAdvisoriesSchema as StaffSecurityAdvisoriesSchema, type SecurityAdvisories as StaffSecurityAdvisories } from "./monitoring/security-advisories";
 

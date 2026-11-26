@@ -145,6 +145,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffScriptEngines",
   // Monitoring > AI vendors > Schema: AI answers that do not follow the script's response schema (SCHEMA-HONOURED-1115).
   "staffSchemaConformance",
+  // Monitoring > AI vendors > Model named: AI messages with no model named (MODEL-TAG-EVERY-AI-MESSAGE-1126).
+  "staffAiMessageModels",
   "staffUnsentAnswers",
   // Monitoring > Triggers > Waiting on us (REPLY-NO-BALANCE-1118).
   "staffAwaitingAnswers",
