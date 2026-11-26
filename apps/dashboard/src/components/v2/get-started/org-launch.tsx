@@ -60,7 +60,8 @@ import { isAtCostOffer, matchNote, topupCta, type GetStartedOffer } from "@/lib/
 import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
-import { payTopup, settleTopup } from "./pay-topup";
+import { payFromSavedCard, payTopup, prepareCardFirst, settleTopup } from "./pay-topup";
+import { CardFirst } from "./card-first";
 import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
 import { pingOwner } from "@/lib/owner-ping-client";
 import { sendLaunchEmail } from "@/lib/signup-emails";
@@ -118,6 +119,10 @@ export function OrgLaunch({
   const [postpaidTicked, setPostpaidTicked] = useState([false, false]);
   const knownCard = useRef<CardFacts | null>(null);
   const cardSaved = useRef<(() => void) | null>(null);
+  // Card first (owner 2026-11-25): the card is saved, charging nothing, then the credit is
+  // paid on it; a card it cannot pay off-session falls back to the payment form.
+  const [cardOnFile, setCardOnFile] = useState(false);
+  const [formFallback, setFormFallback] = useState(false);
   // "Try again" replays the launch: every write that landed on an earlier attempt is skipped.
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS });
 
@@ -186,6 +191,33 @@ export function OrgLaunch({
       });
   }, []);
 
+  // Only an org created under the offer starts prepaid; an older one keeps its mode,
+  // unless the person picked "Switch to prepaid" on a card post-paid cannot run on.
+  const setPrepaid = chosePrepaid || account?.free_credit_offer === "match_100" || isAtCostOffer(account);
+
+  // Card first: the card is saved (nothing charged), then the credit step shows.
+  async function addCardFirst() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await prepareCardFirst(setPrepaid);
+    } catch (e) {
+      console.error("[brand-walk] prepaid mode not set before the card:", e);
+      setError("We could not open the card form. Try again.");
+      setBusy(false);
+      return;
+    }
+    posthog.capture("get_started_card_first_opened", { source: "org_launch" });
+    void openCardSave(() => {
+      posthog.capture("get_started_card_first_saved", { source: "org_launch" });
+      setSetupSecret(null);
+      setCardOnFile(true);
+      setFormFallback(false);
+      setBusy(false);
+    });
+  }
+
   async function pay(choice: TopupChoice) {
     if (busy) return;
     setBusy(true);
@@ -195,12 +227,25 @@ export function OrgLaunch({
       return;
     }
     try {
+      if (cardOnFile && !formFallback) {
+        const charged = await payFromSavedCard({ amountUsd: choice.topupUsd, consent: choice.consent });
+        posthog.capture("get_started_saved_card_charge", { topup_usd: choice.topupUsd, ok: charged.ok, source: "org_launch" });
+        if (charged.ok) {
+          void afterPaid({ creditedBefore: charged.creditedBefore, reload: choice.reload });
+          return;
+        }
+        setError(charged.refusal.message);
+        if (charged.refusal.kind === "retry") {
+          setBusy(false);
+          return;
+        }
+        // The card cannot pay this: the payment form opens on the same press.
+        setFormFallback(true);
+      }
       const opened = await payTopup({
         amountUsd: choice.topupUsd,
         consent: choice.consent,
-        // Only an org created under the offer starts prepaid; an older one keeps its mode,
-        // unless the person picked "Switch to prepaid" on a card post-paid cannot run on.
-        setPrepaid: chosePrepaid || account?.free_credit_offer === "match_100" || isAtCostOffer(account),
+        setPrepaid,
         name: user?.fullName ?? undefined,
         email: email ?? undefined,
         onPaid: (creditedBefore) => void afterPaid({ creditedBefore, reload: choice.reload }),
@@ -474,11 +519,25 @@ export function OrgLaunch({
             </EmbeddedCheckoutProvider>
           )}
 
-          {stage === "credit" && !cardSecret && (
+          {stage === "credit" && setupSecret && (
+            <EmbeddedCheckoutProvider
+              stripe={getStripe()}
+              options={{
+                clientSecret: setupSecret,
+                onComplete: () => cardSaved.current?.(),
+              }}
+            >
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          )}
+
+          {stage === "credit" && !cardSecret && !setupSecret && (
             paid ? (
               <button type="button" className="k-cta k-btn-accent w-full justify-center" onClick={() => void afterPaid(paid)} disabled={busy}>
                 {busy ? "Checking your payment..." : "Check my payment and launch"}
               </button>
+            ) : !cardOnFile ? (
+              <CardFirst busy={busy} onAdd={() => void addCardFirst()} />
             ) : (
               <PrepaidTopup busy={busy} atCost={isAtCostOffer(account)} matchNote={matchNote(account)} monthlyLimit={monthlyLimit} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
             )

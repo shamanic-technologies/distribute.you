@@ -105,9 +105,12 @@ describe("the prepaid wall's card check", () => {
 
   it("another card is checked again, then launches; continue anyway launches", () => {
     const another = wall.slice(wall.indexOf("function pickAnotherCard()"), wall.indexOf("function cardRiskContinue("));
-    expect(another.indexOf("await cardIsFine(previousId)")).toBeLessThan(another.indexOf("void launch();"));
+    // Card first (owner 2026-11-25): `cardOk` launches once the credit is paid, else opens the credit step.
+    expect(another.indexOf("await cardIsFine(previousId)")).toBeLessThan(another.indexOf("cardOk();"));
     const go = wall.slice(wall.indexOf("function cardRiskContinue("), wall.indexOf("// ── Launch"));
-    expect(go).toContain("void launch();");
+    expect(go).toContain("cardOk();");
+    const ok = wall.slice(wall.indexOf("function cardOk("), wall.indexOf("function pickAnotherCard()"));
+    expect(ok).toContain("if (creditPaid.current) {\n      void launch();");
   });
 
   it("never makes the org post-paid", () => {

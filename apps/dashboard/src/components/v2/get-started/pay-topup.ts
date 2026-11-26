@@ -9,6 +9,7 @@
 
 import {
   ApiError,
+  chargeSavedCard,
   configureAutoTopup,
   createEmbeddedCheckoutSession,
   type PaymentConsent,
@@ -79,6 +80,55 @@ export async function payTopup(params: {
     throw new Error("We could not open the card form. Try again.");
   }
   return { clientSecret: session.client_secret, creditedBefore };
+}
+
+/**
+ * Card first (owner 2026-11-25: « rien ne leur sera débité pour le moment »): the org is
+ * set to prepaid BEFORE the card is saved, so the save charges nothing (a postpaid org's
+ * new card runs billing's card check, and a switch to prepaid WITH a card arms the
+ * reload at a $0 balance). Then the card is saved through the plain card setup.
+ */
+export async function prepareCardFirst(setPrepaid: boolean): Promise<void> {
+  if (setPrepaid) await setPaymentMode("prepaid");
+}
+
+/** What a refused charge on the saved card leads to. */
+export type SavedCardRefusal =
+  /** The card cannot pay this off-session: pay in the card form instead. */
+  | { kind: "use_form"; message: string }
+  /** Nothing wrong with the card: the same press works in a moment. */
+  | { kind: "retry"; message: string };
+
+/**
+ * Pay the credit on the card saved at the first step. On success the caller settles it
+ * with `settleTopup(creditedBefore, reload)` like a form payment.
+ */
+export async function payFromSavedCard(params: {
+  amountUsd: number;
+  consent: PaymentConsent;
+}): Promise<{ ok: true; creditedBefore: number } | { ok: false; refusal: SavedCardRefusal }> {
+  const creditedBefore = creditedCents(await getBillingAccount());
+  if (!Number.isFinite(creditedBefore)) throw new Error("We could not read your account. Try again.");
+  try {
+    await chargeSavedCard({
+      amountCents: params.amountUsd * 100,
+      idempotencyKey: `card-first-${crypto.randomUUID()}`,
+      consent: params.consent,
+    });
+    return { ok: true, creditedBefore };
+  } catch (e) {
+    const refusal = refusalOf(e);
+    if (refusal) throw new Error(refusal);
+    const code = e instanceof ApiError ? e.body?.code : undefined;
+    console.error("[get-started] charge on the saved card refused:", e);
+    if (code === "charge_declined" || code === "no_chargeable_payment_method" || code === "card_not_chargeable_off_session") {
+      return { ok: false, refusal: { kind: "use_form", message: "Your card did not go through. Pay with a card below." } };
+    }
+    if (code === "charge_backoff") {
+      return { ok: false, refusal: { kind: "retry", message: "Your bank asked us to wait a moment. Try again in a minute." } };
+    }
+    return { ok: false, refusal: { kind: "retry", message: "We could not reach your bank. Try again." } };
+  }
 }
 
 /**
