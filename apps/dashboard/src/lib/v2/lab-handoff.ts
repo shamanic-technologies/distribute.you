@@ -11,6 +11,15 @@ export function distryWhatsAppHref(text: string): string {
   return `https://wa.me/${DISTRY_WHATSAPP}?text=${encodeURIComponent(text)}`;
 }
 
+/** Distry's email: a stranger writing here is answered by Distry in the thread and signs up there (crm-service v0.130). */
+export const DISTRY_EMAIL = "distry@distribute.you";
+
+/** Opens a mail to Distry, the website already in the subject. */
+export function distryMailtoHref(website: string): string {
+  const site = website.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "");
+  return site ? `mailto:${DISTRY_EMAIL}?subject=${encodeURIComponent(`Set up distribute.you for ${site}`)}` : `mailto:${DISTRY_EMAIL}`;
+}
+
 /** Our Telegram bot: a chat with no account talks with Distry as a guest and signs up there (chat-service v0.63.232). */
 export const DISTRY_TELEGRAM_BOT = "https://t.me/distribute_you_bot";
 
