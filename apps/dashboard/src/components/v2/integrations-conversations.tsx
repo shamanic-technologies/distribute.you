@@ -37,7 +37,8 @@ import { conversationItemTag, conversationSourceWord, joinConversationLabels, li
 import { DisqualifiedTag } from "@/components/v2/conversation-timeline";
 import { TagChip } from "@/components/v2/tag-chip";
 import { WrittenWithTags, useLeadWrittenBy } from "@/components/v2/written-with-tags";
-import { writtenByForRow, writtenMessageId, type WrittenBy } from "@/lib/written-by";
+import { CatalogueName } from "@/components/v2/catalogue-name";
+import { writtenByForRow, writtenMessageId, writtenWithTags, type ModelTag, type WrittenBy } from "@/lib/written-by";
 import { ReportMessage } from "@/components/v2/report-message";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
@@ -917,9 +918,10 @@ function ThreadItem({
       meta={meta}
       tag={tag ?? timelineTag(item)}
       folded={folded}
+      model={item.direction === "outbound" ? writtenWithTags(writtenByForRow(writtenBy, { id: writtenMessageId(item), campaignId, at: item.at }))?.model ?? null : null}
       written={
         item.direction === "outbound" ? (
-          <WrittenWithTags writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} />
+          <WrittenWithTags writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} withoutModel />
         ) : null
       }
       report={
@@ -939,6 +941,7 @@ function Message({
   meta,
   tag,
   written = null,
+  model = null,
   report = null,
   folded = false,
 }: {
@@ -949,8 +952,10 @@ function Message({
   tag: TimelineTag;
   /** "Report" on a message we wrote (SCRIPT-VALUE-RATING-1113); null elsewhere. */
   report?: ReactNode;
-  /** What it was written with (model + tactics, tags beside its label), on a message we sent; null elsewhere. */
+  /** What it was written with (its tactics, tags beside its label), on a message we sent; null elsewhere. */
   written?: ReactNode;
+  /** The model that wrote it (served by features-service): its logo + name beside the sender, in place of "Automated". */
+  model?: ModelTag | null;
   /** An older message opens as one line (who · first words · date) until clicked (owner 2026-10-21). */
   folded?: boolean;
 }) {
@@ -974,7 +979,16 @@ function Message({
   // One of our machines sent it (welcome email, sequence step, Copilot): said beside the
   // sender, and never read as "You" typed it (owner 2026-10-27).
   const automated = outbound && isAutomatedSend(item);
-  const who = sender.name ?? sender.email ?? (outbound ? (automated ? mark.name : "You") : "Them");
+  const who = sender.name ?? sender.email ?? (outbound ? (automated || model ? mark.name : "You") : "Them");
+  // Every message our AI wrote wears the model that wrote it (logo + name, owner 2026-11-26), in place of
+  // "Automated"; "Automated" stays only on a send of ours whose model is not served yet.
+  const senderTag = model ? (
+    <span className="inline-flex shrink-0">
+      <CatalogueName kind="llm" variant="chip" name={model.name} />
+    </span>
+  ) : automated ? (
+    <span className="k-chip shrink-0">Automated</span>
+  ) : null;
   // The brand's own team answering from its own mailbox wears its company logo, not ours.
   const brandDomain = useBrandInfo(brandId).data?.brand.domain ?? null;
   const ourMark = outbound && !isBrandTeamAddress(sender.email, brandDomain);
@@ -994,7 +1008,7 @@ function Message({
       >
         {senderMark(16)}
         <span className="max-w-[40%] shrink-0 truncate font-medium">{who}</span>
-        {automated && <span className="k-chip shrink-0">Automated</span>}
+        {senderTag}
         <span className="k-fg2 min-w-0 flex-1 truncate">{firstWords(item) ?? "—"}</span>
         <span className="k-fg3 shrink-0 tabular-nums">{item.at ? friendlyDate(item.at) : "No date"}</span>
       </button>
@@ -1006,7 +1020,7 @@ function Message({
       <p className="k-fg3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
         {senderMark(16)}
         <span className="min-w-0 max-w-full truncate">{who}</span>
-        {automated && <span className="k-chip shrink-0">Automated</span>}
+        {senderTag}
         {/* The address it was written FROM, on every message: a person can write from
             several mailboxes (work, personal), and a name alone hides which one (owner 2026-10-09). */}
         {sender.name && sender.email && <span className="k-mono min-w-0 max-w-full truncate text-[11.5px]">{sender.email}</span>}
