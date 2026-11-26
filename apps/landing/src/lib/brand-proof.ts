@@ -1,5 +1,5 @@
 /**
- * The homepage's "our team and clients have worked at" wall and, apart from it,
+ * The homepage's "our clients come from" wall and, apart from it,
  * the "As featured in" scrolling band,
  * rendered from brand-service's public brand proof (BRAND-PROOF-LOGOS-1121).
  *
@@ -111,8 +111,8 @@ export function brandProofHtml(proof: BrandProof | null): string {
   return (
     '<section class="framed" id="clients"><div class="wrap">' +
     '<div class="section-head center rv">' +
-    "<h2>Our team and clients have worked at great companies</h2>" +
-    "<p>Each logo is a company where someone from distribute.you or a paying client worked.</p>" +
+    "<h2>Our clients come from great companies</h2>" +
+    "<p>Each logo is a company where a paying client has worked.</p>" +
     "</div>" +
     `<ul class="logo-wall" data-brand-proof="employers">${employers.map((c) => `<li>${logoImg(c)}</li>`).join("")}</ul>` +
     "</div></section>"

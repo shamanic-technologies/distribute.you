@@ -26,7 +26,8 @@ describe("brand proof logos (BRAND-PROOF-LOGOS-1121)", () => {
     const wall = brandProofHtml(proof());
     expect(wall.indexOf("Google")).toBeLessThan(wall.indexOf("Bain"));
     expect(wall).toContain('data-brand-proof="employers"');
-    expect(wall).toContain("Our team and clients have worked at great companies");
+    expect(wall).toContain("Our clients come from great companies");
+    expect(wall).toContain("Each logo is a company where a paying client has worked.");
     expect(wall).not.toContain("As featured in");
     const band = pressProofHtml(proof());
     expect(band).toContain('href="https://techbullion.com/a"');
