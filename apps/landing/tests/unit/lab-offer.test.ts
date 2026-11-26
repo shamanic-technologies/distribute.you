@@ -205,18 +205,23 @@ describe("the lab home", () => {
   });
 
   it("speaks to the solo founder through three doors, and sells nothing the pivot killed", () => {
-    expect(home).toContain("The GTM team a solo founder never had.");
+    // Owner 2026-11-26: the earlier lede and the website form are back, on every start of the home.
+    expect(home).toContain("Meet your distribution teammate.");
+    expect(home).not.toContain("solo founder never had");
     const doors = home.slice(home.indexOf('id="doors"'), home.indexOf("<!--press-proof-->"));
     for (const name of ["From your AI", "On WhatsApp or Telegram", "By email", "Conductor", "Claude Desktop", "ChatGPT", "Hermes", "Grok Bot", "Dots"]) expect(doors).toContain(name);
-    // The main button opens the web walk (owner 2026-11-25), the AI start right beside it, never a call.
+    // The hero starts from the website, into the web walk in the lab's skin (owner 2026-11-26), the AI start beside it.
     const hero = home.slice(home.indexOf('id="top"'), home.indexOf('id="how"'));
-    expect(hero).toContain("claude mcp add --transport http distribute https://mcp.distribute.you/mcp");
-    expect(hero).toContain(`href="${LAB_WALK}">Get started</a>`);
+    expect(hero).not.toContain("claude mcp add");
+    expect(hero).toContain(`<form class="launch" action="${LAB_SIGN_UP}" method="get"`);
+    expect(hero).toContain('name="url"');
+    const forms = home.match(/<form class="launch[^"]*" action="[^"]*" method="get"[^>]*>\s*<input type="hidden" name="skin" value="distry">/g) ?? [];
+    expect(forms).toHaveLength(3);
     expect(hero).toContain(`href="${LAB_START}">Or start from your AI</a>`);
     const text = readableText(home).replace("Bosar Agency", "Bosar");
     expect(text).not.toMatch(/Managed|\$499|money back|Book a call|\bAgency\b|\bagency\b|dashboard|sales team|One login for every brand|Mac app|Cursor|Zapier|n8n/);
     expect(home).not.toContain(BOOK_A_CALL);
-    expect(home.replaceAll(LAB_WALK, "")).not.toContain("dashboard.distribute.you");
+    expect(home.replaceAll(LAB_WALK, "").replaceAll(`action="${LAB_SIGN_UP}"`, "")).not.toContain("dashboard.distribute.you");
   });
 
   it("carries the logo wall and the press band tokens, the wall first", () => {
