@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,100&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="preload" as="image" href="/landing/distry/assets/hero-night.webp" media="(min-width: 760px)">
-<link rel="stylesheet" href="/landing/distry/home.css?v=23">
+<link rel="stylesheet" href="/landing/distry/home.css?v=24">
 <script>if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("js")</script>
 </head>
 <body>
@@ -160,7 +160,15 @@
 
 <!-- DAWN · the replies come back -->
 <section class="day" id="agent" data-sky="1" data-say="Look. The replies are coming back.">
-    <div class="wrap split">
+    <div class="wrap">
+    <!--outcome-ranges-->
+    <div class="head">
+      <p class="kicker">Priced per outcome</p>
+      <h2>A clear price for every outcome.</h2>
+      <p class="sub">Each price range is read live from our campaigns.</p>
+    </div>
+    <!--/outcome-ranges-->
+    <div class="split">
     <div class="phone" data-chat>
       <div class="phone-top"><img src="/landing/distry/assets/distry-avatar-160.webp" alt="" width="40" height="40"><div><b>Distry</b><small>distribute.you agent · online</small></div></div>
       <div class="phone-body">
@@ -174,24 +182,19 @@
     </div>
     <!--outcome-ranges-->
     <div>
-      <div class="head left">
-        <p class="kicker">Priced per outcome</p>
-        <h2>A clear price for every outcome.</h2>
-        <p class="sub">Each price range is read live from our campaigns.</p>
-      </div>
       <!-- Each figure is filled at serve time from the public indexes (`withOutcomeRanges`); a row with no served range reads Learning. -->
       <table class="price-table" id="proof">
         <thead><tr><th scope="col">Outcome</th><th scope="col">Price</th></tr></thead>
         <tbody>
-          <tr class="price-row" data-index-slug="cold-email-cost-per-positive-reply"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12Z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg></span>Interested lead</th><td><b data-range></b></td></tr>
-          <tr class="price-row" data-index-slug="cold-email-cost-per-meeting"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="m9 15 2 2 4-4"/></svg></span>Meeting booked</th><td><b data-range></b></td></tr>
-          <tr class="price-row" data-index-slug="cold-email-cost-per-signup"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 20a7 7 0 0 1 12.5-4.3"/><path d="M19 14v6M16 17h6"/></svg></span>Signup</th><td><b data-range></b></td></tr>
-          <tr class="price-row" data-index-slug="cold-email-cost-per-click"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 14 7-6 2-2 6Z"/><path d="m13 13 6 6"/></svg></span>Website visit</th><td><b data-range></b></td></tr>
+          <tr class="price-row" data-index-slug="cold-email-cost-per-engaged-lead"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3.5 7 8.5 6 8.5-6"/></svg></span>Engaged leads</th><td><b data-range></b></td></tr>
+          <tr class="price-row" data-index-slug="cold-email-cost-per-positive-reply"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12Z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg></span>Interested leads</th><td><b data-range></b></td></tr>
+          <tr class="price-row" data-index-slug="cold-email-cost-per-meeting"><th scope="row"><span class="price-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="m9 15 2 2 4-4"/></svg></span>Booked meetings</th><td><b data-range></b></td></tr>
         </tbody>
       </table>
       <p class="prices-more"><a href="/indexes">See how each price is measured</a></p>
     </div>
     <!--/outcome-ranges-->
+    </div>
   </div>
   <!-- The clients the production home names, picked and counted by features-service at serve time. -->
   <div class="wrap showcase">

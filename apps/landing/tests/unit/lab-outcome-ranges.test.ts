@@ -20,6 +20,7 @@ const SERVED = {
     { slug: "cold-email-click-rate", unit: "percent", value: 1.64, valueRange: { low: 1.35, high: 2.0 }, valueRangeUnavailableReason: null },
     { slug: "cold-email-cost-per-positive-reply", unit: "usd", value: 61.97, valueRange: { low: 55.04269211816945, high: 69.64334444786117 }, valueRangeUnavailableReason: null },
     { slug: "cold-email-cost-per-meeting", unit: "usd", value: 198.78, valueKind: "expected", valueRange: null, valueRangeUnavailableReason: "expected_value" },
+    { slug: "cold-email-cost-per-engaged-lead", unit: "usd", value: 36.24, valueKind: "measured", valueRange: { low: 25.794565632256315, high: 44.83856885338239 }, valueRangeUnavailableReason: null },
   ],
 };
 
@@ -50,12 +51,14 @@ describe("the served ranges", () => {
   });
 });
 
-describe("a range is written bare, in whole dollars", () => {
+describe("a range is written bare, to the ten from $10, to the dollar below", () => {
   it("rounds each end", () => {
     expect(formatRange({ low: 4.327, high: 6.42 })).toBe("$4 - $6");
-    expect(formatRange({ low: 55.04, high: 69.64 })).toBe("$55 - $70");
-    expect(formatRange({ low: 1240.2, high: 2010 })).toBe("$1,240 - $2,010");
+    expect(formatRange({ low: 55.04, high: 69.64 })).toBe("$60 - $70");
+    expect(formatRange({ low: 133.6, high: 283.2 })).toBe("$130 - $280");
+    expect(formatRange({ low: 1243.2, high: 2010 })).toBe("$1,240 - $2,010");
     expect(formatWholeUsd(3.5)).toBe("$4");
+    expect(formatWholeUsd(9.4)).toBe("$9");
   });
 
   it("is not stated under a dollar or upside down", () => {
@@ -72,10 +75,14 @@ describe("the price cards", () => {
       expect(shipped).toContain("<b data-range></b>");
       expect(shipped).not.toMatch(/\$\d/);
     }
-    expect(card(HOME, OUTCOME_RANGE_SLUGS.interestedLead)).toContain("Interested lead");
-    expect(card(HOME, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain("Meeting booked");
-    expect(card(HOME, OUTCOME_RANGE_SLUGS.signup)).toContain("Signup");
-    expect(card(HOME, OUTCOME_RANGE_SLUGS.websiteVisit)).toContain("Website visit");
+    expect(card(HOME, OUTCOME_RANGE_SLUGS.engagedLead)).toContain("Engaged leads");
+    expect(card(HOME, OUTCOME_RANGE_SLUGS.interestedLead)).toContain("Interested leads");
+    expect(card(HOME, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain("Booked meetings");
+    // Owner 2026-11-26: these three, in this order, and nothing else.
+    const order = [...HOME.matchAll(/data-index-slug="([^"]+)"/g)].map((m) => m[1]);
+    expect(order).toEqual([OUTCOME_RANGE_SLUGS.engagedLead, OUTCOME_RANGE_SLUGS.interestedLead, OUTCOME_RANGE_SLUGS.meetingBooked]);
+    expect(HOME).not.toContain(">Signup<");
+    expect(HOME).not.toContain(">Website visit<");
     // The old proof cards are gone.
     expect(HOME).not.toContain("data-proof-brand=");
   });
@@ -83,23 +90,22 @@ describe("the price cards", () => {
   it("are filled from the served range, and a row with none reads Learning", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const out = applyOutcomeRanges(HOME, parseOutcomeRanges(SERVED));
-    expect(card(out, OUTCOME_RANGE_SLUGS.websiteVisit)).toContain("<b data-range>$4 - $6</b>");
-    expect(card(out, OUTCOME_RANGE_SLUGS.interestedLead)).toContain("<b data-range>$55 - $70</b>");
+    expect(card(out, OUTCOME_RANGE_SLUGS.engagedLead)).toContain("<b data-range>$30 - $40</b>");
+    expect(card(out, OUTCOME_RANGE_SLUGS.interestedLead)).toContain("<b data-range>$60 - $70</b>");
     expect(card(out, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain('<b data-range class="learning">Learning</b>');
-    expect(card(out, OUTCOME_RANGE_SLUGS.signup)).toContain('<b data-range class="learning">Learning</b>');
     expect(out).toContain("A clear price for every outcome.");
     // Never the single value in place of a range, never an outcome count.
     expect(out).not.toContain("$199");
     expect(out).not.toContain("$62");
     const said = error.mock.calls.map((c) => String(c[0]));
     expect(said).toContain("[landing] lab price row learning: cold-email-cost-per-meeting (expected_value)");
-    expect(said).toContain("[landing] lab price row learning: cold-email-cost-per-signup (index_not_served)");
   });
 
-  it("light up the day their index serves a range", () => {
-    const served = { ...SERVED, indexes: [...SERVED.indexes, { slug: "cold-email-cost-per-signup", unit: "usd", valueRange: { low: 12.2, high: 1031.7 }, valueRangeUnavailableReason: null }] };
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(card(applyOutcomeRanges(HOME, parseOutcomeRanges(served)), OUTCOME_RANGE_SLUGS.signup)).toContain("<b data-range>$12 - $1,032</b>");
+  it("read Learning on a row whose index is not served", () => {
+    const served = { ...SERVED, indexes: SERVED.indexes.filter((i) => i.slug !== OUTCOME_RANGE_SLUGS.engagedLead) };
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(card(applyOutcomeRanges(HOME, parseOutcomeRanges(served)), OUTCOME_RANGE_SLUGS.engagedLead)).toContain("Learning");
+    expect(error.mock.calls.map((c) => String(c[0]))).toContain("[landing] lab price row learning: cold-email-cost-per-engaged-lead (index_not_served)");
   });
 
   it("leave with their heading on a failed read", () => {
@@ -107,8 +113,11 @@ describe("the price cards", () => {
     const out = applyOutcomeRanges(HOME, null);
     expect(out).not.toContain("price-row");
     expect(out).not.toContain("A clear price for every outcome.");
+    expect(out).not.toContain("outcome-ranges");
     expect(out).toContain('id="live-cards"');
-    expect(error.mock.calls.map((c) => String(c[0]))).toContain("[landing] lab price card hidden: cold-email-cost-per-click (read_failed)");
+    // The chat stays.
+    expect(out).toContain("data-chat");
+    expect(error.mock.calls.map((c) => String(c[0]))).toContain("[landing] lab price card hidden: cold-email-cost-per-engaged-lead (read_failed)");
   });
 });
 
@@ -117,11 +126,11 @@ describe("an expected value's derived range (OUTCOME-RANGES-1125)", () => {
     const served = {
       indexes: [
         { slug: OUTCOME_RANGE_SLUGS.meetingBooked, unit: "usd", valueRange: null, valueRangeUnavailableReason: "expected_value", derivedValueRange: { low: 133.7, high: 286.9 }, derivedValueRangeUnavailableReason: null },
-        { slug: OUTCOME_RANGE_SLUGS.signup, unit: "usd", valueRange: null, valueRangeUnavailableReason: "no_value", derivedValueRange: null, derivedValueRangeUnavailableReason: "no_value" },
+        { slug: OUTCOME_RANGE_SLUGS.engagedLead, unit: "usd", valueRange: null, valueRangeUnavailableReason: "no_value", derivedValueRange: null, derivedValueRangeUnavailableReason: "no_value" },
       ],
     };
     const out = applyOutcomeRanges(HOME, parseOutcomeRanges(served));
-    expect(card(out, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain("<b data-range>$134 - $287</b>");
-    expect(card(out, OUTCOME_RANGE_SLUGS.signup)).toContain("Learning");
+    expect(card(out, OUTCOME_RANGE_SLUGS.meetingBooked)).toContain("<b data-range>$130 - $290</b>");
+    expect(card(out, OUTCOME_RANGE_SLUGS.engagedLead)).toContain("Learning");
   });
 });
