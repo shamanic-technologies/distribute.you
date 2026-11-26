@@ -57,6 +57,10 @@ export function modelWords(data: AiMessageModels, id: string): string {
 
 /** Why a message has no model, in plain words. Display only; an unknown reason prints as served. */
 export const REASON_WORDS: Record<string, string> = {
+  ledger_unreadable: "Ledger unreadable",
+  no_send_in_ledger: "Send not in the ledger",
+  send_ambiguous_in_ledger: "Send matches several ledger rows",
+  no_writing_in_ledger: "No writing in the ledger",
   several_writings_in_ledger: "Several writings for one send",
   writing_run_unreadable: "Writing run unreadable",
   no_llm_billed: "No AI model billed in the writing run",
