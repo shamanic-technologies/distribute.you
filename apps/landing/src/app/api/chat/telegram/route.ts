@@ -1,7 +1,7 @@
 import { ACTIVE_WINDOW_MS, explicitCode, threadCode, unroutedText } from "@/lib/chat/rules";
 import { activeThreads, addMessage, threadForCode, threadForTelegramMessage } from "@/lib/chat/store";
 import { linkOwnerChat, OWNER_LINK_REPLIES, startCode } from "@/lib/chat/owner-link";
-import { NOT_LINKED_REPLY, RELAY_UNAVAILABLE_REPLY, relayToCopilot } from "@/lib/chat/copilot-relay";
+import { RELAY_UNAVAILABLE_REPLY, relayToCopilot } from "@/lib/chat/copilot-relay";
 import { sendToChat, sendToTeam, telegramConfig, type TelegramUpdate } from "@/lib/chat/telegram";
 
 export const dynamic = "force-dynamic";
@@ -9,8 +9,9 @@ export const dynamic = "force-dynamic";
 /**
  * Telegram's webhook. `/start <code>` from ANY chat links that chat to a customer's org
  * (client-service records it and says "Connected"; a bad code gets a plain answer here).
- * Any other message from a customer's chat goes to Sophie, their Copilot (chat-service
- * answers a linked chat itself; an unlinked one gets the linking guidance here).
+ * `/start site-<base64url website>` (a signed-out visitor's door) and any other message
+ * from a non-team chat go to Distry through chat-service, which answers every chat itself:
+ * a linked one as its org's Copilot, an unlinked one as a guest it signs up in the chat.
  * The team chat keeps the visitor relay below. A message reaches a visitor when
  * it addresses their thread (a reply to a relayed message, or `#code text`), or when it
  * addresses nobody and exactly one visitor wrote in the last 30 minutes; the bot then
@@ -41,9 +42,8 @@ export async function POST(request: Request) {
   if (String(msg.chat.id) !== config.ownerChatId) {
     // A photo or voice note carries no text: chat-service tells them to write.
     const outcome = await relayToCopilot(msg.chat.id, msg.message_id, msg.text ?? msg.caption ?? null);
-    const reply = outcome === "not_linked" ? NOT_LINKED_REPLY : outcome === "unavailable" ? RELAY_UNAVAILABLE_REPLY : null;
-    if (reply) {
-      await sendToChat(config, msg.chat.id, reply).catch((err) =>
+    if (outcome === "unavailable") {
+      await sendToChat(config, msg.chat.id, RELAY_UNAVAILABLE_REPLY).catch((err) =>
         console.error(`[landing/chat] Copilot relay answer (${outcome}) not sent to chat ${msg.chat.id}:`, err),
       );
     }

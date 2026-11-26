@@ -354,7 +354,7 @@ describe("the surface", () => {
   });
 
   it("launches that offer and that audience on the campaign set, with the levers prefilled", () => {
-    expect(WALL).toContain("{ brandId, website, offer, targetAudience, plan, answered }");
+    expect(WALL).toContain("{ brandId, website, offer, targetAudience, plan, answered, held: lab }");
     // No re-pick at launch: the offer is the one confirmed at step 3.
     expect(LAUNCH).not.toContain("proposeBrandOffers");
     // The six levers are read off the site for that offer and saved on it.

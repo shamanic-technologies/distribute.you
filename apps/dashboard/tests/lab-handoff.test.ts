@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { DISTRY_WHATSAPP, distryWhatsAppHref, labAiPrompt } from "../src/lib/v2/lab-handoff";
+import { DISTRY_EMAIL, distryMailtoHref, DISTRY_TELEGRAM_BOT, DISTRY_WHATSAPP, distryTelegramStartHref, distryWhatsAppHref, labAiPrompt } from "../src/lib/v2/lab-handoff";
 
 const read = (p: string) => readFileSync(path.resolve(__dirname, "..", p), "utf8");
 
@@ -11,11 +11,31 @@ describe("lab Distry hand-off (ONBOARDING-CHANNEL-HANDOFF-1125)", () => {
     expect(distryWhatsAppHref("Hi Distry!")).toBe(`https://wa.me/${DISTRY_WHATSAPP}?text=Hi%20Distry!`);
   });
 
+  it("opens our Telegram bot with the website in the start payload, bare when too long", () => {
+    expect(distryTelegramStartHref("https://acme.com/")).toBe("https://t.me/distribute_you_bot?start=site-YWNtZS5jb20");
+    expect(distryTelegramStartHref("")).toBe(DISTRY_TELEGRAM_BOT);
+    expect(distryTelegramStartHref(`${"a".repeat(60)}.com`)).toBe(DISTRY_TELEGRAM_BOT);
+    expect(read("src/components/v2/get-started/lab-handoff.tsx")).toContain("href={distryTelegramStartHref(website)}");
+  });
+
+  it("opens a mail to Distry with the website in the subject", () => {
+    expect(DISTRY_EMAIL).toBe("distry@distribute.you");
+    expect(distryMailtoHref("https://acme.com/")).toBe("mailto:distry@distribute.you?subject=Set%20up%20distribute.you%20for%20acme.com");
+    expect(read("src/components/v2/get-started/lab-handoff.tsx")).toContain("href={distryMailtoHref(website)}");
+  });
+
   it("hands the founder's AI one line: our MCP server and their site, no key, no code", () => {
     const line = labAiPrompt("https://acme.com/", "https://mcp.distribute.you/mcp");
     expect(line).toContain("https://mcp.distribute.you/mcp");
     expect(line).toContain("acme.com");
     expect(line).not.toMatch(/key=|code/i);
+  });
+
+  it("creates the lab's campaign waiting, never started then stopped", () => {
+    const api = read("src/lib/api.ts");
+    const start = api.slice(api.indexOf("export async function startSalesFunnelCampaign("), api.indexOf("export async function getCampaignBriefPrefill("));
+    expect(start).toContain('status: input.held ? "stopped" : "ongoing"');
+    expect(read("src/components/v2/get-started/launch.ts")).toContain("launchCampaign(input.brandId, offerId, input.plan, progress, input.held === true)");
   });
 
   it("is worn only under the Distry skin: the page passes it, the walk and the wall read it", () => {
@@ -26,11 +46,16 @@ describe("lab Distry hand-off (ONBOARDING-CHANNEL-HANDOFF-1125)", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
     // After payment the lab shows the channel screen, never the dashboard.
     const launched = wall.indexOf('pingOwner({ event: "launched"');
-    const handoff = wall.indexOf("setHandoff(true)", launched);
+    const handoff = wall.indexOf("setHandoff(campaignId)", launched);
+    // chat-service learns which campaign waits BEFORE the screen hands over (Distry starts it on the first message).
+    const told = wall.indexOf("await postCopilotHandoff({ campaignId })", launched);
+    expect(told).toBeGreaterThan(launched);
+    expect(handoff).toBeGreaterThan(told);
+    expect(wall).toContain("{ brandId, website, offer, targetAudience, plan, answered, held: lab }");
     const dashboard = wall.indexOf('window.location.assign(v2Href(orgId, brandId, "today"))', launched);
     expect(launched).toBeGreaterThan(-1);
     expect(handoff).toBeGreaterThan(launched);
     expect(dashboard).toBeGreaterThan(handoff);
-    expect(wall).toContain("<ChannelHandoff website={website} />");
+    expect(wall).toContain("<ChannelHandoff website={website} campaignId={handoff} />");
   });
 });
