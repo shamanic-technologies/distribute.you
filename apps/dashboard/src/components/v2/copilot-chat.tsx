@@ -786,12 +786,13 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
                   if (isToolUIPart(p)) {
                     // The cards and the opened page draw themselves; no "read" line for them.
                     if (p.type === "tool-present_choices" || p.type === "tool-open_page") return null;
-                    const name = p.type.replace(/^tool-/, "").replace(/_/g, " ");
-                    const done = p.state === "output-available";
+                    // ONE quiet line per answer, never a line per tool (2026-11-26: sixteen "Read read skill" lines under a client's first answer).
+                    const reads = m.parts.filter((q) => isToolUIPart(q) && q.type !== "tool-present_choices" && q.type !== "tool-open_page");
+                    if (reads[0] !== p) return null;
+                    const reading = reads.some((q) => isToolUIPart(q) && q.state !== "output-available" && q.state !== "output-error");
                     return (
                       <p key={i} className="k-fg3 my-1 text-[12px]">
-                        {done ? "Read" : "Reading"} {name}
-                        {done ? "" : "…"}
+                        {reading ? "Looking at your account…" : "Looked at your account"}
                       </p>
                     );
                   }

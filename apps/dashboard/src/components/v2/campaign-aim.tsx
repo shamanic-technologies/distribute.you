@@ -41,9 +41,10 @@ export function CampaignAimSection({
   return (
     <section>
       <SectionTitle>Goal</SectionTitle>
-      <div className="k-card">
+      <div className="k-card @container">
         {/* The GTM Factory campaign header (FACTORY-USER-DASHBOARD-1102): Target, where it starts, its brief (the budget is the top bar's one button, owner 2026-11-02). */}
-        <div className="grid gap-4 px-4 py-3.5 md:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,1fr)]">
+        {/* Columns follow the CARD width, never the viewport: with the Copilot open the page is narrow and a viewport breakpoint left the brief one word per line (2026-11-26). */}
+        <div className="grid grid-cols-1 gap-4 px-4 py-3.5 @md:grid-cols-2 @3xl:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,1fr)]">
           <div className="min-w-0">
             <p className="k-label">Target</p>
             <p className="mt-1.5 flex items-center gap-2 text-[14px] font-medium">
@@ -56,7 +57,7 @@ export function CampaignAimSection({
             <div className="mt-1.5">{copy ? <TypeTag row={copy} /> : copySettled ? dash : <Shimmer className="h-5 w-24" />}</div>
             <p className="k-fg3 mt-1 text-[12px]">{copy?.type === "reactive" ? "Pushes each new one up to its Target" : "Pulls new people every day"}</p>
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 break-words @md:col-span-2 @3xl:col-span-1">
             <p className="k-label">Brief</p>
             <p className="k-fg3 mt-1 text-[12px]">Tell us in plain words how to run this campaign. We follow it.</p>
             <div className="mt-1">
