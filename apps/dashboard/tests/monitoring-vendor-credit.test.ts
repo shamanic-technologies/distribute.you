@@ -71,7 +71,7 @@ describe("Monitoring > AI vendors > Credit: page and hub", () => {
     expect(hub.indexOf('<VendorCreditTile href={href("ai/credit")} />')).toBeGreaterThan(-1);
     expect(hub.indexOf("<VendorCreditTile")).toBeLessThan(hub.indexOf("<Section "));
     // Three AI pages: Credit, Answer shape (SCHEMA-HONOURED-1115), Scripts per Engine.
-    expect(hub).toContain('<Section section="ai" count={3} grid={false}>');
+    expect(hub).toContain('<Section section="ai" count={4} grid={false}>');
   });
 
   it("draws the served verdicts, sentences and days: no client sort, no sum, no per-vendor case", () => {
