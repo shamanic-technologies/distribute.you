@@ -33,6 +33,7 @@ describe("Monitoring > AI vendors > Model named: features-service's read parses 
 
   it("names a reason in words, an unknown one as served", () => {
     expect(reasonWords("no_llm_billed")).toBe("No AI model billed in the writing run");
+    expect(reasonWords("no_writing_in_ledger")).toBe("No writing in the ledger");
     expect(reasonWords("brand_new_reason")).toBe("brand new reason");
   });
 });
