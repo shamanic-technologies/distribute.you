@@ -232,6 +232,21 @@ export const PersonTimelineItemSchema = z.object({
       position: z.string(),
     })
     .nullish(),
+  /**
+   * The English version of a message (crm-service UNIBOX-TRANSLATE-1126), only on a read asked
+   * with `translate=en`. `translated` = show `subject`/`text`; `already_english` = the original;
+   * `failed` = show the original (retried on the next read). The item's own words never change.
+   * Status a plain string so a word added later still parses.
+   */
+  translation: z
+    .object({
+      language: z.string(),
+      status: z.string(),
+      sourceLanguage: z.string().nullable(),
+      subject: z.string().nullable(),
+      text: z.string().nullable(),
+    })
+    .nullish(),
 });
 
 export const PersonTimelineSchema = z.object({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { timeAgo } from "@/lib/friendly-datetime";
 import {
@@ -51,11 +51,14 @@ export function UniboxFilterBar({
   ladder,
   onPick,
   dims = UNIBOX_DIMENSIONS,
+  trailing = null,
 }: {
   filters: UniboxFilters;
   ladder: LifecycleRung[];
   onPick: (dim: UniboxDimension, values: string[]) => void;
   dims?: readonly UniboxDimension[];
+  /** A control on the same line, at its far right (the Unibox's Translate to English). */
+  trailing?: ReactNode;
 }) {
   const any = dims.some((d) => (filters[d]?.length ?? 0) > 0);
   return (
@@ -75,6 +78,7 @@ export function UniboxFilterBar({
           Clear filters
         </button>
       )}
+      {trailing ? <div className="ml-auto flex items-center">{trailing}</div> : null}
     </div>
   );
 }
@@ -299,5 +303,24 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <dt className="k-label pt-1">{label}</dt>
       <dd className="min-w-0 text-[13px]">{children}</dd>
     </>
+  );
+}
+
+/** Translate to English (owner 2026-11-26): the filter line's far right, on by default. */
+export function TranslateSwitch({ on, onChange }: { on: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <label className="k-fg2 flex cursor-pointer select-none items-center gap-2 text-[13px]">
+      Translate to English
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label="Translate to English"
+        onClick={() => onChange(!on)}
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? "bg-[var(--accent)]" : "bg-[var(--data-track)]"}`}
+      >
+        <span className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${on ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+      </button>
+    </label>
   );
 }
