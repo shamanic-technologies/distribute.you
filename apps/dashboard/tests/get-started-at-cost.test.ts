@@ -123,7 +123,7 @@ describe("the wall and the dashboard walk use the at-cost checkout", () => {
   it("the dashboard walk's launch does too", () => {
     const launch = src("src/components/v2/get-started/org-launch.tsx");
     expect(launch).toContain("atCost={isAtCostOffer(account)}");
-    expect(launch).toContain("|| isAtCostOffer(account),");
+    expect(launch).toContain("|| isAtCostOffer(account);");
   });
 
   it("the signed-out walk reads its org's offer before promising anything", () => {

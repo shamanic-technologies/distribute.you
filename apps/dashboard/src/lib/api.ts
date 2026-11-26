@@ -12292,6 +12292,23 @@ export async function createEmbeddedCardSetup(token?: string): Promise<CardSetup
   });
 }
 
+/**
+ * Charge a STATED amount on the card the org already saved, off-session, crediting the
+ * balance like a top-up (billing `POST /internal/accounts/by-org/:orgId/charge` via the
+ * gateway's `/v1/billing/accounts/charge`). The card-first credit step pays with it
+ * (owner 2026-11-25). Refusals keep billing's `code`: 402 `charge_declined`, 409
+ * `no_chargeable_payment_method` | `card_not_chargeable_off_session`, 429
+ * `charge_backoff`, 502 `upstream_error` (try again, never a decline).
+ * `consent` rides along for billing's dispute file.
+ */
+export async function chargeSavedCard(params: {
+  amountCents: number;
+  idempotencyKey: string;
+  consent?: PaymentConsent;
+}): Promise<{ ok: true; charged: true; amountCents: number; reference: string }> {
+  return apiCall("/billing/accounts/charge", { method: "POST", body: params });
+}
+
 const PaymentHoldNowSchema = z.object({
   state: z.string(),
   blockedReason: z.string().nullable(),

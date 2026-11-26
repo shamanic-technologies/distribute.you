@@ -52,6 +52,7 @@ import {
   type BillingAccount, postCopilotHandoff } from "@/lib/api";
 import { cardRiskCopy, type CardFacts } from "@/lib/v2/card-risk";
 import { CardRiskNotice } from "./card-risk-notice";
+import { CardFirst } from "./card-first";
 import { ChannelHandoff, useLabDistry } from "./lab-handoff";
 import { getStripe } from "@/lib/stripe";
 import {
@@ -83,7 +84,7 @@ import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch
 import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
-import { payTopup, settleTopup } from "./pay-topup";
+import { payFromSavedCard, payTopup, prepareCardFirst, settleTopup } from "./pay-topup";
 import { pingOwner } from "@/lib/owner-ping-client";
 import { sendLaunchEmail, sendSignupEmailsOnce } from "@/lib/signup-emails";
 import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
@@ -182,6 +183,13 @@ export function AccountCardWall({
   const knownCard = useRef<CardFacts | null>(null);
   // What a card saved in Stripe's embedded form goes on to (the plain card save).
   const cardSaved = useRef<(() => void) | null>(null);
+  // Card first (owner 2026-11-25): the card is saved, charging nothing, before the credit
+  // is picked; the credit is then paid on it. A card it cannot pay off-session falls back
+  // to the payment form (`formFallback`).
+  const [cardOnFile, setCardOnFile] = useState(false);
+  const [formFallback, setFormFallback] = useState(false);
+  const cardChecked = useRef(false);
+  const creditPaid = useRef(false);
 
   const [stage, setStage] = useState<Stage>("account");
   // Lab Distry: after payment the founder picks where Distry works with them, never a dashboard.
@@ -607,6 +615,21 @@ export function AccountCardWall({
     setError(null);
     try {
       await saveMonthlyLimit(limit.usd);
+      if (cardOnFile && !formFallback) {
+        const charged = await payFromSavedCard({ amountUsd: choice.topupUsd, consent: choice.consent });
+        posthog.capture("get_started_saved_card_charge", { topup_usd: choice.topupUsd, ok: charged.ok });
+        if (charged.ok) {
+          void afterPaid({ creditedBefore: charged.creditedBefore, reload: choice.reload });
+          return;
+        }
+        setError(charged.refusal.message);
+        if (charged.refusal.kind === "retry") {
+          setBusy(false);
+          return;
+        }
+        // The card cannot pay this: the payment form opens on the same press.
+        setFormFallback(true);
+      }
       const started = await payTopup({
         amountUsd: choice.topupUsd,
         consent: choice.consent,
@@ -654,7 +677,8 @@ export function AccountCardWall({
     sendAuthNotification("first_payment").catch((e) => console.error("[get-started] first_payment email failed:", e));
     pingOwner({ event: "paid", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null, amountUsd: (Number(settled.account.credited_cents) - p.creditedBefore) / 100 });
     posthog.capture("get_started_card_saved", { plan: "prepaid" });
-    if (!(await cardIsFine(null))) return;
+    creditPaid.current = true;
+    if (!cardChecked.current && !(await cardIsFine(null))) return;
     void launch();
   }
 
@@ -733,6 +757,42 @@ export function AccountCardWall({
     return false;
   }
 
+  // Card first: the card is saved (nothing charged), checked, then the credit is picked.
+  async function addCardFirst() {
+    if (busy || !checkReady()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      // The account this wall just created is new: prepaid is its first mode.
+      await prepareCardFirst(true);
+    } catch (e) {
+      console.error("[get-started] prepaid mode not set before the card:", e);
+      setError("We could not open the card form. Try again.");
+      setBusy(false);
+      return;
+    }
+    posthog.capture("get_started_card_first_opened");
+    void openCardSave(() =>
+      void (async () => {
+        posthog.capture("get_started_card_first_saved");
+        if (!(await cardIsFine(null))) return;
+        cardOk();
+      })(),
+    );
+  }
+
+  // The card is checked: before the credit, the credit step shows; after it, the launch.
+  function cardOk() {
+    cardChecked.current = true;
+    if (creditPaid.current) {
+      void launch();
+      return;
+    }
+    setCardOnFile(true);
+    setFormFallback(false);
+    setBusy(false);
+  }
+
   // "Use another card": a new card saved, checked again, then the launch.
   function pickAnotherCard() {
     const previousId = cardRisk?.methodId ?? null;
@@ -741,7 +801,7 @@ export function AccountCardWall({
     void openCardSave(() =>
       void (async () => {
         if (!(await cardIsFine(previousId))) return;
-        void launch();
+        cardOk();
       })(),
     );
   }
@@ -750,7 +810,7 @@ export function AccountCardWall({
   function cardRiskContinue() {
     posthog.capture("get_started_card_risk_secondary", { action: "continue" });
     setCardRisk(null);
-    void launch();
+    cardOk();
   }
 
   // ── Launch ──
@@ -1064,6 +1124,8 @@ export function AccountCardWall({
                   <button type="button" className="k-cta k-btn-accent gs-glow w-full justify-center" onClick={() => void afterPaid(paid)} disabled={busy}>
                     {busy ? "Checking your payment..." : "Check my payment and launch"}
                   </button>
+                ) : !cardOnFile ? (
+                  <CardFirst busy={busy} onAdd={() => void addCardFirst()} />
                 ) : (
                   <PrepaidTopup busy={busy} atCost={atCost} matchNote={matchNote(account)} monthlyLimit={monthlyLimit} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
                 )}
