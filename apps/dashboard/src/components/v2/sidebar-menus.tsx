@@ -17,7 +17,7 @@ import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
-import { useLeadScope, useBrandRevenue, useCompanyList, useReachedCounts, useNeedsYourCall } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue, useCompanyList, useReachedCounts } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { companyKeyHref, v2Base, v2Href, v2NewBrandHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -513,7 +513,6 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
   const companyList = useCompanyList(brandId, companyQuery, 1, open && coWire !== "").data;
   // People we emailed: lead-service's Unibox count of the people who reached the first email.
   const sentPeople = useReachedCounts(brandId, [EMAIL_SENT_STEP]).data?.[EMAIL_SENT_STEP] ?? null;
-  const call = useNeedsYourCall(brandId, 5).data?.leads ?? [];
   const lead = useLeadScope(brandId);
   const peopleQ = useAuthQuery(
     ["leadsPage", lead.key, "v2-palette", wire],
@@ -536,7 +535,6 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
         href: personHref(orgId, brandId, lead),
       };
     };
-    if (!term) for (const l of call) out.push({ ...personItem("Needs your call", l), label: `Follow up with ${leadName(l)}?` });
     for (const g of GO_KEYS) {
       if (g.staff && !staffMode) continue;
       if (!term || matches(g.label, term)) {
@@ -570,7 +568,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       for (const l of peopleQ.data?.leads ?? []) out.push(personItem("People", l));
     }
     return out;
-  }, [q, call, staffMode, companyList, peopleQ.data, orgId, brandId]);
+  }, [q, staffMode, companyList, peopleQ.data, orgId, brandId]);
 
   useEffect(() => setCursor(0), [q, items.length]);
   useEffect(() => {

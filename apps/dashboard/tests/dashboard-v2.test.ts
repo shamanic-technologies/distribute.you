@@ -246,7 +246,9 @@ describe("v2 step 3: honest counts, green running, modals outside the bar", () =
   it("no surface counts the sales_interest standing as people who want to talk", () => {
     for (const f of ["today-page.tsx", "v2-shell.tsx"]) {
       const src = read(`src/components/v2/${f}`);
-      expect(src).toContain("useNeedsYourCall(");
+      // The "Needs your call" queue is deleted (owner 2026-11-26, REMOVE-NEEDS-YOUR-CALL-1126).
+      expect(src).not.toContain("useNeedsYourCall");
+      expect(src).not.toContain("Needs your call");
       expect(src).not.toMatch(/want(s)? to talk/);
       expect(src).not.toContain('column: "sales_interest"');
     }
@@ -282,10 +284,10 @@ describe("Keel parity, second pass", () => {
   const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
   const V2 = "src/components/v2/";
 
-  it("every top bar carries the bell and the palette button, and the palette listens for it", () => {
+  it("every top bar carries the palette button (no bell: the Needs your call queue is deleted), and the palette listens for it", () => {
     const ui = read(V2 + "ui.tsx");
     expect(ui).toContain("<TopBarUniversal />");
-    expect(ui).toContain("useNeedsYourCall(brandId, 5)");
+    expect(ui).not.toContain("useNeedsYourCall");
     expect(ui).toContain("OPEN_PALETTE_EVENT");
     expect(read(V2 + "sidebar-menus.tsx")).toContain("window.addEventListener(OPEN_PALETTE_EVENT, onOpen)");
   });
@@ -293,13 +295,6 @@ describe("Keel parity, second pass", () => {
   it("key hints hide on a touch screen", () => {
     const ui = read(V2 + "ui.tsx");
     expect(ui.slice(ui.indexOf("export function KeyHint("))).toContain("k-keys");
-  });
-
-  it("the reply preview reads lead-service's merged history on the key the person page uses", () => {
-    const data = read(V2 + "data.ts");
-    expect(data).toContain('["leadHistory", leadRowId, brandId, "brand"]');
-    expect(read(V2 + "person-page.tsx")).toContain('["leadHistory", leadRowId, brandId, "brand"]');
-    expect(read(V2 + "today-page.tsx")).toContain("useTheirLastWords(lead.id, brandId)");
   });
 
   it("Today states the spend over its window, setup included", () => {

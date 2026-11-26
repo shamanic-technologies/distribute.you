@@ -133,8 +133,8 @@ describe("the retired staff pages are redirects (2026-10-18)", () => {
     expect(menus).toContain("(!g.staff || staffMode)");
   });
 
-  it("Today and the bell send 'needs your call' to the Inbox", () => {
-    expect(read("components/v2/today-page.tsx")).toContain('const callHref = `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;');
-    expect(read("components/v2/ui.tsx")).toContain('href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}');
+  it("Today and the top bar carry no 'needs your call' queue (owner 2026-11-26)", () => {
+    expect(read("components/v2/today-page.tsx")).not.toContain("callHref");
+    expect(read("components/v2/ui.tsx")).not.toContain("positive-replies");
   });
 });

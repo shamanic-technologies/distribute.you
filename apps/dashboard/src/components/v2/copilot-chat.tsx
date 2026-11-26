@@ -46,7 +46,7 @@ import { v2Href } from "@/lib/v2/routes";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
-import { useBrandInfo, useBrandRevenue, useBrandRevenueWindow, useNeedsYourCall } from "@/components/v2/data";
+import { useBrandInfo, useBrandRevenue, useBrandRevenueWindow } from "@/components/v2/data";
 import { Figure, Shimmer } from "@/components/v2/ui";
 import { AddCreditsButton, ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
 import { RoiLabel } from "@/components/v2/roi-label";
@@ -88,7 +88,6 @@ function useAccountFigures(brandId: string) {
   const brandName = useBrandInfo(brandId).data?.brand?.name ?? null;
   const rev = useBrandRevenue(brandId);
   const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
-  const callQ = useNeedsYourCall(brandId, 5);
   const w = win.data ?? null;
   const figures = {
     brandName,
@@ -96,13 +95,12 @@ function useAccountFigures(brandId: string) {
     expectedReturn: rev.data?.expectedReturn ?? null,
     realizedReturn: rev.data?.costEconomics.realizedReturn ?? null,
     positiveReplies: w?.recipientsRepliesPositive.total ?? null,
-    needYourCall: callQ.data?.total ?? null,
     emailsSent: w?.emails?.sent ?? null,
     emailsDelivered: w?.emails?.delivered ?? null,
     spentCents: w?.spend?.actualSpentCents ?? null,
   };
   // Settled = every read answered or failed (a brand with no offer answers "not enabled").
-  const settled = !rev.pending && !win.pending && (callQ.isFetched || callQ.isError || !callQ.isEnabled);
+  const settled = !rev.pending && !win.pending;
   return { figures, settled, revPending: rev.pending, winPending: win.pending };
 }
 
@@ -144,7 +142,6 @@ function AccountCard({
       label: replyWords.many,
       pending: winPending,
       value: figures.positiveReplies != null ? formatCount(figures.positiveReplies) : "—",
-      sub: figures.needYourCall ? `${formatCount(figures.needYourCall)} need your call` : undefined,
     },
     {
       label: "Delivered",

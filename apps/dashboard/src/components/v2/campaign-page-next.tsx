@@ -36,7 +36,6 @@ import {
 } from "@/lib/sales-funnel-campaigns";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
-import { awaitingReason } from "@/lib/awaiting-reason";
 import { shownFigure } from "@/lib/maturity";
 import { costToShowCents } from "@/lib/expected-return";
 import { formatRatePct } from "@/lib/pipe-stats";
@@ -51,13 +50,13 @@ import { LEADS_PAGE_SIZE } from "@/lib/leads-server-page";
 import { leadStateTag, uniboxLeadName, uniboxRowId, uniboxRowKey, type UniboxRow } from "@/lib/unibox-leads";
 import { TagChip } from "@/components/v2/tag-chip";
 import { useCampaigns } from "@/components/v2/use-campaigns";
-import { useNeedsYourCall, useReachedCounts } from "@/components/v2/data";
+import { useReachedCounts } from "@/components/v2/data";
 import { useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { giveListsFrom } from "@/components/v2/offer-give-lists";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { CampaignAudience } from "@/components/v2/campaign-audience";
-import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
-import { EmptyNote, Initials, MarkLines, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
+import { CompanyMark } from "@/components/v2/people-bits";
+import { EmptyNote, Initials, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostValue, RoiLabel } from "@/components/v2/roi-label";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelOtherPartLines, FunnelPathLine, FunnelRoi, InvestedFigure } from "@/components/v2/funnel-campaigns";
 import { CampaignPinButton } from "@/components/v2/outcome-pins";
@@ -186,7 +185,6 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0 space-y-6">
-                <NeedsYou orgId={orgId} brandId={campaign.brandId} campaignIds={campaign.units.map((u) => u.campaignId)} />
                 {coldEmail ? (
                   <LatestActivity orgId={orgId} brandId={campaign.brandId} campaignId={coldEmail.campaignId} />
                 ) : (
@@ -342,76 +340,6 @@ function FunnelStrip({
 }
 
 // ─── Main column ─────────────────────────────────────────────────────────────────────────
-
-/** The amber "waiting on you" tag: a dot and the word, never a pill. */
-function WaitingTag() {
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] text-[var(--data-amber)]">
-      <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-amber)]" />
-      Waiting on you
-    </span>
-  );
-}
-
-/**
- * The people of this campaign who wrote back and wait on us: lead-service's awaiting-reply
- * set (brand-wide, oldest wait first), the rows whose lead row belongs to one of this
- * campaign's parts. The read serves no campaign filter, so the list is the brand's first ten.
- */
-function NeedsYou({ orgId, brandId, campaignIds }: { orgId: string; brandId: string; campaignIds: string[] }) {
-  const q = useNeedsYourCall(brandId, 10);
-  const settled = q.data !== undefined || q.isFetchedAfterMount;
-  const ids = new Set(campaignIds);
-  const leads = (q.data?.leads ?? []).filter((l) => ids.has(l.campaignId));
-  return (
-    <section>
-      <SectionTitle>Needs you</SectionTitle>
-      {!settled ? (
-        <div className="k-card divide-y divide-[var(--line-subtle)]">
-          {[0, 1].map((i) => (
-            <div key={i} className="px-4 py-3">
-              <Shimmer className="h-4 w-full" />
-            </div>
-          ))}
-        </div>
-      ) : q.isError && !q.data ? (
-        <div className="k-card">
-          <EmptyNote>Could not read who is waiting on you. Retrying.</EmptyNote>
-        </div>
-      ) : leads.length === 0 ? (
-        <div className="k-card">
-          <EmptyNote>Nobody from this campaign is waiting on you.</EmptyNote>
-        </div>
-      ) : (
-        <div className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-          {leads.map((lead) => {
-            const waiting = q.data?.waiting[lead.id] ?? null;
-            const company = leadCompany(lead);
-            return (
-              <Link key={lead.id} href={personHref(orgId, brandId, lead)} className="k-row flex min-w-0 items-center gap-3 px-4 py-3">
-                <MarkLines className="flex-1" mark={(px) => <PersonAvatar lead={lead} size={px} />}>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-[13px] font-medium">{leadName(lead)}</span>
-                    {company && (
-                      <span className="k-fg2 flex min-w-0 items-center gap-1.5 text-[12px]">
-                        <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={14} />
-                        <span className="truncate">{company}</span>
-                      </span>
-                    )}
-                  </span>
-                  <span className="k-fg3 block truncate text-[12px]">
-                    {waiting ? awaitingReason(waiting.lastMessage.kind, waiting.waitingSince) : lead.email}
-                  </span>
-                </MarkLines>
-                <WaitingTag />
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </section>
-  );
-}
 
 const ACTIVITY_SHOWN = 12;
 
