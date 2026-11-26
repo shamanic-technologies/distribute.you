@@ -24,7 +24,7 @@ import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
 import { ApiError, createOwnerTelegramLinkCode, getBillingAccount, getCopilotHandoff, getOwnerTelegram, postCopilotHandoff, type HandoffChannel } from "@/lib/api";
 import { DISTRIBUTE_MCP_URL } from "@/lib/v2/get-started";
-import { distryTelegramStartHref, distryWhatsAppHref, labAiPrompt } from "@/lib/v2/lab-handoff";
+import { distryMailtoHref, distryTelegramStartHref, distryWhatsAppHref, labAiPrompt } from "@/lib/v2/lab-handoff";
 
 /** True when the walk wears the Distry skin (the lab). */
 export const LabDistryContext = createContext(false);
@@ -95,6 +95,17 @@ export function LabSetupChoice({ website, onWeb, onBack }: { website: string; on
             </Mark>
             <span className="k-fg text-[16px] font-medium">Telegram</span>
             <span className="k-fg2 text-[13px] leading-5">Distry sets it up with you in chat.</span>
+          </a>
+          <a
+            href={distryMailtoHref(website)}
+            onClick={() => posthog.capture("get_started_setup_chosen", { mode: "email", lab: true })}
+            className={CARD}
+          >
+            <Mark tone="--data-amber">
+              <EnvelopeSimpleIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+            </Mark>
+            <span className="k-fg text-[16px] font-medium">Email</span>
+            <span className="k-fg2 text-[13px] leading-5">Write to Distry, it answers in the thread.</span>
           </a>
         </div>
         <div className="mt-4">

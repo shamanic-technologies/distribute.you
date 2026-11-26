@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { DISTRY_TELEGRAM_BOT, DISTRY_WHATSAPP, distryTelegramStartHref, distryWhatsAppHref, labAiPrompt } from "../src/lib/v2/lab-handoff";
+import { DISTRY_EMAIL, distryMailtoHref, DISTRY_TELEGRAM_BOT, DISTRY_WHATSAPP, distryTelegramStartHref, distryWhatsAppHref, labAiPrompt } from "../src/lib/v2/lab-handoff";
 
 const read = (p: string) => readFileSync(path.resolve(__dirname, "..", p), "utf8");
 
@@ -16,6 +16,12 @@ describe("lab Distry hand-off (ONBOARDING-CHANNEL-HANDOFF-1125)", () => {
     expect(distryTelegramStartHref("")).toBe(DISTRY_TELEGRAM_BOT);
     expect(distryTelegramStartHref(`${"a".repeat(60)}.com`)).toBe(DISTRY_TELEGRAM_BOT);
     expect(read("src/components/v2/get-started/lab-handoff.tsx")).toContain("href={distryTelegramStartHref(website)}");
+  });
+
+  it("opens a mail to Distry with the website in the subject", () => {
+    expect(DISTRY_EMAIL).toBe("distry@distribute.you");
+    expect(distryMailtoHref("https://acme.com/")).toBe("mailto:distry@distribute.you?subject=Set%20up%20distribute.you%20for%20acme.com");
+    expect(read("src/components/v2/get-started/lab-handoff.tsx")).toContain("href={distryMailtoHref(website)}");
   });
 
   it("hands the founder's AI one line: our MCP server and their site, no key, no code", () => {
