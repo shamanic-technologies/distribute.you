@@ -866,12 +866,14 @@ export async function listOutcomePeople(
 export async function getPersonTimeline(
   brandId: string,
   ref: string,
-  page: { limit: number; before: string | null },
+  page: { limit: number; before: string | null; translate?: "en" },
   token?: string,
 ): Promise<PersonTimeline> {
   const qs = new URLSearchParams({ brandId, ...personRefQuery(ref), limit: String(page.limit) });
   // The page above the one on screen: crm-service's own cursor, passed back verbatim.
   if (page.before) qs.set("before", page.before);
+  // Each served message also in English (crm-service, stored once, billed to this org).
+  if (page.translate) qs.set("translate", page.translate);
   const raw = await apiCall<unknown>(`/orgs/people/timeline?${qs.toString()}`, { token });
   const parsed = PersonTimelineSchema.safeParse(raw);
   if (!parsed.success) {

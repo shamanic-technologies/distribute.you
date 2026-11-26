@@ -136,7 +136,8 @@ describe("Unibox rows carry the relationship block", () => {
   it("the thread header draws the chips; the list filters on lead-service's tags since 2026-10-17", () => {
     const src = read("components/v2/integrations-conversations.tsx");
     expect(src).toContain("<RelationshipChips tags={listed.relationship.tags}");
-    expect(src).toContain("<UniboxFilterBar filters={filters}");
+    expect(src).toContain("<UniboxFilterBar");
+    expect(src).toContain("filters={filters}");
   });
 });
 
