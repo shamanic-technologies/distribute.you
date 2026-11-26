@@ -1,6 +1,7 @@
 /**
  * The lab home's price table (owner 2026-11-25): one row per outcome, an icon beside its
- * name, our likely price range bare (`$4 - $6`).
+ * name, our likely price range bare (`$30 - $40`). Rows, in order (owner 2026-11-26):
+ * Engaged leads, Interested leads, Booked meetings; no Signup, no Website visit.
  *
  * Every figure is READ from the public fleet indexes (`GET /v1/public/indexes`, the
  * `valueRange {low, high}` features-service serves beside each value) at render. The
@@ -14,15 +15,13 @@ import { z } from "zod";
 
 /** The outcome each card prices, keyed on the index that measures it. */
 export const OUTCOME_RANGE_SLUGS = {
+  engagedLead: "cold-email-cost-per-engaged-lead",
   interestedLead: "cold-email-cost-per-positive-reply",
   meetingBooked: "cold-email-cost-per-meeting",
-  // Not served yet (a sibling workspace adds the index): the card lights up the day it is.
-  signup: "cold-email-cost-per-signup",
-  websiteVisit: "cold-email-cost-per-click",
 } as const;
 
-/** The whole block, removed when no card can be drawn (a heading over no price says nothing). */
-export const OUTCOME_RANGES_BLOCK = /<!--outcome-ranges-->[\s\S]*?<!--\/outcome-ranges-->/;
+/** Every piece of the block (its heading, its table), removed when no card can be drawn (a heading over no price says nothing). */
+export const OUTCOME_RANGES_BLOCK = /<!--outcome-ranges-->[\s\S]*?<!--\/outcome-ranges-->/g;
 
 const rangeSchema = z.object({ low: z.number().finite(), high: z.number().finite() });
 
@@ -64,15 +63,20 @@ export function parseOutcomeRanges(body: unknown): OutcomeRanges | null {
   return out;
 }
 
-/** `$4`, `$1,240`: a price range is stated in whole dollars. */
-export function formatWholeUsd(value: number): string {
-  return `$${Math.round(value).toLocaleString("en-US")}`;
+/** To the nearest ten from $10, to the dollar below (owner 2026-11-26), like `/indexes`. */
+export function roundPrice(value: number): number {
+  return Math.abs(value) >= 10 ? Math.round(value / 10) * 10 : Math.round(value);
 }
 
-/** `$4 - $6`, or null when the range cannot be stated in whole dollars. */
+/** `$4`, `$60`, `$1,240`. */
+export function formatWholeUsd(value: number): string {
+  return `$${roundPrice(value).toLocaleString("en-US")}`;
+}
+
+/** `$4 - $6`, `$60 - $70`, or null when the range cannot be stated in whole dollars. */
 export function formatRange(range: OutcomeRange): string | null {
-  const low = Math.round(range.low);
-  const high = Math.round(range.high);
+  const low = roundPrice(range.low);
+  const high = roundPrice(range.high);
   if (!(low >= 1) || !(high >= low)) return null;
   return `${formatWholeUsd(low)} - ${formatWholeUsd(high)}`;
 }
