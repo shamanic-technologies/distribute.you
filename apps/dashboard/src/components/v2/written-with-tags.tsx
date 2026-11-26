@@ -37,16 +37,19 @@ export function WrittenWithTags({
   messageId,
   campaignId,
   at,
+  withoutModel = false,
 }: {
   writtenBy: WrittenBy | null;
   messageId: string | null | undefined;
   campaignId: string | null | undefined;
   at: string | null | undefined;
+  /** The model already sits beside the sender (Unibox thread): only the tactics here. */
+  withoutModel?: boolean;
 }) {
   const tags = writtenWithTags(writtenByForRow(writtenBy, { id: messageId, campaignId, at }));
   // The model wears the shared LLM chip (product mark + name, `catalogue-name.tsx`); a tactic is a plain chip.
   const chips: { key: string; el: ReactNode }[] = [];
-  if (tags?.model) chips.push({ key: "model", el: <CatalogueName kind="llm" variant="chip" name={tags.model.name} /> });
+  if (tags?.model && !withoutModel) chips.push({ key: "model", el: <CatalogueName kind="llm" variant="chip" name={tags.model.name} /> });
   for (const t of tags?.tactics ?? [])
     chips.push({
       key: `t:${t.name}`,
@@ -83,7 +86,7 @@ export function WrittenWithTags({
     return () => ro.disconnect();
   }, [signature]);
 
-  if (!tags) return null;
+  if (!tags || chips.length === 0) return null;
   const hidden = chips.length - Math.min(fit, chips.length);
   return (
     <span ref={rootRef} className="relative min-w-0 shrink grow basis-0 overflow-hidden" style={{ minWidth }} data-written-with>
@@ -104,7 +107,7 @@ export function WrittenWithTags({
             {c.el}
           </span>
         ))}
-        {hidden > 0 && tags ? <MoreTags count={hidden} model={tags.model} tactics={tags.tactics} /> : null}
+        {hidden > 0 && tags ? <MoreTags count={hidden} model={withoutModel ? null : tags.model} tactics={tags.tactics} /> : null}
       </span>
     </span>
   );
