@@ -10,7 +10,7 @@ import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
-import { useReachedCounts, useBrandRevenue, useDealsLifecycleCounts, useNeedsYourCall } from "@/components/v2/data";
+import { useReachedCounts, useBrandRevenue, useDealsLifecycleCounts } from "@/components/v2/data";
 import { dealsBoardRungs } from "@/lib/deals-board";
 import { v2CampaignHref, v2CatalogueHome, v2CatalogueHref, v2Href, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
 import { useOngoingFunnelFaces } from "@/components/v2/staff-catalogue-data";
@@ -244,7 +244,6 @@ function V2Sidebar() {
   const dealCounts = useDealsLifecycleCounts(brandId).data;
   const dealsInPlay = dealCounts ? dealsBoardRungs(dealCounts.lifecycleLadder).reduce((n, r) => n + (dealCounts.byLifecycle[r.key] ?? 0), 0) : null;
   const revenue = useBrandRevenue(brandId).data;
-  const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
   // The business-object sections are staff surfaces: a customer never sees them, staff mode does.
   const { staffMode } = useStaffMode();
@@ -261,16 +260,6 @@ function V2Sidebar() {
             label="Today"
             icon={<I d={ICONS.today} />}
             active={section === "today"}
-            trailing={
-              needsCall != null && needsCall > 0 ? (
-                <span
-                  title="Replied with interest, not yet closed"
-                  className="ml-auto rounded-[5px] bg-[var(--bg-selected)] px-1.5 text-[11px] font-medium tabular-nums text-[var(--fg-2)]"
-                >
-                  {formatCount(needsCall)}
-                </span>
-              ) : undefined
-            }
           />
         </div>
 

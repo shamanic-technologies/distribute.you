@@ -866,12 +866,14 @@ export async function listOutcomePeople(
 export async function getPersonTimeline(
   brandId: string,
   ref: string,
-  page: { limit: number; before: string | null },
+  page: { limit: number; before: string | null; translate?: "en" },
   token?: string,
 ): Promise<PersonTimeline> {
   const qs = new URLSearchParams({ brandId, ...personRefQuery(ref), limit: String(page.limit) });
   // The page above the one on screen: crm-service's own cursor, passed back verbatim.
   if (page.before) qs.set("before", page.before);
+  // Each served message also in English (crm-service, stored once, billed to this org).
+  if (page.translate) qs.set("translate", page.translate);
   const raw = await apiCall<unknown>(`/orgs/people/timeline?${qs.toString()}`, { token });
   const parsed = PersonTimelineSchema.safeParse(raw);
   if (!parsed.success) {
@@ -9422,50 +9424,6 @@ export async function getLeadDetail(leadRowId: string, brandId: string): Promise
   return parseLeadsResponse({ leads: [raw.leadDetail] }, "getLeadDetail").leads[0];
 }
 
-/**
- * WHO IS WAITING ON US (owner 2026-10-11, "Needs your call"): lead-service
- * `GET /orgs/leads/awaiting-reply?brandId=`, reached through the gateway's `/v1/leads/:id`
- * passthrough. The people who wrote back and whose latest message came after any answer of
- * ours, oldest wait first. `total` is the length of `people`: the count and the list are one
- * set, decided by lead-service (an answer through our mailboxes, or a person's "answered
- * outside" statement, takes someone out; website visitors never enter).
- */
-const AwaitingReplyPersonSchema = z.object({
-  id: z.string().nullable(),
-  leadId: z.string(),
-  email: z.string(),
-  firstName: z.string().nullable(),
-  lastName: z.string().nullable(),
-  name: z.string().nullable(),
-  waitingSince: z.string(),
-  lastMessage: z.object({
-    at: z.string(),
-    kind: z.enum(["question", "interest", "other"]),
-    label: z.string(),
-    subject: z.string().nullable(),
-    campaignId: z.string().nullable(),
-  }),
-  lastAnsweredAt: z.string().nullable(),
-  unansweredMessages: z.coerce.number(),
-});
-const AwaitingReplyResponseSchema = z.object({
-  brandId: z.string(),
-  total: z.coerce.number(),
-  people: z.array(AwaitingReplyPersonSchema),
-});
-export type AwaitingReplyPerson = z.infer<typeof AwaitingReplyPersonSchema>;
-export type AwaitingReply = z.infer<typeof AwaitingReplyResponseSchema>;
-
-export async function getAwaitingReply(brandId: string): Promise<AwaitingReply> {
-  const raw = await apiCall<unknown>(`/leads/awaiting-reply?brandId=${encodeURIComponent(brandId)}`);
-  const parsed = AwaitingReplyResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getAwaitingReply: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] getAwaitingReply: invalid response shape");
-  }
-  return parsed.data;
-}
-
 // `view=basic` returns the slim lead projection (thin person + thin org, no
 // employmentHistory / extra org columns). Both readers feed the SAME
 // `EngagedLeadsPage`, which renders its table, status tabs, search and detail
@@ -14113,6 +14071,17 @@ export const STAFF_SCHEMA_CONFORMANCE_PATH = "/chat/ops/schema-conformance";
 /** Per model its served verdict and counts, plus one row per UTC day x provider x model x route over the last `days` (1..90). */
 export async function getStaffSchemaConformance(days: number): Promise<StaffSchemaConformance> {
   return parseStaff("getStaffSchemaConformance", StaffSchemaConformanceSchema, await apiCall<unknown>(`${STAFF_SCHEMA_CONFORMANCE_PATH}?days=${days}`));
+}
+
+// ─── Monitoring > AI vendors > Model named (MODEL-TAG-EVERY-AI-MESSAGE-1126) ───
+import { AiMessageModelsSchema as StaffAiMessageModelsSchema, type AiMessageModels as StaffAiMessageModels } from "./monitoring/ai-message-models";
+
+/** features-service's daily count of AI messages with vs without the model that wrote them named, through api-service's staff route. */
+export const STAFF_AI_MESSAGE_MODELS_PATH = "/features/audit/ai-message-models";
+
+/** One stored row per UTC day (newest first, fleet + per org) over the last `days` (1..90), with the served health. */
+export async function getStaffAiMessageModels(days: number): Promise<StaffAiMessageModels> {
+  return parseStaff("getStaffAiMessageModels", StaffAiMessageModelsSchema, await apiCall<unknown>(`${STAFF_AI_MESSAGE_MODELS_PATH}?days=${days}`));
 }
 
 // ─── Monitoring > Security (SEC-ADVISORIES-MONITORING-1025) ───

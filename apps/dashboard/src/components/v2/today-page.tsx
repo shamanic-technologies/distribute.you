@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import type { AwaitingReplyPerson, Lead } from "@/lib/api";
 import { formatCount, formatUsdAdaptive, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
-import { friendlyDate, friendlyTime } from "@/lib/friendly-datetime";
 import { utcDay } from "@/lib/v2/series";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { v2CampaignHref, v2Href } from "@/lib/v2/routes";
@@ -18,7 +16,6 @@ import {
   EmptyNote,
   Figure,
   HoverScroll,
-  KeyHint,
   MarkLines,
   SectionTitle,
   Shimmer,
@@ -36,28 +33,16 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
-import { awaitingReason } from "@/lib/awaiting-reason";
 import { EnginePicksSection } from "@/components/v2/engine-picks-section";
-import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
+import { useCampaigns } from "@/components/v2/use-campaigns";
 import {
-  useNeedsYourCall,
   useBrandInfo,
   useBrandRevenue,
   useBrandRevenueWindow,
-  useTheirLastWords,
 } from "@/components/v2/data";
 import { TodayTargets } from "@/components/v2/today-targets";
 import { OfferSpendChartsSection } from "@/components/v2/spend-charts";
 import { RevenueGeneratedTile } from "@/components/v2/revenue-generated-tile";
-import {
-  CompanyMark,
-  PersonAvatar,
-  leadCompany,
-  leadCompanyDomain,
-  leadName,
-  leadTitle,
-  personHref,
-} from "@/components/v2/people-bits";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { expectedReasonWords } from "@/lib/expected-return";
 import { expectedBasisWord } from "@/lib/realized-return";
@@ -83,7 +68,6 @@ function greeting(now: Date): string {
  */
 export function TodayPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const router = useRouter();
   const { user } = useUser();
   const now = useMemo(() => new Date(), []);
   // The printed greeting, date and time read the browser clock after mount only: the
@@ -100,8 +84,6 @@ export function TodayPage() {
   const { campaignById } = useCampaigns(orgId, brandId);
   // Runs today: runs-service's own roll-up, kept to the brand's campaigns.
   const { runsToday, settled: runsSettled } = useCampaignRunsToday(brandId, campaignById);
-  // "Needs your call" opens the Inbox, where those replies are answered.
-  const callHref = `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;
   const scope = useBrandScope();
   // The brand's ON campaigns, every offer, and the steps their legs touch: a step no ON campaign
   // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
@@ -117,30 +99,6 @@ export function TodayPage() {
   // REALIZED one (Paid clients our outreach caused over money actually spent). Both served.
   const expected = data?.expectedReturn ?? null;
   const realized = data?.costEconomics.realizedReturn ?? null;
-
-  // Needs your call: people who REPLIED with interest and whom nobody has closed or
-  // disqualified yet. `total` is lead-service's count of that set.
-  const callQ = useNeedsYourCall(brandId, 5);
-  const needsCall = callQ.data?.total ?? null;
-  const callLeads = callQ.data?.leads ?? [];
-  const [cursor, setCursor] = useState(0);
-
-  // Keel's J / K / Enter on the cards that need a call.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      const typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
-      if (typing || e.metaKey || e.ctrlKey || e.altKey || callLeads.length === 0) return;
-      if (e.key === "j") setCursor((c) => Math.min(callLeads.length - 1, c + 1));
-      else if (e.key === "k") setCursor((c) => Math.max(0, c - 1));
-      else if (e.key === "Enter") {
-        const lead = callLeads[Math.min(cursor, callLeads.length - 1)];
-        if (lead) router.push(personHref(orgId, brandId, lead));
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [callLeads, cursor, router, orgId, brandId]);
 
   const first = user?.firstName ?? null;
   const dateLine = clock?.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -175,14 +133,6 @@ export function TodayPage() {
                     {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"}
                   </span>{" "}
                   today.
-                  {needsCall != null && needsCall > 0 && (
-                    <>
-                      {" "}
-                      <Link href={callHref} className="k-fg hover:underline">
-                        {formatCount(needsCall)} {needsCall === 1 ? "needs" : "need"} your call.
-                      </Link>
-                    </>
-                  )}
                 </>
               )}
             </p>
@@ -243,56 +193,8 @@ export function TodayPage() {
             </div>
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <section>
-                <SectionTitle
-                  count={needsCall}
-                  right={
-                    callLeads.length > 1 ? (
-                      <span className="hidden items-center gap-3 md:flex">
-                        <KeyHint keys={["J", "K"]} label="to move" />
-                        <KeyHint keys={["↵"]} label="to open" />
-                      </span>
-                    ) : (
-                      <Link href={v2Href(orgId, brandId, "deals")} className="hover:text-[var(--fg-1)]">
-                        All deals →
-                      </Link>
-                    )
-                  }
-                >
-                  Needs your call
-                </SectionTitle>
-                <div className="space-y-3">
-                  {callQ.isPending && !callQ.isError ? (
-                    [0, 1].map((i) => <Shimmer key={i} className="h-36 w-full rounded-xl" />)
-                  ) : callLeads.length === 0 ? (
-                    <div className="k-card">
-                      <EmptyNote>Nobody is waiting on you. People who write back and wait on you land here.</EmptyNote>
-                    </div>
-                  ) : (
-                    callLeads.map((lead, i) => (
-                      <CallCard
-                        key={lead.id}
-                        brandId={brandId}
-                        lead={lead}
-                        waiting={callQ.data?.waiting[lead.id] ?? null}
-                        campaign={campaignById.get(lead.campaignId) ?? null}
-                        highlight={i === Math.min(cursor, callLeads.length - 1)}
-                        href={personHref(orgId, brandId, lead)}
-                        onFocus={() => setCursor(i)}
-                        onSkip={() => setCursor(Math.min(callLeads.length - 1, i + 1))}
-                        isLast={i === callLeads.length - 1}
-                      />
-                    ))
-                  )}
-                  {needsCall != null && needsCall > callLeads.length && (
-                    <Link href={callHref} className="k-btn-ghost w-full justify-center">
-                      {formatCount(needsCall - callLeads.length)} more in Inbox →
-                    </Link>
-                  )}
-                </div>
                 {/* The GTM Factory Today feed (FACTORY-USER-DASHBOARD-1102): what each Engine picked and why. */}
-                <div className="mt-8">
-                  <EnginePicksSection orgId={orgId} brandId={brandId} offerIds={scope.campaignOfferIds} />
-                </div>
+                <EnginePicksSection orgId={orgId} brandId={brandId} offerIds={scope.campaignOfferIds} />
               </section>
 
               <aside className="space-y-6">
@@ -339,106 +241,6 @@ export function TodayPage() {
         )}
       </div>
     </>
-  );
-}
-
-function CampaignLead({ campaign }: { campaign: V2Campaign | null }) {
-  if (!campaign) return <span className="k-fg font-medium">Your campaign</span>;
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <ServedPipeMark pipeId={campaign.pipe.id} />
-      <span className="k-fg font-medium">{campaign.pipe.name}</span>
-    </span>
-  );
-}
-
-function CallCard({
-  brandId,
-  lead,
-  waiting,
-  campaign,
-  highlight,
-  href,
-  onFocus,
-  onSkip,
-  isLast,
-}: {
-  brandId: string;
-  lead: Lead;
-  waiting: AwaitingReplyPerson | null;
-  campaign: V2Campaign | null;
-  highlight: boolean;
-  href: string;
-  onFocus: () => void;
-  onSkip: () => void;
-  isLast: boolean;
-}) {
-  const name = leadName(lead);
-  const company = leadCompany(lead);
-  const title = leadTitle(lead);
-  const at = lead.firstRepliedAt ?? lead.firstClickedAt ?? null;
-  const { inbound, settled } = useTheirLastWords(lead.id, brandId);
-  const body = inbound?.bodyText?.trim() ?? "";
-  return (
-    <div
-      onMouseEnter={onFocus}
-      className={`${highlight ? "k-card-accent" : "k-card"} grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_300px]`}
-    >
-      <div className="min-w-0">
-        <p className="k-fg3 flex flex-wrap items-center gap-1.5 text-[13px]">
-          <CampaignLead campaign={campaign} />
-          {waiting ? <span>· {awaitingReason(waiting.lastMessage.kind, waiting.waitingSince)}</span> : null}
-        </p>
-        <p className="mt-2 text-[17px] font-medium leading-6 tracking-[-0.01em]">Follow up with {name}?</p>
-        <p className="k-fg2 mt-1 flex min-w-0 items-center gap-1.5 text-[13px]">
-          {company && <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={16} />}
-          <span className="truncate">{[company, title].filter(Boolean).join(" · ") || lead.email}</span>
-        </p>
-        <p className="k-fg3 mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px]">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="shrink-0" aria-hidden="true">
-            <path d="M4 2.5h5.5L12 5v8.5H4zM6 8h4M6 10.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-          </svg>
-          <span className="truncate">
-            {[at ? `Replied ${friendlyDate(at)}` : null, campaign?.offerName ? `${campaign.pipe.name} · ${campaign.offerName}` : campaign?.pipe.name].filter(Boolean).join(" · ")}
-          </span>
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Link href={href} className={highlight ? "k-btn-accent" : "k-btn-strong"}>
-            Open conversation
-            {highlight && <span className="k-keys rounded-[4px] bg-white/20 px-1 text-[10px]">↵</span>}
-          </Link>
-          <a href={`mailto:${lead.email}`} className="k-btn">
-            Email
-          </a>
-          {!isLast && (
-            <button type="button" onClick={onSkip} className="k-btn-ghost">
-              Skip
-            </button>
-          )}
-        </div>
-      </div>
-      <Link
-        href={href}
-        className="k-inset hidden min-w-0 flex-col gap-1 rounded-[10px] p-3 shadow-[inset_0_0_0_1px_var(--line-subtle)] md:flex"
-      >
-        <p className="k-fg3 flex min-w-0 items-center gap-1.5 text-[12px]">
-          <PersonAvatar lead={lead} size={16} />
-          <span className="truncate">From {name}</span>
-        </p>
-        {!settled ? (
-          <Shimmer className="mt-1 h-16 w-full" />
-        ) : inbound ? (
-          <>
-            {inbound.subject ? <p className="truncate text-[13px] font-medium">{inbound.subject}</p> : null}
-            <p className="k-fg2 line-clamp-4 whitespace-pre-line text-[12px] leading-[18px]">
-              {body || (inbound.bodyStatus === "unavailable" ? "We hold this reply and could not read it." : "The reply says nothing.")}
-            </p>
-          </>
-        ) : (
-          <p className="k-fg3 text-[12px]">Open the conversation to read the reply.</p>
-        )}
-      </Link>
-    </div>
   );
 }
 

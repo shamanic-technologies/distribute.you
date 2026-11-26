@@ -37,13 +37,15 @@ import { conversationItemTag, conversationSourceWord, joinConversationLabels, li
 import { DisqualifiedTag } from "@/components/v2/conversation-timeline";
 import { TagChip } from "@/components/v2/tag-chip";
 import { WrittenWithTags, useLeadWrittenBy } from "@/components/v2/written-with-tags";
-import { writtenByForRow, writtenMessageId, type WrittenBy } from "@/lib/written-by";
+import { CatalogueName } from "@/components/v2/catalogue-name";
+import { writtenByForRow, writtenMessageId, writtenWithTags, type ModelTag, type WrittenBy } from "@/lib/written-by";
 import { ReportMessage } from "@/components/v2/report-message";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
 import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, leadStateTag, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxRowPreview, uniboxRowSubtitle, uniboxThreadRef, uniboxWaitsOnUs, type LifecycleRung, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
-import { UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
+import { TranslateSwitch, UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
+import { UNIBOX_TRANSLATE_STORAGE_KEY, languageName, readTranslatePref, shownWords, translationPairKey, translationsByKey, writeTranslatePref, type ServedTranslation } from "@/lib/unibox-translate";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -71,6 +73,19 @@ const timelineQuery = (brandId: string, ref: string) => ({
     getPersonTimeline(brandId, ref, { limit: THREAD_PAGE, before: pageParam }),
   initialPageParam: null as string | null,
   // `pages[0]` is the latest page, each next one the page above it.
+  getNextPageParam: (last: PersonTimeline) => (last.page?.hasOlder ? (last.page.olderCursor ?? undefined) : undefined),
+});
+/**
+ * The same thread with each message also in English (crm-service, UNIBOX-TRANSLATE-1126), read
+ * only for the thread OPEN while Translate is on: never preloaded, never the list (owner: translate
+ * on click). Its own key, so the plain thread (preloaded) still paints at once and toggling off
+ * needs no read.
+ */
+const translatedTimelineQuery = (brandId: string, ref: string) => ({
+  queryKey: [...timelineKey(brandId, ref), "en"] as const,
+  queryFn: ({ pageParam }: { pageParam: string | null }) =>
+    getPersonTimeline(brandId, ref, { limit: THREAD_PAGE, before: pageParam, translate: "en" }),
+  initialPageParam: null as string | null,
   getNextPageParam: (last: PersonTimeline) => (last.page?.hasOlder ? (last.page.olderCursor ?? undefined) : undefined),
 });
 const factsKey = (leadRowId: string | null, brandId: string, offerId: string | null) =>
@@ -121,6 +136,16 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 
   // The six tag filters, each a served filter (lead-service narrows and counts the list).
   const filters = filtersFromParams(params);
+  // Translate to English (owner 2026-11-26): on by default, the reader's choice kept by the browser.
+  // Read after mount: the server render cannot see it.
+  const [translate, setTranslate] = useState(true);
+  useEffect(() => {
+    setTranslate(readTranslatePref(window.localStorage.getItem(UNIBOX_TRANSLATE_STORAGE_KEY)));
+  }, []);
+  const pickTranslate = (on: boolean) => {
+    setTranslate(on);
+    window.localStorage.setItem(UNIBOX_TRANSLATE_STORAGE_KEY, writeTranslatePref(on));
+  };
   const fKey = filtersKey(filters);
   const pickFilter = (dim: UniboxDimension, values: string[]) => setParam(dim, values.length ? values.join(",") : null);
 
@@ -315,7 +340,12 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
       <div className="shrink-0 [&>div]:p-0 md:[&>div]:p-0 [&>div>div:last-child]:min-w-0 [&>div>div:last-child]:max-w-full [&_label]:w-auto [&_label]:min-w-[240px] [&_label]:max-w-none [&_label]:flex-1">
         <RecordsToolbar search={search} onSearch={setSearch} placeholder="Search by name or email" inputRef={searchRef} />
       </div>
-      <UniboxFilterBar filters={filters} ladder={list?.lifecycleLadder ?? []} onPick={pickFilter} />
+      <UniboxFilterBar
+        filters={filters}
+        ladder={list?.lifecycleLadder ?? []}
+        onPick={pickFilter}
+        trailing={<TranslateSwitch on={translate} onChange={pickTranslate} />}
+      />
       {/* grid-cols-1 = minmax(0,1fr): a folded message's one line (nowrap) must not widen a phone's page. */}
       <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] @3xl:grid-cols-[340px_minmax(0,1fr)]">
         <section
@@ -401,6 +431,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
               <Thread
                 brandId={brandId}
                 personRef={threadRef}
+                translate={translate}
                 listed={null}
                 lead={card?.lead ?? openRow}
                 scrollRef={threadScroll}
@@ -500,6 +531,7 @@ function LeadRow({
 function Thread({
   brandId,
   personRef: ref,
+  translate,
   listed,
   lead,
   scrollRef,
@@ -507,6 +539,8 @@ function Thread({
 }: {
   brandId: string;
   personRef: string;
+  /** Show each message in English (crm-service's stored translation) instead of the original. */
+  translate: boolean;
   listed: Person | null;
   /** The Unibox row (lead-service): who it is, their title and company. */
   lead: UniboxRow | null;
@@ -521,6 +555,17 @@ function Thread({
     refetchInterval: (query) =>
       query.state.data?.pages.some((p) => p.sources.some((s) => s.refreshing)) ? TIMELINE_REFRESHING_POLL : TIMELINE_POLL,
   });
+  // The English version, asked only while Translate is on; once read it stays cached, so off/on is instant.
+  const tq = useInfiniteQuery({
+    ...translatedTimelineQuery(brandId, ref),
+    enabled: gate && !!brandId && translate,
+    refetchInterval: TIMELINE_POLL,
+  });
+  const translations = translate
+    ? translationsByKey((ownQueryData(tq)?.pages ?? []).flatMap((p) => p.items))
+    : new Map<string, ServedTranslation>();
+  // Translating: the original shows meanwhile, said in one line (a first read takes a few seconds).
+  const translating = translate && tq.isFetching && !ownQueryData(tq);
   // The conversation at the brand: lead-service's labelled facts and its tags, keyed
   // on crm-service's lead row for this person (none = not one of our leads).
   // At the brand, every offer (owner 2026-11-07, AUDIENCE-PER-OFFER-1107): no offer narrows the facts.
@@ -574,12 +619,14 @@ function Thread({
         const box = scrollRef.current;
         if (box) heightBefore.current = { ref, pages: pageCount, height: box.scrollHeight, top: box.scrollTop };
         void fetchNextPage();
+        // The page above in English too, while Translate is on.
+        if (translate && tq.hasNextPage && !tq.isFetchingNextPage) void tq.fetchNextPage();
       },
       { root: scrollRef.current, rootMargin: "300px 0px 0px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, ref, pageCount, scrollRef]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, ref, pageCount, scrollRef, translate, tq.hasNextPage, tq.isFetchingNextPage, tq.fetchNextPage]);
   if (!q.isFetchedAfterMount && !data) {
     return (
       <div className="space-y-3 p-4">
@@ -645,6 +692,7 @@ function Thread({
         </div>
       </header>
       <div ref={scrollRef} className="k-scroll min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        {translating && <p className="k-fg3 text-[12px]">Translating to English…</p>}
         {hasNextPage && (
           <div ref={top} aria-busy={isFetchingNextPage}>
             <Shimmer className="h-14 w-full rounded-lg" />
@@ -661,6 +709,7 @@ function Thread({
                 key={itemKey(row.item, i, rows.length)}
                 brandId={brandId}
                 item={row.item}
+                translation={translations.get(translationPairKey(row.item)) ?? null}
                 tag={row.tag}
                 writtenBy={writtenBy}
                 leadId={facts?.leadId ?? null}
@@ -859,9 +908,12 @@ function ThreadItem({
   leadId = null,
   campaignId = null,
   folded = false,
+  translation = null,
 }: {
   brandId: string;
   item: PersonTimelineItem;
+  /** The message in English, when Translate is on and crm-service translated it. */
+  translation?: ServedTranslation | null;
   tag: TimelineTag | null;
   writtenBy?: WrittenBy | null;
   /** The conversation's lead (lead-service): the subject of a message we wrote, for Report. */
@@ -917,9 +969,11 @@ function ThreadItem({
       meta={meta}
       tag={tag ?? timelineTag(item)}
       folded={folded}
+      translation={translation}
+      model={item.direction === "outbound" ? writtenWithTags(writtenByForRow(writtenBy, { id: writtenMessageId(item), campaignId, at: item.at }))?.model ?? null : null}
       written={
         item.direction === "outbound" ? (
-          <WrittenWithTags writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} />
+          <WrittenWithTags writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} withoutModel />
         ) : null
       }
       report={
@@ -939,21 +993,30 @@ function Message({
   meta,
   tag,
   written = null,
+  model = null,
   report = null,
   folded = false,
+  translation = null,
 }: {
   brandId: string;
   item: PersonTimelineItem;
+  /** Its English version: the subject and words shown instead of the original, said by a chip. */
+  translation?: ServedTranslation | null;
   mark: SourceMark;
   meta: string;
   tag: TimelineTag;
   /** "Report" on a message we wrote (SCRIPT-VALUE-RATING-1113); null elsewhere. */
   report?: ReactNode;
-  /** What it was written with (model + tactics, tags beside its label), on a message we sent; null elsewhere. */
+  /** What it was written with (its tactics, tags beside its label), on a message we sent; null elsewhere. */
   written?: ReactNode;
+  /** The model that wrote it (served by features-service): its logo + name beside the sender, in place of "Automated". */
+  model?: ModelTag | null;
   /** An older message opens as one line (who · first words · date) until clicked (owner 2026-10-21). */
   folded?: boolean;
 }) {
+  // Translate on: the English words replace the original on screen; the stored item never changes.
+  const fromLanguage = translation?.status === "translated" ? languageName(translation.sourceLanguage) : null;
+  item = shownWords(item, translation);
   // The mark up front is WHO wrote it: the person's company logo (initials without one)
   // on their side, the source's mark on ours. Where it came from rides the meta line.
   const sender = parseFrom(item.from);
@@ -974,7 +1037,16 @@ function Message({
   // One of our machines sent it (welcome email, sequence step, Copilot): said beside the
   // sender, and never read as "You" typed it (owner 2026-10-27).
   const automated = outbound && isAutomatedSend(item);
-  const who = sender.name ?? sender.email ?? (outbound ? (automated ? mark.name : "You") : "Them");
+  const who = sender.name ?? sender.email ?? (outbound ? (automated || model ? mark.name : "You") : "Them");
+  // Every message our AI wrote wears the model that wrote it (logo + name, owner 2026-11-26), in place of
+  // "Automated"; "Automated" stays only on a send of ours whose model is not served yet.
+  const senderTag = model ? (
+    <span className="inline-flex shrink-0">
+      <CatalogueName kind="llm" variant="chip" name={model.name} />
+    </span>
+  ) : automated ? (
+    <span className="k-chip shrink-0">Automated</span>
+  ) : null;
   // The brand's own team answering from its own mailbox wears its company logo, not ours.
   const brandDomain = useBrandInfo(brandId).data?.brand.domain ?? null;
   const ourMark = outbound && !isBrandTeamAddress(sender.email, brandDomain);
@@ -994,7 +1066,7 @@ function Message({
       >
         {senderMark(16)}
         <span className="max-w-[40%] shrink-0 truncate font-medium">{who}</span>
-        {automated && <span className="k-chip shrink-0">Automated</span>}
+        {senderTag}
         <span className="k-fg2 min-w-0 flex-1 truncate">{firstWords(item) ?? "—"}</span>
         <span className="k-fg3 shrink-0 tabular-nums">{item.at ? friendlyDate(item.at) : "No date"}</span>
       </button>
@@ -1006,7 +1078,8 @@ function Message({
       <p className="k-fg3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
         {senderMark(16)}
         <span className="min-w-0 max-w-full truncate">{who}</span>
-        {automated && <span className="k-chip shrink-0">Automated</span>}
+        {senderTag}
+        {fromLanguage && <span className="k-chip shrink-0">Translated from {fromLanguage}</span>}
         {/* The address it was written FROM, on every message: a person can write from
             several mailboxes (work, personal), and a name alone hides which one (owner 2026-10-09). */}
         {sender.name && sender.email && <span className="k-mono min-w-0 max-w-full truncate text-[11.5px]">{sender.email}</span>}
@@ -1223,3 +1296,4 @@ function ListShimmer() {
     </div>
   );
 }
+

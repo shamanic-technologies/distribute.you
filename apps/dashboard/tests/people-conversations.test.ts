@@ -443,7 +443,11 @@ describe("what a client set up with us, and our automated sends (ONBOARDING-FICH
     expect(src).toContain("const record = setupRecord(item);");
     expect(src).toContain("{record.text}");
     expect(src).toContain("const automated = outbound && isAutomatedSend(item);");
-    expect(src).toContain('(automated ? mark.name : "You")');
-    expect(src.match(/\{automated && <span className="k-chip shrink-0">Automated<\/span>\}/g)?.length).toBe(2);
+    expect(src).toContain('(automated || model ? mark.name : "You")');
+    // The model that wrote it replaces "Automated" (owner 2026-11-26); "Automated" only without a served model.
+    expect(src).toContain('<CatalogueName kind="llm" variant="chip" name={model.name} />');
+    expect(src).toContain(') : automated ? (\n    <span className="k-chip shrink-0">Automated</span>');
+    expect(src.match(/\{senderTag\}/g)?.length).toBe(2);
+    expect(src).toContain("campaignId={campaignId} at={item.at} withoutModel />");
   });
 });

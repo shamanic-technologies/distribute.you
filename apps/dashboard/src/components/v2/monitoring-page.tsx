@@ -66,6 +66,7 @@ import { VendorCreditPage, VendorCreditTile, useVendorCredit } from "@/component
 import { outOfCreditVendors } from "@/lib/monitoring/vendor-credit";
 import { SchemaConformancePage, SchemaConformanceTile, useSchemaConformance } from "@/components/v2/monitoring-schema-conformance";
 import { brokenModels } from "@/lib/monitoring/schema-conformance";
+import { AiMessageModelsPage, AiMessageModelsTile, useAiMessageModels } from "@/components/v2/monitoring-ai-message-models";
 import { UnsentAnswersPage, UnsentAnswersTile, useUnsentAnswers } from "@/components/v2/monitoring-unsent-answers";
 import { AwaitingAnswersPage, AwaitingAnswersTile, useAwaitingAnswers } from "@/components/v2/monitoring-awaiting-answers";
 import { PlugsConnectedIcon } from "@phosphor-icons/react/dist/csr/PlugsConnected";
@@ -218,6 +219,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "scripts/campaigns": { section: "scripts", title: "Campaigns", question: "Which outcomes do our campaigns still make with a workflow?" },
   "ai/credit": { section: "ai", title: "Credit", question: "Does every AI vendor we call still have credit?" },
   "ai/schema": { section: "ai", title: "Answer shape", question: "Does every AI model answer our scripts in the shape they ask for?" },
+  "ai/models": { section: "ai", title: "Model named", question: "Does every message our AI wrote name the model that wrote it?" },
   "ai/scripts": { section: "ai", title: "Scripts per Engine", question: "Which scripts compete in each Engine, and which one does the Rating favour today?" },
   "chat/distry": { section: "chat", title: "Distry", question: "Who is Distry, what can it do, and which Engines can it call?" },
   "chat/distry-spend": { section: "chat", title: "Distry spend on non-clients", question: "How much does Distry spend a day on people with no account?" },
@@ -403,6 +405,7 @@ export function V2Monitoring() {
         {view.page === "scripts/campaigns" && <CampaignEnginesPage />}
         {view.page === "ai/credit" && <VendorCreditPage />}
         {view.page === "ai/schema" && <SchemaConformancePage />}
+        {view.page === "ai/models" && <AiMessageModelsPage />}
         {view.page === "ai/scripts" && <ScriptEnginesPage />}
         {view.page === "chat/distry-spend" && <DistrySpendPage />}
         {view.page === "cost/email-sources" && <EmailSourcesPage />}
@@ -514,6 +517,7 @@ function Hub({ base }: { base: string }) {
   const scripts = useScriptsMonitoring();
   const vendors = useVendorCredit();
   const schemaConf = useSchemaConformance();
+  const aiModels = useAiMessageModels();
   const distry = useDistrySpend();
   const emailSources = useEmailSources();
   const emailSourcesDay = emailSources.data ? emailSourcesToday(emailSources.data) : undefined;
@@ -603,6 +607,8 @@ function Hub({ base }: { base: string }) {
         <VendorCreditTile href={href("ai/credit")} />
         {/* A model whose answers miss the calling script's response schema, served broken by chat-service (SCHEMA-HONOURED-1115, GLM-5.3 Flash wrote "M3" as email bodies 2026-11-15): red here IS the alert, never an email. */}
         <SchemaConformanceTile href={href("ai/schema")} />
+        {/* An AI message sent today or yesterday with no model named, or the count stopped (MODEL-TAG-EVERY-AI-MESSAGE-1126, owner 2026-11-26: every AI message wears its model in the Unibox): red here IS the alert, never an email. */}
+        <AiMessageModelsTile href={href("ai/models")} />
         {/* The Rating's script board not rebuilt for over an hour (SCRIPT-VALUE-RATING-1113-MON-DASH): red here IS the alert, never an email; « being built » is normal. */}
         <ScriptEnginesTile href={href("ai/scripts")} />
         {/* Distry's spend on people with no account reached the $30 day cap TODAY (DISTRY-SPEND-CHART-1119): red here IS the alert; a past capped day stays red on its own bar only. */}
@@ -1298,11 +1304,12 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={3}>AI vendors</SectionTitle>
-      <Section section="ai" count={3} grid={false}>
+      <SectionTitle count={4}>AI vendors</SectionTitle>
+      <Section section="ai" count={4} grid={false}>
         <HubChips>
           <HubChip href={href("ai/credit")} color={vendorsOut?.length ? "var(--data-rose)" : "var(--data-violet)"} label="Credit" />
           <HubChip href={href("ai/schema")} color={schemaConf.data?.verdict === "broken" ? "var(--data-rose)" : "var(--data-violet)"} label="Answer shape" />
+          <HubChip href={href("ai/models")} color={aiModels.data?.health.broken ? "var(--data-rose)" : "var(--data-violet)"} label="Model named" />
           <HubChip href={href("ai/scripts")} color={scriptBoardRed ? "var(--data-rose)" : "var(--data-violet)"} label="Scripts per Engine" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -1330,6 +1337,19 @@ function Hub({ base }: { base: string }) {
               note: "over 5% of 20+ answers off the schema",
             },
             { label: "Models watched", value: schemaConf.data?.models.length, note: "answered a script with a schema" },
+          ]}
+        />
+        <Card
+          href={href("ai/models")}
+          page="ai/models"
+          error={aiModels.isError && !aiModels.data}
+          cells={[
+            {
+              label: "No model named",
+              value: aiModels.data && <span style={{ color: aiModels.data.health.broken ? "var(--data-rose)" : undefined }}>{aiModels.data.health.reason === "series_not_rebuilt" ? "Stopped" : aiModels.data.health.unnamedOnRecentSends}</span>,
+              note: "AI messages sent today and yesterday",
+            },
+            { label: "AI messages", value: aiModels.data?.days[0]?.fleet.messages, note: "sent on the latest day" },
           ]}
         />
         <Card

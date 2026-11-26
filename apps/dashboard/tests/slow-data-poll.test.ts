@@ -26,7 +26,6 @@ describe("slow-moving reads poll at their producer's pace", () => {
     const sites: [string, string][] = [
       ["src/components/v2/data.ts", "() => getBrandOutcomes(brandId), { ...peopleOutcomesReadOptions"],
       ["src/components/v2/data.ts", "getUniboxLifecycleCounts(brandId, filters, { campaignId }),\n    { ...leadReadOptions"],
-      ["src/components/v2/data.ts", "return { total: awaiting.total, leads, waiting };\n    },\n    { ...leadReadOptions"],
       ["src/components/v2/integrations-conversations.tsx", "enabled: gate && !!brandId,\n    ...leadReadOptions,"],
       ["src/components/v2/deals-page.tsx", "{ ...leadReadOptions, enabled: !!brandId && (total === null || total > 0) }"],
       ["src/components/v2/people-page.tsx", "{ ...leadReadOptions, enabled: !!brandId }"],

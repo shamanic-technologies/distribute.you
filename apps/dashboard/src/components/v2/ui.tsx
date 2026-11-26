@@ -3,10 +3,7 @@
 import { PAYMENT_HOLD_LABEL, type PaymentHoldKind } from "@/lib/payment-declined";
 import Link from "next/link";
 import { useId, useLayoutEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
 import { useOpenV2Nav } from "@/components/v2/nav-context";
-import { useNeedsYourCall } from "@/components/v2/data";
-import { v2Href } from "@/lib/v2/routes";
 import { CopilotShowButton } from "@/components/v2/copilot-dock";
 
 /** Opens the ⌘K palette from anywhere (`SearchTrigger` owns it and listens for this). */
@@ -78,38 +75,13 @@ export function TopBar({ crumbs, actions }: { crumbs: Crumb[]; actions?: React.R
   );
 }
 
-/**
- * Keel's two universal controls, on every page: the bell and the ⌘K button. The bell
- * is the people waiting on a person (people who wrote back and wait on our answer), so its
- * dot is a served count, and it opens the Inbox where they are answered.
- */
+/** Keel's universal ⌘K button, on every page. */
 function TopBarUniversal() {
-  const { orgId, brandId } = useParams<{ orgId?: string; brandId?: string }>();
   return (
-    <>
-      {orgId && brandId ? <Bell orgId={orgId} brandId={brandId} /> : null}
-      <button type="button" onClick={openPalette} aria-label="Open command palette" className="k-keys k-btn-ghost hidden h-8 gap-0.5 px-1.5 md:inline-flex">
-        <span className="k-kbd">⌘</span>
-        <span className="k-kbd">K</span>
-      </button>
-    </>
-  );
-}
-
-function Bell({ orgId, brandId }: { orgId: string; brandId: string }) {
-  const needs = useNeedsYourCall(brandId, 5).data?.total ?? null;
-  return (
-        <Link
-          href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}
-          aria-label={needs ? `${needs} need your call` : "Nothing needs your call"}
-          title={needs ? `${needs} need your call` : "Nothing needs your call"}
-          className="k-btn-ghost relative h-8 w-8 justify-center px-0"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1 1H3l1-1ZM6.5 13.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-          </svg>
-          {needs ? <span className="absolute right-[7px] top-[6px] h-[7px] w-[7px] rounded-full bg-[#f5690b] ring-2 ring-[var(--bg-surface)]" /> : null}
-        </Link>
+    <button type="button" onClick={openPalette} aria-label="Open command palette" className="k-keys k-btn-ghost hidden h-8 gap-0.5 px-1.5 md:inline-flex">
+      <span className="k-kbd">⌘</span>
+      <span className="k-kbd">K</span>
+    </button>
   );
 }
 
