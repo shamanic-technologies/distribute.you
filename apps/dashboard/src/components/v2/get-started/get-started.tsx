@@ -131,6 +131,7 @@ import {
   parseLifetimeRevenue,
   parseUsdEstimate,
   stepIndex,
+  CAMPAIGN_COMPANIES,
   MAX_CHECKED_COMPANIES,
   checkDomain,
   companiesWanted,
@@ -154,6 +155,7 @@ import {
   type GetStartedEmail,
   type GetStartedOffer,
   type GetStartedSnapshot,
+  type SnapshotCompanies,
   type GetStartedPhone,
   type GetStartedName,
   GET_STARTED_YOU_KEY,
@@ -709,6 +711,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     if (s.campaign) setCampaignDraft(s.campaign);
     if (s.funnel) setFunnel(s.funnel);
     if (s.briefPrefill) setBriefPrefill(s.briefPrefill);
+    // The companies shown come back as shown, with their Must-have answers: never read again.
+    const shownCompanies = s.audience && s.companies?.audienceId === s.audience.audienceId ? s.companies : null;
+    if (shownCompanies) restoreCompanies(shownCompanies);
     if (s.estimate) setEstimate(s.estimate);
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
@@ -728,7 +733,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       value: s.lifetimeRevenueUsd != null ? "done" : "failed",
       levers: s.answered ? "done" : "failed",
       gives: s.answered ? "done" : "failed",
-      companies: s.audience ? "running" : "failed",
+      companies: shownCompanies ? "done" : s.audience ? "running" : "failed",
       email: !emailsShown ? "waiting" : s.campaignDone ? "done" : s.answered && s.audience ? "choose" : "waiting",
       // Opened again from the email step (or straight away when it was confirmed).
       campaign: s.campaignDone ? "done" : s.answered && s.audience ? "choose" : "waiting",
@@ -779,6 +784,25 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     } catch (e) {
       console.error("[get-started] snapshot write failed:", e);
     }
+  }
+
+  /** Puts back the companies a snapshot holds: rows, answers, and the count already read. */
+  function restoreCompanies(c: SnapshotCompanies) {
+    const id = c.audienceId;
+    rowCount.current.set(id, c.rows.length);
+    setRows((cur) => ({ ...cur, [id]: c.rows }));
+    setCompanyChecks((cur) => ({ ...cur, ...c.checks }));
+    const failing = new Set<number>();
+    for (const r of c.rows) {
+      if (!r.company.domain) continue;
+      const d = checkDomain(r.company.domain);
+      const answer = c.checks[d];
+      if (answer) checkWaits.current.set(d, Promise.resolve(answer));
+      if (answer?.mustPass.state === "fails") failing.add(r.index);
+    }
+    failingRows.current.set(id, failing);
+    wanted.current.set(id, companiesWanted(PREVIEW_COMPANIES, failing.size));
+    setRowsDone((cur) => ({ ...cur, [id]: true }));
   }
 
   // The `leads` arm never walks the email step: it stays waiting, so the stage never lands on it.
@@ -1435,6 +1459,12 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     } catch (e) {
       console.error("[get-started] companies read failed:", e);
       exhausted.current.add(id);
+      // Companies already shown: the page keeps them and says nothing (the audience holds more;
+      // "could not find more" read as a dead audience, owner 2026-11-25). Logged above.
+      if (!first) {
+        setRowsDone((cur) => ({ ...cur, [id]: true }));
+        return;
+      }
       const outOfCredit = e instanceof ApiError && (e.status === 402 || (e.status === 502 && e.body?.upstreamStatus === 402));
       setRowsNote((cur) => ({
         ...cur,
@@ -1522,6 +1552,21 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   function failsMustHave(row: AudienceCompanyRow): boolean {
     return !!row.company.domain && companyChecks[checkDomain(row.company.domain)]?.mustPass.state === "fails";
   }
+
+  // The companies shown and their answers ride the snapshot (back from the wall: the same list).
+  useEffect(() => {
+    if (!audience) return;
+    const shown = rows[audience.audienceId] ?? [];
+    if (shown.length === 0) return;
+    const checks: Record<string, QualificationPreviewCompany> = {};
+    for (const r of shown) {
+      if (!r.company.domain) continue;
+      const d = checkDomain(r.company.domain);
+      if (companyChecks[d]) checks[d] = companyChecks[d];
+    }
+    saveSnapshot({ companies: { audienceId: audience.audienceId, rows: shown, checks } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audience?.audienceId, rows, companyChecks]);
 
   // Every company listed fails a Must have and no other can be asked: no email will come, so the
   // step stops writing and says why (QA 2026-10-17: it said "Writing" for minutes).
@@ -2185,7 +2230,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         <CompaniesStage
           state={steps.companies}
           audienceName={audience?.name ?? null}
-          rows={audRows}
+          rows={shownCompanyRows}
           done={audience ? !!rowsDone[audience.audienceId] : false}
           loadingMore={audience ? !!loadingMore[audience.audienceId] : false}
           building={audience ? !!building[audience.audienceId] : false}
@@ -2208,6 +2253,10 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       />
     );
   }
+
+  /** The companies the step shows: those meeting the Must haves (a failing one is replaced, never shown), the preview's count at most; every one, with why, when none fits. */
+  const fittingRows = audRows.filter((r) => !failsMustHave(r));
+  const shownCompanyRows = noneFits ? audRows : fittingRows.slice(0, PREVIEW_COMPANIES);
 
   /** The Must haves a row's company does not meet, or null (passes, unchecked, or still checking). */
   function unmetOf(row: AudienceCompanyRow): string | null {
@@ -3984,7 +4033,7 @@ function CompaniesStage({
         <span className="ml-auto shrink-0">
           <StateWord
             state={state === "done" && loadingMore ? "running" : state}
-            doneLabel={<><CountUp value={rows.length} format={(n) => String(Math.round(n))} ms={600} /> found</>}
+            doneLabel={<><CountUp value={rows.length} format={(n) => String(Math.round(n))} ms={600} /> of {CAMPAIGN_COMPANIES}</>}
           />
         </span>
       </div>

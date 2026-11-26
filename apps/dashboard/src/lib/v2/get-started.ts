@@ -21,6 +21,10 @@
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
 import { parseSignupDraft, parseSignupFunnel, type SignupCampaignDraft, type SignupFunnel } from "./signup-campaign";
 import { VolumeEstimateSchema, type VolumeEstimate } from "./campaign-volume";
+import type { AudienceCompanyRow, QualificationPreviewCompany } from "../api";
+
+/** The companies the "Find companies" step names; the preview shows the first of them before payment. */
+export const CAMPAIGN_COMPANIES = 100;
 
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
@@ -33,7 +37,7 @@ export const GET_STARTED_STEPS = [
   { key: "value", label: "What a client is worth" },
   { key: "levers", label: "Sharpen your offer" },
   { key: "gives", label: "What you give away" },
-  { key: "companies", label: "Find 100 companies" },
+  { key: "companies", label: `Find ${CAMPAIGN_COMPANIES} companies` },
   { key: "email", label: "Write the first emails" },
   // The END of signup (owner sketch 2026-10-10): ONE campaign, its caps, then the wall.
   { key: "campaign", label: "Your campaign" },
@@ -455,8 +459,30 @@ export interface GetStartedSnapshot {
   offerProposals?: SnapshotOfferProposals | null;
   /** The audiences step 4 showed, same rule. */
   audienceProposals?: SnapshotAudienceProposal[] | null;
+  /** The companies the companies step showed and their Must-have answers (owner 2026-11-25: back from the wall it went from 10 to 5 with "could not find more"): the same list comes back, never read again. */
+  companies?: SnapshotCompanies | null;
   /** When it was last written (ms); a reload resumes only a snapshot younger than the anonymous session. */
   savedAt?: number;
+}
+
+/** The companies step as shown: its audience, the rows read, and each company's Must-have answers (keyed by `checkDomain`). */
+export interface SnapshotCompanies {
+  audienceId: string;
+  rows: AudienceCompanyRow[];
+  checks: Record<string, QualificationPreviewCompany>;
+}
+
+function parseSnapshotCompanies(v: unknown): SnapshotCompanies | null {
+  if (!v || typeof v !== "object") return null;
+  const c = v as Record<string, unknown>;
+  if (typeof c.audienceId !== "string" || !c.audienceId || !Array.isArray(c.rows)) return null;
+  const rows = c.rows.filter(
+    (r): r is AudienceCompanyRow =>
+      !!r && typeof r === "object" && typeof (r as AudienceCompanyRow).index === "number" && !!(r as AudienceCompanyRow).company && !!(r as AudienceCompanyRow).person,
+  );
+  if (rows.length === 0) return null;
+  const checks = c.checks && typeof c.checks === "object" && !Array.isArray(c.checks) ? (c.checks as Record<string, QualificationPreviewCompany>) : {};
+  return { audienceId: c.audienceId, rows, checks };
 }
 
 /** One offer as brand-service proposed it. */
@@ -807,6 +833,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     person: parseSnapshotName(s.person),
     offerProposals: parseSnapshotOfferProposals(s.offerProposals),
     audienceProposals: parseSnapshotAudienceProposals(s.audienceProposals),
+    companies: parseSnapshotCompanies(s.companies),
     savedAt: typeof s.savedAt === "number" ? s.savedAt : undefined,
   };
 }
