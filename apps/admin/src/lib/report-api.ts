@@ -49,6 +49,59 @@ const UPSTREAM_TIMEOUT_MS = 60_000;
 // revalidateTag) will drop staleness to ~0 without changing this.
 const REPORT_REVALIDATE_SECONDS = 4 * 60 * 60;
 
+/** Clerk mints every org id as `org_` + base62. Anything else in the URL is junk
+ *  and is refused before any network call. */
+const CLERK_ORG_ID = /^org_[A-Za-z0-9]{10,64}$/;
+
+/** Orgs already proven to exist in Clerk (positive results only, process-wide).
+ *  A negative is never remembered, so an org created a minute later is not
+ *  refused for the life of the container. */
+const knownReportOrgs = new Set<string>();
+
+/** Does this org exist? Answered by Clerk (a READ), never by the gateway.
+ *
+ *  Why: every gateway call carries `x-external-org-id`, and api-service resolves
+ *  it through client-service, which UPSERTS an org for any unknown external id.
+ *  The public report is no-login and its org id comes from the URL the visitor
+ *  typed, so before this gate any stranger could mint org rows in our identity
+ *  database (2026-11-20: orgs with external_id `x` and an attacker's own org id,
+ *  REPORT-ORG-UPSERT-1127). A real report link names a real Clerk org, so it
+ *  passes unchanged.
+ *
+ *  Returns false on a malformed id or a Clerk 404; THROWS on any other Clerk
+ *  failure (config or outage), so the caller fails closed and loud. */
+export async function reportOrgExists(orgId: string): Promise<boolean> {
+  if (!CLERK_ORG_ID.test(orgId)) return false;
+  if (knownReportOrgs.has(orgId)) return true;
+  const secret = process.env.CLERK_SECRET_KEY;
+  if (!secret) {
+    throw new Error(`reportOrgExists(${orgId}): CLERK_SECRET_KEY missing`);
+  }
+  const res = await fetch(
+    `https://api.clerk.com/v1/organizations/${encodeURIComponent(orgId)}`,
+    {
+      headers: { Authorization: `Bearer ${secret}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+  if (res.status === 404) return false;
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`reportOrgExists(${orgId}) → Clerk ${res.status}: ${body.slice(0, 300)}`);
+  }
+  knownReportOrgs.add(orgId);
+  return true;
+}
+
+/** Refuses (404) before any gateway call when the URL's org does not exist, so
+ *  no public-report path can make client-service create an org or user row. */
+async function assertReportOrg(label: string, orgId: string): Promise<void> {
+  if (!(await reportOrgExists(orgId))) {
+    throw new AdminApiError(`${label}: unknown org ${JSON.stringify(orgId.slice(0, 80))}`, 404, "");
+  }
+}
+
 /** GET against api-service with admin auth + org context. Returns the parsed
  *  body on 2xx. THROWS on any failure (non-2xx, network error, timeout) so
  *  the caller can fall back to an empty/null result rather than poisoning
@@ -66,6 +119,7 @@ export async function adminGet<T>(
   if (!ADMIN_KEY) {
     throw new Error(`[dashboard-report] ADMIN_DISTRIBUTE_API_KEY missing; ${label} failed`);
   }
+  await assertReportOrg(label, orgId);
   const url = `${API_URL}/v1${path}`;
   let res: Response;
   try {
@@ -112,6 +166,7 @@ export async function adminPost<T>(
   if (!ADMIN_KEY) {
     throw new Error(`[dashboard-report] ADMIN_DISTRIBUTE_API_KEY missing; ${label} failed`);
   }
+  await assertReportOrg(label, orgId);
   const url = `${API_URL}/v1${path}`;
   let res: Response;
   try {
@@ -222,7 +277,7 @@ export async function fetchOrgName(orgId: string): Promise<string> {
         // (self-corrects the render the moment the secret is present).
         throw new Error(`fetchOrgName(${orgId}): CLERK_SECRET_KEY missing`);
       }
-      const res = await fetch(`https://api.clerk.com/v1/organizations/${orgId}`, {
+      const res = await fetch(`https://api.clerk.com/v1/organizations/${encodeURIComponent(orgId)}`, {
         headers: {
           Authorization: `Bearer ${secret}`,
           "Content-Type": "application/json",

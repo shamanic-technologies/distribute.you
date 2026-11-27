@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchQuoteRequestDetail } from "@/lib/report-api";
+import { fetchQuoteRequestDetail, reportOrgExists } from "@/lib/report-api";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 
 // On-demand detail for a single quote request, fetched when a report row is
@@ -26,6 +26,10 @@ export async function GET(
 
   // Only the PR-Expert quote report has this surface.
   if (!isExpertQuoteFeature(featureSlug)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  // Unknown org: 404 before any gateway call (the gateway upserts orgs).
+  if (!(await reportOrgExists(orgId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
