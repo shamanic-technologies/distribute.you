@@ -190,7 +190,7 @@ describe("the lab home", () => {
 
   it("states the new offer and none of the old one", () => {
     expect(oldOfferClaims(home)).toEqual([]);
-    const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="quotes"'));
+    const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="faq"'));
     expect(pricing).toContain('<p class="plan-name">Free</p>');
     expect(pricing).toContain("$0 <small>With your own keys</small>");
     expect(pricing).toContain("Every AI step can run on your Claude subscription");
