@@ -4051,11 +4051,11 @@ function CompaniesStage({
       ) : (
         <div className="k-card overflow-hidden">
           <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[660px] text-[13px]">
+            <table className="w-full text-[13px] md:min-w-[660px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
                   <th className="k-label px-3 py-2.5 text-left font-normal first:pl-4">Company</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">Description</th>
+                  <th className="k-label hidden px-3 py-2.5 text-left font-normal md:table-cell">Description</th>
                   <th className="k-label px-3 py-2.5 text-left font-normal last:pr-4">We write to</th>
                 </tr>
               </thead>
@@ -4086,10 +4086,12 @@ function CompaniesStage({
                               </span>
                             )}
                             {r.company.domain && <span className="k-fg3 k-mono block max-w-[220px] truncate text-[12px]">{r.company.domain}</span>}
+                            {/* On a phone the description folds under the company: no column cut at the edge. */}
+                            {r.company.description && <span className="k-fg2 mt-1 line-clamp-2 text-[12.5px] leading-5 md:hidden">{r.company.description}</span>}
                           </span>
                         </span>
                       </td>
-                      <td className="k-fg2 px-3 py-2">
+                      <td className="k-fg2 hidden px-3 py-2 md:table-cell">
                         {r.company.description ? <span className="line-clamp-2 max-w-[280px] text-[12.5px] leading-5">{r.company.description}</span> : <span className="k-fg4">{"—"}</span>}
                         {r.company.industry && <span className="k-fg3 mt-0.5 block max-w-[280px] truncate text-[11.5px] capitalize">{r.company.industry}</span>}
                       </td>

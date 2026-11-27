@@ -209,7 +209,7 @@ function AudienceList({ d }: { d: JournalData }) {
   );
 }
 
-/** The phone's journal: one scrollable line of what was found, then the audience picker. */
+/** The phone's journal: what was found, wrapping onto new lines (never cut at the edge), then the audience picker. */
 export function JournalStrip(d: JournalData) {
   const companyIn = d.steps.company === "done" && d.staged !== "company";
   const competitorsIn = d.steps.competitors === "done" && d.staged !== "competitors" && d.competitors.length > 0;
@@ -218,7 +218,7 @@ export function JournalStrip(d: JournalData) {
   if (!companyIn && !competitorsIn && !offerIn && !audienceIn) return null;
   return (
     <div className="lg:hidden">
-      <div className="k-scroll -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      <div className="flex flex-wrap gap-2">
         {companyIn && (
           <div className="gs-in k-card flex shrink-0 items-center gap-2 px-2.5 py-1.5" style={{ viewTransitionName: stepViewName("company") }}>
             <BrandLogo domain={d.domain} size={16} className="rounded-sm" />
@@ -243,7 +243,7 @@ export function JournalStrip(d: JournalData) {
         )}
       </div>
       {audienceIn && (
-        <div className="k-scroll -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1" style={{ viewTransitionName: stepViewName("audience") }} aria-label="Audiences">
+        <div className="mt-2 flex flex-wrap gap-1.5" style={{ viewTransitionName: stepViewName("audience") }} aria-label="Audiences">
           {d.audienceProposals.map((a, i) => {
             const on = d.audience?.name === a.name;
             return (
