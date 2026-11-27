@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import { ReportSidebar } from "@/components/report/sidebar";
 import { ReportHeader } from "@/components/report/header";
 import { MobileNav } from "@/components/report/mobile-nav";
 import { HeaderSkeleton } from "@/components/report/skeletons";
-import { fetchBrand, fetchOrgName, fetchQuotePitchesByBrand } from "@/lib/report-api";
+import {
+  fetchBrand,
+  fetchOrgName,
+  fetchQuotePitchesByBrand,
+  reportOrgExists,
+} from "@/lib/report-api";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
 import { countsByTab } from "@/lib/report-pitch-tabs";
 import type { PitchTabCounts } from "@/components/report/sidebar";
@@ -42,6 +48,10 @@ interface LayoutProps {
 
 export default async function ReportLayout({ children, params }: LayoutProps) {
   const { orgId, brandId, featureSlug } = await params;
+  // An unknown org is a plain not-found page, decided by Clerk BEFORE any
+  // gateway call: the gateway upserts an org for any external id it is handed
+  // (REPORT-ORG-UPSERT-1127).
+  if (!(await reportOrgExists(orgId))) notFound();
   const basePath = `/report/${orgId}/${brandId}/${featureSlug}`;
   const generatedAt = new Date();
 

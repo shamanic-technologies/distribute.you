@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { LeadEmailSummary } from "@/components/report/leads-table";
-import { fetchEmailsForCampaign } from "@/lib/report-api";
+import { fetchEmailsForCampaign, reportOrgExists } from "@/lib/report-api";
 
 // Lazy-fetch endpoint for the public-report leads drawer. The leads page
 // itself no longer embeds emails into its server-rendered HTML — that
@@ -30,6 +30,11 @@ export async function GET(req: Request, ctx: RouteContext) {
   const campaignId = url.searchParams.get("campaignId");
   const firstName = url.searchParams.get("firstName") ?? "";
   const lastName = url.searchParams.get("lastName") ?? "";
+
+  // Unknown org: 404 before any gateway call (the gateway upserts orgs).
+  if (!(await reportOrgExists(orgId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   if (!campaignId) {
     return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
