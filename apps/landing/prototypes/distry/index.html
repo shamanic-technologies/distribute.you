@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,100&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="preload" as="image" href="/landing/distry/assets/hero-night.webp" media="(min-width: 760px)">
-<link rel="stylesheet" href="/landing/distry/home.css?v=24">
+<link rel="stylesheet" href="/landing/distry/home.css?v=25">
 <script>if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("js")</script>
 </head>
 <body>
@@ -275,28 +275,31 @@
   </figure>
   <div class="wrap">
     <div class="head">
-      <p class="kicker">Three ways to use it</p>
       <h2>Talk to Distry where you already work.</h2>
+      <p class="sub">Say hi. Distry answers in a minute, day or night.</p>
     </div>
-    <div class="why">
-      <article class="why-card" data-lit>
-        <h3>From your AI</h3>
-        <p><b>Add our MCP server once.</b> Then ask for meetings in plain words.</p>
-        <ul class="ticks"><li>Conductor</li><li>Claude Desktop</li><li>ChatGPT</li><li>Hermes</li><li>Grok Bot</li><li>Dots</li></ul>
-        <p><a href="/docs/integrations">Set it up in 2 minutes</a>. The <a href="/docs/api">API</a> is there too.</p>
-      </article>
-      <article class="why-card" data-lit>
-        <h3>On WhatsApp or Telegram</h3>
-        <p><b>Text Distry like a teammate.</b> Distry sends the plan, you answer "go", and the replies come back in the chat.</p>
-        <ul class="ticks"><li>WhatsApp</li><li>Telegram</li></ul>
-        <p><a href="https://wa.me/33680478702?text=Hi%20Distry!%20I%20have%20a%20question%20about%20distribute.you%3A" target="_blank" rel="noopener noreferrer">Say hi on WhatsApp</a></p>
-      </article>
-      <article class="why-card" data-lit>
-        <h3>By email</h3>
-        <p><b>Reply to Distry's email.</b> Distry answers in the same thread, with the next step ready.</p>
-        <ul class="ticks"><li>any inbox</li><li>no app to install</li></ul>
-        <p><a href="/docs/integrations/email">How it works</a></p>
-      </article>
+    <div class="doors">
+      <a class="door door-wa" href="https://wa.me/33680478702?text=Hi%20Distry!%20Get%20me%20meetings%20for%20my%20company." target="_blank" rel="noopener noreferrer" data-lit>
+        <span class="door-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.3-.4.8-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg></span>
+        <b>WhatsApp</b>
+        <span>Open the chat</span>
+      </a>
+      <a class="door door-tg" href="https://t.me/distribute_you_bot" target="_blank" rel="noopener noreferrer" data-lit>
+        <span class="door-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.5L20.5 3.2c.8-.3 1.6.2 1.4 1.1Z"/></svg></span>
+        <b>Telegram</b>
+        <span>Open the chat</span>
+      </a>
+      <a class="door door-mail" href="mailto:distry@distribute.you?subject=Get%20me%20meetings" data-lit>
+        <span class="door-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M3.5 6.5h17v11h-17z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg></span>
+        <b>Email</b>
+        <span>distry@distribute.you</span>
+      </a>
+      <button class="door door-ai" type="button" data-copy="#ai-line" data-lit>
+        <span class="door-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5Zm6.5 11c.3 2.3 1.2 3.2 3.5 3.5-2.3.3-3.2 1.2-3.5 3.5-.3-2.3-1.2-3.2-3.5-3.5 2.3-.3 3.2-1.2 3.5-3.5Z"/></svg></span>
+        <b>Your AI</b>
+        <span data-copy-label>Copy one line</span>
+        <code id="ai-line" hidden>Add distribute.you to your tools: it is an MCP server at https://mcp.distribute.you/mcp. Then sign me in and get me meetings.</code>
+      </button>
     </div>
   </div>
 </section>
@@ -381,6 +384,6 @@
   <a class="buddy-face" href="https://wa.me/33680478702?text=Hi%20Distry!%20I%20have%20a%20question%20about%20distribute.you%3A" target="_blank" rel="noopener noreferrer" aria-label="Chat with Distry"><img src="/landing/distry/assets/distry-avatar-160.webp" alt="" width="72" height="72"></a>
 </aside>
 
-<script src="/landing/distry/distry.js?v=14" defer></script>
+<script src="/landing/distry/distry.js?v=15" defer></script>
 </body>
 </html>

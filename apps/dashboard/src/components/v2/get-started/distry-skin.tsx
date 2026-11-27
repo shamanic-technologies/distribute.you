@@ -6,7 +6,7 @@
  * tokens; the walk itself is not touched.
  */
 export const DISTRY_SKIN_COOKIE = "dy_skin";
-const VERSION = 8;
+const VERSION = 9;
 
 /** Whether this request wears the skin: the query wins, else the cookie. */
 export function wearsDistrySkin(query: string | null, cookie: string | undefined): boolean {
