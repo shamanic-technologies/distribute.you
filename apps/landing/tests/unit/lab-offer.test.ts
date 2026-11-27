@@ -204,12 +204,17 @@ describe("the lab home", () => {
     expect(home).toContain("Or start from your AI</a> · Free with your own keys · $99/month on ours · Cancel anytime");
   });
 
-  it("speaks to the solo founder through three doors, and sells nothing the pivot killed", () => {
+  it("speaks to the solo founder through one-tap doors, and sells nothing the pivot killed", () => {
     // Owner 2026-11-26: the earlier lede and the website form are back, on every start of the home.
     expect(home).toContain("Meet your distribution teammate.");
     expect(home).not.toContain("solo founder never had");
     const doors = home.slice(home.indexOf('id="doors"'), home.indexOf("<!--press-proof-->"));
-    for (const name of ["From your AI", "On WhatsApp or Telegram", "By email", "Conductor", "Claude Desktop", "ChatGPT", "Hermes", "Grok Bot", "Dots"]) expect(doors).toContain(name);
+    // Owner 2026-11-27: each door opens the conversation in one tap, never a card of prose.
+    for (const name of ["WhatsApp", "Telegram", "Email", "Your AI"]) expect(doors).toContain(`<b>${name}</b>`);
+    for (const href of ["https://wa.me/33680478702?text=", "https://t.me/distribute_you_bot", "mailto:distry@distribute.you"]) expect(doors).toContain(href);
+    expect(doors).toContain('data-copy="#ai-line"');
+    expect(doors).toContain('<code id="ai-line" hidden>Add distribute.you to your tools: it is an MCP server at https://mcp.distribute.you/mcp.');
+    expect(doors).not.toContain('class="ticks"');
     // The hero starts from the website, into the web walk in the lab's skin (owner 2026-11-26), the AI start beside it.
     const hero = home.slice(home.indexOf('id="top"'), home.indexOf('id="how"'));
     expect(hero).not.toContain("claude mcp add");
