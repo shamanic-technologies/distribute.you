@@ -50,6 +50,9 @@ describe("Alerts: the served payload parses and reads in plain words", () => {
     const test = occurrenceWords("security_alert", occ({ kind: "egress", summary: "Egress spike on the box", evidence: "12 GB in 1 h", test: "true" }));
     expect(test.what).toBe("Test: Egress spike on the box");
     expect(test.detail).toBe("12 GB in 1 h");
+    const ours = occurrenceWords("security_alert", occ({ kind: "path_traversal", summary: "Path traversal tried", evidence: "From IP: 94.131.226.180", ours: "94.131.226.180 logged into our server with our SSH key in the last 24 h" }));
+    expect(ours.what).toBe("Ours: Path traversal tried");
+    expect(ours.detail).toBe("Not emailed: 94.131.226.180 logged into our server with our SSH key in the last 24 h · From IP: 94.131.226.180");
   });
 
   it("an alert type this page does not know still reads from its facts", () => {

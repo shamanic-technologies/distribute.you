@@ -128,13 +128,16 @@ export function occurrenceWords(eventType: string, o: MonitoringAlertOccurrence)
     }
     case "security_alert": {
       // SECURITY-ALERTS-1128: the watcher's own plain-English summary is the headline, its evidence lines the detail.
-      // A proof-of-fire replay (`test: "true"`) says so first, so it never reads as a real break-in.
+      // A proof-of-fire replay (`test: "true"`) says so first, so it never reads as a real break-in. An alert caused by us
+      // (served `ours` = the producer's reason, SECURITY-ALERTS-OURS-1128: recorded, not emailed) says so, reason first in the detail.
       const kind = f("kind");
       const head = f("summary") ?? `Security alert${kind ? ` from the ${kind} watch` : ""}`;
       const lines = (f("evidence") ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
       const first = f("firstSeenAt");
       if (first && !Number.isNaN(Date.parse(first))) lines.push(`First seen ${when(first)}`);
-      return { what: f("test") === "true" ? `Test: ${head}` : head, detail: lines.join(" · ") || null, campaign };
+      const ours = f("ours");
+      if (ours && f("test") !== "true") lines.unshift(`Not emailed: ${ours}`);
+      return { what: f("test") === "true" ? `Test: ${head}` : ours ? `Ours: ${head}` : head, detail: lines.join(" · ") || null, campaign };
     }
     default: {
       const facts = Object.keys(m ?? {})
