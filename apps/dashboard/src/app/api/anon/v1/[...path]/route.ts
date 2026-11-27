@@ -6,6 +6,7 @@ import {
   clearAnonSessionCookie,
 } from "@/lib/anon-session-cookie";
 import { ANON_PRINCIPAL, readAnonSession, signAnonSession } from "@/lib/anon-session-token";
+import { upstreamV1Url } from "@/lib/upstream-path";
 
 /**
  * The gateway, for a visitor who has not signed up yet.
@@ -69,6 +70,13 @@ async function proxyRequest(
     }
 
     const { path } = await segmentData.params;
+    // SECRETS-ROTATE-1127: refuse a traversal before the allowlist even reads the
+    // path; the URL fetched below is the one this builds, never a re-join.
+    const upstream = upstreamV1Url(API_URL, path, req.nextUrl.searchParams);
+    if (!upstream.ok) {
+      console.error(`[anon-proxy] refused ${req.method} ${req.nextUrl.pathname}: ${upstream.reason}`);
+      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    }
     const endpoint = `/${path.join("/")}`;
 
     // The query rides along: a route that names the brand in its query (the ranked
@@ -85,10 +93,7 @@ async function proxyRequest(
       return NextResponse.json({ error: "Not available" }, { status: 403 });
     }
 
-    const url = new URL(`/v1${endpoint}`, API_URL);
-    req.nextUrl.searchParams.forEach((value, key) => {
-      url.searchParams.set(key, value);
-    });
+    const url = upstream.url;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

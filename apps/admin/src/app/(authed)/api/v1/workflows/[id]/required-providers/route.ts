@@ -4,6 +4,7 @@ import { setIdentityHeader } from "@/lib/identity-header";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { checkProxyOrg } from "@/lib/proxy-org";
 import { getOrgName } from "@/lib/org-name";
+import { upstreamV1Url } from "@/lib/upstream-path";
 
 export const maxDuration = 15;
 
@@ -63,7 +64,14 @@ export async function GET(
       console.warn("[workflows/required-providers] currentUser() failed:", err);
     }
 
-    const res = await fetch(`${API_URL}/v1/workflows/${encodeURIComponent(id)}`, {
+    // SECRETS-ROTATE-1127: the id is browser-supplied; a dot segment or encoded
+    // slash must never steer the call off /v1/workflows/<id>.
+    const upstream = upstreamV1Url(API_URL, ["workflows", id]);
+    if (!upstream.ok) {
+      console.error(`[workflows/required-providers] refused id: ${upstream.reason}`);
+      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    }
+    const res = await fetch(upstream.url.toString(), {
       method: "GET",
       headers,
     });

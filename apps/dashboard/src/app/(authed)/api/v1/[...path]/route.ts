@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { upstreamV1Url } from "@/lib/upstream-path";
 import { setIdentityHeader } from "@/lib/identity-header";
 import { checkProxyOrg } from "@/lib/proxy-org";
 import { getOrgName } from "@/lib/org-name";
@@ -15,6 +16,20 @@ async function proxyRequest(
   segmentData: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    // SECRETS-ROTATE-1127: the upstream URL is built ONLY by upstreamV1Url, before
+    // anything else runs. A dot segment, an encoded slash or backslash, or a path
+    // that would leave /v1/ on the gateway is refused here, whatever Caddy or the
+    // gateway do.
+    const { path: rawPath } = await segmentData.params;
+    const upstream = upstreamV1Url(API_URL, rawPath, req.nextUrl.searchParams);
+    if (!upstream.ok) {
+      console.error(
+        `[api-proxy] refused ${req.method} ${req.nextUrl.pathname}: ${upstream.reason}`
+      );
+      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    }
+    const url = upstream.url;
+
     const {
       userId: clerkUserId,
       orgId: clerkOrgId,
@@ -43,11 +58,6 @@ async function proxyRequest(
     const orgErr = checkProxyOrg(clerkOrgId, req.headers.get("x-active-org-id"));
     if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
 
-    const { path } = await segmentData.params;
-    const url = new URL(`/v1/${path.join("/")}`, API_URL);
-    req.nextUrl.searchParams.forEach((value, key) => {
-      url.searchParams.set(key, value);
-    });
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
