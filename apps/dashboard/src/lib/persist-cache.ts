@@ -308,6 +308,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "instagramAccounts",
   // Free credits committed but not yet granted, on the Billing page.
   "freeCreditPromises",
+  // What each special offer (Black Friday...) brought the org, on the Billing page.
+  "specialOffers",
   // Brand metadata + config + small summaries.
   "brand",
   "brands",

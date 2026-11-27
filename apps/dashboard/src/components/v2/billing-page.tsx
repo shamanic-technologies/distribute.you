@@ -2,7 +2,9 @@
 
 import { offersNoFreeMoney } from "@/lib/v2/get-started";
 import { useState } from "react";
-import { getFreeCreditPromises, getOrgUsage } from "@/lib/api";
+import { getFreeCreditPromises, getOrgUsage, getSpecialOffers } from "@/lib/api";
+import { isSpecialOfferGrant, specialOffersView } from "@/lib/special-offers";
+import { SpecialOffersList } from "@/components/v2/special-offers-list";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollIntervalFor } from "@/lib/query-options";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
@@ -120,7 +122,12 @@ export function V2BillingPage() {
   // Free credit shows only once there is some, given or on the way (owner 2026-11-02:
   // "No free credit yet" was a section saying nothing). Same key as ComingCreditsCard.
   const promises = useAuthQuery(["freeCreditPromises"], () => getFreeCreditPromises());
-  const hasFreeCredit = c.grants.length > 0 || (promises.data?.promises.length ?? 0) > 0;
+  // A special offer's credit shows under its offer, never as free credit: the offers are
+  // not cumulative (owner, SPECIAL-OFFER-BF-1127).
+  const gifts = c.grants.filter((grant) => !isSpecialOfferGrant(grant));
+  const hasFreeCredit = gifts.length > 0 || (promises.data?.promises.length ?? 0) > 0;
+  const specialOffers = useAuthQuery(["specialOffers"], () => getSpecialOffers());
+  const offersView = specialOffersView({ data: specialOffers.data, isError: specialOffers.isError });
   const customCents = c.customAmount ? Math.round(parseFloat(c.customAmount) * 100) || 0 : c.topupSelected;
 
   const sub = c.accountPending
@@ -454,10 +461,10 @@ export function V2BillingPage() {
             no-free-money offers (owner 2026-10-29): its $5 at creation is an advance. */}
         {account && !offersNoFreeMoney(account) && hasFreeCredit && (
         <Section id="free-credit" title="Free credit" description="Credit we added to your account, and credit that unlocks as your payments grow.">
-          {c.grants.length > 0 && (
+          {gifts.length > 0 && (
           <div className="k-card overflow-hidden">
               <ul>
-                {c.grants.map((grant) => (
+                {gifts.map((grant) => (
                   <li key={grant.id} className="k-row k-line-subtle flex items-center justify-between gap-3 border-b px-4 py-2.5 last:border-b-0">
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-medium">{creditGrantLabel(grant.reason)}</p>
@@ -474,10 +481,28 @@ export function V2BillingPage() {
               </ul>
           </div>
           )}
-          <div className={`v2-embed ${c.grants.length > 0 ? "mt-3" : ""}`}>
+          <div className={`v2-embed ${gifts.length > 0 ? "mt-3" : ""}`}>
             <ComingCreditsCard />
           </div>
         </Section>
+        )}
+
+        {/* Special offers (Black Friday...): shown only once the org has one; a failed read
+            says so in one line, never as $0 (SPECIAL-OFFER-BF-1127). */}
+        {offersView.kind !== "hidden" && (
+          <Section
+            id="special-offers"
+            title="Special offers"
+            description="What you paid under each offer, and the free credit it gave you."
+          >
+            {offersView.kind === "list" ? (
+              <SpecialOffersList offers={offersView.offers} />
+            ) : (
+              <div className="k-card">
+                <EmptyNote>We could not load your special offers right now.</EmptyNote>
+              </div>
+            )}
+          </Section>
         )}
 
         {/* Payments. */}
