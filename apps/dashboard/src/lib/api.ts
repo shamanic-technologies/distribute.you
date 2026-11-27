@@ -2584,6 +2584,8 @@ export const STAFF_MONITORING_PATHS = {
   skills: "/chat/skills",
   // Open security advisories per prod repo per day + the served red/green verdict (features-service, SEC-ADVISORIES-MONITORING-1025).
   securityAdvisories: "/features/audit/security-advisories",
+  // Secrets read/written, wrong-key requests and security incidents per UTC day + the served red verdict (key-service via api-service #1598, SECURITY-ALERTS-1128-CHART).
+  keySecurity: "/keys/ops/security-daily",
   // The production box's load, memory, swap and top containers + the served red/green verdict (features-service, BOX-OVERLOAD-1026-MONITORING).
   boxHealth: "/features/audit/box-health",
   // Every box watchdog's latest run, verdict and daily series (features-service, BOX-WATCHDOGS-1030): they report here, never by email.
@@ -14097,6 +14099,14 @@ import { SecurityAdvisoriesSchema as StaffSecurityAdvisoriesSchema, type Securit
 /** features-service's daily audit of every prod repo over the last `days` UTC days, with its served verdict (api-service #1382). */
 export async function getStaffSecurityAdvisories(days: number): Promise<StaffSecurityAdvisories> {
   return parseStaff("getStaffSecurityAdvisories", StaffSecurityAdvisoriesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.securityAdvisories}?days=${days}`));
+}
+
+// ─── Monitoring > Security > Secrets (SECURITY-ALERTS-1128-CHART) ───
+import { KeySecuritySchema as StaffKeySecuritySchema, type KeySecurity as StaffKeySecurity } from "./monitoring/key-security";
+
+/** key-service's secret reads/writes, wrong-key requests and incidents over the last `days` UTC days, with its served red verdict. */
+export async function getStaffKeySecurity(days: number): Promise<StaffKeySecurity> {
+  return parseStaff("getStaffKeySecurity", StaffKeySecuritySchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.keySecurity}?days=${days}`));
 }
 
 // ─── Monitoring > Box (BOX-OVERLOAD-1026-MONITORING) ───
