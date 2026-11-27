@@ -50,6 +50,7 @@ import { cappedToday, todayRow } from "@/lib/monitoring/distry-spend";
 import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
 import { ShieldCheckIcon } from "@phosphor-icons/react/dist/csr/ShieldCheck";
 import { SecurityAdvisoriesPage, SecurityAdvisoriesTile, useSecurityAdvisories } from "@/components/v2/monitoring-security";
+import { SecretsPage, SecretsTile, useKeySecurity } from "@/components/v2/monitoring-secrets";
 import { CpuIcon } from "@phosphor-icons/react/dist/csr/Cpu";
 import { BoxHealthPage, BoxHealthTile, useBoxHealth } from "@/components/v2/monitoring-box";
 import { BoxChecksPage, BoxChecksTile, useBoxChecks } from "@/components/v2/monitoring-watchdogs";
@@ -161,7 +162,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
   emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Inbox placement, mailboxes, domains, and every email we sent" },
   whatsapp: { name: "WhatsApp", color: "var(--data-lime)", Icon: WhatsappLogoIcon, sub: "Whether every linked line can send, and every reply Sophie wrote left" },
-  security: { name: "Security", color: "var(--data-rose)", Icon: ShieldCheckIcon, sub: "Whether our prod repos carry open security advisories" },
+  security: { name: "Security", color: "var(--data-rose)", Icon: ShieldCheckIcon, sub: "Whether our prod repos carry open security advisories, and who read or changed our secrets" },
   box: { name: "Box", color: "var(--data-sky)", Icon: CpuIcon, sub: "Whether the production server is overloaded, and whether its own checks pass" },
   triggers: { name: "Triggers", color: "var(--data-amber)", Icon: LightningIcon, sub: "Whether every trigger still fires, reaches its campaign, and gets its answer" },
   tools: { name: "Connected tools", color: "var(--data-sky)", Icon: PlugsConnectedIcon, sub: "Whether every tool a client connected still brings records in" },
@@ -204,6 +205,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "whatsapp/lines": { section: "whatsapp", title: "Lines", question: "Is every WhatsApp line connected, and since when is one down?" },
   "whatsapp/sophie": { section: "whatsapp", title: "Sophie's replies", question: "Did every WhatsApp reply Sophie wrote reach the person?" },
   "security/advisories": { section: "security", title: "Advisories", question: "Does any prod repo carry an open critical or high advisory?" },
+  "security/secrets": { section: "security", title: "Secrets", question: "Who read or changed our secrets, and did anything look wrong?" },
   "box/load": { section: "box", title: "Load and memory", question: "Is the production server overloaded, and which containers eat its CPU and memory?" },
   "box/watchdogs": { section: "box", title: "Watchdogs", question: "Is every check the production server runs on itself passing?" },
   "box/page-speed": { section: "box", title: "Page speed", question: "Does every dashboard page open in under 1 second?" },
@@ -308,6 +310,8 @@ export function V2Monitoring() {
       <p className="k-fg3 mt-2 text-[13px]">
         {meta.section === "whatsapp"
           ? "Every org pooled, read live from production. Times are UTC."
+          : view.page === "security/secrets"
+          ? "Every secret read or written in key-service, and every request with a wrong service key. Read live from production. Days are UTC."
           : meta.section === "security"
           ? "Every repo running in prod, audited once a day. Read live from production. Days are UTC."
           : meta.section === "box"
@@ -385,6 +389,7 @@ export function V2Monitoring() {
         {view.page === "whatsapp/lines" && <WhatsappLinesPage />}
         {view.page === "whatsapp/sophie" && <SophieRepliesPage />}
         {view.page === "security/advisories" && <SecurityAdvisoriesPage />}
+        {view.page === "security/secrets" && <SecretsPage />}
         {view.page === "box/load" && <BoxHealthPage />}
         {view.page === "box/watchdogs" && <BoxChecksPage />}
         {view.page === "box/page-speed" && <PageSpeedPage />}
@@ -503,6 +508,7 @@ function Hub({ base }: { base: string }) {
   const ledger = useLedgerCheck();
   const recon = useLedgerReconciliation();
   const sec = useSecurityAdvisories();
+  const secrets = useKeySecurity();
   const box = useBoxHealth();
   const watchdogs = useBoxChecks();
   const pageSpeed = usePageSpeed();
@@ -575,6 +581,8 @@ function Hub({ base }: { base: string }) {
         <ReconciliationTile href={href("ledger/reconciliation")} />
         {/* Open critical/high advisories on a prod repo, or no audit report for 36 h (SEC-ADVISORIES-MONITORING-1025): red here IS the alert. */}
         <SecurityAdvisoriesTile href={href("security/advisories")} />
+        {/* A security incident opened in the last 24 h or a staff alert key-service could not deliver (SECURITY-ALERTS-1128-CHART): red here; key-service already emails staff once per incident. */}
+        <SecretsTile href={href("security/secrets")} />
         {/* Load over 1.5x the cores, under 1 GB free, swap over half full, a memory kill, or no sample for 20 min (BOX-OVERLOAD-1026-MONITORING): red here IS the alert. */}
         <BoxHealthTile href={href("box/load")} />
         {/* A deploy, service, queue, Jev, own-credit or social cron that found a problem or went silent (BOX-WATCHDOGS-1030): red here IS the alert, never an email. */}
@@ -1216,10 +1224,11 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={1}>Security</SectionTitle>
-      <Section section="security" count={1} grid={false}>
+      <SectionTitle count={2}>Security</SectionTitle>
+      <Section section="security" count={2} grid={false}>
         <HubChips>
           <HubChip href={href("security/advisories")} color={sec.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Advisories" />
+          <HubChip href={href("security/secrets")} color={secrets.data?.red ? "var(--data-rose)" : "var(--data-teal)"} label="Secrets" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -1233,6 +1242,19 @@ function Hub({ base }: { base: string }) {
               note: "critical, high or no audit",
             },
             { label: "Repos watched", value: sec.data?.repos.length, note: "in the last 30 days" },
+          ]}
+        />
+        <Card
+          href={href("security/secrets")}
+          page="security/secrets"
+          error={secrets.isError && !secrets.data}
+          cells={[
+            {
+              label: "Incidents in 24 h",
+              value: secrets.data && <span style={{ color: secrets.data.red ? "var(--data-rose)" : undefined }}>{secrets.data.incidentsLast24h}</span>,
+              note: secrets.data?.undeliveredAlerts ? `alerts not delivered: ${secrets.data.undeliveredAlerts}` : "test incidents left out",
+            },
+            { label: "Secrets read today", value: secrets.data?.days[secrets.data.days.length - 1]?.secretReads, note: "in key-service" },
           ]}
         />
         </div>
