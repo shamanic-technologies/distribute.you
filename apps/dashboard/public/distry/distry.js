@@ -390,8 +390,12 @@ function start() {
   $$("[data-copy]").forEach((button) => {
     button.addEventListener("click", async () => {
       await navigator.clipboard.writeText(document.querySelector(button.dataset.copy).textContent);
-      button.textContent = "Copied";
-      setTimeout(() => { button.textContent = "Copy"; }, 1600);
+      // A door tile names its label span; a plain Copy button is its own label.
+      const label = button.querySelector("[data-copy-label]") || button;
+      const was = label.textContent;
+      label.textContent = "Copied. Paste it in your AI.";
+      if (label === button) label.textContent = "Copied";
+      setTimeout(() => { label.textContent = was; }, 1600);
     });
   });
 
