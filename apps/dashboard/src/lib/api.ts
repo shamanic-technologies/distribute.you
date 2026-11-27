@@ -50,6 +50,7 @@ import {
 import { OfferOutcomeCostSeriesSchema, type OfferOutcomeCostSeries } from "./v2/outcome-cost-series";
 import { PublishedUnitsSchema, type PublishedOutcomeKey, type PublishedUnits } from "./v2/published-units";
 import { browserHasAnonSession } from "./anon-session-cookie";
+import { parseSpecialOffers, type SpecialOffer } from "./special-offers";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
 import { UniboxLeadCardSchema, UniboxLeadStateSchema, UniboxLifecycleCountsSchema, UniboxPageSchema, uniboxCardQuery, uniboxCountsQuery, uniboxQuery, type LeadState, type UniboxFilters, type UniboxLeadCard, type UniboxLifecycleCounts, type UniboxPage, type UniboxScope, type UniboxSort } from "./unibox-leads";
@@ -11981,6 +11982,12 @@ const FreeCreditPromisesResponseSchema = z.object({
   outstanding_total_cents: z.string().optional(),
   promises: z.array(FreeCreditPromiseSchema),
 });
+
+/** GET /billing/special-offers — what each special offer (Black Friday...) brought this org. */
+export async function getSpecialOffers(token?: string): Promise<SpecialOffer[]> {
+  const raw = await apiCall<unknown>("/billing/special-offers", { token });
+  return parseSpecialOffers(raw);
+}
 
 /** GET /billing/free-credit-promises — the free credits this org is still waiting on. */
 export async function getFreeCreditPromises(

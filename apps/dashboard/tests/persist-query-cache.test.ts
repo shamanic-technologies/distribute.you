@@ -66,7 +66,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       // config / registries / tenant identity
       "features", "feature", "statsRegistry", "entityRegistry",
       "orgIdentity", "billingAccount", "subscription", "creditGrants", "billingPayments",
-      "inviteStatus", "freeCreditPromises",
+      "inviteStatus", "freeCreditPromises", "specialOffers",
       // brand metadata + config
       "brand", "brands",
       "brandSpendableBudget", "brandDailyBudget", "brandConversionToken",
