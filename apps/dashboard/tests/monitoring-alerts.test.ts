@@ -38,6 +38,20 @@ describe("Alerts: the served payload parses and reads in plain words", () => {
     expect(reasonWords("Raised 9 times in 30 days, last at 2026-11-11T06:48:54.141Z")).toBe("Raised 9 times in 30 days, last at Nov 11, 06:48 UTC");
   });
 
+  it("a security alert reads its summary as the headline and its evidence as the detail, a test replay marked Test", () => {
+    const occ = (metadata: Record<string, string>) => ({ raisedAt: "2026-11-28T09:00:00Z", orgId: null, campaignId: null, metadata });
+    const real = occurrenceWords(
+      "security_alert",
+      occ({ kind: "caddy", summary: "Path traversal tried on api.distribute.you", evidence: "IP 1.2.3.4\npath /v1/../etc/passwd\n\ncount 12", firstSeenAt: "2026-11-28T08:41:00Z", eventId: "evt_1" }),
+    );
+    expect(real.what).toBe("Path traversal tried on api.distribute.you");
+    expect(real.detail).toBe("IP 1.2.3.4 · path /v1/../etc/passwd · count 12 · First seen Nov 28, 08:41 UTC");
+    expect(`${real.what} ${real.detail}`).not.toMatch(/kind:|eventId|evt_1/);
+    const test = occurrenceWords("security_alert", occ({ kind: "egress", summary: "Egress spike on the box", evidence: "12 GB in 1 h", test: "true" }));
+    expect(test.what).toBe("Test: Egress spike on the box");
+    expect(test.detail).toBe("12 GB in 1 h");
+  });
+
   it("an alert type this page does not know still reads from its facts", () => {
     const w = occurrenceWords("brand_new_alert", { raisedAt: "2026-11-11T00:00:00Z", orgId: null, campaignId: null, metadata: { orgId: "x", thing: "broke", count: "3" } });
     expect(w.what).toBe("thing: broke");

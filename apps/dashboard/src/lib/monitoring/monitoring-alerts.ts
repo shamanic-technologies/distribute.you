@@ -126,6 +126,16 @@ export function occurrenceWords(eventType: string, o: MonitoringAlertOccurrence)
         campaign,
       };
     }
+    case "security_alert": {
+      // SECURITY-ALERTS-1128: the watcher's own plain-English summary is the headline, its evidence lines the detail.
+      // A proof-of-fire replay (`test: "true"`) says so first, so it never reads as a real break-in.
+      const kind = f("kind");
+      const head = f("summary") ?? `Security alert${kind ? ` from the ${kind} watch` : ""}`;
+      const lines = (f("evidence") ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const first = f("firstSeenAt");
+      if (first && !Number.isNaN(Date.parse(first))) lines.push(`First seen ${when(first)}`);
+      return { what: f("test") === "true" ? `Test: ${head}` : head, detail: lines.join(" · ") || null, campaign };
+    }
     default: {
       const facts = Object.keys(m ?? {})
         .filter((k) => !HIDDEN_FACTS.has(k))
