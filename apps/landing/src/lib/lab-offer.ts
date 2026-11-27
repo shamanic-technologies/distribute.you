@@ -521,30 +521,13 @@ export function meetingsOnlyShowcase(html: string): string {
   });
 }
 
-/** The four outlets the lab names, in this order, still (owner 2026-11-25: « arrête le défilement, que 4, les plus prestigieux »). */
-export const LAB_PRESS = ["COO Insider", "CMO Times", "TechBullion", "Grit Daily News"] as const;
-
-/** The served press band cut to `LAB_PRESS`, one still line: the marquee's copy and every other outlet leave. */
-export function stillPress(html: string): string {
-  return html.replace(/<div class="press-marquee"><ul class="press-track" data-brand-proof="press">([\s\S]*?)<\/ul><\/div>/, (_all, items: string) => {
-    const byName = new Map<string, string>();
-    for (const li of items.match(/<li>[\s\S]*?<\/li>/g) ?? []) {
-      // A square mark names its outlet in the span beside it, a wordmark in its alt.
-      const name = /<span title="([^"]*)"/.exec(li)?.[1] ?? /<img class="wordmark"[^>]* alt="([^"]+)"/.exec(li)?.[1];
-      if (name && !byName.has(name)) byName.set(name, li);
-    }
-    const kept = LAB_PRESS.map((name) => {
-      const li = byName.get(name);
-      if (!li) console.error(`[landing] lab press outlet not served: ${name}`);
-      return li ?? "";
-    }).join("");
-    return `<div class="press-still"><ul class="press-track" data-brand-proof="press">${kept}</ul></div>`;
-  });
-}
-
-/** The wall and the press band are rendered in the live site's markup: they join the lab home's day band. */
+/**
+ * The wall and the press band are rendered in the live site's markup: they join the lab home's day band.
+ * The press band keeps the live site's endless scroll over every served outlet (owner 2026-11-27:
+ * « Remets la liste complète déroulante », lifts the 2026-11-25 four still outlets).
+ */
 export function dressBrandProof(html: string): string {
-  return stillPress(html)
+  return html
     .replace('<section class="framed" id="clients">', '<section class="framed day" id="clients" data-sky="1" data-say="My clients come from great places.">')
     .replace('<section class="framed" id="featured">', '<section class="framed day" id="featured" data-sky="1" data-say="The press wrote about us.">')
     .replace("<h3>As featured in</h3>", "<h3>Featured in</h3>");

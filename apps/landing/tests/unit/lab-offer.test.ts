@@ -190,7 +190,7 @@ describe("the lab home", () => {
 
   it("states the new offer and none of the old one", () => {
     expect(oldOfferClaims(home)).toEqual([]);
-    const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="quotes"'));
+    const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="faq"'));
     expect(pricing).toContain('<p class="plan-name">Free</p>');
     expect(pricing).toContain("$0 <small>With your own keys</small>");
     expect(pricing).toContain("Every AI step can run on your Claude subscription");
@@ -290,20 +290,14 @@ describe("dressBrandProof", () => {
   });
 });
 
-describe("the lab press band (owner 2026-11-25)", () => {
-  it("keeps only the four named outlets, in order, still", async () => {
-    const { stillPress, LAB_PRESS } = await import("../../src/lib/lab-offer");
-    const li = (n: string) => `<li><a href="https://x.test/${n.length}"><img src="https://l.test/a.png" alt=""><span title="${n}">${n}</span></a></li>`;
-    const copy = (n: string) => `<li aria-hidden="true"><a href="https://x.test" tabindex="-1"><img src="https://l.test/a.png" alt=""><span title="${n}">${n}</span></a></li>`;
+describe("the lab press band (owner 2026-11-27)", () => {
+  it("keeps every served outlet, scrolling", () => {
     const names = ["TechBullion", "Grit Daily News", "College Recruiter", "CMO Times", "COO Insider", "Lawyer Magazine"];
-    const html = `<div class="press-marquee"><ul class="press-track" data-brand-proof="press">${names.map(li).join("")}${names.map(copy).join("")}</ul></div>`;
-    const out = stillPress(html);
-    expect(out).not.toContain("press-marquee");
-    expect(out).not.toContain("aria-hidden");
-    expect([...out.matchAll(/<span title="([^"]*)"/g)].map((m) => m[1])).toEqual([...LAB_PRESS]);
-    // An outlet drawn as a wordmark carries no span: its name is read from the alt.
-    const wm = (n: string) => `<li><a href="https://x.test/${n.length}"><img class="wordmark" src="https://l.test/w.png" alt="${n}" title="${n}"></a></li>`;
-    const wide = stillPress(`<div class="press-marquee"><ul class="press-track" data-brand-proof="press">${names.map(wm).join("")}</ul></div>`);
-    expect([...wide.matchAll(/<img class="wordmark"[^>]* alt="([^"]*)"/g)].map((m) => m[1])).toEqual([...LAB_PRESS]);
+    const li = (n: string) => `<li><a href="https://x.test/${n.length}"><span title="${n}">${n}</span></a></li>`;
+    const band = `<section class="framed" id="featured"><h3>As featured in</h3><div class="press-marquee"><ul class="press-track" data-brand-proof="press">${names.map(li).join("")}</ul></div></section>`;
+    const out = dressBrandProof(band);
+    expect(out).toContain('<div class="press-marquee">');
+    expect(out).not.toContain("press-still");
+    expect([...out.matchAll(/<span title="([^"]*)"/g)].map((m) => m[1])).toEqual(names);
   });
 });
