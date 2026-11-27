@@ -3,7 +3,7 @@
  * skill. Loaded only when the walk renders <DistrySkin/>, so no other visitor gets it.
  * The walk is Keel-tokened: the night re-points the tokens, and every Keel surface is a
  * sheet of paper carrying its own inks. The first block is SHARED with the landing's
- * skin.css (sky, fireflies, Distry): keep them in step.
+ * skin.css (the sky): keep them in step.
  */
 html.distry {
   --night: #060a22;
@@ -58,19 +58,7 @@ html.distry {
   opacity: var(--day, 0);
   transform: translate3d(0, calc((1 - var(--t)) * 110vh), 0);
 }
-.d-fireflies { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 6; pointer-events: none; }
-
-@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
-/* ---------- Distry, walking beside you ---------- */
-.buddy { position: fixed; z-index: 40; right: 18px; bottom: 18px; display: flex; align-items: flex-end; gap: 10px; pointer-events: none; }
-.buddy-face { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex: none; box-shadow: 0 0 0 3px var(--gold), 0 0 40px rgba(246, 198, 103, 0.55), 0 14px 30px rgba(3, 6, 24, 0.45); animation: bob 4.6s ease-in-out infinite; }
-.buddy-face img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.18); }
-.buddy.is-excited .buddy-face { animation: hop 0.6s var(--ease) infinite; }
-@keyframes hop { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-16px) scale(1.06); } 70% { transform: translateY(0) scale(0.97, 1.03); } }
-.buddy-say { max-width: 240px; padding: 10px 14px; margin-bottom: 18px; border-radius: 18px 18px 4px 18px; background: var(--paper); color: var(--ink); font-size: 0.92rem; font-weight: 500; line-height: 1.35; box-shadow: 0 12px 30px rgba(3, 6, 24, 0.35); opacity: 0; transform: translateY(8px) scale(0.94); transform-origin: bottom right; transition: opacity 0.4s ease, transform 0.5s var(--ease); }
-.buddy-say.is-on { opacity: 1; transform: none; }
-.spark { position: fixed; z-index: 41; width: 10px; height: 8px; border-radius: 2px; background: var(--gold); box-shadow: 0 0 12px 3px rgba(246, 198, 103, 0.8); pointer-events: none; animation: spark 1.1s ease-out forwards; }
-@keyframes spark { to { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)); opacity: 0; } }
+/* No fireflies and no Distry bubble on the sign-up walk (owner 2026-11-27). */
 
 
 
@@ -103,7 +91,6 @@ html.distry .v2-root .k-btn-accent.k-cta:hover:not(:disabled) { background: line
 html.distry .v2-root .k-input.k-cta-input { border-radius: 999px; padding-inline: 18px; }
 /* the morning painting beside the walk: Distry brings the news with the coffee */
 html.distry .d-backdrop { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: url(/distry/assets/morning-kitchen.webp) 100% 50% / cover no-repeat; opacity: 0.5; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%, #000 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 55%, #000 100%); }
-@media (prefers-reduced-motion: reduce) { html.distry .d-fireflies { display: none; } html.distry .buddy-face { animation: none; } }
 
 /* The skin is rendered INSIDE .v2-root (the page's children), which is its own stacking
    context: the sky and the painting go behind the walk, never over it. */
@@ -111,5 +98,4 @@ html.distry .v2-root .d-sky { z-index: -2; }
 html.distry .v2-root .d-backdrop { z-index: -1; opacity: 0.6; -webkit-mask-image: linear-gradient(90deg, transparent 50%, #000 82%, #000 100%); mask-image: linear-gradient(90deg, transparent 50%, #000 82%, #000 100%); }
 @media (max-width: 760px) {
   html.distry .v2-root .d-backdrop { opacity: 0.1; -webkit-mask-image: none; mask-image: none; }
-  html.distry .buddy-say { display: none; }
 }

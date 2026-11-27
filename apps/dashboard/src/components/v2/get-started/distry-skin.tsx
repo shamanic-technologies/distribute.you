@@ -1,12 +1,12 @@
 /**
  * The Distry skin on the sign-up walk (`distry-brand` skill), behind a private switch:
  * `/get-started?skin=distry` turns it on and remembers it in a cookie, `?skin=off` turns
- * it off. Nobody else is served any of this. It adds the night sky, the fireflies, the
- * painting and Distry around the walk (at daybreak since 2026-11-25) and loads a stylesheet that re-points Keel's
+ * it off. Nobody else is served any of this. It adds the sky and the
+ * painting around the walk (no fireflies, no Distry bubble: owner 2026-11-27) (at daybreak since 2026-11-25) and loads a stylesheet that re-points Keel's
  * tokens; the walk itself is not touched.
  */
 export const DISTRY_SKIN_COOKIE = "dy_skin";
-const VERSION = 9;
+const VERSION = 10;
 
 /** Whether this request wears the skin: the query wins, else the cookie. */
 export function wearsDistrySkin(query: string | null, cookie: string | undefined): boolean {
@@ -35,14 +35,6 @@ export function DistrySkin() {
         <div className="d-orb d-sun" />
       </div>
       <div className="d-backdrop" aria-hidden />
-      <canvas className="d-fireflies" id="fireflies" aria-hidden />
-      <aside className="buddy" id="buddy" aria-hidden>
-        <p className="buddy-say is-on" id="buddy-say">Hi, I&apos;m Distry. Paste your website, I start tonight.</p>
-        <div className="buddy-face">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/distry/assets/distry-avatar-160.webp" alt="" width={72} height={72} />
-        </div>
-      </aside>
       <script src={`/distry/distry.js?v=${VERSION}`} defer />
     </>
   );

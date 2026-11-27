@@ -165,12 +165,13 @@ function start() {
     starCtx.globalAlpha = 1;
   }
 
-  /* ---- fireflies: the messages Distry sends, drifting toward the pointer ---- */
+  /* ---- fireflies drifting toward the pointer (absent from the sign-up walk, owner 2026-11-27) ---- */
   const flyCanvas = document.getElementById("fireflies");
-  const flyCtx = flyCanvas.getContext("2d");
+  const flyCtx = flyCanvas ? flyCanvas.getContext("2d") : null;
   const pointer = { x: -9999, y: -9999 };
   let flies = [];
   function sizeFlies() {
+    if (!flyCtx) return;
     const dpr = Math.min(devicePixelRatio || 1, 2);
     flyCanvas.width = innerWidth * dpr;
     flyCanvas.height = innerHeight * dpr;
@@ -185,12 +186,12 @@ function start() {
       vx: -(0.18 + Math.random() * 0.5),
       vy: (Math.random() - 0.5) * 0.3,
       size: 2 + Math.random() * 3.4,
-      letter: Math.random() < 0.38,
       phase: Math.random() * Math.PI * 2,
       spin: (Math.random() - 0.5) * 0.6,
     };
   }
   function drawFlies(time) {
+    if (!flyCtx) return;
     flyCtx.clearRect(0, 0, innerWidth, innerHeight);
     // Gold fireflies at night; by day they turn into soft white-blue motes and thin out.
     const day = clamp((skyT - 0.55) * 2.4);
@@ -226,24 +227,11 @@ function start() {
       flyCtx.translate(f.x, f.y);
       flyCtx.rotate(Math.sin(time * 0.001 + f.phase) * f.spin);
       flyCtx.globalAlpha = alpha;
-      if (f.letter) {
-        const w = f.size * 3.2;
-        const h = f.size * 2.2;
-        flyCtx.fillStyle = day > 0.5 ? "#ffffff" : "#ffe9b0";
-        flyCtx.fillRect(-w / 2, -h / 2, w, h);
-        flyCtx.strokeStyle = day > 0.5 ? "#2563eb" : "#b9801f";
-        flyCtx.lineWidth = 0.8;
-        flyCtx.beginPath();
-        flyCtx.moveTo(-w / 2, -h / 2);
-        flyCtx.lineTo(0, h * 0.12);
-        flyCtx.lineTo(w / 2, -h / 2);
-        flyCtx.stroke();
-      } else {
-        flyCtx.fillStyle = day > 0.5 ? "#ffffff" : "#fff3cf";
-        flyCtx.beginPath();
-        flyCtx.arc(0, 0, f.size * 0.6, 0, Math.PI * 2);
-        flyCtx.fill();
-      }
+      // Plain dots only: the little envelopes are gone (owner 2026-11-27, « on n'a pas 5 ans »).
+      flyCtx.fillStyle = day > 0.5 ? "#ffffff" : "#fff3cf";
+      flyCtx.beginPath();
+      flyCtx.arc(0, 0, f.size * 0.6, 0, Math.PI * 2);
+      flyCtx.fill();
       flyCtx.restore();
     }
   }
@@ -339,12 +327,12 @@ function start() {
     return copy;
   }));
 
-  /* ---- Distry walks beside the visitor and says one line per scene ---- */
+  /* ---- Distry walks beside the visitor and says one line per scene (absent from the sign-up walk, owner 2026-11-27) ---- */
   const buddy = document.getElementById("buddy");
   const say = document.getElementById("buddy-say");
   let saying = "";
   function speak(line) {
-    if (line === saying) return;
+    if (!say || line === saying) return;
     saying = line;
     say.classList.remove("is-on");
     setTimeout(() => {
@@ -357,7 +345,7 @@ function start() {
   }, { rootMargin: "-45% 0px -45% 0px" });
   // Sober: Distry greets once and then stays quiet beside the visitor.
   void talk;
-  setTimeout(() => say.classList.remove("is-on"), 9000);
+  if (say) setTimeout(() => say.classList.remove("is-on"), 9000);
   const firstLine = document.querySelector("[data-say]");
   if (firstLine) setTimeout(() => speak(firstLine.dataset.say), 1800);
 
@@ -375,7 +363,7 @@ function start() {
       setTimeout(() => sp.remove(), 1400 + i * 45);
     }
   }
-  $$(".btn").forEach((btn) => {
+  if (buddy) $$(".btn").forEach((btn) => {
     btn.addEventListener("pointerenter", () => {
       buddy.classList.add("is-excited");
       const face = buddy.querySelector(".buddy-face").getBoundingClientRect();
