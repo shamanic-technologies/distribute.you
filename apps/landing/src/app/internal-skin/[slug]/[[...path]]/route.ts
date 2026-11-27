@@ -2,6 +2,7 @@ import { applyDistrySkin, isSkinnedStylesheet, skinStylesheet } from "@/lib/dist
 import { isLabDrawnDocsPage, LAB_INTEGRATIONS_PATH, withLabDocs } from "@/lib/lab-docs";
 import { labRedirectFor } from "@/lib/lab-offer";
 import { prototypeFor } from "@/lib/prototype-catalogue";
+import { pathSegmentRefusal } from "@/lib/upstream-path";
 
 /**
  * One live page, in the Distry skin (`src/lib/distry-skin.ts`).
@@ -22,6 +23,10 @@ const FORWARDED = ["accept", "rsc", "next-router-state-tree", "next-router-prefe
 export async function GET(request: Request, context: { params: Promise<{ slug: string; path?: string[] }> }) {
   const { slug, path } = await context.params;
   if (prototypeFor(slug) === null) return new Response("Not found.", { status: 404, headers: HEADERS });
+  // SECRETS-ROTATE-1127: no dot segment or encoded slash steers the local fetch elsewhere.
+  if ((path ?? []).some((segment) => pathSegmentRefusal(segment) !== null)) {
+    return new Response("Invalid path.", { status: 400, headers: HEADERS });
+  }
 
   const pathname = `/${(path ?? []).map(encodeURIComponent).join("/")}`;
   // A page the lab does not serve (`LAB_HIDDEN_PAGES`): an old-offer article goes to the blog, every other page home.

@@ -2,6 +2,7 @@ import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { MARKDOWN_CONTENT_TYPE, VARY_HEADER } from "@/lib/content-negotiation";
 import { docsPagePath } from "@/lib/docs/docs-markdown";
 import { SITE_URL } from "@/lib/seo";
+import { pathSegmentRefusal } from "@/lib/upstream-path";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,10 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ path?: string[] }> }) {
   const { path } = await params;
+  // SECRETS-ROTATE-1127: no dot segment or encoded slash steers the local fetch elsewhere.
+  if ((path ?? []).some((segment) => pathSegmentRefusal(segment) !== null)) {
+    return new Response("Invalid path\n", { status: 400, headers: { "content-type": MARKDOWN_CONTENT_TYPE } });
+  }
   const pagePath = docsPagePath(path);
   const origin = `http://127.0.0.1:${process.env.PORT ?? "3000"}`;
   const page = await fetch(`${origin}${pagePath}`, {

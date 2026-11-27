@@ -7,7 +7,8 @@ const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distr
 
 export async function GET(_req: Request, ctx: { params: Promise<{ file: string }> }) {
   const { file } = await ctx.params;
-  if (!/^.{1,60}\.svg$/.test(file)) return new Response("the face path is /api/public/faces/<name>.svg", { status: 400 });
+  // SECRETS-ROTATE-1127: no slash, backslash, `%` or dot-only name ever reaches the gateway.
+  if (!/^[^/\\%]{1,60}\.svg$/.test(file) || file.startsWith(".")) return new Response("the face path is /api/public/faces/<name>.svg", { status: 400 });
   try {
     const res = await fetch(`${API_URL}/v1/public/catalogue/faces/${encodeURIComponent(file)}`, {
       next: { revalidate: 86400 },
